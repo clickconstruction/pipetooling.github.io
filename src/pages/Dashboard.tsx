@@ -37,6 +37,7 @@ function personDisplay(name: string | null): string {
 export default function Dashboard() {
   const { user: authUser } = useAuth()
   const [role, setRole] = useState<UserRole | null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +62,7 @@ export default function Dashboard() {
       const user = userData as { role: UserRole; name: string | null } | null
       setRole(user?.role ?? null)
       const name = user?.name ?? null
+      setUserName(name)
       
       // Load subscribed steps
       const { data: subs } = await supabase

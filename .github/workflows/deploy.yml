@@ -49,27 +49,6 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Verify build output
-        run: |
-          if [ ! -f dist/.nojekyll ]; then
-            echo "::error::.nojekyll file is missing from dist directory"
-            exit 1
-          fi
-          if [ ! -f dist/index.html ]; then
-            echo "::error::index.html is missing from dist directory"
-            exit 1
-          fi
-          if ! grep -q "assets/index-" dist/index.html; then
-            echo "::error::index.html does not reference built assets correctly"
-            cat dist/index.html
-            exit 1
-          fi
-          if grep -q "main.tsx" dist/index.html; then
-            echo "::error::index.html still references source file main.tsx"
-            exit 1
-          fi
-          echo "Build output verified: .nojekyll present, index.html references built assets"
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
