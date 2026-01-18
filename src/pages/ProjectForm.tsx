@@ -6,7 +6,7 @@ import type { Database } from '../types/database'
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
-const PROJECT_STATUSES: ProjectRow['status'][] = ['active', 'completed', 'on_hold']
+const PROJECT_STATUSES: ProjectRow['status'][] = ['awaiting_start', 'active', 'completed', 'on_hold']
 
 export default function ProjectForm() {
   const { id } = useParams()
@@ -15,6 +15,9 @@ export default function ProjectForm() {
 
   const [customerId, setCustomerId] = useState('')
   const [customers, setCustomers] = useState<CustomerRow[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [address, setAddress] = useState('')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [housecallproNumber, setHousecallproNumber] = useState('')
@@ -32,11 +35,33 @@ export default function ProjectForm() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('customers').select('id, name').order('name')
+      const { data } = await supabase.from('customers').select('id, name, address').order('name')
       setCustomers((data as CustomerRow[]) ?? [])
       setCustomersLoading(false)
     })()
   }, [])
+
+  function getCustomerDisplay(customer: CustomerRow): string {
+    if (customer.address) {
+      return `${customer.name} - ${customer.address}`
+    }
+    return customer.name
+  }
+
+  // Update customer search and auto-fill address when customerId changes
+  useEffect(() => {
+    if (customerId && customers.length > 0) {
+      const selectedCustomer = customers.find((c) => c.id === customerId)
+      if (selectedCustomer) {
+        setCustomerSearch(getCustomerDisplay(selectedCustomer))
+        // Auto-fill address from customer (only in new mode, or if address is currently empty)
+        if (isNew || !address.trim()) {
+          setAddress(selectedCustomer.address ?? '')
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, customers, isNew])
 
   useEffect(() => {
     if (isNew) {
@@ -57,6 +82,7 @@ export default function ProjectForm() {
         }
         const row = data as ProjectRow
         setName(row.name)
+        setAddress(row.address ?? '')
         setDescription(row.description ?? '')
         setHousecallproNumber(row.housecallpro_number ?? '')
         setPlansLink(row.plans_link ?? '')
@@ -70,9 +96,14 @@ export default function ProjectForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (isNew && !customerId) {
+      setError('Please select a customer.')
+      return
+    }
     setLoading(true)
     const payload = {
       name: name.trim(),
+      address: address.trim() || null,
       description: description.trim() || null,
       housecallpro_number: housecallproNumber.trim() || null,
       plans_link: plansLink.trim() || null,
@@ -174,25 +205,118 @@ export default function ProjectForm() {
     <div>
       <h1 style={{ marginBottom: '1rem' }}>{isNew ? 'New project' : 'Edit project'}</h1>
       <form onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
-        <div style={{ marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '1rem', position: 'relative' }}>
           <label htmlFor="customer" style={{ display: 'block', marginBottom: 4 }}>Customer *</label>
-          <select
-            id="customer"
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            required
-            disabled={!isNew}
-            style={{ width: '100%', padding: '0.5rem' }}
-          >
-            <option value="">Select customer</option>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          {!isNew && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>Customer cannot be changed when editing.</div>}
+          {!isNew ? (
+            <>
+              <input
+                id="customer"
+                type="text"
+                value={customerSearch}
+                disabled
+                style={{ width: '100%', padding: '0.5rem', background: '#f3f4f6' }}
+              />
+              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>Customer cannot be changed when editing.</div>
+            </>
+          ) : (
+            <>
+              <input
+                id="customer"
+                type="text"
+                value={customerSearch}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setCustomerSearch(value)
+                  setCustomerDropdownOpen(true)
+                  // Clear customerId if search doesn't match the currently selected customer
+                  if (customerId) {
+                    const selectedCustomer = customers.find((c) => c.id === customerId)
+                    if (!selectedCustomer || !value || getCustomerDisplay(selectedCustomer).toLowerCase() !== value.toLowerCase()) {
+                      setCustomerId('')
+                    }
+                  }
+                }}
+                onFocus={() => setCustomerDropdownOpen(true)}
+                onBlur={() => {
+                  // Delay closing to allow click on dropdown item
+                  setTimeout(() => setCustomerDropdownOpen(false), 200)
+                }}
+                placeholder="Search customers..."
+                required
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+              {customerDropdownOpen && customers.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 4,
+                    maxHeight: 200,
+                    overflowY: 'auto',
+                    zIndex: 100,
+                    marginTop: 2,
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                >
+                  {customers
+                    .filter((c) => {
+                      const searchLower = customerSearch.toLowerCase()
+                      const nameLower = c.name.toLowerCase()
+                      const addressLower = (c.address || '').toLowerCase()
+                      return nameLower.includes(searchLower) || addressLower.includes(searchLower)
+                    })
+                    .map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setCustomerId(c.id)
+                          setCustomerSearch(getCustomerDisplay(c))
+                          // Auto-fill address from customer (only in new mode, or if address is empty)
+                          if (isNew || !address) {
+                            setAddress(c.address ?? '')
+                          }
+                          setCustomerDropdownOpen(false)
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #f3f4f6',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = '#f3f4f6'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'white'
+                        }}
+                      >
+                        <div style={{ fontWeight: 500 }}>{c.name}</div>
+                        {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                      </div>
+                    ))}
+                  {customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
+                    <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+          <label htmlFor="address" style={{ display: 'block', marginBottom: 4 }}>Address</label>
+          <input
+            id="address"
+            type="text"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem' }}
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="name" style={{ display: 'block', marginBottom: 4 }}>Project Name *</label>
           <input
             id="name"
             type="text"
@@ -201,6 +325,7 @@ export default function ProjectForm() {
             required
             style={{ width: '100%', padding: '0.5rem' }}
           />
+          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>[Street / Town+Building] + [Remodel / New Build / Re-Pipe]</div>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="description" style={{ display: 'block', marginBottom: 4 }}>Description</label>
@@ -219,6 +344,7 @@ export default function ProjectForm() {
             type="text"
             value={housecallproNumber}
             onChange={(e) => setHousecallproNumber(e.target.value)}
+            placeholder="#777"
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>

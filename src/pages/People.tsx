@@ -5,12 +5,12 @@ import { useAuth } from '../hooks/useAuth'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
-type PersonKind = 'assistant' | 'master' | 'sub'
+type PersonKind = 'assistant' | 'master_technician' | 'sub'
 
-const KINDS: PersonKind[] = ['assistant', 'master', 'sub']
-const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master: 'Masters', sub: 'Subcontractors' }
+const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub']
+const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors' }
 
-const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master: 'master', sub: 'subcontractor' }
+const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor' }
 
 export default function People() {
   const { user: authUser } = useAuth()
@@ -39,7 +39,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').eq('master_user_id', authUser.id).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master', 'subcontractor']),
+      supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor']),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
@@ -288,9 +288,29 @@ export default function People() {
                       )}
                       {(item.source === 'user' ? item.email : (item.email || item.phone)) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                          {item.source === 'user'
-                            ? item.email
-                            : [item.email, item.phone].filter(Boolean).join(' \u00B7 ')}
+                          {item.source === 'user' ? (
+                            item.email ? (
+                              <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                {item.email}
+                              </a>
+                            ) : null
+                          ) : (
+                            <>
+                              {item.email && (
+                                <>
+                                  <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                    {item.email}
+                                  </a>
+                                  {item.phone && ' \u00B7 '}
+                                </>
+                              )}
+                              {item.phone && (
+                                <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                  {item.phone}
+                                </a>
+                              )}
+                            </>
+                          )}
                         </span>
                       )}
                     </div>

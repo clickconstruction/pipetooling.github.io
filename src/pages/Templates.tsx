@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 
 type Template = { id: string; name: string; description: string | null }
 type TemplateStep = { id: string; template_id: string; sequence_order: number; name: string }
-type UserRole = 'owner' | 'master' | 'assistant'
+type UserRole = 'owner' | 'master_technician' | 'assistant'
 
 export default function Templates() {
   const { user: authUser } = useAuth()

@@ -8,6 +8,7 @@ type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type StepStatus = Step['status']
 type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
+type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -28,7 +29,42 @@ function formatDatetime(iso: string | null): string {
 }
 
 function personDisplay(name: string | null): string {
-  return (name && name.trim()) ? name.trim() : 'unknown'
+  return (name && name.trim()) ? name.trim() : 'Assigned to: unknown'
+}
+
+function PersonDisplayWithContact({ name, contacts }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }> }) {
+  if (!name || !name.trim()) {
+    return <span>Assigned to: unknown</span>
+  }
+  const trimmedName = name.trim()
+  const contact = contacts[trimmedName]
+  const hasEmail = contact?.email
+  const hasPhone = contact?.phone
+  
+  if (!hasEmail && !hasPhone) {
+    return <span>{trimmedName}</span>
+  }
+  
+  return (
+    <span>
+      {trimmedName}
+      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+        {hasEmail && (
+          <>
+            <a href={`mailto:${contact.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+              {contact.email}
+            </a>
+            {hasPhone && ' \u00B7 '}
+          </>
+        )}
+        {hasPhone && (
+          <a href={`tel:${contact.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+            {contact.phone}
+          </a>
+        )}
+      </span>
+    </span>
+  )
 }
 
 export default function Workflow() {
@@ -40,11 +76,13 @@ export default function Workflow() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [stepForm, setStepForm] = useState<{ open: boolean; step: Step | null; depends_on_step_id?: string | null }>({ open: false, step: null })
+  const [stepForm, setStepForm] = useState<{ open: boolean; step: Step | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }>({ open: false, step: null })
   const [rejectStep, setRejectStep] = useState<{ step: Step; reason: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [roster, setRoster] = useState<{ name: string }[]>([])
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
+  const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
+  const [personContacts, setPersonContacts] = useState<Record<string, { email: string | null; phone: string | null }>>({})
 
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
@@ -87,24 +125,44 @@ export default function Workflow() {
     const stepData = (data as Step[]) ?? []
     setSteps(stepData)
     
-    // Load user subscriptions for these steps
-    if (authUser?.id && stepData.length > 0) {
+    if (stepData.length > 0) {
       const stepIds = stepData.map((s) => s.id)
-      const { data: subs } = await supabase
-        .from('step_subscriptions')
-        .select('step_id, notify_when_started, notify_when_complete, notify_when_reopened')
-        .eq('user_id', authUser.id)
+      
+      // Load user subscriptions for these steps
+      if (authUser?.id) {
+        const { data: subs } = await supabase
+          .from('step_subscriptions')
+          .select('step_id, notify_when_started, notify_when_complete, notify_when_reopened')
+          .eq('user_id', authUser.id)
+          .in('step_id', stepIds)
+        if (subs) {
+          const subsMap: Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }> = {}
+          subs.forEach((sub) => {
+            subsMap[sub.step_id] = {
+              notify_when_started: sub.notify_when_started,
+              notify_when_complete: sub.notify_when_complete,
+              notify_when_reopened: sub.notify_when_reopened,
+            }
+          })
+          setUserSubscriptions(subsMap)
+        }
+      }
+      
+      // Load actions for these steps
+      const { data: actions } = await supabase
+        .from('project_workflow_step_actions')
+        .select('*')
         .in('step_id', stepIds)
-      if (subs) {
-        const subsMap: Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }> = {}
-        subs.forEach((sub) => {
-          subsMap[sub.step_id] = {
-            notify_when_started: sub.notify_when_started,
-            notify_when_complete: sub.notify_when_complete,
-            notify_when_reopened: sub.notify_when_reopened,
+        .order('performed_at', { ascending: false })
+      if (actions) {
+        const actionsMap: Record<string, StepAction[]> = {}
+        actions.forEach((action) => {
+          if (!actionsMap[action.step_id]) {
+            actionsMap[action.step_id] = []
           }
+          actionsMap[action.step_id].push(action)
         })
-        setUserSubscriptions(subsMap)
+        setStepActions(actionsMap)
       }
     }
   }
@@ -122,6 +180,21 @@ export default function Workflow() {
     })()
   }, [projectId])
 
+  // Scroll to step when steps are loaded and hash is present
+  useEffect(() => {
+    if (steps.length > 0 && !loading) {
+      const hash = window.location.hash
+      if (hash && hash.startsWith('#step-')) {
+        setTimeout(() => {
+          const element = document.getElementById(hash.substring(1))
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 100)
+      }
+    }
+  }, [steps, loading])
+
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from('workflow_templates').select('id, name').order('name')
@@ -133,13 +206,30 @@ export default function Workflow() {
     if (!authUser?.id) return
     ;(async () => {
       const [peopleRes, usersRes] = await Promise.all([
-        supabase.from('people').select('name').eq('master_user_id', authUser.id).order('name'),
-        supabase.from('users').select('name').in('role', ['assistant', 'master', 'subcontractor']),
+        supabase.from('people').select('name, email, phone').eq('master_user_id', authUser.id).order('name'),
+        supabase.from('users').select('name, email').in('role', ['assistant', 'master_technician', 'subcontractor']),
       ])
-      const fromPeople = (peopleRes.data as { name: string }[] | null) ?? []
-      const fromUsers = (usersRes.data as { name: string }[] | null) ?? []
+      const fromPeople = (peopleRes.data as { name: string; email: string | null; phone: string | null }[] | null) ?? []
+      const fromUsers = (usersRes.data as { name: string; email: string | null }[] | null) ?? []
       const names = [...fromUsers.map((r) => r.name), ...fromPeople.map((r) => r.name)].filter(Boolean).sort()
       setRoster(names.map((name) => ({ name })))
+      
+      // Build contact map
+      const contacts: Record<string, { email: string | null; phone: string | null }> = {}
+      fromPeople.forEach((p) => {
+        if (p.name) {
+          contacts[p.name] = { email: p.email, phone: p.phone }
+        }
+      })
+      fromUsers.forEach((u) => {
+        if (u.name) {
+          // Only set if not already set (people take precedence)
+          if (!contacts[u.name]) {
+            contacts[u.name] = { email: u.email, phone: null }
+          }
+        }
+      })
+      setPersonContacts(contacts)
     })()
   }, [authUser?.id])
 
@@ -149,8 +239,44 @@ export default function Workflow() {
     }
   }
 
-  async function openAddStep() {
-    setStepForm({ open: true, step: null })
+  async function getCurrentUserName(): Promise<string> {
+    if (!authUser?.id) return 'Unknown'
+    const { data: userData } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', authUser.id)
+      .single()
+    if (userData) {
+      return (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email || 'Unknown'
+    }
+    return 'Unknown'
+  }
+
+  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened', notes?: string | null) {
+    const performedBy = await getCurrentUserName()
+    const performedAt = new Date().toISOString()
+    const { data, error } = await supabase
+      .from('project_workflow_step_actions')
+      .insert({
+        step_id: stepId,
+        action_type: actionType,
+        performed_by: performedBy,
+        performed_at: performedAt,
+        notes: notes || null,
+      })
+      .select()
+      .single()
+    if (!error && data) {
+      // Update local state
+      setStepActions((prev) => {
+        const current = prev[stepId] || []
+        return { ...prev, [stepId]: [data as StepAction, ...current] }
+      })
+    }
+  }
+
+  async function openAddStep(insertAfterStepId?: string) {
+    setStepForm({ open: true, step: null, insertAfterStepId: insertAfterStepId ?? null })
   }
 
   async function openEditStep(step: Step) {
@@ -160,7 +286,7 @@ export default function Workflow() {
   }
 
   function closeStepForm() {
-    setStepForm({ open: false, step: null })
+    setStepForm({ open: false, step: null, insertAfterStepId: null })
   }
 
   async function createFromTemplate() {
@@ -181,7 +307,7 @@ export default function Workflow() {
     await refreshSteps()
   }
 
-  async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null }) {
+  async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
     if (!workflow) return
     if (stepForm.step) {
       await supabase.from('project_workflow_steps').update({
@@ -195,10 +321,44 @@ export default function Workflow() {
         await supabase.from('workflow_step_dependencies').insert({ step_id: stepForm.step.id, depends_on_step_id: p.depends_on_step_id })
       }
     } else {
-      const maxOrder = steps.length === 0 ? 0 : Math.max(...steps.map((s) => s.sequence_order))
+      // Calculate sequence_order based on insertAfterStepId
+      let newOrder: number
+      if (p.insertAfterStepId === '__beginning__') {
+        // Add at the beginning
+        newOrder = 1
+        // Increment sequence_order for all existing steps
+        for (const s of steps) {
+          await supabase
+            .from('project_workflow_steps')
+            .update({ sequence_order: s.sequence_order + 1 })
+            .eq('id', s.id)
+        }
+      } else if (p.insertAfterStepId) {
+        const afterStep = steps.find((s) => s.id === p.insertAfterStepId)
+        if (afterStep) {
+          newOrder = afterStep.sequence_order + 1
+          // Increment sequence_order for all steps that come after
+          const stepsToUpdate = steps.filter((s) => s.sequence_order >= newOrder)
+          for (const s of stepsToUpdate) {
+            await supabase
+              .from('project_workflow_steps')
+              .update({ sequence_order: s.sequence_order + 1 })
+              .eq('id', s.id)
+          }
+        } else {
+          // Fallback to end if step not found
+          const maxOrder = steps.length === 0 ? 0 : Math.max(...steps.map((s) => s.sequence_order))
+          newOrder = maxOrder + 1
+        }
+      } else {
+        // Add at the end
+        const maxOrder = steps.length === 0 ? 0 : Math.max(...steps.map((s) => s.sequence_order))
+        newOrder = maxOrder + 1
+      }
+      
       await supabase.from('project_workflow_steps').insert({
         workflow_id: workflow.id,
-        sequence_order: maxOrder + 1,
+        sequence_order: newOrder,
         name: p.name.trim(),
         assigned_to_name: p.assigned_to_name.trim() || null,
         started_at: p.started_at,
@@ -210,35 +370,59 @@ export default function Workflow() {
     closeStepForm()
   }
 
-  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string; rejection_reason?: string }) {
+  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string; rejection_reason?: string; approved_by?: string | null; approved_at?: string | null }) {
     const up: Record<string, unknown> = { status }
     if (extra?.ended_at) up.ended_at = extra.ended_at
     if (extra?.rejection_reason != null) up.rejection_reason = extra.rejection_reason
+    if (extra?.approved_by !== undefined) up.approved_by = extra.approved_by
+    if (extra?.approved_at !== undefined) up.approved_at = extra.approved_at
     await supabase.from('project_workflow_steps').update(up).eq('id', step.id)
     await refreshSteps()
   }
 
   async function markStarted(step: Step) {
     await supabase.from('project_workflow_steps').update({ started_at: new Date().toISOString(), status: 'in_progress' }).eq('id', step.id)
+    await recordAction(step.id, 'started')
     await refreshSteps()
   }
 
   async function markCompleted(step: Step) {
     await updateStepStatus(step, 'completed', { ended_at: new Date().toISOString() })
+    await recordAction(step.id, 'completed')
     await refreshSteps()
   }
 
   async function markApproved(step: Step) {
-    await updateStepStatus(step, 'approved', { ended_at: new Date().toISOString() })
+    // Get current user's name
+    const approvedByName = await getCurrentUserName()
+    const approvedAt = new Date().toISOString()
+    await updateStepStatus(step, 'approved', { 
+      ended_at: approvedAt,
+      approved_by: approvedByName,
+      approved_at: approvedAt,
+    })
+    await recordAction(step.id, 'approved')
     await refreshSteps()
   }
 
   async function reopenStep(step: Step) {
-    await supabase.from('project_workflow_steps').update({ status: 'pending', ended_at: null }).eq('id', step.id)
+    await supabase.from('project_workflow_steps').update({ 
+      status: 'pending', 
+      ended_at: null,
+      approved_by: null,
+      approved_at: null,
+      rejection_reason: null,
+    }).eq('id', step.id)
+    await recordAction(step.id, 'reopened')
     await refreshSteps()
   }
 
   async function updateNotifyAssigned(step: Step, field: 'notify_assigned_when_started' | 'notify_assigned_when_complete' | 'notify_assigned_when_reopened', value: boolean) {
+    await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
+    await refreshSteps()
+  }
+
+  async function updateCrossStepNotify(step: Step, field: 'notify_next_assignee_when_complete_or_approved' | 'notify_prior_assignee_when_rejected', value: boolean) {
     await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
     await refreshSteps()
   }
@@ -261,6 +445,11 @@ export default function Workflow() {
     setUserSubscriptions((prev) => ({ ...prev, [step.id]: payload }))
   }
 
+  async function updateNotes(step: Step, notes: string) {
+    await supabase.from('project_workflow_steps').update({ notes: notes.trim() || null }).eq('id', step.id)
+    await refreshSteps()
+  }
+
   async function submitReject() {
     if (!rejectStep) return
     await supabase.from('project_workflow_steps').update({
@@ -268,6 +457,7 @@ export default function Workflow() {
       rejection_reason: rejectStep.reason.trim() || null,
       ended_at: new Date().toISOString(),
     }).eq('id', rejectStep.step.id)
+    await recordAction(rejectStep.step.id, 'rejected', rejectStep.reason.trim() || null)
     setRejectStep(null)
     await refreshSteps()
   }
@@ -302,7 +492,42 @@ export default function Workflow() {
         <Link to="/projects">{"\u2190"} Projects</Link>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>{project.name}{" \u2013 "}Workflow</h1>
+        <div>
+          <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
+          {steps.length > 0 && (
+            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+              {steps.map((s, i) => {
+                let color = '#6b7280' // default gray
+                let fontWeight: 'normal' | 'bold' = 'normal'
+                if (s.status === 'completed' || s.status === 'approved') {
+                  color = '#059669' // green
+                } else if (s.status === 'rejected') {
+                  color = '#b91c1c' // red
+                } else if (s.status === 'in_progress') {
+                  color = '#E87600' // strong orange
+                  fontWeight = 'bold' // bold if started but not completed
+                }
+                const scrollToStep = () => {
+                  const element = document.getElementById(`step-${s.id}`)
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
+                }
+                return (
+                  <span key={s.id}>
+                    <span
+                      onClick={scrollToStep}
+                      style={{ color, fontWeight, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      {s.name}
+                    </span>
+                    {i < steps.length - 1 && <span> → </span>}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </div>
         <button type="button" onClick={openAddStep} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
           Add step
         </button>
@@ -341,7 +566,7 @@ export default function Workflow() {
           </div>
         ) : (
           steps.map((s, i) => (
-            <div key={s.id}>
+            <div key={s.id} id={`step-${s.id}`}>
               <div
                 style={{
                   border: '1px solid #e5e7eb',
@@ -352,56 +577,159 @@ export default function Workflow() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: 4 }}>
-                  <div style={{ fontWeight: 600 }}>{s.name}</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                    <div style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>{personDisplay(s.assigned_to_name)}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280', gap: 6 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-                        <div>Notify ASSIGNED PERSON when stage</div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!s.notify_assigned_when_started} onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_started', e.target.checked)} />
-                          started
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!s.notify_assigned_when_complete} onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_complete', e.target.checked)} />
-                          complete
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!s.notify_assigned_when_reopened} onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_reopened', e.target.checked)} />
-                          re-opened
-                        </label>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 4 }}>
-                        <div>Notify ME when stage</div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!userSubscriptions[s.id]?.notify_when_started} onChange={(e) => updateNotifyMe(s, 'notify_when_started', e.target.checked)} />
-                          started
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!userSubscriptions[s.id]?.notify_when_complete} onChange={(e) => updateNotifyMe(s, 'notify_when_complete', e.target.checked)} />
-                          complete
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                          <input type="checkbox" checked={!!userSubscriptions[s.id]?.notify_when_reopened} onChange={(e) => updateNotifyMe(s, 'notify_when_reopened', e.target.checked)} />
-                          re-opened
-                        </label>
-                      </div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{s.name}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#374151', marginTop: 4 }}>
+                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} />
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      <div style={{ marginBottom: 4, fontWeight: 500 }}>Notify when stage:</div>
+                      <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', fontWeight: 500 }}></th>
+                            <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ASSIGNED</th>
+                            <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ME</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>started</td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!s.notify_assigned_when_started}
+                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_started', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!userSubscriptions[s.id]?.notify_when_started}
+                                onChange={(e) => updateNotifyMe(s, 'notify_when_started', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>complete</td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!s.notify_assigned_when_complete}
+                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_complete', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!userSubscriptions[s.id]?.notify_when_complete}
+                                onChange={(e) => updateNotifyMe(s, 'notify_when_complete', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>re-opened</td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!s.notify_assigned_when_reopened}
+                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_reopened', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!userSubscriptions[s.id]?.notify_when_reopened}
+                                onChange={(e) => updateNotifyMe(s, 'notify_when_reopened', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!s.notify_next_assignee_when_complete_or_approved}
+                            onChange={(e) => updateCrossStepNotify(s, 'notify_next_assignee_when_complete_or_approved', e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          Notify next card assignee when complete or approved
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.25rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={!!s.notify_prior_assignee_when_rejected}
+                            onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          Notify prior card assignee when rejected
+                        </label>
+                      </div>
                   </div>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
                   Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
                 </div>
                 <div style={{ fontSize: '0.875rem', marginBottom: 8 }}>Status: {s.status}</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Add person</button>
-                  <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
-                  {s.status === 'pending' && <button type="button" onClick={() => markStarted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Start</button>}
-                  {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markCompleted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Complete</button>}
-                  {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Approve</button>}
-                  {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>Reject</button>}
-                  {(s.status === 'completed' || s.status === 'approved') && <button type="button" onClick={() => reopenStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Re-open</button>}
-                  <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
+                {s.status === 'approved' && s.approved_by && s.approved_at && (
+                  <div style={{ fontSize: '0.875rem', color: '#059669', marginBottom: 8, fontWeight: 500 }}>
+                    Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
+                  </div>
+                )}
+                {stepActions[s.id] && stepActions[s.id].length > 0 && (
+                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Action Ledger</div>
+                    <div style={{ fontSize: '0.8125rem' }}>
+                      {stepActions[s.id].map((action) => (
+                        <div key={action.id} style={{ marginBottom: '0.375rem', color: '#6b7280' }}>
+                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type}</span>
+                          {' by '}
+                          <span style={{ fontWeight: 500 }}>{action.performed_by}</span>
+                          {' on '}
+                          <span>{formatDatetime(action.performed_at)}</span>
+                          {action.notes && (
+                            <div style={{ marginTop: 2, marginLeft: '1rem', fontStyle: 'italic', color: '#9ca3af' }}>
+                              {action.notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div style={{ marginBottom: 8 }}>
+                  <label htmlFor={`notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500 }}>Notes</label>
+                  <textarea
+                    id={`notes-${s.id}`}
+                    key={`notes-${s.id}-${s.notes ?? ''}`}
+                    defaultValue={s.notes ?? ''}
+                    onBlur={(e) => updateNotes(s, e.target.value)}
+                    placeholder="Add notes for this stage..."
+                    rows={3}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {s.status === 'pending' && <button type="button" onClick={() => markStarted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Start</button>}
+                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markCompleted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Complete</button>}
+                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Approve</button>}
+                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>Reject</button>}
+                    {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && <button type="button" onClick={() => reopenStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Re-open</button>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Assign</button>
+                    <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
+                    <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
+                  </div>
                 </div>
                 {s.rejection_reason && <div style={{ marginTop: 8, fontSize: '0.875rem', color: '#b91c1c' }}>Rejection: {s.rejection_reason}</div>}
               </div>
@@ -415,6 +743,7 @@ export default function Workflow() {
         <StepFormModal
           step={stepForm.step}
           dependsOnStepId={stepForm.depends_on_step_id ?? null}
+          insertAfterStepId={stepForm.insertAfterStepId ?? null}
           steps={steps}
           onSave={saveStep}
           onClose={closeStepForm}
@@ -478,6 +807,7 @@ export default function Workflow() {
 function StepFormModal({
   step,
   dependsOnStepId,
+  insertAfterStepId,
   steps,
   onSave,
   onClose,
@@ -486,8 +816,9 @@ function StepFormModal({
 }: {
   step: Step | null
   dependsOnStepId: string | null
+  insertAfterStepId: string | null
   steps: Step[]
-  onSave: (p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null }) => void
+  onSave: (p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) => void
   onClose: () => void
   toDatetimeLocal: (iso: string | null) => string
   fromDatetimeLocal: (v: string) => string | null
@@ -497,6 +828,7 @@ function StepFormModal({
   const [started_at, setStartedAt] = useState(toDatetimeLocal(step?.started_at ?? null))
   const [ended_at, setEndedAt] = useState(toDatetimeLocal(step?.ended_at ?? null))
   const [depends_on_step_id, setDependsOnStepId] = useState(dependsOnStepId ?? '')
+  const [insert_after_step_id, setInsertAfterStepId] = useState(insertAfterStepId ?? '')
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -506,6 +838,7 @@ function StepFormModal({
       started_at: fromDatetimeLocal(started_at),
       ended_at: fromDatetimeLocal(ended_at),
       ...(step ? { depends_on_step_id: depends_on_step_id || null } : {}),
+      ...(!step ? { insertAfterStepId: insert_after_step_id || null } : {}),
     })
   }
 
@@ -526,6 +859,9 @@ function StepFormModal({
               style={{ width: '100%', padding: '0.5rem' }}
             />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: 6 }}>
+              <button type="button" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                change order:
+              </button>
               {[
                 'initial walkthrough',
                 'check work walkthrough',
@@ -547,8 +883,25 @@ function StepFormModal({
               ))}
             </div>
           </div>
+          {!step && steps.length > 0 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="step-insert-after" style={{ display: 'block', marginBottom: 4 }}>Add after step</label>
+              <select
+                id="step-insert-after"
+                value={insert_after_step_id}
+                onChange={(e) => setInsertAfterStepId(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem' }}
+              >
+                <option value="">Add at the end</option>
+                <option value="__beginning__">Add at the beginning</option>
+                {steps.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="step-person" style={{ display: 'block', marginBottom: 4 }}>Person</label>
+            <label htmlFor="step-person" style={{ display: 'block', marginBottom: 4 }}>Assigned to</label>
             <input
               id="step-person"
               type="text"

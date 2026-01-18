@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-type UserRole = 'owner' | 'master' | 'assistant' | 'subcontractor'
+type UserRole = 'owner' | 'master_technician' | 'assistant' | 'subcontractor'
 
 type UserRow = {
   id: string
@@ -13,7 +13,7 @@ type UserRow = {
   last_sign_in_at: string | null
 }
 
-const ROLES: UserRole[] = ['owner', 'master', 'assistant', 'subcontractor']
+const ROLES: UserRole[] = ['owner', 'master_technician', 'assistant', 'subcontractor']
 
 function timeSinceAgo(iso: string | null): string {
   if (!iso) return '—'
@@ -43,14 +43,14 @@ export default function Settings() {
   const [codeSubmitting, setCodeSubmitting] = useState(false)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<UserRole>('master')
+  const [inviteRole, setInviteRole] = useState<UserRole>('master_technician')
   const [inviteName, setInviteName] = useState('')
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [manualAddOpen, setManualAddOpen] = useState(false)
   const [manualAddEmail, setManualAddEmail] = useState('')
   const [manualAddName, setManualAddName] = useState('')
-  const [manualAddRole, setManualAddRole] = useState<UserRole>('master')
+  const [manualAddRole, setManualAddRole] = useState<UserRole>('master_technician')
   const [manualAddPassword, setManualAddPassword] = useState('')
   const [manualAddError, setManualAddError] = useState<string | null>(null)
   const [manualAddSubmitting, setManualAddSubmitting] = useState(false)
@@ -179,7 +179,7 @@ export default function Settings() {
   function openInvite() {
     setInviteOpen(true)
     setInviteEmail('')
-    setInviteRole('master')
+    setInviteRole('master_technician')
     setInviteName('')
     setInviteError(null)
   }
@@ -192,7 +192,7 @@ export default function Settings() {
     setManualAddOpen(true)
     setManualAddEmail('')
     setManualAddName('')
-    setManualAddRole('master')
+    setManualAddRole('master_technician')
     setManualAddPassword('')
     setManualAddError(null)
   }
@@ -306,26 +306,6 @@ export default function Settings() {
   return (
     <div>
       <h1 style={{ marginBottom: '1rem' }}>Settings</h1>
-
-      <form onSubmit={handleClaimCode} style={{ marginBottom: '1.5rem' }}>
-        <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            id="code"
-            type="text"
-            value={code}
-            onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
-            disabled={codeSubmitting}
-            placeholder="Admin code"
-            style={{ padding: '0.5rem', minWidth: 160 }}
-            autoComplete="one-time-code"
-          />
-          <button type="submit" disabled={codeSubmitting || !code.trim()}>
-            {codeSubmitting ? 'Checking…' : 'Submit'}
-          </button>
-        </div>
-        {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
-      </form>
 
       {myRole !== 'owner' && <p style={{ marginBottom: '1.5rem' }}>Only owners can manage user roles.</p>}
 
@@ -570,6 +550,26 @@ export default function Settings() {
           </div>
         </div>
       )}
+
+      <form onSubmit={handleClaimCode} style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+        <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            id="code"
+            type="text"
+            value={code}
+            onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
+            disabled={codeSubmitting}
+            placeholder="Admin code"
+            style={{ padding: '0.5rem', minWidth: 160 }}
+            autoComplete="one-time-code"
+          />
+          <button type="submit" disabled={codeSubmitting || !code.trim()}>
+            {codeSubmitting ? 'Checking…' : 'Submit'}
+          </button>
+        </div>
+        {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
+      </form>
     </div>
   )
 }

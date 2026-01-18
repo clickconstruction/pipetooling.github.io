@@ -6,7 +6,7 @@ import type { Database } from '../types/database'
 
 type Project = Database['public']['Tables']['projects']['Row']
 type ProjectWithCustomer = Project & { customers: { name: string } | null }
-type UserRole = 'owner' | 'master' | 'assistant'
+type UserRole = 'owner' | 'master_technician' | 'assistant'
 
 export default function Projects() {
   const { user: authUser } = useAuth()
@@ -142,7 +142,7 @@ export default function Projects() {
               }}
             >
               <div>
-                <Link to={`/projects/${p.id}/edit`} style={{ fontWeight: 500 }}>{p.name}</Link>
+                <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   {p.customers?.name ?? '—'} · {p.status}
                   {activeSteps[p.id] && <span> · Current stage: {activeSteps[p.id]}</span>}
