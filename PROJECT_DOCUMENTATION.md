@@ -126,8 +126,10 @@ A Master Plumber can:
   - `master_user_id` (uuid, FK → `users.id`)
   - `name` (text)
   - `address` (text, nullable)
-  - `contact_info` (jsonb, nullable)
+  - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
+  - `date_met` (date, nullable) - Date when customer was first met
 - **RLS**: Users can only see customers where `master_user_id` matches their ID or they're in `master_assistants`
+- **Special Features**: Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
 
 #### `public.projects`
 - **Purpose**: Project records
@@ -136,10 +138,17 @@ A Master Plumber can:
   - `customer_id` (uuid, FK → `customers.id`)
   - `name` (text)
   - `description` (text, nullable)
-  - `status` (enum: `'active' | 'completed' | 'on_hold'`)
+  - `status` (enum: `'active' | 'completed' | 'on_hold' | 'awaiting_start'`)
   - `housecallpro_number` (text, nullable) - External system reference
   - `plans_link` (text, nullable) - URL to plans
+  - `address` (text, nullable) - Project address (can differ from customer address)
+  - `street_name` (text, nullable) - Street name (for future use)
+  - `project_type` (text, nullable) - Project type (for future use)
 - **RLS**: Users can see projects for customers they have access to
+- **Special Features**: 
+  - Address auto-fills from customer but can be overridden
+  - Active stage displayed in project list
+  - Clicking project name navigates to workflow page (not edit page)
 
 #### `public.project_workflows`
 - **Purpose**: Workflow instances for projects
@@ -170,10 +179,19 @@ A Master Plumber can:
   - `inspection_notes` (text, nullable)
   - `rejection_reason` (text, nullable)
   - `assigned_skill` (text, nullable)
+  - `notes` (text, nullable) - General notes for the step
   - `notify_assigned_when_started` (boolean, default false)
   - `notify_assigned_when_complete` (boolean, default false)
   - `notify_assigned_when_reopened` (boolean, default false)
+  - `notify_next_assignee_when_complete_or_approved` (boolean, default true) - Cross-step notification
+  - `notify_prior_assignee_when_rejected` (boolean, default true) - Cross-step notification
+  - `approved_by` (text, nullable) - Name of person who approved
+  - `approved_at` (timestamptz, nullable) - When approval occurred
 - **RLS**: Users can see steps for workflows they have access to
+- **Special Features**:
+  - Steps can be re-opened after completion/approval/rejection
+  - Approval tracking shows who approved and when
+  - Cross-step notifications notify adjacent step assignees
 
 #### `public.workflow_templates`
 - **Purpose**: Reusable workflow templates
@@ -215,6 +233,18 @@ A Master Plumber can:
   - `notify_when_reopened` (boolean, default false)
 - **Unique Constraint**: `(step_id, user_id)`
 - **RLS**: Users can only manage their own subscriptions
+
+#### `public.project_workflow_step_actions`
+- **Purpose**: Action history ledger for workflow steps
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `step_id` (uuid, FK → `project_workflow_steps.id`)
+  - `action_type` (text) - e.g., 'started', 'completed', 'approved', 'rejected', 'reopened'
+  - `performed_by` (text) - Name of person who performed the action
+  - `performed_at` (timestamptz) - When the action occurred
+  - `notes` (text, nullable) - Optional notes about the action
+- **RLS**: Users can read actions for steps they have access to; authenticated users can insert
+- **Purpose**: Provides complete audit trail of all step state changes
 
 ### Database Functions
 
@@ -263,15 +293,17 @@ users (id)
   └── step_subscriptions.user_id
 
 project_workflow_steps (id)
-  └── step_subscriptions.step_id
+  ├── step_subscriptions.step_id
+  └── project_workflow_step_actions.step_id
 ```
 
 **Important**: When deleting, respect foreign key order:
 1. `step_subscriptions` (references steps)
-2. `project_workflow_steps` (references workflows)
-3. `project_workflows` (references projects)
-4. `projects` (references customers)
-5. `customers` (references users)
+2. `project_workflow_step_actions` (references steps)
+3. `project_workflow_steps` (references workflows)
+4. `project_workflows` (references projects)
+5. `projects` (references customers)
+6. `customers` (references users)
 
 ---
 
@@ -351,8 +383,12 @@ user_id = auth.uid()
 
 ### 1. Customer Management
 - **Page**: `Customers.tsx`, `CustomerForm.tsx`
-- **Features**: List, create, edit customers
-- **Data**: Name, address, contact info (JSONB)
+- **Features**: 
+  - List, create, edit customers
+  - **Quick Fill**: Paste tab-separated data (name, address, email, phone, date) to auto-fill form
+  - **Date Met**: Track when customer relationship started
+  - **Contact Info**: Structured storage of email and phone (JSONB)
+- **Data**: Name, address, contact info (JSONB), date_met
 
 ### 2. Project Management
 - **Page**: `Projects.tsx`, `ProjectForm.tsx`
@@ -368,16 +404,42 @@ user_id = auth.uid()
 ### 3. Workflow Management
 - **Page**: `Workflow.tsx`
 - **Features**:
-  - Visual workflow with step cards
-  - Add/delete/reorder steps
-  - Assign people to steps (from roster)
-  - Mark steps as started/complete
-  - Approve/reject steps (with notes)
-  - Re-open completed/approved steps
-  - Notification subscriptions (assigned person + current user)
-  - Predefined phrase buttons for common steps
+  - **Visual workflow** with step cards
+  - **Workflow Header**: Shows all stage names with "→" separators, color-coded by status
+    - Green: completed/approved
+    - Red: rejected
+    - Orange: in_progress (bolded)
+    - Gray: pending
+    - Clickable stage names scroll to specific step cards
+  - **Step Management**:
+    - Add steps at beginning, end, or after specific step
+    - Delete steps (with foreign key cleanup)
+    - Reorder steps via "change order" button
+    - Edit step names inline (for templates)
+  - **Person Assignment**:
+    - Assign people to steps from roster
+    - Display assigned person on right side of card
+    - Show contact info (email/phone) as clickable links next to name
+  - **Step Actions**:
+    - Mark as started/complete
+    - Approve/reject steps (with notes)
+    - Re-open completed/approved/rejected steps
+    - **Approval Tracking**: Shows who approved and when
+    - **Action Ledger**: Complete history of all step actions (who, when, what)
+  - **Notifications**:
+    - Notify assigned person when started/complete/re-opened
+    - Notify current user (ME) when started/complete/re-opened
+    - Cross-step notifications: notify next assignee when complete/approved, notify prior assignee when rejected
+    - All cross-step notifications default to enabled
+  - **Predefined Phrases**: Quick-add buttons for common steps:
+    - "initial walkthrough", "check work walkthrough", "customer walkthrough"
+    - "send bill", "wait on payment"
+    - "rough in", "top out", "trim"
+    - "change order:"
+  - **Contact Integration**: Email and phone numbers are clickable (mailto:/tel: links)
 - **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
 - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
+- **Navigation**: Direct links to specific step cards via hash fragments (`#step-{id}`)
 
 ### 4. Template System
 - **Page**: `Templates.tsx` (owner-only)
@@ -390,11 +452,15 @@ user_id = auth.uid()
 ### 5. People Roster
 - **Page**: `People.tsx`
 - **Features**:
-  - List people by kind (Assistant, Master, Subcontractor)
+  - List people by kind (Assistant, Master Technician, Subcontractor)
   - Add people without user accounts
-  - Merge display of roster entries and signed-up users
+  - Merge display of roster entries and signed-up users (deduplicated by email)
   - Show active projects per person
-  - Invite roster entries as users
+  - Invite roster entries as users (sends invitation email)
+  - **Contact Integration**: 
+    - Email addresses are clickable (opens email client)
+    - Phone numbers are clickable (opens phone dialer)
+  - Display shows "(account)" next to people who have user accounts
 - **Data**: Name, email, phone, notes, kind
 
 ### 6. Calendar View
@@ -409,9 +475,21 @@ user_id = auth.uid()
 ### 7. Dashboard
 - **Page**: `Dashboard.tsx`
 - **Features**:
-  - Display user role
-  - Show subscribed stages (with notification preferences)
-  - Links to projects and workflows
+  - **User Role Display**: Shows current user's role
+  - **Assigned Stages**: Lists all steps assigned to current user (by `assigned_to_name`)
+    - Shows project name, stage name, status
+    - Displays start/end times
+    - Clickable project address opens Google Maps in new tab
+    - Project links include hash fragment to scroll directly to step card
+    - Shows project address and plans link if available
+    - Displays notes and rejection reasons if present
+  - **Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
+    - Links to projects and workflows
+  - **Card Layout**: 
+    - Format: "Stage name - Assigned person"
+    - Project link below title
+    - Status, start/end times displayed
+    - Color-coded by status (green for approved/completed, red for rejected)
 
 ### 8. Settings
 - **Page**: `Settings.tsx` (owner-only)
@@ -427,14 +505,40 @@ user_id = auth.uid()
   - Display last login time
 
 ### 9. Notifications
-- **System**: `step_subscriptions` table
+- **System**: `step_subscriptions` table + step-level flags
 - **Features**:
-  - Users can subscribe to step notifications
-  - Two subscription types:
-    - **Assigned person**: Notify when step started/complete/re-opened (stored on step)
-    - **Current user**: Notify ME when step started/complete/re-opened (stored in `step_subscriptions`)
+  - **Two Subscription Types**:
+    - **Assigned person**: Notify when step started/complete/re-opened (stored on step as `notify_assigned_when_*`)
+    - **Current user (ME)**: Notify when step started/complete/re-opened (stored in `step_subscriptions`)
+  - **Cross-Step Notifications**:
+    - Notify next step assignee when current step is completed or approved (default: enabled)
+    - Notify prior step assignee when current step is rejected (default: enabled)
+    - Stored on step as `notify_next_assignee_when_complete_or_approved` and `notify_prior_assignee_when_rejected`
   - Subscribed stages shown in Dashboard
+  - Notification preferences displayed in workflow step cards
 - **Note**: Notification delivery not yet implemented (subscription tracking only)
+
+### 10. Action History & Audit Trail
+- **System**: `project_workflow_step_actions` table
+- **Features**:
+  - Complete ledger of all step state changes
+  - Tracks: who performed action, when, action type, optional notes
+  - Action types: 'started', 'completed', 'approved', 'rejected', 'reopened'
+  - Displayed in "Action Ledger" section on each step card
+  - Provides full audit trail for compliance and debugging
+
+### 11. Integration Features
+- **Google Maps Integration**: 
+  - Project addresses on Dashboard are clickable
+  - Opens Google Maps search in new tab with project address
+- **Email/Phone Integration**:
+  - Email addresses are clickable (mailto: links)
+  - Phone numbers are clickable (tel: links)
+  - Available in People page, Workflow step cards, and Dashboard
+- **Direct Navigation**:
+  - Project links from Dashboard include hash fragments (`#step-{id}`)
+  - Automatically scrolls to specific step card when navigating to workflow
+  - Workflow header stage names are clickable and scroll to their cards
 
 ---
 
@@ -773,6 +877,20 @@ Special characters in JSX should use Unicode escapes:
 ### 10. GitHub Pages MIME Types
 - **Issue**: Module scripts fail with wrong MIME type
 - **Solution**: `public/.nojekyll` prevents Jekyll from interfering
+- **Note**: GitHub Pages must be configured to use "GitHub Actions" as source, not a branch
+
+### 11. Refresh Token Errors
+- **Issue**: Console errors for invalid refresh tokens on login screen
+- **Solution**: Errors are handled gracefully in `useAuth` hook - invalid tokens are cleared automatically
+- **Note**: These errors are harmless and indicate user needs to sign in again
+
+### 12. TypeScript Strict Mode
+- **Issue**: TypeScript errors for potentially undefined values
+- **Solution**: Always check for undefined before accessing array elements, use non-null assertions (`!`) when type narrowing guarantees existence
+- **Common Patterns**:
+  - Check array indices: `if (parts[index] && parts[index])`
+  - Use destructuring with validation: `if (dateMatch && dateMatch[1] && dateMatch[2])`
+  - Wrap function calls in arrow functions for event handlers: `onClick={() => openAddStep()}`
 
 ---
 
@@ -888,5 +1006,23 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-17
-**Documentation Version**: 1.0
+**Last Updated**: 2026-01-18
+**Documentation Version**: 2.0
+
+## Recent Feature Additions (v2.0)
+
+### Major Features Added
+1. **Action History Ledger**: Complete audit trail of all step actions (`project_workflow_step_actions` table)
+2. **Approval Tracking**: Tracks who approved steps and when (`approved_by`, `approved_at`)
+3. **Cross-Step Notifications**: Automatic notifications to adjacent step assignees
+4. **Workflow Header Navigation**: Visual stage overview with color-coding and clickable navigation
+5. **Step Reordering**: Insert steps at any position (beginning, end, or after specific step)
+6. **Contact Integration**: Clickable email/phone links throughout the app
+7. **Google Maps Integration**: Clickable addresses open in Google Maps
+8. **Direct Step Navigation**: Hash fragments enable direct links to specific step cards
+9. **Customer Quick Fill**: Paste tab-separated data to auto-fill customer forms
+10. **Active Stage Display**: Projects list shows currently active workflow stage
+11. **Assigned Stages Dashboard**: Users see all stages assigned to them with full details
+12. **Project Address Field**: Separate address field for projects (can differ from customer address)
+13. **Date Met Tracking**: Track when customer relationship started
+14. **Refresh Token Error Handling**: Graceful handling of expired/invalid tokens
