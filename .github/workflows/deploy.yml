@@ -73,6 +73,16 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: Verify .nojekyll in artifact
+        run: |
+          echo "Files in dist directory:"
+          ls -la dist/ | head -10
+          if [ ! -f dist/.nojekyll ]; then
+            echo "::error::.nojekyll file is missing before upload"
+            exit 1
+          fi
+          echo ".nojekyll file confirmed present"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
