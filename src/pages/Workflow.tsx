@@ -28,6 +28,10 @@ function formatDatetime(iso: string | null): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function personDisplay(name: string | null): string {
+  return (name && name.trim()) ? name.trim() : 'Assigned to: unknown'
+}
+
 function PersonDisplayWithContact({ name, contacts }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }> }) {
   if (!name || !name.trim()) {
     return <span>Assigned to: unknown</span>
@@ -153,13 +157,10 @@ export default function Workflow() {
       if (actions) {
         const actionsMap: Record<string, StepAction[]> = {}
         actions.forEach((action) => {
-          if (action && action.step_id) {
-            const stepId = action.step_id
-            if (!actionsMap[stepId]) {
-              actionsMap[stepId] = []
-            }
-            actionsMap[stepId].push(action)
+          if (!actionsMap[action.step_id]) {
+            actionsMap[action.step_id] = []
           }
+          actionsMap[action.step_id].push(action)
         })
         setStepActions(actionsMap)
       }
@@ -527,7 +528,7 @@ export default function Workflow() {
             </div>
           )}
         </div>
-        <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
+        <button type="button" onClick={openAddStep} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
           Add step
         </button>
       </div>
@@ -561,7 +562,7 @@ export default function Workflow() {
                 </div>
               </div>
             )}
-            <p>Or <button type="button" onClick={() => openAddStep()} style={{ padding: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>add a step</button> to build from scratch.</p>
+            <p>Or <button type="button" onClick={openAddStep} style={{ padding: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>add a step</button> to build from scratch.</p>
           </div>
         ) : (
           steps.map((s, i) => (
@@ -683,11 +684,11 @@ export default function Workflow() {
                     Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
                   </div>
                 )}
-                {stepActions[s.id] && stepActions[s.id]!.length > 0 && (
+                {stepActions[s.id] && stepActions[s.id].length > 0 && (
                   <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Action Ledger</div>
                     <div style={{ fontSize: '0.8125rem' }}>
-                      {stepActions[s.id]!.map((action) => (
+                      {stepActions[s.id].map((action) => (
                         <div key={action.id} style={{ marginBottom: '0.375rem', color: '#6b7280' }}>
                           <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type}</span>
                           {' by '}
