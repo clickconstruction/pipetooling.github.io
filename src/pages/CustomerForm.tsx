@@ -32,8 +32,10 @@ function contactInfoToJson(phone: string, email: string): { phone: string | null
 function convertDateToISO(dateStr: string): string {
   // Try to parse M/D/YYYY or MM/DD/YYYY format
   const dateMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
-  if (dateMatch) {
-    const [, month, day, year] = dateMatch
+  if (dateMatch && dateMatch[1] && dateMatch[2] && dateMatch[3]) {
+    const month = dateMatch[1]
+    const day = dateMatch[2]
+    const year = dateMatch[3]
     // Format as YYYY-MM-DD for HTML date input
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
   }
@@ -56,7 +58,7 @@ function parseQuickFill(input: string): { name: string; address: string; email: 
 
   // Identify email (contains @)
   const emailIndex = parts.findIndex((p) => p.includes('@'))
-  if (emailIndex !== -1) {
+  if (emailIndex !== -1 && parts[emailIndex]) {
     email = parts[emailIndex]
     parts.splice(emailIndex, 1)
   }
@@ -64,7 +66,7 @@ function parseQuickFill(input: string): { name: string; address: string; email: 
   // Identify phone (matches phone pattern: numbers, dashes, parentheses, spaces)
   const phonePattern = /[\d\-\(\)\s]+/
   const phoneIndex = parts.findIndex((p) => phonePattern.test(p) && p.replace(/[\d\-\(\)\s]/g, '').length === 0)
-  if (phoneIndex !== -1) {
+  if (phoneIndex !== -1 && parts[phoneIndex]) {
     phone = parts[phoneIndex]
     parts.splice(phoneIndex, 1)
   }
@@ -72,19 +74,19 @@ function parseQuickFill(input: string): { name: string; address: string; email: 
   // Identify date (matches M/D/YYYY or MM/DD/YYYY or YYYY-MM-DD format)
   const datePattern = /^\d{1,2}\/\d{1,2}\/\d{4}$|^\d{4}-\d{2}-\d{2}$/
   const dateIndex = parts.findIndex((p) => datePattern.test(p))
-  if (dateIndex !== -1) {
+  if (dateIndex !== -1 && parts[dateIndex]) {
     date = convertDateToISO(parts[dateIndex])
     parts.splice(dateIndex, 1)
   }
 
   // First remaining part is name
-  if (parts.length > 0) {
+  if (parts.length > 0 && parts[0]) {
     name = parts[0]
   }
 
   // Second remaining part is address
   if (parts.length > 1) {
-    address = parts.slice(1).join(' ')
+    address = parts.slice(1).filter(Boolean).join(' ')
   }
 
   return { name, address, email, phone, date }
@@ -110,9 +112,9 @@ export default function CustomerForm() {
     const parsed = parseQuickFill(quickFill)
     if (parsed.name) setName(parsed.name)
     if (parsed.address) setAddress(parsed.address)
-    if (parsed.email) setEmail(parsed.email)
-    if (parsed.phone) setPhone(parsed.phone)
-    if (parsed.date) setDateMet(parsed.date)
+    if (parsed.email) setEmail(parsed.email || '')
+    if (parsed.phone) setPhone(parsed.phone || '')
+    if (parsed.date) setDateMet(parsed.date || '')
     setQuickFill('')
   }
 
@@ -129,9 +131,9 @@ export default function CustomerForm() {
         setName(row.name)
         setAddress(row.address ?? '')
         const contactInfo = extractContactInfo(row.contact_info)
-        setPhone(contactInfo.phone)
-        setEmail(contactInfo.email)
-        setDateMet(row.date_met ? row.date_met.split('T')[0] : '')
+        setPhone(contactInfo.phone || '')
+        setEmail(contactInfo.email || '')
+        setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
         setFetching(false)
       })()
     }
