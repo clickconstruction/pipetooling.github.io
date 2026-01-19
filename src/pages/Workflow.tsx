@@ -897,9 +897,9 @@ export default function Workflow() {
                           + Add Line Item
                         </button>
                       </div>
-                      {lineItems[s.id] && lineItems[s.id].length > 0 ? (
+                      {lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
                         <div style={{ fontSize: '0.875rem' }}>
-                          {lineItems[s.id].map((item) => (
+                          {lineItems[s.id]!.map((item) => (
                             <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #fbbf24' }}>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem' }}>{item.memo}</div>

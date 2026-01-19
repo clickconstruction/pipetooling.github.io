@@ -371,7 +371,6 @@ export default function Settings() {
     if (err) {
       setTestError(err)
     } else {
-      const successMsg = (data as { message?: string } | null)?.message || 'Test email sent successfully!'
       alert(`Test email sent to ${userEmail}!\n\nSubject: ${subject}\n\nBody:\n${body}`)
       setTestingTemplate(null)
     }
