@@ -175,7 +175,8 @@ export default function CustomerForm() {
           setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
           // Auto-select first master if only one option (only for new customers)
           if (isNew && masters && masters.length === 1) {
-            setMasterUserId(masters[0].id)
+            const onlyMaster = (masters as { id: string; name: string; email: string }[])[0]
+            setMasterUserId(onlyMaster.id)
           }
         }
       } else if (myRole === 'dev' || myRole === 'master_technician') {

@@ -950,7 +950,8 @@ export default function Workflow() {
         return
       }
       if (inserted && inserted.length > 0) {
-        console.log(`Step inserted with ID: ${inserted[0].id}`)
+        const firstInserted = inserted[0] as { id: string }
+        console.log(`Step inserted with ID: ${firstInserted.id}`)
       }
     }
     const refreshErr = await refreshSteps()
@@ -1006,20 +1007,6 @@ export default function Workflow() {
     await recordAction(step.id, 'approved')
     // Send notifications (fire and forget - don't block UI)
     void sendWorkflowNotifications(step, 'approved')
-    await refreshSteps()
-  }
-
-  async function reopenStep(step: Step) {
-    await supabase.from('project_workflow_steps').update({ 
-      status: 'pending', 
-      ended_at: null,
-      approved_by: null,
-      approved_at: null,
-      rejection_reason: null,
-    }).eq('id', step.id)
-    await recordAction(step.id, 'reopened')
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(step, 'reopened')
     await refreshSteps()
   }
 

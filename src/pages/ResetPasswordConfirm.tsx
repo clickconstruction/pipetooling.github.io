@@ -13,7 +13,7 @@ export default function ResetPasswordConfirm() {
   useEffect(() => {
     // Handle password reset from email link
     // Supabase redirects with hash fragments containing the access token
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setCheckingSession(false)
         // Session is available, user can now set new password
