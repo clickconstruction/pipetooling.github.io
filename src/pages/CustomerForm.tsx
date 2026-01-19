@@ -172,10 +172,11 @@ export default function CustomerForm() {
           console.error('Error loading masters:', mastersErr)
           setAvailableMasters([])
         } else {
-          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
+          const typedMasters = (masters ?? []) as { id: string; name: string; email: string }[]
+          setAvailableMasters(typedMasters)
           // Auto-select first master if only one option (only for new customers)
-          if (isNew && masters && masters.length === 1) {
-            const onlyMaster = (masters as { id: string; name: string; email: string }[])[0]
+          if (isNew && typedMasters.length === 1) {
+            const [onlyMaster] = typedMasters
             setMasterUserId(onlyMaster.id)
           }
         }
