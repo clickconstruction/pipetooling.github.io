@@ -33,7 +33,7 @@ export type Database = {
           started_at: string | null; ended_at: string | null;
           status: 'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved';
           inspection_notes: string | null; rejection_reason: string | null;
-          notes: string | null;
+          notes: string | null; private_notes: string | null;
           created_at: string | null; updated_at: string | null;
           assigned_skill: string | null;
           notify_assigned_when_started: boolean | null; notify_assigned_when_complete: boolean | null; notify_assigned_when_reopened: boolean | null;
@@ -48,7 +48,7 @@ export type Database = {
           started_at?: string | null; ended_at?: string | null;
           status?: 'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved';
           inspection_notes?: string | null; rejection_reason?: string | null;
-          notes?: string | null;
+          notes?: string | null; private_notes?: string | null;
           created_at?: string | null; updated_at?: string | null;
           assigned_skill?: string | null;
           notify_when_started?: boolean | null; notify_when_complete?: boolean | null; notify_when_reopened?: boolean | null;
@@ -63,7 +63,7 @@ export type Database = {
           started_at?: string | null; ended_at?: string | null;
           status?: 'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved';
           inspection_notes?: string | null; rejection_reason?: string | null;
-          notes?: string | null;
+          notes?: string | null; private_notes?: string | null;
           created_at?: string | null; updated_at?: string | null;
           assigned_skill?: string | null;
           notify_when_started?: boolean | null; notify_when_complete?: boolean | null; notify_when_reopened?: boolean | null;
@@ -80,6 +80,11 @@ export type Database = {
         Row: { id: string; step_id: string; action_type: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'; performed_by: string; performed_at: string; notes: string | null; created_at: string | null }
         Insert: { id?: string; step_id: string; action_type: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'; performed_by: string; performed_at?: string; notes?: string | null; created_at?: string | null }
         Update: { id?: string; step_id?: string; action_type?: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'; performed_by?: string; performed_at?: string; notes?: string | null; created_at?: string | null }
+      }
+      workflow_step_line_items: {
+        Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
       }
     }
   }

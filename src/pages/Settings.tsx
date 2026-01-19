@@ -13,7 +13,33 @@ type UserRow = {
   last_sign_in_at: string | null
 }
 
+type PersonRow = {
+  id: string
+  master_user_id: string
+  kind: string
+  name: string
+  email: string | null
+  phone: string | null
+  notes: string | null
+  creator_name: string | null
+  creator_email: string | null
+  is_user: boolean
+}
+
+type EmailTemplate = {
+  id: string
+  template_type: 'invitation' | 'sign_in' | 'login_as' | 
+    'stage_assigned_started' | 'stage_assigned_complete' | 'stage_assigned_reopened' |
+    'stage_me_started' | 'stage_me_complete' | 'stage_me_reopened' |
+    'stage_next_complete_or_approved' | 'stage_prior_rejected'
+  subject: string
+  body: string
+  updated_at: string | null
+}
+
 const ROLES: UserRole[] = ['owner', 'master_technician', 'assistant', 'subcontractor']
+
+const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 
 function timeSinceAgo(iso: string | null): string {
   if (!iso) return '—'
@@ -35,8 +61,20 @@ export default function Settings() {
   const { user: authUser } = useAuth()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
+  const [myPeople, setMyPeople] = useState<PersonRow[]>([])
+  const [nonUserPeople, setNonUserPeople] = useState<PersonRow[]>([])
+  const [allPeopleCount, setAllPeopleCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([])
+  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
+  const [templateSubject, setTemplateSubject] = useState('')
+  const [templateBody, setTemplateBody] = useState('')
+  const [templateSaving, setTemplateSaving] = useState(false)
+  const [templateError, setTemplateError] = useState<string | null>(null)
+  const [testingTemplate, setTestingTemplate] = useState<EmailTemplate | null>(null)
+  const [testSending, setTestSending] = useState(false)
+  const [testError, setTestError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -83,13 +121,341 @@ export default function Settings() {
       setLoading(false)
       return
     }
+    
+    // Load all users
     const { data: list, error: eList } = await supabase
       .from('users')
       .select('id, email, name, role, last_sign_in_at')
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
+    
+    // Load all people entries (RLS may restrict, but we'll filter client-side)
+    // Note: RLS policy may need to allow owners to see all people entries
+    const { data: allPeople, error: ePeople } = await supabase
+      .from('people')
+      .select('id, master_user_id, kind, name, email, phone, notes')
+      .order('name')
+    
+    if (ePeople) {
+      console.error('Error loading people:', ePeople)
+      setError(ePeople.message)
+      setAllPeopleCount(0)
+    } else if (allPeople) {
+      setAllPeopleCount(allPeople.length)
+      
+      // Get all user emails to check if people are users
+      const userEmails = new Set((list as UserRow[] | null)?.map(u => u.email?.toLowerCase()).filter(Boolean) ?? [])
+      
+      // Separate people created by me vs others
+      const peopleFromMe = allPeople.filter(p => p.master_user_id === authUser.id)
+      const peopleFromOthers = allPeople.filter(p => p.master_user_id !== authUser.id)
+      
+      // Process people created by me
+      const myPeopleWithInfo: PersonRow[] = peopleFromMe.map(p => ({
+        ...p,
+        creator_name: null, // Created by me, so no need to show creator
+        creator_email: null,
+        is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
+      }))
+      setMyPeople(myPeopleWithInfo)
+      
+      // Process people created by others
+      if (peopleFromOthers.length > 0) {
+        // Get creator information for each person
+        const creatorIds = [...new Set(peopleFromOthers.map(p => p.master_user_id))]
+        const { data: creators, error: eCreators } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', creatorIds)
+        
+        if (eCreators) {
+          console.error('Error loading creators:', eCreators)
+          setError(eCreators.message)
+        } else {
+          const creatorMap = new Map(
+            (creators as Array<{ id: string; name: string; email: string }> | null)?.map(c => [c.id, c]) ?? []
+          )
+          
+          const peopleWithCreators: PersonRow[] = peopleFromOthers.map(p => ({
+            ...p,
+            creator_name: creatorMap.get(p.master_user_id)?.name ?? null,
+            creator_email: creatorMap.get(p.master_user_id)?.email ?? null,
+            is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
+          }))
+          
+          setNonUserPeople(peopleWithCreators)
+        }
+      } else {
+        setNonUserPeople([])
+      }
+    } else {
+      // No people entries at all
+      setMyPeople([])
+      setNonUserPeople([])
+    }
+    
+    // Load email templates if owner
+    if (role === 'owner') {
+      await loadEmailTemplates()
+    }
+    
     setLoading(false)
+  }
+
+  async function loadEmailTemplates() {
+    const { data, error: eTemplates } = await supabase
+      .from('email_templates')
+      .select('id, template_type, subject, body, updated_at')
+      .order('template_type')
+    
+    if (eTemplates) {
+      console.error('Error loading email templates:', eTemplates)
+      // Don't set error here - templates might not exist yet
+    } else {
+      setEmailTemplates((data as EmailTemplate[]) ?? [])
+    }
+  }
+
+  function openEditTemplate(template: EmailTemplate | undefined, templateType: EmailTemplate['template_type']) {
+    if (template) {
+      setEditingTemplate(template)
+      setTemplateSubject(template.subject)
+      setTemplateBody(template.body)
+    } else {
+      // Create new template with defaults
+      const defaults: Record<EmailTemplate['template_type'], { subject: string; body: string }> = {
+        invitation: {
+          subject: 'Invitation to join Pipetooling',
+          body: 'Hi {{name}},\n\nYou\'ve been invited to join Pipetooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
+        },
+        sign_in: {
+          subject: 'Sign in to Pipetooling',
+          body: 'Hi {{name}},\n\nClick the link below to sign in to your Pipetooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
+        },
+        login_as: {
+          subject: 'Sign in to Pipetooling',
+          body: 'Hi {{name}},\n\nAn owner has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
+        },
+        stage_assigned_started: {
+          subject: 'Workflow stage started: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_assigned_complete: {
+          subject: 'Workflow stage completed: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_assigned_reopened: {
+          subject: 'Workflow stage re-opened: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_me_started: {
+          subject: 'Workflow stage started: {{stage_name}}',
+          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_me_complete: {
+          subject: 'Workflow stage completed: {{stage_name}}',
+          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_me_reopened: {
+          subject: 'Workflow stage re-opened: {{stage_name}}',
+          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_next_complete_or_approved: {
+          subject: 'Next workflow stage ready: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe previous workflow stage for project "{{project_name}}" has been completed or approved. Your stage "{{stage_name}}" is now ready to begin.\n\nProject: {{project_name}}\nYour stage: {{stage_name}}\nPrevious stage: {{previous_stage_name}}\n\nView the workflow: {{workflow_link}}',
+        },
+        stage_prior_rejected: {
+          subject: 'Workflow stage rejected: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been rejected.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nRejection reason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
+        },
+      }
+      const defaultTemplate = defaults[templateType]
+      setEditingTemplate({
+        id: '', // Will be created
+        template_type: templateType,
+        subject: defaultTemplate.subject,
+        body: defaultTemplate.body,
+        updated_at: null,
+      })
+      setTemplateSubject(defaultTemplate.subject)
+      setTemplateBody(defaultTemplate.body)
+    }
+    setTemplateError(null)
+  }
+
+  function replaceTemplateVariables(template: EmailTemplate, variables: Record<string, string>): { subject: string; body: string } {
+    let subject = template.subject
+    let body = template.body
+    
+    Object.entries(variables).forEach(([key, value]) => {
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+      subject = subject.replace(regex, value)
+      body = body.replace(regex, value)
+    })
+    
+    return { subject, body }
+  }
+
+  async function sendTestEmail(e: React.FormEvent) {
+    e.preventDefault()
+    if (!testingTemplate || !authUser?.email) return
+    
+    setTestSending(true)
+    setTestError(null)
+    
+    // Ensure we have an active session with a valid JWT
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !session) {
+      setTestError('Not authenticated. Please sign in again.')
+      setTestSending(false)
+      return
+    }
+    
+    const userEmail = authUser.email
+    
+    // Replace variables with test data
+    const testVariables: Record<string, string> = {
+      name: 'Test User',
+      email: userEmail,
+      role: 'assistant',
+      link: 'https://example.com/test-link',
+      project_name: 'Test Project',
+      stage_name: 'Test Stage',
+      assigned_to_name: 'John Doe',
+      workflow_link: 'https://example.com/workflow',
+      previous_stage_name: 'Previous Stage',
+      rejection_reason: 'Test rejection reason',
+    }
+    
+    const { subject, body } = replaceTemplateVariables(testingTemplate, testVariables)
+    
+    // Call test email function
+    // Note: Supabase client automatically includes JWT from current session
+    const { data, error: eFn } = await supabase.functions.invoke('test-email', {
+      body: {
+        to: userEmail,
+        subject,
+        body,
+        template_type: testingTemplate.template_type,
+      },
+    })
+    
+    setTestSending(false)
+    
+    if (eFn) {
+      let msg = eFn.message
+      let statusCode = ''
+      if (eFn instanceof FunctionsHttpError) {
+        statusCode = ` (Status: ${eFn.context?.status || 'unknown'})`
+        if (eFn.context?.json) {
+          try {
+            const b = (await eFn.context.json()) as { error?: string; message?: string } | null
+            if (b?.error) msg = b.error
+            else if (b?.message) msg = b.message
+          } catch { /* ignore */ }
+        }
+        // Try to get response text as well
+        if (eFn.context?.response) {
+          try {
+            const text = await eFn.context.response.text()
+            if (text) msg += ` - ${text}`
+          } catch { /* ignore */ }
+        }
+      }
+      setTestError(`Error: ${msg}${statusCode}`)
+      return
+    }
+    
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setTestError(err)
+    } else {
+      const successMsg = (data as { message?: string } | null)?.message || 'Test email sent successfully!'
+      alert(`Test email sent to ${userEmail}!\n\nSubject: ${subject}\n\nBody:\n${body}`)
+      setTestingTemplate(null)
+    }
+  }
+
+  function openTestEmail(template: EmailTemplate | { template_type: EmailTemplate['template_type']; subject: string; body: string }) {
+    setTestingTemplate(template as EmailTemplate)
+    setTestError(null)
+  }
+
+  function testCurrentTemplate() {
+    if (!editingTemplate || !templateSubject.trim() || !templateBody.trim()) {
+      setTemplateError('Please fill in both subject and body before testing')
+      return
+    }
+    // Create a temporary template object from current form values
+    const tempTemplate: EmailTemplate = {
+      id: editingTemplate.id || '',
+      template_type: editingTemplate.template_type,
+      subject: templateSubject.trim(),
+      body: templateBody.trim(),
+      updated_at: null,
+    }
+    openTestEmail(tempTemplate)
+  }
+
+  function closeTestEmail() {
+    setTestingTemplate(null)
+    setTestError(null)
+  }
+
+  function closeEditTemplate() {
+    setEditingTemplate(null)
+    setTemplateSubject('')
+    setTemplateBody('')
+    setTemplateError(null)
+  }
+
+  async function saveEmailTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingTemplate) return
+    
+    setTemplateSaving(true)
+    setTemplateError(null)
+    
+    if (editingTemplate.id) {
+      // Update existing template
+      const { error: e } = await supabase
+        .from('email_templates')
+        .update({
+          subject: templateSubject.trim(),
+          body: templateBody.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingTemplate.id)
+      
+      setTemplateSaving(false)
+      
+      if (e) {
+        setTemplateError(e.message)
+      } else {
+        await loadEmailTemplates()
+        closeEditTemplate()
+      }
+    } else {
+      // Create new template
+      const { error: e } = await supabase
+        .from('email_templates')
+        .insert({
+          template_type: editingTemplate.template_type,
+          subject: templateSubject.trim(),
+          body: templateBody.trim(),
+          updated_at: new Date().toISOString(),
+        })
+      
+      setTemplateSaving(false)
+      
+      if (e) {
+        setTemplateError(e.message)
+      } else {
+        await loadEmailTemplates()
+        closeEditTemplate()
+      }
+    }
   }
 
   useEffect(() => {
@@ -383,6 +749,136 @@ export default function Settings() {
             </table>
           </div>
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
+
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Me</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            People entries in your roster.
+          </p>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myPeople.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.email ? (
+                        <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          {p.email}
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.phone ? (
+                        <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          {p.phone}
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.is_user ? (
+                        <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                      ) : (
+                        <span style={{ color: '#6b7280' }}>No account</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {myPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by you.</p>}
+
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Other Users</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            People entries in rosters created by other users, and who created them.
+          </p>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {nonUserPeople.length === 0 && allPeopleCount > 0 && (
+            <p style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              Note: All {allPeopleCount} visible people entry{allPeopleCount !== 1 ? 'ies' : ''} belong to you. The RLS policy for the &apos;people&apos; table may be restricting access to other users&apos; entries. To see people created by other users, the RLS policy needs to allow owners to read all entries.
+            </p>
+          )}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Created by</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nonUserPeople.map((p) => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.email ? (
+                        <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          {p.email}
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.phone ? (
+                        <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          {p.phone}
+                        </a>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.kind === 'assistant' ? 'Assistant' : p.kind === 'master_technician' ? 'Master Technician' : 'Subcontractor'}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.is_user ? (
+                        <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                      ) : (
+                        <span style={{ color: '#6b7280' }}>No account</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {p.creator_name || p.creator_email ? (
+                        <span>
+                          {p.creator_name || 'Unknown'}
+                          {p.creator_email && (
+                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>
+                              ({p.creator_email})
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        'Unknown'
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
         </>
       )}
 
@@ -570,6 +1066,319 @@ export default function Settings() {
         </div>
         {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
       </form>
+
+      {myRole === 'owner' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Email Templates</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>User Management</h3>
+            {[
+              { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },
+              { type: 'sign_in' as const, label: 'Sign-In Email', description: 'Sent when requesting a sign-in link' },
+              { type: 'login_as' as const, label: 'Login As Email', description: 'Sent when owner logs in as another user' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                        >
+                          Test
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                      {template.updated_at && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                          Last updated: {new Date(template.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            
+            <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Workflow Stage Notifications</h3>
+            <h4 style={{ margin: '0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Notify Assigned Person</h4>
+            {[
+              { type: 'stage_assigned_started' as const, label: 'Stage Started (Assigned)', description: 'Sent to assigned person when stage is started' },
+              { type: 'stage_assigned_complete' as const, label: 'Stage Complete (Assigned)', description: 'Sent to assigned person when stage is completed' },
+              { type: 'stage_assigned_reopened' as const, label: 'Stage Re-opened (Assigned)', description: 'Sent to assigned person when stage is re-opened' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                        >
+                          Test
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                      {template.updated_at && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                          Last updated: {new Date(template.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            
+            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Notify Me (Current User)</h4>
+            {[
+              { type: 'stage_me_started' as const, label: 'Stage Started (ME)', description: 'Sent to you when a subscribed stage is started' },
+              { type: 'stage_me_complete' as const, label: 'Stage Complete (ME)', description: 'Sent to you when a subscribed stage is completed' },
+              { type: 'stage_me_reopened' as const, label: 'Stage Re-opened (ME)', description: 'Sent to you when a subscribed stage is re-opened' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                        >
+                          Test
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                      {template.updated_at && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                          Last updated: {new Date(template.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            
+            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Cross-Step Notifications</h4>
+            {[
+              { type: 'stage_next_complete_or_approved' as const, label: 'Next Stage Ready', description: 'Sent to next stage assignee when current stage is completed or approved' },
+              { type: 'stage_prior_rejected' as const, label: 'Prior Stage Rejected', description: 'Sent to prior stage assignee when their stage is rejected' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                        >
+                          Test
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                      {template.updated_at && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                          Last updated: {new Date(template.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {editingTemplate && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginTop: 0 }}>
+                  Edit {editingTemplate.template_type === 'invitation' ? 'Invitation' : 
+                    editingTemplate.template_type === 'sign_in' ? 'Sign-In' : 
+                    editingTemplate.template_type === 'login_as' ? 'Login As' :
+                    editingTemplate.template_type === 'stage_assigned_started' ? 'Stage Started (Assigned)' :
+                    editingTemplate.template_type === 'stage_assigned_complete' ? 'Stage Complete (Assigned)' :
+                    editingTemplate.template_type === 'stage_assigned_reopened' ? 'Stage Re-opened (Assigned)' :
+                    editingTemplate.template_type === 'stage_me_started' ? 'Stage Started (ME)' :
+                    editingTemplate.template_type === 'stage_me_complete' ? 'Stage Complete (ME)' :
+                    editingTemplate.template_type === 'stage_me_reopened' ? 'Stage Re-opened (ME)' :
+                    editingTemplate.template_type === 'stage_next_complete_or_approved' ? 'Next Stage Ready' :
+                    editingTemplate.template_type === 'stage_prior_rejected' ? 'Prior Stage Rejected' :
+                    'Email'} Template
+                </h2>
+                <form onSubmit={saveEmailTemplate}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="template-subject" style={{ display: 'block', marginBottom: 4 }}>Subject *</label>
+                    <input
+                      id="template-subject"
+                      type="text"
+                      value={templateSubject}
+                      onChange={(e) => { setTemplateSubject(e.target.value); setTemplateError(null) }}
+                      required
+                      disabled={templateSaving}
+                      placeholder="e.g., Welcome to Pipetooling"
+                      style={{ width: '100%', padding: '0.5rem' }}
+                    />
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Available variables: {
+                        editingTemplate.template_type.startsWith('stage_') 
+                          ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
+                          : VARIABLE_HINT
+                      }
+                    </p>
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="template-body" style={{ display: 'block', marginBottom: 4 }}>Body *</label>
+                    <textarea
+                      id="template-body"
+                      value={templateBody}
+                      onChange={(e) => { setTemplateBody(e.target.value); setTemplateError(null) }}
+                      required
+                      disabled={templateSaving}
+                      rows={12}
+                      placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join Pipetooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
+                      style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
+                    />
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Available variables: {
+                        editingTemplate.template_type.startsWith('stage_') 
+                          ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
+                          : VARIABLE_HINT
+                      }
+                    </p>
+                  </div>
+                  {templateError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{templateError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={templateSaving}>
+                      {templateSaving ? 'Saving…' : 'Save template'}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={testCurrentTemplate}
+                      disabled={templateSaving || !templateSubject.trim() || !templateBody.trim()}
+                      style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                    >
+                      Test Email
+                    </button>
+                    <button type="button" onClick={closeEditTemplate} disabled={templateSaving}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {testingTemplate && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
+                <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Send a test email to <strong>{authUser?.email || 'your account email'}</strong> with the template to verify it works. Variables will be replaced with test data.
+                </p>
+                <form onSubmit={sendTestEmail}>
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                    <div><strong>Template:</strong> {testingTemplate.template_type}</div>
+                    <div style={{ marginTop: '0.5rem' }}><strong>Subject:</strong> {testingTemplate.subject}</div>
+                    <div style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}><strong>Body Preview:</strong><br />{testingTemplate.body.substring(0, 200)}{testingTemplate.body.length > 200 ? '...' : ''}</div>
+                  </div>
+                  {testError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{testError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={testSending || !authUser?.email}>
+                      {testSending ? 'Sending…' : 'Send Test Email'}
+                    </button>
+                    <button type="button" onClick={closeTestEmail} disabled={testSending}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

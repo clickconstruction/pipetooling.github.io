@@ -9,6 +9,7 @@ type StepStatus = Step['status']
 type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
+type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -26,6 +27,14 @@ function fromDatetimeLocal(value: string): string | null {
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+}
+
+function formatAmount(amount: number | null | undefined): string {
+  const value = amount || 0
+  if (value < 0) {
+    return `($${Math.abs(value).toFixed(2)})`
+  }
+  return `$${value.toFixed(2)}`
 }
 
 function PersonDisplayWithContact({ name, contacts }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }> }) {
@@ -83,6 +92,9 @@ export default function Workflow() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
+  const [userRole, setUserRole] = useState<'owner' | 'master_technician' | 'assistant' | 'subcontractor' | null>(null)
+  const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
+  const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; memo: string; amount: string } | null>(null)
 
   async function ensureWorkflow(pid: string) {
     const { data: wfs } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
@@ -163,6 +175,29 @@ export default function Workflow() {
         })
         setStepActions(actionsMap)
       }
+      
+    }
+  }
+
+  async function loadLineItemsForSteps(stepIds: string[]) {
+    if (userRole !== 'owner' && userRole !== 'master_technician') return
+    const { data: items } = await supabase
+      .from('workflow_step_line_items')
+      .select('*')
+      .in('step_id', stepIds)
+      .order('sequence_order', { ascending: true })
+    if (items) {
+      const itemsMap: Record<string, LineItem[]> = {}
+      items.forEach((item) => {
+        if (item && item.step_id) {
+          const stepId = item.step_id
+          if (!itemsMap[stepId]) {
+            itemsMap[stepId] = []
+          }
+          itemsMap[stepId].push(item as LineItem)
+        }
+      })
+      setLineItems(itemsMap)
     }
   }
 
@@ -178,6 +213,16 @@ export default function Workflow() {
       setLoading(false)
     })()
   }, [projectId])
+
+  // Load line items when steps and userRole are available
+  useEffect(() => {
+    if (steps.length > 0 && (userRole === 'owner' || userRole === 'master_technician')) {
+      const stepIds = steps.map(s => s.id)
+      loadLineItemsForSteps(stepIds)
+    } else {
+      setLineItems({})
+    }
+  }, [steps, userRole])
 
   // Scroll to step when steps are loaded and hash is present
   useEffect(() => {
@@ -204,6 +249,16 @@ export default function Workflow() {
   useEffect(() => {
     if (!authUser?.id) return
     ;(async () => {
+      // Load user role
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', authUser.id)
+        .single()
+      if (userData) {
+        setUserRole((userData as { role: 'owner' | 'master_technician' | 'assistant' | 'subcontractor' }).role)
+      }
+      
       const [peopleRes, usersRes] = await Promise.all([
         supabase.from('people').select('name, email, phone').eq('master_user_id', authUser.id).order('name'),
         supabase.from('users').select('name, email').in('role', ['assistant', 'master_technician', 'subcontractor']),
@@ -236,6 +291,17 @@ export default function Workflow() {
     if (workflow?.id) {
       await loadSteps(workflow.id)
     }
+  }
+
+  // Calculate total from all line items
+  function calculateLedgerTotal(): number {
+    let total = 0
+    Object.values(lineItems).forEach((items) => {
+      items.forEach((item) => {
+        total += item.amount || 0
+      })
+    })
+    return total
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -449,6 +515,50 @@ export default function Workflow() {
     await refreshSteps()
   }
 
+  async function updatePrivateNotes(step: Step, privateNotes: string) {
+    await supabase.from('project_workflow_steps').update({ private_notes: privateNotes.trim() || null }).eq('id', step.id)
+    await refreshSteps()
+  }
+
+
+  async function saveLineItem(stepId: string, item: LineItem | null, memo: string, amount: string) {
+    const amountNum = parseFloat(amount) || 0
+    if (!memo.trim()) {
+      setError('Memo is required')
+      return
+    }
+    
+    if (item) {
+      // Update existing
+      await supabase
+        .from('workflow_step_line_items')
+        .update({ memo: memo.trim(), amount: amountNum })
+        .eq('id', item.id)
+    } else {
+      // Create new
+      const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
+      await supabase
+        .from('workflow_step_line_items')
+        .insert({ step_id: stepId, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+    }
+    setEditingLineItem(null)
+    await refreshSteps()
+  }
+
+  async function deleteLineItem(itemId: string) {
+    await supabase.from('workflow_step_line_items').delete().eq('id', itemId)
+    await refreshSteps()
+  }
+
+  function openEditLineItem(stepId: string, item: LineItem | null) {
+    setEditingLineItem({
+      stepId,
+      item,
+      memo: item?.memo || '',
+      amount: item?.amount?.toString() || '',
+    })
+  }
+
   async function submitReject() {
     if (!rejectStep) return
     await supabase.from('project_workflow_steps').update({
@@ -531,6 +641,50 @@ export default function Workflow() {
           Add step
         </button>
       </div>
+
+      {/* Ledger - Only visible to owners and masters */}
+      {(userRole === 'owner' || userRole === 'master_technician') && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger</h2>
+          {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
+          ) : (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {steps.map((step) => {
+                    const items = lineItems[step.id] || []
+                    if (items.length === 0) return null
+                    return items.map((item, idx) => (
+                      <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
+                          {idx === 0 ? step.name : ''}
+                        </td>
+                        <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                          {formatAmount(item.amount)}
+                        </td>
+                      </tr>
+                    ))
+                  })}
+                </tbody>
+              </table>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                  Total: {formatAmount(calculateLedgerTotal())}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {steps.length === 0 ? (
@@ -716,6 +870,68 @@ export default function Workflow() {
                     style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
                   />
                 </div>
+                {(userRole === 'owner' || userRole === 'master_technician') && (
+                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 4 }}>
+                    <label htmlFor={`private-notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500, color: '#92400e' }}>
+                      Private Notes (Your account only)
+                    </label>
+                    <textarea
+                      id={`private-notes-${s.id}`}
+                      key={`private-notes-${s.id}-${s.private_notes ?? ''}`}
+                      defaultValue={s.private_notes ?? ''}
+                      onBlur={(e) => updatePrivateNotes(s, e.target.value)}
+                      placeholder="Add private notes visible only to owners and master technicians..."
+                      rows={3}
+                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #fbbf24', borderRadius: 4, background: 'white', marginBottom: '0.75rem' }}
+                    />
+                    
+                    {/* Line Items Section */}
+                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #fbbf24' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#92400e' }}>Line Items</label>
+                        <button
+                          type="button"
+                          onClick={() => openEditLineItem(s.id, null)}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fbbf24', color: '#92400e', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          + Add Line Item
+                        </button>
+                      </div>
+                      {lineItems[s.id] && lineItems[s.id].length > 0 ? (
+                        <div style={{ fontSize: '0.875rem' }}>
+                          {lineItems[s.id].map((item) => (
+                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #fbbf24' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem' }}>{item.memo}</div>
+                                <div style={{ fontSize: '0.8125rem', color: (item.amount || 0) < 0 ? '#b91c1c' : '#6b7280' }}>
+                                  {formatAmount(item.amount)}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditLineItem(s.id, item)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteLineItem(item.id)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {s.status === 'pending' && <button type="button" onClick={() => markStarted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Start</button>}
@@ -796,6 +1012,50 @@ export default function Workflow() {
               <button type="button" onClick={() => assignPerson(assignPersonStep, null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827' }}>Clear</button>
               <button type="button" onClick={() => setAssignPersonStep(null)} style={{ padding: '0.5rem 1rem', color: '#111827' }}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {editingLineItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                saveLineItem(editingLineItem.stepId, editingLineItem.item, editingLineItem.memo, editingLineItem.amount)
+              }}
+            >
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="line-item-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
+                <input
+                  id="line-item-memo"
+                  type="text"
+                  value={editingLineItem.memo}
+                  onChange={(e) => setEditingLineItem({ ...editingLineItem, memo: e.target.value })}
+                  required
+                  placeholder="e.g. Materials, Labor, Equipment"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="line-item-amount" style={{ display: 'block', marginBottom: 4 }}>Amount *</label>
+                <input
+                  id="line-item-amount"
+                  type="number"
+                  step="0.01"
+                  value={editingLineItem.amount}
+                  onChange={(e) => setEditingLineItem({ ...editingLineItem, amount: e.target.value })}
+                  required
+                  placeholder="0.00 (negative allowed)"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
+                <button type="button" onClick={() => setEditingLineItem(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
