@@ -176,8 +176,7 @@ export default function CustomerForm() {
           setAvailableMasters(typedMasters)
           // Auto-select first master if only one option (only for new customers)
           if (isNew && typedMasters.length === 1) {
-            const [onlyMaster] = typedMasters
-            setMasterUserId(onlyMaster.id)
+            setMasterUserId(typedMasters[0]!.id)
           }
         }
       } else if (myRole === 'dev' || myRole === 'master_technician') {
