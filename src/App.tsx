@@ -3,6 +3,8 @@ import { useAuth } from './hooks/useAuth'
 import Layout from './components/Layout'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
+import ResetPassword from './pages/ResetPassword'
+import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
 import Projects from './pages/Projects'
@@ -26,6 +28,8 @@ export default function App() {
     <Routes>
       <Route path="/sign-in" element={<SignIn />} />
       <Route path="/sign-up" element={<SignUp />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
       <Route
         path="/"
         element={

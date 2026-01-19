@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-type UserRole = 'owner' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 type UserRow = {
   id: string
@@ -37,7 +37,7 @@ type EmailTemplate = {
   updated_at: string | null
 }
 
-const ROLES: UserRole[] = ['owner', 'master_technician', 'assistant', 'subcontractor']
+const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 
@@ -99,6 +99,24 @@ export default function Settings() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [sendingSignInEmailId, setSendingSignInEmailId] = useState<string | null>(null)
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
+  const [passwordChangeOpen, setPasswordChangeOpen] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null)
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false)
+  const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false)
+  const [assistants, setAssistants] = useState<UserRow[]>([])
+  const [adoptedAssistantIds, setAdoptedAssistantIds] = useState<Set<string>>(new Set())
+  const [adoptionSaving, setAdoptionSaving] = useState(false)
+  const [adoptionError, setAdoptionError] = useState<string | null>(null)
+  const [convertMasterId, setConvertMasterId] = useState<string>('')
+  const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
+  const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
+  const [convertAutoAdopt, setConvertAutoAdopt] = useState<boolean>(true)
+  const [convertSubmitting, setConvertSubmitting] = useState(false)
+  const [convertError, setConvertError] = useState<string | null>(null)
+  const [convertSummary, setConvertSummary] = useState<string | null>(null)
 
   async function loadData() {
     if (!authUser?.id) {
@@ -117,7 +135,13 @@ export default function Settings() {
     }
     const role = (me as { role: UserRole } | null)?.role ?? null
     setMyRole(role)
-    if (role !== 'owner') {
+    
+    // Load assistants and adoptions for masters and devs
+    if (role === 'master_technician' || role === 'dev') {
+      await loadAssistantsAndAdoptions(authUser.id)
+    }
+    
+    if (role !== 'dev') {
       setLoading(false)
       return
     }
@@ -195,12 +219,85 @@ export default function Settings() {
       setNonUserPeople([])
     }
     
-    // Load email templates if owner
-    if (role === 'owner') {
+    // Load email templates if dev
+    if (role === 'dev') {
       await loadEmailTemplates()
     }
     
     setLoading(false)
+  }
+
+  async function loadAssistantsAndAdoptions(masterId: string) {
+    // Load all assistants
+    const { data: assistantsData, error: assistantsErr } = await supabase
+      .from('users')
+      .select('id, email, name, role')
+      .eq('role', 'assistant')
+      .order('name')
+    
+    if (assistantsErr) {
+      console.error('Error loading assistants:', assistantsErr)
+      setAdoptionError(assistantsErr.message)
+    } else {
+      setAssistants((assistantsData as UserRow[]) ?? [])
+    }
+    
+    // Load current adoptions for this master
+    const { data: adoptions, error: adoptionsErr } = await supabase
+      .from('master_assistants')
+      .select('assistant_id')
+      .eq('master_id', masterId)
+    
+    if (adoptionsErr) {
+      console.error('Error loading adoptions:', adoptionsErr)
+      setAdoptionError(adoptionsErr.message)
+    } else {
+      const adoptedSet = new Set<string>()
+      adoptions?.forEach(a => adoptedSet.add(a.assistant_id))
+      setAdoptedAssistantIds(adoptedSet)
+    }
+  }
+
+  async function toggleAdoption(assistantId: string, isAdopted: boolean) {
+    if (!authUser?.id) return
+    
+    setAdoptionSaving(true)
+    setAdoptionError(null)
+    
+    if (isAdopted) {
+      // Unadopt: Delete the relationship
+      const { error } = await supabase
+        .from('master_assistants')
+        .delete()
+        .eq('master_id', authUser.id)
+        .eq('assistant_id', assistantId)
+      
+      if (error) {
+        setAdoptionError(error.message)
+      } else {
+        setAdoptedAssistantIds(prev => {
+          const next = new Set(prev)
+          next.delete(assistantId)
+          return next
+        })
+      }
+    } else {
+      // Adopt: Insert the relationship
+      const { error } = await supabase
+        .from('master_assistants')
+        .insert({
+          master_id: authUser.id,
+          assistant_id: assistantId,
+        })
+      
+      if (error) {
+        setAdoptionError(error.message)
+      } else {
+        setAdoptedAssistantIds(prev => new Set(prev).add(assistantId))
+      }
+    }
+    
+    setAdoptionSaving(false)
   }
 
   async function loadEmailTemplates() {
@@ -235,7 +332,7 @@ export default function Settings() {
         },
         login_as: {
           subject: 'Sign in to Pipetooling',
-          body: 'Hi {{name}},\n\nAn owner has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
+          body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
         },
         stage_assigned_started: {
           subject: 'Workflow stage started: {{stage_name}}',
@@ -465,7 +562,7 @@ export default function Settings() {
     e.preventDefault()
     setCodeError(null)
     setCodeSubmitting(true)
-    const { data, error: eRpc } = await supabase.rpc('claim_owner_with_code', { code_input: code.trim() })
+    const { data, error: eRpc } = await supabase.rpc('claim_dev_with_code', { code_input: code.trim() })
     setCodeSubmitting(false)
     if (eRpc) {
       setCodeError(eRpc.message)
@@ -577,6 +674,74 @@ export default function Settings() {
     setDeleteOpen(false)
   }
 
+  function openPasswordChange() {
+    setPasswordChangeOpen(true)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordChangeError(null)
+    setPasswordChangeSuccess(false)
+  }
+
+  function closePasswordChange() {
+    setPasswordChangeOpen(false)
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPasswordChangeError(null)
+    setPasswordChangeSuccess(false)
+  }
+
+  async function handlePasswordChange(e: React.FormEvent) {
+    e.preventDefault()
+    setPasswordChangeError(null)
+    setPasswordChangeSuccess(false)
+
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError('New passwords do not match')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordChangeError('Password must be at least 6 characters')
+      return
+    }
+
+    setPasswordChangeSubmitting(true)
+
+    // First verify current password by attempting to sign in
+    if (authUser?.email) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: authUser.email,
+        password: currentPassword,
+      })
+
+      if (signInError) {
+        setPasswordChangeSubmitting(false)
+        setPasswordChangeError('Current password is incorrect')
+        return
+      }
+    }
+
+    // Update password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    })
+
+    setPasswordChangeSubmitting(false)
+
+    if (updateError) {
+      setPasswordChangeError(updateError.message)
+      return
+    }
+
+    setPasswordChangeSuccess(true)
+    // Clear form after a delay
+    setTimeout(() => {
+      closePasswordChange()
+    }, 2000)
+  }
+
   async function handleDelete(e: React.FormEvent) {
     e.preventDefault()
     setDeleteError(null)
@@ -605,16 +770,112 @@ export default function Settings() {
     await loadData()
   }
 
+  async function handleConvertMaster(e: React.FormEvent) {
+    e.preventDefault()
+    setConvertError(null)
+    setConvertSummary(null)
+
+    if (!convertMasterId || !convertNewMasterId) {
+      setConvertError('Please select both the master to convert and the new master owner.')
+      return
+    }
+    if (convertMasterId === convertNewMasterId) {
+      setConvertError('The new master owner must be different from the master being converted.')
+      return
+    }
+
+    const masterUser = users.find((u) => u.id === convertMasterId)
+    const newMasterUser = users.find((u) => u.id === convertNewMasterId)
+
+    const masterLabel = masterUser?.name || masterUser?.email || 'Selected master'
+    const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New master'
+    const roleLabel = convertNewRole === 'assistant' ? 'assistant' : 'subcontractor'
+
+    const confirmed = window.confirm(
+      `Convert "${masterLabel}" from master to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`
+    )
+    if (!confirmed) return
+
+    setConvertSubmitting(true)
+    try {
+      const { data, error } = await supabase.rpc('convert_master_user', {
+        old_master_id: convertMasterId,
+        new_master_id: convertNewMasterId,
+        new_role: convertNewRole,
+        auto_adopt: convertAutoAdopt,
+      })
+      if (error) {
+        setConvertError(error.message)
+        return
+      }
+      const result = (data as {
+        customers_moved?: number
+        projects_moved?: number
+        people_moved?: number
+        new_role?: string
+      }) || {}
+      const c = result.customers_moved ?? 0
+      const p = result.projects_moved ?? 0
+      const pe = result.people_moved ?? 0
+      const nr = result.new_role ?? convertNewRole
+      setConvertSummary(
+        `Converted "${masterLabel}" to ${nr}. Reassigned ${c} customers, ${p} projects, and ${pe} people to "${newMasterLabel}".`
+      )
+      setConvertMasterId('')
+      setConvertNewMasterId('')
+      setConvertNewRole('assistant')
+      setConvertAutoAdopt(true)
+      await loadData()
+    } catch (err) {
+      setConvertError(err instanceof Error ? err.message : 'Unknown error converting master')
+    } finally {
+      setConvertSubmitting(false)
+    }
+  }
+
+  async function checkDuplicateName(nameToCheck: string): Promise<boolean> {
+    const trimmedName = nameToCheck.trim().toLowerCase()
+    if (!trimmedName) return false
+    
+    // Check in people table
+    const { data: peopleData } = await supabase
+      .from('people')
+      .select('id, name')
+    
+    // Check in users table
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, name')
+    
+    // Case-insensitive comparison
+    const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false
+    const hasDuplicateInUsers = usersData?.some(u => u.name?.toLowerCase() === trimmedName) ?? false
+    
+    return hasDuplicateInPeople || hasDuplicateInUsers
+  }
+
   async function handleManualAdd(e: React.FormEvent) {
     e.preventDefault()
     setManualAddError(null)
     setManualAddSubmitting(true)
+    
+    const trimmedName = manualAddName.trim()
+    if (trimmedName) {
+      // Check for duplicate names (case-insensitive)
+      const isDuplicate = await checkDuplicateName(trimmedName)
+      if (isDuplicate) {
+        setManualAddError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+        setManualAddSubmitting(false)
+        return
+      }
+    }
+    
     const { data, error: eFn } = await supabase.functions.invoke('create-user', {
       body: {
         email: manualAddEmail.trim(),
         password: manualAddPassword,
         role: manualAddRole,
-        name: manualAddName.trim() || undefined,
+        name: trimmedName || undefined,
       },
     })
     setManualAddSubmitting(false)
@@ -642,8 +903,20 @@ export default function Settings() {
     e.preventDefault()
     setInviteError(null)
     setInviteSubmitting(true)
+    
+    const trimmedName = inviteName.trim()
+    if (trimmedName) {
+      // Check for duplicate names (case-insensitive)
+      const isDuplicate = await checkDuplicateName(trimmedName)
+      if (isDuplicate) {
+        setInviteError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+        setInviteSubmitting(false)
+        return
+      }
+    }
+    
     const { data, error: eFn } = await supabase.functions.invoke('invite-user', {
-      body: { email: inviteEmail.trim(), role: inviteRole, name: inviteName.trim() || undefined },
+      body: { email: inviteEmail.trim(), role: inviteRole, name: trimmedName || undefined },
     })
     setInviteSubmitting(false)
     if (eFn) {
@@ -672,9 +945,79 @@ export default function Settings() {
     <div>
       <h1 style={{ marginBottom: '1rem' }}>Settings</h1>
 
-      {myRole !== 'owner' && <p style={{ marginBottom: '1.5rem' }}>Only owners can manage user roles.</p>}
+      {/* Password Change Section - Available to all users */}
+      <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Change Password</h2>
+        {!passwordChangeOpen ? (
+          <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
+            Change password
+          </button>
+        ) : (
+          <form onSubmit={handlePasswordChange}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="current-password" style={{ display: 'block', marginBottom: 4 }}>Current password *</label>
+              <input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="current-password"
+                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="new-password" style={{ display: 'block', marginBottom: 4 }}>New password *</label>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="confirm-password" style={{ display: 'block', marginBottom: 4 }}>Confirm new password *</label>
+              <input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  setPasswordChangeError(null)
+                }}
+                required
+                autoComplete="new-password"
+                minLength={6}
+                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+              />
+            </div>
+            {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
+            {passwordChangeSuccess && <p style={{ color: '#059669', marginBottom: '1rem' }}>Password changed successfully!</p>}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
+                {passwordChangeSubmitting ? 'Changing…' : 'Change password'}
+              </button>
+              <button type="button" onClick={closePasswordChange} disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
-      {myRole === 'owner' && (
+      {myRole !== 'dev' && <p style={{ marginBottom: '1.5rem' }}>Only devs can manage user roles.</p>}
+
+      {myRole === 'dev' && (
         <>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             Set user class for everyone who has signed up. Only owners can change these.
@@ -749,6 +1092,172 @@ export default function Settings() {
           </div>
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
 
+          {/* Convert Master to Assistant/Subcontractor */}
+          {users.length > 0 && (
+            <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
+              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Convert Master to Assistant/Subcontractor</h2>
+              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                Convert an existing master into an assistant or subcontractor. All of their customers, projects, and people
+                will be reassigned to another master.
+              </p>
+              <form onSubmit={handleConvertMaster}>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label htmlFor="convert-master" style={{ display: 'block', marginBottom: 4 }}>Master to convert *</label>
+                  <select
+                    id="convert-master"
+                    value={convertMasterId}
+                    onChange={(e) => { setConvertMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
+                    disabled={convertSubmitting}
+                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+                  >
+                    <option value="">Select master…</option>
+                    {users
+                      .filter((u) => u.role === 'master_technician')
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.email} ({u.email})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <label htmlFor="convert-new-master" style={{ display: 'block', marginBottom: 4 }}>New master owner *</label>
+                  <select
+                    id="convert-new-master"
+                    value={convertNewMasterId}
+                    onChange={(e) => { setConvertNewMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
+                    disabled={convertSubmitting}
+                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+                  >
+                    <option value="">Select new master…</option>
+                    {users
+                      .filter((u) => u.role === 'master_technician' && u.id !== convertMasterId)
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.email} ({u.email})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <span style={{ display: 'block', marginBottom: 4 }}>New role *</span>
+                  <label style={{ marginRight: '1rem' }}>
+                    <input
+                      type="radio"
+                      name="convert-new-role"
+                      value="assistant"
+                      checked={convertNewRole === 'assistant'}
+                      onChange={() => { setConvertNewRole('assistant'); setConvertError(null); setConvertSummary(null) }}
+                      disabled={convertSubmitting}
+                    />{' '}
+                    Assistant
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="convert-new-role"
+                      value="subcontractor"
+                      checked={convertNewRole === 'subcontractor'}
+                      onChange={() => { setConvertNewRole('subcontractor'); setConvertError(null); setConvertSummary(null) }}
+                      disabled={convertSubmitting}
+                    />{' '}
+                    Subcontractor
+                  </label>
+                </div>
+                {convertNewRole === 'assistant' && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={convertAutoAdopt}
+                        onChange={(e) => { setConvertAutoAdopt(e.target.checked); setConvertError(null); setConvertSummary(null) }}
+                        disabled={convertSubmitting}
+                        style={{ marginRight: 4 }}
+                      />
+                      Auto-adopt this assistant to the new master
+                    </label>
+                  </div>
+                )}
+                <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.8125rem' }}>
+                  This operation reassigns all customers, projects, and people owned by the selected master to the new master and
+                  changes their role. It is not easily reversible.
+                </p>
+                {convertError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{convertError}</p>}
+                {convertSummary && <p style={{ color: '#059669', marginBottom: '0.75rem' }}>{convertSummary}</p>}
+                <button
+                  type="submit"
+                  disabled={
+                    convertSubmitting ||
+                    !convertMasterId ||
+                    !convertNewMasterId ||
+                    convertMasterId === convertNewMasterId
+                  }
+                >
+                  {convertSubmitting ? 'Converting…' : 'Convert master'}
+                </button>
+              </form>
+            </div>
+          )}
+        </>
+      )}
+
+      {(myRole === 'master_technician' || myRole === 'dev') && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Assistants</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants can not see private notes or financials.
+          </p>
+          {adoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{adoptionError}</p>}
+          {assistants.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No assistants found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+              {assistants.map((assistant) => {
+                const isAdopted = adoptedAssistantIds.has(assistant.id)
+                return (
+                  <label
+                    key={assistant.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      cursor: adoptionSaving ? 'not-allowed' : 'pointer',
+                      background: isAdopted ? '#f0fdf4' : 'white',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAdopted}
+                      onChange={() => toggleAdoption(assistant.id, isAdopted)}
+                      disabled={adoptionSaving}
+                      style={{ cursor: adoptionSaving ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500 }}>{assistant.name || assistant.email}</span>
+                      {assistant.email && assistant.name && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({assistant.email})
+                        </span>
+                      )}
+                    </span>
+                    {isAdopted && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        Adopted
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Me</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             People entries in your roster.
@@ -1066,7 +1575,7 @@ export default function Settings() {
         {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
       </form>
 
-      {myRole === 'owner' && (
+      {myRole === 'dev' && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Email Templates</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -1078,7 +1587,7 @@ export default function Settings() {
             {[
               { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },
               { type: 'sign_in' as const, label: 'Sign-In Email', description: 'Sent when requesting a sign-in link' },
-              { type: 'login_as' as const, label: 'Login As Email', description: 'Sent when owner logs in as another user' },
+              { type: 'login_as' as const, label: 'Login As Email', description: 'Sent when dev logs in as another user' },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (

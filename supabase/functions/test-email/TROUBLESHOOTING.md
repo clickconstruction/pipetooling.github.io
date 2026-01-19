@@ -48,7 +48,7 @@
 **Error**: "Unauthorized" or "Forbidden"
 
 **Solution**:
-- Make sure you're logged in as an owner
+- Make sure you're logged in as a dev
 - Check your user role in Settings
 - Verify JWT token is being sent correctly
 
@@ -77,7 +77,7 @@
 - [ ] RESEND_API_KEY secret is set in Supabase
 - [ ] Domain `noreply.pipetooling.com` is verified in Resend
 - [ ] Function `test-email` is deployed and active
-- [ ] You're logged in as an owner
+- [ ] You're logged in as a dev
 - [ ] Email address format is valid
 - [ ] Resend API quota not exceeded
 

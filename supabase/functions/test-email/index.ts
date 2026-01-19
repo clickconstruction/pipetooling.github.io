@@ -39,7 +39,7 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     })
 
-    // Verify user is authenticated and is an owner
+    // Verify user is authenticated and is a dev
     // Pass the token explicitly to getUser
     const {
       data: { user },
@@ -53,16 +53,16 @@ serve(async (req) => {
       )
     }
 
-    // Check if user is owner
+    // Check if user is dev
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (userError || !userData || userData.role !== 'owner') {
+    if (userError || !userData || userData.role !== 'dev') {
       return new Response(
-        JSON.stringify({ error: 'Forbidden - Only owners can send test emails' }),
+        JSON.stringify({ error: 'Forbidden - Only devs can send test emails' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

@@ -56,8 +56,15 @@ export default function SignIn() {
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-      <p style={{ marginTop: '1rem' }}>
+      <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
+        <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
+          Pipe-Tooling is a web application designed for Master Plumbers to track plumbing work across multiple projects and crews. Masters can see all steps in a project, Assistants and Subcontractors can only see steps they have been assigned to.
+        </p>
+      </div>
+      <p style={{ marginTop: '1rem', textAlign: 'center' }}>
         <Link to="/sign-up">Create an account</Link>
+        {' · '}
+        <Link to="/reset-password">Forgot password?</Link>
       </p>
     </div>
   )

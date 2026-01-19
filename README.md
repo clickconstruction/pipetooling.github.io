@@ -28,9 +28,17 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 ## Documentation
 
-📖 **For comprehensive project documentation, see [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)**
+📖 **Main Documentation**:
+- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation
+- **[RECENT_FEATURES.md](./RECENT_FEATURES.md)** - Summary of all recent features and updates
+- **[WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
-The documentation includes:
+📋 **Feature-Specific Documentation**:
+- **[PRIVATE_NOTES_SETUP.md](./PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup
+- **[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)** - Email templates database setup
+- **[EMAIL_TESTING.md](./EMAIL_TESTING.md)** - Email testing and integration status
+
+The main documentation includes:
 - Project overview and architecture
 - Database schema and relationships
 - Authentication and authorization patterns
@@ -52,9 +60,15 @@ The documentation includes:
 - Custom workflow steps (plain text)
 - People roster (with or without user accounts)
 - Workflow templates
-- Calendar view
-- Role-based access control (Owner, Master, Assistant, Subcontractor)
+- **Calendar view** (Central Time, two-line display)
+- **Role-based access control** (Owner, Master, Assistant, Subcontractor)
+  - Assistants/subcontractors only see assigned stages
+- **Private notes and line items** (owners/masters only)
+- **Projections and Ledger** (financial tracking)
+- **Action Ledger** (complete stage history)
+- **Set Start** with date/time picker
 - Notification subscriptions
+- **Email templates** (customizable notification content)
 - User impersonation (owners)
 
 ## Deployment

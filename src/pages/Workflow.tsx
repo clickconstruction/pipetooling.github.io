@@ -10,6 +10,7 @@ type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
+type Projection = Database['public']['Tables']['workflow_projections']['Row']
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -26,18 +27,24 @@ function fromDatetimeLocal(value: string): string | null {
 
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  const date = new Date(iso)
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
+  const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  return `${weekday}, ${dateTime}`
 }
 
 function formatAmount(amount: number | null | undefined): string {
   const value = amount || 0
+  const absValue = Math.abs(value)
+  // Format with commas for thousands
+  const formatted = absValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   if (value < 0) {
-    return `($${Math.abs(value).toFixed(2)})`
+    return `($${formatted})`
   }
-  return `$${value.toFixed(2)}`
+  return `$${formatted}`
 }
 
-function PersonDisplayWithContact({ name, contacts }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }> }) {
+function PersonDisplayWithContact({ name, contacts, userNames }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }>; userNames: Set<string> }) {
   if (!name || !name.trim()) {
     return <span>Assigned to: unknown</span>
   }
@@ -45,14 +52,21 @@ function PersonDisplayWithContact({ name, contacts }: { name: string | null; con
   const contact = contacts[trimmedName]
   const hasEmail = contact?.email
   const hasPhone = contact?.phone
+  const isUser = userNames.has(trimmedName.toLowerCase())
   
   if (!hasEmail && !hasPhone) {
-    return <span>{trimmedName}</span>
+    return (
+      <span>
+        {trimmedName}
+        {!isUser && <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>(not a user)</span>}
+      </span>
+    )
   }
   
   return (
     <span>
       {trimmedName}
+      {!isUser && <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>(not a user)</span>}
       <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
         {hasEmail && (
           <>
@@ -83,18 +97,24 @@ export default function Workflow() {
 
   const [stepForm, setStepForm] = useState<{ open: boolean; step: Step | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }>({ open: false, step: null })
   const [rejectStep, setRejectStep] = useState<{ step: Step; reason: string } | null>(null)
+  const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [roster, setRoster] = useState<{ name: string }[]>([])
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
   const [personContacts, setPersonContacts] = useState<Record<string, { email: string | null; phone: string | null }>>({})
+  const [userNames, setUserNames] = useState<Set<string>>(new Set())
 
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
-  const [userRole, setUserRole] = useState<'owner' | 'master_technician' | 'assistant' | 'subcontractor' | null>(null)
+  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; memo: string; amount: string } | null>(null)
+  const [projections, setProjections] = useState<Projection[]>([])
+  const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
+  const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
 
   async function ensureWorkflow(pid: string) {
     const { data: wfs } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
@@ -111,26 +131,65 @@ export default function Workflow() {
   }
 
   async function loadProject(pid: string) {
-    const { data, error: e } = await supabase.from('projects').select('*').eq('id', pid).single()
+    const { data, error: e } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', pid)
+      .single()
     if (e) {
       setError(e.message)
       setLoading(false)
       return
     }
-    setProject(data as Project)
+
+    const projectData = data as Project
+    setProject(projectData)
+    
+    // Load master information if master_user_id exists
+    if (projectData.master_user_id) {
+      const { data: masterData } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('id', projectData.master_user_id)
+        .single()
+      if (masterData) {
+        setProjectMaster(masterData as { id: string; name: string | null; email: string | null })
+      } else {
+        setProjectMaster(null)
+      }
+    } else {
+      setProjectMaster(null)
+    }
   }
 
   async function loadSteps(wfId: string) {
-    const { data, error: e } = await supabase
+    // For assistants and subcontractors, only show steps they're assigned to
+    let query = supabase
       .from('project_workflow_steps')
       .select('*')
       .eq('workflow_id', wfId)
-      .order('sequence_order', { ascending: true })
+    
+    // If user is assistant or subcontractor, filter to only their assigned steps
+    if ((userRole === 'assistant' || userRole === 'subcontractor') && currentUserName) {
+      query = query.eq('assigned_to_name', currentUserName)
+    }
+    
+    const { data, error: e } = await query.order('sequence_order', { ascending: true })
     if (e) {
-      setError(e.message)
+      setError(`Failed to load steps: ${e.message}`)
+      console.error('Error loading steps:', e)
       return
     }
     const stepData = (data as Step[]) ?? []
+    console.log(`Loaded ${stepData.length} steps for workflow ${wfId}`)
+    
+    // For assistants/subcontractors, check if they have access to this workflow
+    if ((userRole === 'assistant' || userRole === 'subcontractor') && stepData.length === 0) {
+      setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one stage.')
+      setSteps([])
+      return
+    }
+    
     setSteps(stepData)
     
     if (stepData.length > 0) {
@@ -180,12 +239,16 @@ export default function Workflow() {
   }
 
   async function loadLineItemsForSteps(stepIds: string[]) {
-    if (userRole !== 'owner' && userRole !== 'master_technician') return
-    const { data: items } = await supabase
+    if (userRole !== 'dev' && userRole !== 'master_technician') return
+    const { data: items, error } = await supabase
       .from('workflow_step_line_items')
       .select('*')
       .in('step_id', stepIds)
       .order('sequence_order', { ascending: true })
+    if (error) {
+      setError(`Failed to load line items: ${error.message}`)
+      return
+    }
     if (items) {
       const itemsMap: Record<string, LineItem[]> = {}
       items.forEach((item) => {
@@ -212,17 +275,98 @@ export default function Workflow() {
       if (wfId) await loadSteps(wfId)
       setLoading(false)
     })()
-  }, [projectId])
+  }, [projectId, userRole, currentUserName])
 
   // Load line items when steps and userRole are available
   useEffect(() => {
-    if (steps.length > 0 && (userRole === 'owner' || userRole === 'master_technician')) {
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician')) {
       const stepIds = steps.map(s => s.id)
       loadLineItemsForSteps(stepIds)
     } else {
       setLineItems({})
     }
   }, [steps, userRole])
+
+  // Load projections when workflow and userRole are available
+  useEffect(() => {
+    if (workflow?.id && (userRole === 'dev' || userRole === 'master_technician')) {
+      loadProjections(workflow.id)
+    } else {
+      setProjections([])
+    }
+  }, [workflow?.id, userRole])
+
+  async function loadProjections(workflowId: string) {
+    if (userRole !== 'dev' && userRole !== 'master_technician') return
+    const { data: items, error } = await supabase
+      .from('workflow_projections')
+      .select('*')
+      .eq('workflow_id', workflowId)
+      .order('sequence_order', { ascending: true })
+    if (error) {
+      setError(`Failed to load projections: ${error.message}`)
+      return
+    }
+    if (items) {
+      setProjections(items as Projection[])
+    }
+  }
+
+  async function saveProjection(item: Projection | null, stageName: string, memo: string, amount: string) {
+    if (!workflow?.id) return
+    const amountNum = parseFloat(amount) || 0
+    if (!stageName.trim() || !memo.trim()) {
+      setError('Stage name and memo are required')
+      return
+    }
+    
+    if (item) {
+      // Update existing
+      const { error } = await supabase
+        .from('workflow_projections')
+        .update({ stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum })
+        .eq('id', item.id)
+      if (error) {
+        setError(`Failed to update projection: ${error.message}`)
+        return
+      }
+    } else {
+      // Create new
+      const maxOrder = Math.max(0, ...projections.map(p => p.sequence_order))
+      const { error } = await supabase
+        .from('workflow_projections')
+        .insert({ workflow_id: workflow.id, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+      if (error) {
+        setError(`Failed to insert projection: ${error.message}`)
+        return
+      }
+    }
+    setEditingProjection(null)
+    await loadProjections(workflow.id)
+  }
+
+  async function deleteProjection(itemId: string) {
+    if (!workflow?.id) return
+    await supabase.from('workflow_projections').delete().eq('id', itemId)
+    await loadProjections(workflow.id)
+  }
+
+  function openEditProjection(item: Projection | null) {
+    setEditingProjection({
+      item,
+      stage_name: item?.stage_name || '',
+      memo: item?.memo || '',
+      amount: item?.amount?.toString() || '',
+    })
+  }
+
+  function calculateProjectionsTotal(): number {
+    let total = 0
+    projections.forEach((p) => {
+      total += p.amount || 0
+    })
+    return total
+  }
 
   // Scroll to step when steps are loaded and hash is present
   useEffect(() => {
@@ -249,24 +393,35 @@ export default function Workflow() {
   useEffect(() => {
     if (!authUser?.id) return
     ;(async () => {
-      // Load user role
+      // Load user role and name
       const { data: userData } = await supabase
         .from('users')
-        .select('role')
+        .select('role, name, email')
         .eq('id', authUser.id)
         .single()
       if (userData) {
-        setUserRole((userData as { role: 'owner' | 'master_technician' | 'assistant' | 'subcontractor' }).role)
+        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' }).role)
+        const userName = (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email
+        setCurrentUserName(userName)
       }
       
       const [peopleRes, usersRes] = await Promise.all([
         supabase.from('people').select('name, email, phone').eq('master_user_id', authUser.id).order('name'),
-        supabase.from('users').select('name, email').in('role', ['assistant', 'master_technician', 'subcontractor']),
+        supabase.from('users').select('name, email'),
       ])
       const fromPeople = (peopleRes.data as { name: string; email: string | null; phone: string | null }[] | null) ?? []
       const fromUsers = (usersRes.data as { name: string; email: string | null }[] | null) ?? []
       const names = [...fromUsers.map((r) => r.name), ...fromPeople.map((r) => r.name)].filter(Boolean).sort()
       setRoster(names.map((name) => ({ name })))
+      
+      // Build set of user names (case-insensitive comparison)
+      const userNamesSet = new Set<string>()
+      fromUsers.forEach((u) => {
+        if (u.name) {
+          userNamesSet.add(u.name.trim().toLowerCase())
+        }
+      })
+      setUserNames(userNamesSet)
       
       // Build contact map
       const contacts: Record<string, { email: string | null; phone: string | null }> = {}
@@ -287,10 +442,12 @@ export default function Workflow() {
     })()
   }, [authUser?.id])
 
-  async function refreshSteps() {
+  async function refreshSteps(): Promise<string | null> {
     if (workflow?.id) {
       await loadSteps(workflow.id)
+      return null
     }
+    return 'No workflow ID'
   }
 
   // Calculate total from all line items
@@ -340,6 +497,255 @@ export default function Workflow() {
     }
   }
 
+  async function sendNotification(
+    templateType: string,
+    step: Step,
+    recipientName: string,
+    recipientEmail: string,
+    additionalVariables?: Record<string, string>
+  ) {
+    if (!project || !workflow || !recipientEmail) return
+
+    // Build workflow link
+    const workflowLink = `${window.location.origin}/workflows/${project.id}#step-${step.id}`
+
+    // Base variables for all workflow notifications
+    const variables: Record<string, string> = {
+      name: recipientName,
+      email: recipientEmail,
+      project_name: project.name,
+      stage_name: step.name,
+      assigned_to_name: step.assigned_to_name || '',
+      workflow_link: workflowLink,
+      ...additionalVariables,
+    }
+
+    try {
+      // Debug: Log the function invocation details
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const functionName = 'send-workflow-notification'
+      console.log('Invoking Edge Function:', {
+        functionName,
+        supabaseUrl,
+        expectedUrl: `${supabaseUrl}/functions/v1/${functionName}`,
+        templateType,
+        recipientEmail,
+      })
+
+      const { data, error: eFn } = await supabase.functions.invoke('send-workflow-notification', {
+        body: {
+          template_type: templateType,
+          step_id: step.id,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName,
+          variables,
+        },
+      })
+
+      if (eFn) {
+        console.error('Failed to send notification:', {
+          error: eFn,
+          message: eFn.message,
+          status: eFn.status,
+          details: eFn,
+        })
+        // Don't show error to user - notifications are best-effort
+      } else {
+        console.log('Notification sent successfully:', data)
+      }
+    } catch (error) {
+      console.error('Error sending notification:', {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      // Don't show error to user - notifications are best-effort
+    }
+  }
+
+  async function sendWorkflowNotifications(
+    step: Step,
+    actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'
+  ) {
+    if (!project) return
+
+    // Get all steps in workflow to find next/previous
+    const { data: allSteps } = await supabase
+      .from('project_workflow_steps')
+      .select('id, sequence_order, name, assigned_to_name')
+      .eq('workflow_id', step.workflow_id)
+      .order('sequence_order', { ascending: true })
+
+    const sortedSteps = (allSteps as Array<{ id: string; sequence_order: number; name: string; assigned_to_name: string | null }>) || []
+    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
+    const nextStep = currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
+    const previousStep = currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
+
+    // Get contact info for people
+    const getEmailForName = async (name: string | null): Promise<string | null> => {
+      if (!name) return null
+      const trimmedName = name.trim()
+      
+      // Check users table first (most reliable)
+      const { data: user } = await supabase
+        .from('users')
+        .select('email')
+        .eq('name', trimmedName)
+        .maybeSingle()
+      if (user?.email) return user.email
+
+      // Check people table (may be limited by RLS, but try anyway)
+      const { data: people } = await supabase
+        .from('people')
+        .select('email')
+        .eq('name', trimmedName)
+        .limit(1)
+      if (people && people.length > 0 && people[0]?.email) {
+        return people[0].email
+      }
+
+      return null
+    }
+
+    // Handle different action types
+    if (actionType === 'started') {
+      // Notify assigned person if enabled
+      if (step.notify_assigned_when_started && step.assigned_to_name) {
+        const email = await getEmailForName(step.assigned_to_name)
+        if (email) {
+          await sendNotification('stage_assigned_started', step, step.assigned_to_name, email)
+        }
+      }
+
+      // Notify subscribed users (ME)
+      if (authUser?.id) {
+        const { data: subscriptions } = await supabase
+          .from('step_subscriptions')
+          .select('user_id, notify_when_started')
+          .eq('step_id', step.id)
+          .eq('notify_when_started', true)
+
+        if (subscriptions) {
+          for (const sub of subscriptions) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('name, email')
+              .eq('id', sub.user_id)
+              .single()
+            if (user?.email) {
+              await sendNotification('stage_me_started', step, user.name || user.email, user.email)
+            }
+          }
+        }
+      }
+    } else if (actionType === 'completed' || actionType === 'approved') {
+      // Notify assigned person if enabled
+      if (step.notify_assigned_when_complete && step.assigned_to_name) {
+        const email = await getEmailForName(step.assigned_to_name)
+        if (email) {
+          await sendNotification('stage_assigned_complete', step, step.assigned_to_name, email)
+        }
+      }
+
+      // Notify subscribed users (ME)
+      if (authUser?.id) {
+        const { data: subscriptions } = await supabase
+          .from('step_subscriptions')
+          .select('user_id, notify_when_complete')
+          .eq('step_id', step.id)
+          .eq('notify_when_complete', true)
+
+        if (subscriptions) {
+          for (const sub of subscriptions) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('name, email')
+              .eq('id', sub.user_id)
+              .single()
+            if (user?.email) {
+              await sendNotification('stage_me_complete', step, user.name || user.email, user.email)
+            }
+          }
+        }
+      }
+
+      // Cross-step: Notify next assignee
+      if (step.notify_next_assignee_when_complete_or_approved && nextStep?.assigned_to_name) {
+        const email = await getEmailForName(nextStep.assigned_to_name)
+        if (email) {
+          // Create a minimal step object for the notification
+          const nextStepForNotification: Step = {
+            ...step, // Use current step as base
+            id: nextStep.id,
+            name: nextStep.name,
+            assigned_to_name: nextStep.assigned_to_name,
+          } as Step
+          await sendNotification(
+            'stage_next_complete_or_approved',
+            nextStepForNotification,
+            nextStep.assigned_to_name,
+            email,
+            { previous_stage_name: step.name }
+          )
+        }
+      }
+    } else if (actionType === 'rejected') {
+      // Cross-step: Notify prior assignee
+      if (step.notify_prior_assignee_when_rejected && previousStep?.assigned_to_name) {
+        const email = await getEmailForName(previousStep.assigned_to_name)
+        if (email) {
+          // Create a minimal step object for the notification
+          const previousStepForNotification: Step = {
+            ...step, // Use current step as base
+            id: previousStep.id,
+            name: previousStep.name,
+            assigned_to_name: previousStep.assigned_to_name,
+          } as Step
+          await sendNotification(
+            'stage_prior_rejected',
+            previousStepForNotification,
+            previousStep.assigned_to_name,
+            email,
+            {
+              previous_stage_name: previousStep.name,
+              rejection_reason: step.rejection_reason || '',
+            }
+          )
+        }
+      }
+    } else if (actionType === 'reopened') {
+      // Notify assigned person if enabled
+      if (step.notify_assigned_when_reopened && step.assigned_to_name) {
+        const email = await getEmailForName(step.assigned_to_name)
+        if (email) {
+          await sendNotification('stage_assigned_reopened', step, step.assigned_to_name, email)
+        }
+      }
+
+      // Notify subscribed users (ME)
+      if (authUser?.id) {
+        const { data: subscriptions } = await supabase
+          .from('step_subscriptions')
+          .select('user_id, notify_when_reopened')
+          .eq('step_id', step.id)
+          .eq('notify_when_reopened', true)
+
+        if (subscriptions) {
+          for (const sub of subscriptions) {
+            const { data: user } = await supabase
+              .from('users')
+              .select('name, email')
+              .eq('id', sub.user_id)
+              .single()
+            if (user?.email) {
+              await sendNotification('stage_me_reopened', step, user.name || user.email, user.email)
+            }
+          }
+        }
+      }
+    }
+  }
+
   async function openAddStep(insertAfterStepId?: string) {
     setStepForm({ open: true, step: null, insertAfterStepId: insertAfterStepId ?? null })
   }
@@ -357,33 +763,134 @@ export default function Workflow() {
   async function createFromTemplate() {
     if (!workflow || !selectedTemplateId) return
     setCreatingFromTemplate(true)
-    const { data: tSteps } = await supabase.from('workflow_template_steps').select('sequence_order, name').eq('template_id', selectedTemplateId).order('sequence_order', { ascending: true })
+    setError(null)
+    const { data: tSteps, error: tStepsErr } = await supabase
+      .from('workflow_template_steps')
+      .select('sequence_order, name')
+      .eq('template_id', selectedTemplateId)
+      .order('sequence_order', { ascending: true })
+    if (tStepsErr) {
+      setError(`Failed to load template steps: ${tStepsErr.message}`)
+      setCreatingFromTemplate(false)
+      return
+    }
     if (tSteps && tSteps.length > 0) {
+      let insertedCount = 0
       for (const t of tSteps as { sequence_order: number; name: string }[]) {
-        await supabase.from('project_workflow_steps').insert({
+        const { data: inserted, error: insErr } = await supabase.from('project_workflow_steps').insert({
           workflow_id: workflow.id,
           sequence_order: t.sequence_order,
           name: t.name,
           status: 'pending',
-        })
+        }).select('id')
+        if (insErr) {
+          setError(`Failed to insert step "${t.name}": ${insErr.message}`)
+          setCreatingFromTemplate(false)
+          return
+        }
+        if (inserted && inserted.length > 0) {
+          insertedCount++
+        }
       }
+      console.log(`Created ${insertedCount} steps from template`)
     }
     setCreatingFromTemplate(false)
+    const refreshErr = await refreshSteps()
+    if (refreshErr) {
+      setError(`Steps created but failed to refresh: ${refreshErr}`)
+    }
+  }
+
+  async function copyStep(step: Step) {
+    if (!workflow) return
+    // Find the current step's position
+    const currentStep = steps.find((s) => s.id === step.id)
+    if (!currentStep) return
+    
+    // Calculate new sequence_order (insert after current step)
+    const newOrder = currentStep.sequence_order + 1
+    
+    // Increment sequence_order for all steps that come after
+    const stepsToUpdate = steps.filter((s) => s.sequence_order >= newOrder)
+    for (const s of stepsToUpdate) {
+      await supabase
+        .from('project_workflow_steps')
+        .update({ sequence_order: s.sequence_order + 1 })
+        .eq('id', s.id)
+    }
+    
+    // Create new step with copied data (but reset status and timestamps)
+    const { data: newStep, error: err } = await supabase
+      .from('project_workflow_steps')
+      .insert({
+        workflow_id: workflow.id,
+        sequence_order: newOrder,
+        name: step.name,
+        assigned_to_name: step.assigned_to_name,
+        step_type: step.step_type,
+        assigned_skill: step.assigned_skill,
+        status: 'pending', // Reset status for copy
+        started_at: null, // Reset timestamps for copy
+        ended_at: null,
+        notes: step.notes,
+        // Don't copy private_notes, inspection_notes, rejection_reason
+      })
+      .select('id')
+      .single()
+    
+    if (err || !newStep) {
+      setError(err?.message || 'Failed to copy step')
+      return
+    }
+    
+    // Copy dependencies if any
+    if (step.id) {
+      const { data: deps } = await supabase
+        .from('workflow_step_dependencies')
+        .select('depends_on_step_id')
+        .eq('step_id', step.id)
+      
+      if (deps && deps.length > 0) {
+        for (const dep of deps) {
+          await supabase
+            .from('workflow_step_dependencies')
+            .insert({
+              step_id: (newStep as { id: string }).id,
+              depends_on_step_id: dep.depends_on_step_id,
+            })
+        }
+      }
+    }
+    
     await refreshSteps()
+    closeStepForm()
   }
 
   async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
     if (!workflow) return
+    setError(null)
     if (stepForm.step) {
-      await supabase.from('project_workflow_steps').update({
+      const { error: upErr } = await supabase.from('project_workflow_steps').update({
         name: p.name.trim(),
         assigned_to_name: p.assigned_to_name.trim() || null,
         started_at: p.started_at,
         ended_at: p.ended_at,
       }).eq('id', stepForm.step.id)
-      await supabase.from('workflow_step_dependencies').delete().eq('step_id', stepForm.step.id)
+      if (upErr) {
+        setError(upErr.message)
+        return
+      }
+      const { error: delDepsErr } = await supabase.from('workflow_step_dependencies').delete().eq('step_id', stepForm.step.id)
+      if (delDepsErr) {
+        setError(delDepsErr.message)
+        return
+      }
       if (p.depends_on_step_id) {
-        await supabase.from('workflow_step_dependencies').insert({ step_id: stepForm.step.id, depends_on_step_id: p.depends_on_step_id })
+        const { error: insDepErr } = await supabase.from('workflow_step_dependencies').insert({ step_id: stepForm.step.id, depends_on_step_id: p.depends_on_step_id })
+        if (insDepErr) {
+          setError(insDepErr.message)
+          return
+        }
       }
     } else {
       // Calculate sequence_order based on insertAfterStepId
@@ -393,10 +900,14 @@ export default function Workflow() {
         newOrder = 1
         // Increment sequence_order for all existing steps
         for (const s of steps) {
-          await supabase
+          const { error: bumpErr } = await supabase
             .from('project_workflow_steps')
             .update({ sequence_order: s.sequence_order + 1 })
             .eq('id', s.id)
+          if (bumpErr) {
+            setError(bumpErr.message)
+            return
+          }
         }
       } else if (p.insertAfterStepId) {
         const afterStep = steps.find((s) => s.id === p.insertAfterStepId)
@@ -405,10 +916,14 @@ export default function Workflow() {
           // Increment sequence_order for all steps that come after
           const stepsToUpdate = steps.filter((s) => s.sequence_order >= newOrder)
           for (const s of stepsToUpdate) {
-            await supabase
+            const { error: bumpErr } = await supabase
               .from('project_workflow_steps')
               .update({ sequence_order: s.sequence_order + 1 })
               .eq('id', s.id)
+            if (bumpErr) {
+              setError(bumpErr.message)
+              return
+            }
           }
         } else {
           // Fallback to end if step not found
@@ -421,7 +936,7 @@ export default function Workflow() {
         newOrder = maxOrder + 1
       }
       
-      await supabase.from('project_workflow_steps').insert({
+      const { data: inserted, error: insErr } = await supabase.from('project_workflow_steps').insert({
         workflow_id: workflow.id,
         sequence_order: newOrder,
         name: p.name.trim(),
@@ -429,10 +944,21 @@ export default function Workflow() {
         started_at: p.started_at,
         ended_at: p.ended_at,
         status: 'pending',
-      })
+      }).select('id')
+      if (insErr) {
+        setError(`Failed to insert step: ${insErr.message}`)
+        return
+      }
+      if (inserted && inserted.length > 0) {
+        console.log(`Step inserted with ID: ${inserted[0].id}`)
+      }
     }
-    await refreshSteps()
-    closeStepForm()
+    const refreshErr = await refreshSteps()
+    if (refreshErr) {
+      setError(`Step saved but failed to refresh: ${refreshErr}`)
+    } else {
+      closeStepForm()
+    }
   }
 
   async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string; rejection_reason?: string; approved_by?: string | null; approved_at?: string | null }) {
@@ -445,15 +971,26 @@ export default function Workflow() {
     await refreshSteps()
   }
 
-  async function markStarted(step: Step) {
-    await supabase.from('project_workflow_steps').update({ started_at: new Date().toISOString(), status: 'in_progress' }).eq('id', step.id)
+  async function markStarted(step: Step, startDateTime?: string) {
+    const startedAt = startDateTime ? fromDatetimeLocal(startDateTime) : new Date().toISOString()
+    await supabase.from('project_workflow_steps').update({ started_at: startedAt, status: 'in_progress' }).eq('id', step.id)
     await recordAction(step.id, 'started')
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(step, 'started')
     await refreshSteps()
+  }
+
+  async function submitSetStart() {
+    if (!setStartStep) return
+    await markStarted(setStartStep.step, setStartStep.startDateTime)
+    setSetStartStep(null)
   }
 
   async function markCompleted(step: Step) {
     await updateStepStatus(step, 'completed', { ended_at: new Date().toISOString() })
     await recordAction(step.id, 'completed')
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(step, 'completed')
     await refreshSteps()
   }
 
@@ -467,6 +1004,8 @@ export default function Workflow() {
       approved_at: approvedAt,
     })
     await recordAction(step.id, 'approved')
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(step, 'approved')
     await refreshSteps()
   }
 
@@ -479,6 +1018,8 @@ export default function Workflow() {
       rejection_reason: null,
     }).eq('id', step.id)
     await recordAction(step.id, 'reopened')
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(step, 'reopened')
     await refreshSteps()
   }
 
@@ -530,24 +1071,36 @@ export default function Workflow() {
     
     if (item) {
       // Update existing
-      await supabase
+      const { error } = await supabase
         .from('workflow_step_line_items')
         .update({ memo: memo.trim(), amount: amountNum })
         .eq('id', item.id)
+      if (error) {
+        setError(`Failed to update line item: ${error.message}`)
+        return
+      }
     } else {
       // Create new
       const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-      await supabase
+      const { error } = await supabase
         .from('workflow_step_line_items')
         .insert({ step_id: stepId, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+      if (error) {
+        setError(`Failed to insert line item: ${error.message}`)
+        return
+      }
     }
     setEditingLineItem(null)
     await refreshSteps()
   }
 
   async function deleteLineItem(itemId: string) {
-    await supabase.from('workflow_step_line_items').delete().eq('id', itemId)
-    await refreshSteps()
+    const { error } = await supabase.from('workflow_step_line_items').delete().eq('id', itemId)
+    if (error) {
+      setError(`Failed to delete line item: ${error.message}`)
+    } else {
+      await refreshSteps()
+    }
   }
 
   function openEditLineItem(stepId: string, item: LineItem | null) {
@@ -567,6 +1120,12 @@ export default function Workflow() {
       ended_at: new Date().toISOString(),
     }).eq('id', rejectStep.step.id)
     await recordAction(rejectStep.step.id, 'rejected', rejectStep.reason.trim() || null)
+    
+    // Create updated step object with rejection reason for notifications
+    const updatedStep = { ...rejectStep.step, rejection_reason: rejectStep.reason.trim() || null }
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(updatedStep, 'rejected')
+    
     setRejectStep(null)
     await refreshSteps()
   }
@@ -603,6 +1162,11 @@ export default function Workflow() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
+          {projectMaster && (
+            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Project Master: {projectMaster.name || projectMaster.email || 'Unknown'}
+            </div>
+          )}
           {steps.length > 0 && (
             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
               {steps.map((s, i) => {
@@ -637,85 +1201,170 @@ export default function Workflow() {
             </div>
           )}
         </div>
-        <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
-          Add step
-        </button>
+        {(userRole === 'dev' || userRole === 'master_technician') && (
+          <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
+            Add step
+          </button>
+        )}
       </div>
 
-      {/* Ledger - Only visible to owners and masters */}
-      {(userRole === 'owner' || userRole === 'master_technician') && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger</h2>
-          {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
+      {/* Projections & Ledger - Only visible to devs and masters */}
+      {(userRole === 'dev' || userRole === 'master_technician') && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+          {/* Projections */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '1.125rem', fontWeight: 600 }}>Projections (Draw Schedule and Change Orders)</h2>
+            <button
+              type="button"
+              onClick={() => openEditProjection(null)}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              + Add Projection
+            </button>
+          </div>
+          {projections.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No projections yet. Click "Add Projection" to add one.</p>
           ) : (
             <>
               <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr style={{ borderBottom: '1px solid #bae6fd' }}>
                     <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
                     <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
                     <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
+                    <th style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 600, width: 120 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {steps.map((step) => {
-                    const items = lineItems[step.id] || []
-                    if (items.length === 0) return null
-                    return items.map((item, idx) => (
-                      <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
-                          {idx === 0 ? step.name : ''}
-                        </td>
-                        <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
-                          {formatAmount(item.amount)}
-                        </td>
-                      </tr>
-                    ))
-                  })}
+                  {projections.map((proj) => (
+                    <tr key={proj.id} style={{ borderBottom: '1px solid #e0f2fe' }}>
+                      <td style={{ padding: '0.5rem', color: '#111827' }}>{proj.stage_name}</td>
+                      <td style={{ padding: '0.5rem', color: '#374151' }}>{proj.memo}</td>
+                      <td style={{ padding: '0.5rem', textAlign: 'right', color: (proj.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                        {formatAmount(proj.amount)}
+                      </td>
+                      <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => openEditProjection(proj)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteProjection(proj.id)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
-                  Total: {formatAmount(calculateLedgerTotal())}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #0ea5e9' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                  Projections Total: {formatAmount(calculateProjectionsTotal())}
                 </div>
               </div>
             </>
           )}
+
+          {/* Ledger */}
+          <div style={{ marginTop: '1.5rem' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger (Incurred Charges and Payments)</h2>
+            {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
+            ) : (
+              <>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
+                      <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {steps.map((step) => {
+                      const items = lineItems[step.id] || []
+                      if (items.length === 0) return null
+                      return items.map((item, idx) => (
+                        <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
+                            {idx === 0 ? step.name : ''}
+                          </td>
+                          <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                            {formatAmount(item.amount)}
+                          </td>
+                        </tr>
+                      ))
+                    })}
+                  </tbody>
+                </table>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                    Ledger Total: {formatAmount(calculateLedgerTotal())}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Total Left on Job */}
+          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+            {(() => {
+              const left = calculateProjectionsTotal() - calculateLedgerTotal()
+              return (
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: left < 0 ? '#b91c1c' : '#047857' }}>
+                  Total Left on Job: Projections - Ledger = {formatAmount(left)}
+                </div>
+              )
+            })()}
+          </div>
         </div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {steps.length === 0 ? (
           <div>
-            <p style={{ marginBottom: '1rem' }}>No steps yet. Add a step or create from a template.</p>
-            {templates.length > 0 && (
-              <div style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: '1rem', maxWidth: 400 }}>
-                <strong style={{ display: 'block', marginBottom: 8 }}>Create from template</strong>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <select
-                    value={selectedTemplateId}
-                    onChange={(e) => setSelectedTemplateId(e.target.value)}
-                    style={{ padding: '0.5rem', flex: 1, minWidth: 160 }}
-                  >
-                    <option value="">Select a template</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={createFromTemplate}
-                    disabled={!selectedTemplateId || creatingFromTemplate}
-                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}
-                  >
-                    {creatingFromTemplate ? 'Creating...' : 'Create from template'}
-                  </button>
-                </div>
-              </div>
+            {(userRole === 'dev' || userRole === 'master_technician') ? (
+              <>
+                <p style={{ marginBottom: '1rem' }}>No steps yet. Add a step or create from a template.</p>
+                {templates.length > 0 && (
+                  <div style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: '1rem', maxWidth: 400 }}>
+                    <strong style={{ display: 'block', marginBottom: 8 }}>Create from template</strong>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        style={{ padding: '0.5rem', flex: 1, minWidth: 160 }}
+                      >
+                        <option value="">Select a template</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={createFromTemplate}
+                        disabled={!selectedTemplateId || creatingFromTemplate}
+                        style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}
+                      >
+                        {creatingFromTemplate ? 'Creating...' : 'Create from template'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <p>Or <button type="button" onClick={() => openAddStep()} style={{ padding: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>add a step</button> to build from scratch.</p>
+              </>
+            ) : (
+              <p style={{ marginBottom: '1rem' }}>No stages assigned to you in this workflow.</p>
             )}
-            <p>Or <button type="button" onClick={() => openAddStep()} style={{ padding: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>add a step</button> to build from scratch.</p>
           </div>
         ) : (
           steps.map((s, i) => (
@@ -730,33 +1379,75 @@ export default function Workflow() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: 4 }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{s.name}</div>
-                    <div style={{ fontSize: '0.875rem', color: '#374151', marginTop: 4 }}>
-                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Stage title */}
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{s.name}</div>
+                    <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 8 }}>
+                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
                     </div>
+
+                    {/* Actions (top-left) */}
+                    {((userRole === 'dev' || userRole === 'master_technician') || s.assigned_to_name === currentUserName) && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        {s.status === 'pending' && (
+                          <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
+                            Set Start
+                          </button>
+                        )}
+                        {(s.status === 'pending' || s.status === 'in_progress') && (
+                          <button type="button" onClick={() => markCompleted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
+                            Complete
+                          </button>
+                        )}
+                        {(s.status === 'pending' || s.status === 'in_progress') && (userRole === 'dev' || userRole === 'master_technician') && (
+                          <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
+                            Approve
+                          </button>
+                        )}
+                        {(s.status === 'pending' || s.status === 'in_progress') && (userRole === 'dev' || userRole === 'master_technician') && (
+                          <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>
+                            Reject
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                    {/* Assign (top-right) */}
+                    {(userRole === 'dev' || userRole === 'master_technician') && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Assign</button>
+                      </div>
+                    )}
+
+                    {/* Only show notification settings for owners and masters, or if user is assigned to this step */}
+                    {((userRole === 'dev' || userRole === 'master_technician') || s.assigned_to_name === currentUserName) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
                       <div style={{ marginBottom: 4, fontWeight: 500 }}>Notify when stage:</div>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                         <thead>
                           <tr>
                             <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', fontWeight: 500 }}></th>
-                            <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ASSIGNED</th>
+                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                              <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ASSIGNED</th>
+                            )}
                             <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ME</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>started</td>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!s.notify_assigned_when_started}
-                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_started', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
+                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.notify_assigned_when_started}
+                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_started', e.target.checked)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </td>
+                            )}
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                               <input
                                 type="checkbox"
@@ -768,14 +1459,16 @@ export default function Workflow() {
                           </tr>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>complete</td>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!s.notify_assigned_when_complete}
-                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_complete', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
+                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.notify_assigned_when_complete}
+                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_complete', e.target.checked)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </td>
+                            )}
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                               <input
                                 type="checkbox"
@@ -787,14 +1480,16 @@ export default function Workflow() {
                           </tr>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>re-opened</td>
-                            <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!s.notify_assigned_when_reopened}
-                                onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_reopened', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
+                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                              <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!s.notify_assigned_when_reopened}
+                                  onChange={(e) => updateNotifyAssigned(s, 'notify_assigned_when_reopened', e.target.checked)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </td>
+                            )}
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                               <input
                                 type="checkbox"
@@ -806,26 +1501,30 @@ export default function Workflow() {
                           </tr>
                         </tbody>
                       </table>
-                      <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!s.notify_next_assignee_when_complete_or_approved}
-                            onChange={(e) => updateCrossStepNotify(s, 'notify_next_assignee_when_complete_or_approved', e.target.checked)}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          Notify next card assignee when complete or approved
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.25rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={!!s.notify_prior_assignee_when_rejected}
-                            onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
-                            style={{ cursor: 'pointer' }}
-                          />
-                          Notify prior card assignee when rejected
-                        </label>
-                      </div>
+                      {(userRole === 'dev' || userRole === 'master_technician') && (
+                        <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!s.notify_next_assignee_when_complete_or_approved}
+                              onChange={(e) => updateCrossStepNotify(s, 'notify_next_assignee_when_complete_or_approved', e.target.checked)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            Notify next card assignee when complete or approved
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.25rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!s.notify_prior_assignee_when_rejected}
+                              onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                            Notify prior card assignee when rejected
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   </div>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
@@ -870,10 +1569,11 @@ export default function Workflow() {
                     style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
                   />
                 </div>
-                {(userRole === 'owner' || userRole === 'master_technician') && (
-                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: 4 }}>
-                    <label htmlFor={`private-notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500, color: '#92400e' }}>
-                      Private Notes (Your account only)
+                {/* Private Notes - dev/master only */}
+                {(userRole === 'dev' || userRole === 'master_technician') && (
+                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                    <label htmlFor={`private-notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500, color: '#0369a1' }}>
+                      Private Notes (Only you can see this)
                     </label>
                     <textarea
                       id={`private-notes-${s.id}`}
@@ -882,69 +1582,66 @@ export default function Workflow() {
                       onBlur={(e) => updatePrivateNotes(s, e.target.value)}
                       placeholder="Add private notes visible only to owners and master technicians..."
                       rows={3}
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #fbbf24', borderRadius: 4, background: 'white', marginBottom: '0.75rem' }}
+                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
                     />
-                    
-                    {/* Line Items Section */}
-                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #fbbf24' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#92400e' }}>Line Items</label>
-                        <button
-                          type="button"
-                          onClick={() => openEditLineItem(s.id, null)}
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fbbf24', color: '#92400e', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                        >
-                          + Add Line Item
-                        </button>
-                      </div>
-                      {lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
-                        <div style={{ fontSize: '0.875rem' }}>
-                          {lineItems[s.id]!.map((item) => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #fbbf24' }}>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem' }}>{item.memo}</div>
-                                <div style={{ fontSize: '0.8125rem', color: (item.amount || 0) < 0 ? '#b91c1c' : '#6b7280' }}>
-                                  {formatAmount(item.amount)}
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditLineItem(s.id, item)}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => deleteLineItem(item.id)}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
-                      )}
-                    </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {s.status === 'pending' && <button type="button" onClick={() => markStarted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Start</button>}
-                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markCompleted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Complete</button>}
-                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Approve</button>}
-                    {(s.status === 'pending' || s.status === 'in_progress') && <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>Reject</button>}
-                    {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && <button type="button" onClick={() => reopenStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Re-open</button>}
+                
+                {/* Line Items - dev/master/assistant */}
+                {(userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (You and your assistant only)</label>
+                      <button
+                        type="button"
+                        onClick={() => openEditLineItem(s.id, null)}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        + Add Line Item
+                      </button>
+                    </div>
+                    {lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
+                      <div style={{ fontSize: '0.875rem' }}>
+                        {lineItems[s.id]!.map((item) => (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #bae6fd' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem' }}>{item.memo}</div>
+                              <div style={{ fontSize: '0.8125rem', color: (item.amount || 0) < 0 ? '#b91c1c' : '#6b7280' }}>
+                                {formatAmount(item.amount)}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => openEditLineItem(s.id, item)}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteLineItem(item.id)}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
+                    )}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Assign</button>
-                    <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
-                    <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
-                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  {/* Only show management buttons for owners and masters */}
+                  {(userRole === 'dev' || userRole === 'master_technician') && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
+                      <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
+                    </div>
+                  )}
                 </div>
                 {s.rejection_reason && <div style={{ marginTop: 8, fontSize: '0.875rem', color: '#b91c1c' }}>Rejection: {s.rejection_reason}</div>}
               </div>
@@ -962,6 +1659,7 @@ export default function Workflow() {
           steps={steps}
           onSave={saveStep}
           onClose={closeStepForm}
+          onCopy={stepForm.step ? () => copyStep(stepForm.step!) : undefined}
           toDatetimeLocal={toDatetimeLocal}
           fromDatetimeLocal={fromDatetimeLocal}
         />
@@ -987,25 +1685,59 @@ export default function Workflow() {
         </div>
       )}
 
+      {setStartStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Set Start Time: {setStartStep.step.name}</h3>
+            <label htmlFor="start-datetime" style={{ display: 'block', marginBottom: 4 }}>Start Date & Time</label>
+            <input
+              id="start-datetime"
+              type="datetime-local"
+              value={setStartStep.startDateTime}
+              onChange={(e) => setSetStartStep((s) => s ? { ...s, startDateTime: e.target.value } : null)}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={submitSetStart} style={{ padding: '0.5rem 1rem' }}>Set Start</button>
+              <button type="button" onClick={() => setSetStartStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {assignPersonStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', overflow: 'auto', color: '#111827' }}>
             <h3 style={{ marginTop: 0, color: '#111827' }}>Add person to: {assignPersonStep.name}</h3>
             <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '1rem' }}>Choose from your roster (People and signed-up users).</p>
-            {roster.length === 0 ? (
+            {roster.length === 0 && !currentUserName ? (
               <p style={{ color: '#111827', marginBottom: '1rem' }}>No people in your roster yet. Add them on the People page.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: '1rem' }}>
-                {roster.map((r, i) => (
+                {/* Always show current user first */}
+                {currentUserName && (
                   <button
-                    key={`${r.name}-${i}`}
+                    key="current-user"
                     type="button"
-                    onClick={() => assignPerson(assignPersonStep, r.name)}
-                    style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', color: '#111827' }}
+                    onClick={() => assignPerson(assignPersonStep, currentUserName)}
+                    style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#eff6ff', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: '#111827', fontWeight: 500 }}
                   >
-                    {r.name}
+                    {currentUserName} (You)
                   </button>
-                ))}
+                )}
+                {/* Show rest of roster, excluding current user if already in roster */}
+                {roster
+                  .filter((r) => r.name !== currentUserName)
+                  .map((r, i) => (
+                    <button
+                      key={`${r.name}-${i}`}
+                      type="button"
+                      onClick={() => assignPerson(assignPersonStep, r.name)}
+                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', color: '#111827' }}
+                    >
+                      {r.name}
+                    </button>
+                  ))}
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1059,6 +1791,62 @@ export default function Workflow() {
           </div>
         </div>
       )}
+
+      {editingProjection && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>{editingProjection.item ? 'Edit' : 'Add'} Projection</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                saveProjection(editingProjection.item, editingProjection.stage_name, editingProjection.memo, editingProjection.amount)
+              }}
+            >
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="projection-stage" style={{ display: 'block', marginBottom: 4 }}>Stage *</label>
+                <input
+                  id="projection-stage"
+                  type="text"
+                  value={editingProjection.stage_name}
+                  onChange={(e) => setEditingProjection({ ...editingProjection, stage_name: e.target.value })}
+                  required
+                  placeholder="e.g. Rough In, Trim, Inspection"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="projection-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
+                <input
+                  id="projection-memo"
+                  type="text"
+                  value={editingProjection.memo}
+                  onChange={(e) => setEditingProjection({ ...editingProjection, memo: e.target.value })}
+                  required
+                  placeholder="e.g. Materials, Labor, Equipment"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="projection-amount" style={{ display: 'block', marginBottom: 4 }}>Amount *</label>
+                <input
+                  id="projection-amount"
+                  type="number"
+                  step="0.01"
+                  value={editingProjection.amount}
+                  onChange={(e) => setEditingProjection({ ...editingProjection, amount: e.target.value })}
+                  required
+                  placeholder="0.00 (negative allowed)"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
+                <button type="button" onClick={() => setEditingProjection(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1070,6 +1858,7 @@ function StepFormModal({
   steps,
   onSave,
   onClose,
+  onCopy,
   toDatetimeLocal,
   fromDatetimeLocal,
 }: {
@@ -1079,6 +1868,7 @@ function StepFormModal({
   steps: Step[]
   onSave: (p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) => void
   onClose: () => void
+  onCopy?: () => void
   toDatetimeLocal: (iso: string | null) => string
   fromDatetimeLocal: (v: string) => string | null
 }) {
@@ -1208,6 +1998,11 @@ function StepFormModal({
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
+            {onCopy && (
+              <button type="button" onClick={onCopy} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4 }}>
+                Copy
+              </button>
+            )}
             <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
           </div>
         </form>

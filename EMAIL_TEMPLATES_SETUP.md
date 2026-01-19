@@ -35,7 +35,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );
 
@@ -47,7 +47,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );
 
@@ -59,14 +59,14 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );
 ```
@@ -76,7 +76,7 @@ WITH CHECK (
 #### User Management
 1. **`invitation`** - Sent when inviting a new user via the "Invite via email" button
 2. **`sign_in`** - Sent when using "Send email to sign in" button
-3. **`login_as`** - Sent when owner uses "Login as user" feature
+3. **`login_as`** - Sent when dev uses "Login as user" feature
 
 #### Workflow Stage Notifications - Assigned Person
 4. **`stage_assigned_started`** - Sent to assigned person when stage is started
@@ -99,7 +99,7 @@ Templates support different variables depending on the template type:
 #### User Management Templates (`invitation`, `sign_in`, `login_as`)
 - `{{name}}` - User's name (if available)
 - `{{email}}` - User's email address
-- `{{role}}` - User's role (owner, master_technician, assistant, subcontractor)
+- `{{role}}` - User's role (dev, master_technician, assistant, subcontractor)
 - `{{link}}` - The action link (sign-up link, sign-in link, or magic link)
 
 #### Workflow Stage Templates (`stage_*`)
@@ -149,7 +149,7 @@ Subject: Sign in to Pipetooling
 Body:
 Hi {{name}},
 
-An owner has requested to sign in as you. Click the link below:
+A dev has requested to sign in as you. Click the link below:
 
 {{link}}
 

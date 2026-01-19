@@ -1,12 +1,18 @@
-# Private Notes and Line Items for Workflow Stages
+# Private Notes, Line Items, and Projections for Workflows
 
-This document describes the private notes and line items features added to workflow stages, visible only to owners and master technicians.
+This document describes the private notes, line items, and projections features added to workflows, visible only to devs and master technicians.
 
 ## Overview
 
-Each workflow stage now has a **Private Notes** section that is only visible to users with `owner` or `master_technician` roles. This is separate from the regular "Notes" field which is visible to all users.
+### Private Notes and Line Items
+
+Each workflow stage now has a **Private Notes** section that is only visible to users with `dev` or `master_technician` roles. This is separate from the regular "Notes" field which is visible to all users.
 
 Additionally, each stage includes a **Line Items** section within the private notes area, allowing owners and masters to track expenses, credits, and other financial items with memo and amount fields. All line items are automatically aggregated into a **Ledger** displayed at the top of the workflow page.
+
+### Projections
+
+At the workflow level (above the Ledger), there is a **Projections** section for tracking projected costs. Projections are separate from line items - they represent planned/estimated costs for the entire workflow, while line items track actual expenses per stage.
 
 ## Database Changes
 
@@ -41,10 +47,32 @@ The migration adds:
 The migration creates:
 - `workflow_step_line_items` table with fields:
   - `id` (UUID, primary key)
-  - `step_id` (UUID, foreign key to `project_workflow_steps`)
+  - `step_id` (UUID, foreign key to `project_workflow_steps` ON DELETE CASCADE)
   - `memo` (TEXT, required) - Description of the line item
   - `amount` (NUMERIC(10, 2), required) - **Supports negative numbers** for credits/refunds
   - `sequence_order` (INTEGER) - Order within the step
+  - `created_at`, `updated_at` (timestamps)
+- Indexes for performance
+- RLS policies restricting access to owners and master_technicians only
+
+#### 3. Projections Table
+
+**File**: `supabase/migrations/create_workflow_projections.sql`
+
+**To apply**:
+1. Go to Supabase Dashboard → SQL Editor
+2. Click "New Query"
+3. Copy and paste the contents of the migration file
+4. Click "Run"
+
+The migration creates:
+- `workflow_projections` table with fields:
+  - `id` (UUID, primary key)
+  - `workflow_id` (UUID, foreign key to `project_workflows` ON DELETE CASCADE)
+  - `stage_name` (TEXT, required) - Stage name for the projection
+  - `memo` (TEXT, required) - Description
+  - `amount` (NUMERIC(10, 2), required) - **Supports negative numbers**
+  - `sequence_order` (INTEGER) - Order within the workflow
   - `created_at`, `updated_at` (timestamps)
 - Indexes for performance
 - RLS policies restricting access to owners and master_technicians only
@@ -63,7 +91,7 @@ In the Workflow page (`src/pages/Workflow.tsx`), each stage now displays:
    - Highlighted with a yellow/amber background (`#fef3c7`)
    - Border color: `#fbbf24`
    - Label: "Private Notes (Your account only)"
-   - Only shown when `userRole === 'owner' || userRole === 'master_technician'`
+   - Only shown when `userRole === 'dev' || userRole === 'master_technician'`
 
 3. **Line Items** (within Private Notes section)
    - Located below the private notes textarea
@@ -76,14 +104,33 @@ In the Workflow page (`src/pages/Workflow.tsx`), each stage now displays:
    - Negative amounts are displayed in red with parentheses: `($50.00)`
    - Positive amounts display normally: `$50.00`
 
-4. **Ledger** (at top of workflow page)
+4. **Projections** (above Ledger, at top of workflow page)
    - Only visible to owners and masters
+   - Light blue background (`#f0f9ff`) with blue border (`#bae6fd`)
+   - "+ Add Projection" button
+   - Table with columns: Stage, Memo, Amount, Actions
+   - Edit and Delete buttons for each projection
+   - Total calculation at bottom
+   - Amounts formatted with commas (e.g., `$1,234.56`)
+   - Supports negative numbers
+   - Empty state message when no projections exist
+
+5. **Ledger** (below Projections, at top of workflow page)
+   - Only visible to owners and masters
+   - Light gray background (`#f9fafb`) with gray border (`#e5e7eb`)
    - Displays all line items from all stages in a table format
    - Columns: Stage, Memo, Amount
    - Shows total sum at the bottom
    - Negative amounts displayed in red with parentheses
    - Total turns red if negative
+   - Amounts formatted with commas (e.g., `$1,234.56`)
    - Empty state message when no line items exist
+
+6. **Action Ledger** (at bottom of each stage card)
+   - Complete history of all actions performed on the stage
+   - Shows action type, performer, timestamp, and optional notes
+   - Chronologically ordered (newest first)
+   - Visible to all users who can see the stage
 
 ### Role Detection
 
@@ -105,7 +152,7 @@ The component now:
 
 #### `loadLineItemsForSteps(stepIds: string[])`
 - Loads all line items for the given step IDs
-- Only executes if user is owner or master_technician
+- Only executes if user is dev or master_technician
 - Groups items by step_id in state
 
 #### `saveLineItem(stepId: string, item: LineItem | null, memo: string, amount: string)`
@@ -130,10 +177,39 @@ The component now:
 - Used to display the total in the ledger
 
 #### `formatAmount(amount: number | null | undefined): string`
-- Formats amounts for display
-- Negative numbers: `($123.45)` in parentheses
-- Positive numbers: `$123.45` with dollar sign
+- Formats amounts for display with comma separators
+- Negative numbers: `($1,234.56)` in parentheses
+- Positive numbers: `$1,234.56` with dollar sign and commas
 - Always shows 2 decimal places
+- Uses `toLocaleString('en-US')` for formatting
+
+### Projections Functions
+
+#### `loadProjections(workflowId: string)`
+- Loads all projections for the given workflow ID
+- Only executes if user is dev or master_technician
+- Orders by sequence_order
+
+#### `saveProjection(item: Projection | null, stageName: string, memo: string, amount: string)`
+- Creates a new projection or updates an existing one
+- Validates stage name and memo are not empty
+- Parses amount as float (supports negative numbers)
+- Automatically sets sequence_order for new items
+- Refreshes projections after save
+
+#### `deleteProjection(itemId: string)`
+- Deletes a projection by ID
+- Refreshes projections after deletion
+
+#### `openEditProjection(item: Projection | null)`
+- Opens the edit modal for a projection
+- If `item` is null, opens in "add" mode
+- If `item` is provided, opens in "edit" mode with pre-filled values
+
+#### `calculateProjectionsTotal(): number`
+- Calculates the sum of all projections for the workflow
+- Returns a number (can be negative)
+- Used to display the total in the projections section
 
 ## TypeScript Types
 
@@ -149,6 +225,12 @@ Updated `src/types/database.ts` to include:
 - `Insert` and `Update` types with appropriate optional fields
 - `LineItem` type alias defined in `Workflow.tsx`
 
+### Projections
+- New table type: `workflow_projections`
+- `Row` type includes: `id`, `workflow_id`, `stage_name`, `memo`, `amount`, `sequence_order`, `created_at`, `updated_at`
+- `Insert` and `Update` types with appropriate optional fields
+- `Projection` type alias defined in `Workflow.tsx`
+
 ## Security Considerations
 
 **Important**: This feature relies on:
@@ -163,7 +245,7 @@ You may want to add an RLS policy to ensure only owners and masters can read/wri
 -- Policy: Only owners and master_technicians can read private_notes
 -- Note: This is handled at the application level currently
 -- For additional security, you could add a policy that filters out private_notes
--- for non-owner/master users, but this would require a view or function
+-- for non-dev/master users, but this would require a view or function
 ```
 
 Currently, the security is enforced at the UI level. For production, consider:
@@ -190,7 +272,7 @@ Currently, the security is enforced at the UI level. For production, consider:
 ### Line Items
 
 1. **Adding a Line Item**:
-   - As owner or master, scroll to any stage's Private Notes section
+   - As dev or master, scroll to any stage's Private Notes section
    - Click "+ Add Line Item" button
    - Enter a memo (description) - required
    - Enter an amount - required (supports negative numbers for credits/refunds)
@@ -211,6 +293,32 @@ Currently, the security is enforced at the UI level. For production, consider:
    - Displays total at the bottom
    - Negative amounts shown in red with parentheses: `($50.00)`
    - Positive amounts shown normally: `$50.00`
+   - Amounts formatted with commas: `$1,234.56`
+
+### Projections
+
+1. **Adding a Projection**:
+   - As dev or master, scroll to the top of the workflow page
+   - Click "+ Add Projection" button in the Projections section
+   - Enter stage name - required
+   - Enter memo (description) - required
+   - Enter amount - required (supports negative numbers)
+   - Click "Save"
+
+2. **Editing a Projection**:
+   - Click "Edit" button next to any projection
+   - Modify the stage name, memo, or amount
+   - Click "Save"
+
+3. **Deleting a Projection**:
+   - Click "Delete" button next to any projection
+   - Projection is immediately removed
+
+4. **Viewing Projections**:
+   - Projections section appears above the Ledger
+   - Shows all projections in a table format
+   - Displays total at the bottom
+   - Amounts formatted with commas: `$1,234.56`
 
 ### Negative Numbers
 
@@ -221,12 +329,13 @@ Currently, the security is enforced at the UI level. For production, consider:
   - Returns
 
 - **Display Format**:
-  - Negative: `($123.45)` - shown in red
-  - Positive: `$123.45` - shown in black/dark gray
+  - Negative: `($1,234.56)` - shown in red with commas
+  - Positive: `$1,234.56` - shown in black/dark gray with commas
 
 - **Input**: 
   - Simply enter a negative number in the amount field (e.g., `-50.00`)
   - No restrictions - any numeric value is accepted
+  - Commas are automatically added on display (not required in input)
 
 ## Visual Design
 
@@ -247,6 +356,19 @@ Currently, the security is enforced at the UI level. For production, consider:
   - Edit: Light gray background (`#f3f4f6`)
   - Delete: Light red background (`#fee2e2`)
 
+### Projections
+- **Background**: Light blue (`#f0f9ff`)
+- **Border**: Blue (`#bae6fd`)
+- **Table**: Clean table layout with stage, memo, amount, and actions columns
+- **Total**: Bold, large font
+  - Positive: Black (`#111827`)
+  - Negative: Red (`#b91c1c`)
+- **Separator**: Blue border (`#0ea5e9`) above total
+- **Buttons**:
+  - Add: Blue background (`#0ea5e9`)
+  - Edit: Light gray background (`#f3f4f6`)
+  - Delete: Light red background (`#fee2e2`)
+
 ### Ledger
 - **Background**: Light gray (`#f9fafb`)
 - **Border**: Gray (`#e5e7eb`)
@@ -255,3 +377,10 @@ Currently, the security is enforced at the UI level. For production, consider:
   - Positive: Black (`#111827`)
   - Negative: Red (`#b91c1c`)
 - **Separator**: Dark border (`#111827`) above total
+
+### Action Ledger
+- **Background**: Light gray (`#f9fafb`)
+- **Border**: Gray (`#e5e7eb`)
+- **Location**: Bottom of each stage card
+- **Content**: Chronological list of all actions
+- **Format**: Action type, performer, timestamp, optional notes

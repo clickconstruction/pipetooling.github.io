@@ -97,10 +97,16 @@ A Master Plumber can:
 5. Database stores all data with proper relationships and constraints
 
 ### Client-Side Routing
-- All routes except `/sign-in` and `/sign-up` are protected
+- All routes except `/sign-in`, `/sign-up`, `/reset-password`, and `/reset-password-confirm` are protected
 - `ProtectedRoute` component checks authentication
 - Role-based navigation hiding (subcontractors see limited nav)
 - Client-side redirects enforce role restrictions
+
+**Public Routes**:
+- `/sign-in` - Sign in page
+- `/sign-up` - Sign up page
+- `/reset-password` - Request password reset
+- `/reset-password-confirm` - Confirm password reset (from email link)
 
 ---
 
@@ -114,7 +120,7 @@ A Master Plumber can:
   - `id` (uuid, PK) - Matches `auth.users.id`
   - `email` (text)
   - `name` (text, nullable)
-  - `role` (enum: `'owner' | 'master_technician' | 'assistant' | 'subcontractor'`)
+  - `role` (enum: `'dev' | 'master_technician' | 'assistant' | 'subcontractor'`)
   - `last_sign_in_at` (timestamptz, nullable)
 - **Relationships**: Referenced by `customers.master_user_id`, `people.master_user_id`
 - **RLS**: Users can read their own record; owners can read all
@@ -123,19 +129,27 @@ A Master Plumber can:
 - **Purpose**: Customer information
 - **Key Fields**:
   - `id` (uuid, PK)
-  - `master_user_id` (uuid, FK → `users.id`)
+  - `master_user_id` (uuid, FK → `users.id`) - **The master who owns this customer**
   - `name` (text)
   - `address` (text, nullable)
   - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
   - `date_met` (date, nullable) - Date when customer was first met
 - **RLS**: Users can only see customers where `master_user_id` matches their ID or they're in `master_assistants`
-- **Special Features**: Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
+- **Special Features**: 
+  - Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
+  - **Master selection**: Assistants and devs must select a master when creating customers
+    - Assistants: Can only select from masters who adopted them
+    - Devs: Can select from all masters in the system
+    - Masters: Automatically assigned as customer owner
+  - **Master can be updated**: When editing, masters and devs can change the customer owner
+  - **Customer owner displayed** in customer list
 
 #### `public.projects`
 - **Purpose**: Project records
 - **Key Fields**:
   - `id` (uuid, PK)
   - `customer_id` (uuid, FK → `customers.id`)
+  - `master_user_id` (uuid, FK → `users.id`, nullable) - **The master who owns this project**
   - `name` (text)
   - `description` (text, nullable)
   - `status` (enum: `'active' | 'completed' | 'on_hold' | 'awaiting_start'`)
@@ -144,10 +158,16 @@ A Master Plumber can:
   - `address` (text, nullable) - Project address (can differ from customer address)
   - `street_name` (text, nullable) - Street name (for future use)
   - `project_type` (text, nullable) - Project type (for future use)
-- **RLS**: Users can see projects for customers they have access to
+- **RLS**: 
+  - SELECT: Users can see projects they own OR projects from masters who adopted them
+  - INSERT: Assistants, masters, and devs can create projects; project owner automatically matches customer owner
+  - UPDATE: Assistants, masters, and devs can update projects they own or from masters who adopted them (project owner cannot be changed)
+  - DELETE: Only devs and masters can delete projects
 - **Special Features**: 
   - Address auto-fills from customer but can be overridden
   - Active stage displayed in project list
+  - Project owner (master) displayed in project list and workflow page
+  - **Project owner automatically matches customer owner** - cannot be changed or selected separately
   - Clicking project name navigates to workflow page (not edit page)
 
 #### `public.project_workflows`
@@ -173,13 +193,14 @@ A Master Plumber can:
   - `inspector_name` (text, nullable)
   - `scheduled_start_date` (timestamptz, nullable)
   - `scheduled_end_date` (timestamptz, nullable)
-  - `started_at` (timestamptz, nullable)
+  - `started_at` (timestamptz, nullable) - **Can be set via "Set Start" button with date/time picker**
   - `ended_at` (timestamptz, nullable)
   - `status` (enum: `'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved'`)
   - `inspection_notes` (text, nullable)
   - `rejection_reason` (text, nullable)
   - `assigned_skill` (text, nullable)
-  - `notes` (text, nullable) - General notes for the step
+  - `notes` (text, nullable) - General notes for the step (visible to all users)
+  - `private_notes` (text, nullable) - **Private notes visible only to owners and master_technicians**
   - `notify_assigned_when_started` (boolean, default false)
   - `notify_assigned_when_complete` (boolean, default false)
   - `notify_assigned_when_reopened` (boolean, default false)
@@ -187,11 +208,16 @@ A Master Plumber can:
   - `notify_prior_assignee_when_rejected` (boolean, default true) - Cross-step notification
   - `approved_by` (text, nullable) - Name of person who approved
   - `approved_at` (timestamptz, nullable) - When approval occurred
-- **RLS**: Users can see steps for workflows they have access to
+- **RLS**: 
+  - Owners and masters can see all steps
+  - Assistants and subcontractors can only see steps where `assigned_to_name` matches their name
 - **Special Features**:
   - Steps can be re-opened after completion/approval/rejection
   - Approval tracking shows who approved and when
   - Cross-step notifications notify adjacent step assignees
+  - **Action Ledger** at bottom of each card shows complete history
+  - **Private Notes** section for owners/masters only
+  - **Line Items** within private notes for financial tracking
 
 #### `public.workflow_templates`
 - **Purpose**: Reusable workflow templates
@@ -210,6 +236,19 @@ A Master Plumber can:
   - `name` (text)
 - **RLS**: Only owners can CRUD template steps
 
+#### `public.master_assistants`
+- **Purpose**: Junction table tracking master-assistant adoption relationships
+- **Key Fields**:
+  - `master_id` (uuid, FK → `users.id`) - Master who adopted the assistant
+  - `assistant_id` (uuid, FK → `users.id`) - Assistant who was adopted
+  - `created_at` (timestamptz, nullable)
+- **Unique Constraint**: `(master_id, assistant_id)` - Composite primary key
+- **RLS**: 
+  - Masters can manage their own adoptions (adopt/unadopt assistants)
+  - Assistants can read who adopted them
+  - Devs can read all adoptions
+- **Purpose**: Enables assistants to access customers and projects from masters who have adopted them
+
 #### `public.people`
 - **Purpose**: Roster of people (may or may not have user accounts)
 - **Key Fields**:
@@ -220,7 +259,7 @@ A Master Plumber can:
   - `email` (text, nullable)
   - `phone` (text, nullable)
   - `notes` (text, nullable)
-- **RLS**: Users can only see/manage their own roster entries
+- **RLS**: Users can only see/manage their own roster entries; devs can see all entries
 
 #### `public.step_subscriptions`
 - **Purpose**: User subscriptions to step notifications
@@ -233,6 +272,48 @@ A Master Plumber can:
   - `notify_when_reopened` (boolean, default false)
 - **Unique Constraint**: `(step_id, user_id)`
 - **RLS**: Users can only manage their own subscriptions
+
+#### `public.workflow_step_line_items`
+- **Purpose**: Private line items for workflow stages (expenses/credits)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `step_id` (uuid, FK → `project_workflow_steps.id` ON DELETE CASCADE)
+  - `memo` (text, required) - Description of the line item
+  - `amount` (numeric(10, 2), required) - **Supports negative numbers** for credits/refunds
+  - `sequence_order` (integer) - Order within the step
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Devs, masters, and assistants (via master adoption) can read/write line items for projects they can access. UI only exposes line items to devs, masters, and assistants (not subcontractors).
+- **Special Features**:
+  - Aggregated in Ledger at top of workflow page
+  - Amounts formatted with commas (e.g., `$1,234.56`)
+  - Negative amounts displayed in red with parentheses
+
+#### `public.workflow_projections`
+- **Purpose**: Project cost projections for entire workflow
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `workflow_id` (uuid, FK → `project_workflows.id` ON DELETE CASCADE)
+  - `stage_name` (text, required) - Stage name for the projection
+  - `memo` (text, required) - Description
+  - `amount` (numeric(10, 2), required) - **Supports negative numbers**
+  - `sequence_order` (integer) - Order within the workflow
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Only owners and master_technicians can read/write
+- **Special Features**:
+  - Displayed above Ledger section
+  - Amounts formatted with commas
+  - Total calculation at bottom
+
+#### `public.email_templates`
+- **Purpose**: Customizable email templates for notifications
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `template_type` (text, unique) - One of 11 template types
+  - `subject` (text, required) - Email subject line
+  - `body` (text, required) - Email body with variable support
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Only devs can read/write (uses `is_dev()` function)
+- **Template Types**: See `EMAIL_TEMPLATES_SETUP.md` for complete list
 
 #### `public.project_workflow_step_actions`
 - **Purpose**: Action history ledger for workflow steps
@@ -253,14 +334,14 @@ A Master Plumber can:
 - **Purpose**: Creates corresponding `public.users` record
 - **Logic**: Checks `raw_user_meta_data.invited_role` to set initial role, defaults to `'assistant'`
 
-#### `public.is_owner()`
+#### `public.is_dev()`
 - **Returns**: `boolean`
-- **Purpose**: Checks if current user has `'owner'` role
+- **Purpose**: Checks if current user has `'dev'` role
 - **Usage**: Used in RLS policies to avoid recursion
 
-#### `public.claim_owner_with_code(code text)`
+#### `public.claim_dev_with_code(code text)`
 - **Returns**: `boolean`
-- **Purpose**: Grants owner role if code matches `'admin1234'`
+- **Purpose**: Grants dev role if code matches `'admin1234'`
 - **Usage**: Called from Settings page
 
 #### `public.touch_last_sign_in()`
@@ -271,7 +352,10 @@ A Master Plumber can:
 ```
 users (id)
   ├── customers.master_user_id
-  └── people.master_user_id
+  ├── people.master_user_id
+  ├── projects.master_user_id
+  ├── master_assistants.master_id
+  └── master_assistants.assistant_id
 
 customers (id)
   └── projects.customer_id
@@ -294,7 +378,11 @@ users (id)
 
 project_workflow_steps (id)
   ├── step_subscriptions.step_id
-  └── project_workflow_step_actions.step_id
+  ├── project_workflow_step_actions.step_id
+  └── workflow_step_line_items.step_id
+
+project_workflows (id)
+  └── workflow_projections.workflow_id
 ```
 
 **Important**: When deleting, respect foreign key order:
@@ -316,10 +404,27 @@ project_workflow_steps (id)
 4. `useAuth()` hook provides current user state
 5. `ProtectedRoute` redirects unauthenticated users to `/sign-in`
 
+### Password Management
+- **Password Reset (Forgot Password)**:
+  - Available on sign-in page via "Forgot password?" link
+  - Route: `/reset-password` - Request password reset email
+  - Route: `/reset-password-confirm` - Set new password after clicking email link
+  - Uses `supabase.auth.resetPasswordForEmail()` to send reset email
+  - Uses `supabase.auth.updateUser()` to set new password
+- **Change Password**:
+  - Available in Settings page for all authenticated users
+  - Requires current password verification
+  - Validates new password (minimum 6 characters, must match confirmation)
+  - Uses `supabase.auth.updateUser()` to update password
+
 ### User Roles
 
-#### `owner`
+#### `dev`
 - **Full access**: All features
+- **Customer/Project Creation**:
+  - Must select a master when creating customers (from all masters in the system)
+  - Projects automatically inherit the customer's owner (cannot be changed)
+  - Can update customer owner when editing
 - **Special permissions**:
   - Manage user roles in Settings
   - Create/edit/delete workflow templates
@@ -327,17 +432,49 @@ project_workflow_steps (id)
   - Manually create users
   - Delete users
   - Impersonate other users (via "Login as user")
-  - Claim owner role with code `'admin1234'`
+  - Claim dev role with code `'admin1234'`
 
 #### `master_technician`
 - **Access**: Dashboard, Customers, Projects, People, Calendar, Settings
-- **Can**: Create customers, projects, workflows, assign people
-- **Cannot**: Manage user roles, templates, or other users
+- **Master-Assistant Relationship**:
+  - Can adopt assistants via checkboxes in Settings
+  - Adopted assistants can access their customers and projects
+  - Can see all assistants and manage adoptions
+- **Can**: 
+  - Create customers, projects, workflows, assign people
+  - Automatically assigned as owner when creating customers
+  - Projects automatically inherit customer owner (cannot be changed)
+  - Update customer owner when editing
+  - Adopt/unadopt assistants in Settings
+  - See which assistants they have adopted
+- **Cannot**: 
+  - Change project owner (automatically matches customer owner)
+  - Manage user roles, templates, or other users
 
 #### `assistant`
 - **Access**: Dashboard, Customers, Projects, People, Calendar
-- **Can**: View and update workflows, assign people
-- **Cannot**: Create customers/projects, manage users, access Settings
+- **Master-Assistant Relationship**:
+  - Masters can "adopt" assistants via checkboxes in Settings
+  - Assistants can work for multiple masters (many-to-many relationship)
+  - Assistants can only see customers/projects from masters who adopted them
+- **Can**: 
+  - **Create and edit customers** (must select a master who adopted them as customer owner)
+  - **Create and edit projects** (project owner automatically matches customer owner)
+  - View customers and projects from masters who adopted them
+  - View and update workflows **only for stages assigned to them**
+  - Use action buttons (Set Start, Complete) on assigned stages
+  - Subscribe to stage notifications
+- **Cannot**: 
+  - Delete projects (restricted to devs/masters)
+  - Delete customers (restricted to devs/masters)
+  - Change project owner (automatically matches customer owner)
+  - Manage users
+  - Access Settings (except to see which masters adopted them)
+  - See stages they're not assigned to
+  - Edit/delete/assign stages
+  - See private notes or line items
+  - See projections or ledger
+  - Create customers without selecting a master who adopted them
 
 #### `subcontractor`
 - **Access**: Dashboard, Calendar only
@@ -345,23 +482,37 @@ project_workflow_steps (id)
   - Navigation links hidden (except Dashboard, Calendar)
   - Client-side redirects enforce path restrictions
   - Cannot access Customers, Projects, People, Settings, Templates
+  - **Can only see stages assigned to them** (by name match)
+  - Use action buttons (Set Start, Complete) on assigned stages only
+  - Cannot see stages they're not assigned to
+  - Cannot edit/delete/assign stages
+  - Cannot see private notes, line items, projections, or ledger
 
 ### Row Level Security (RLS) Patterns
 
-#### Common Pattern: Master-Assistant Relationship
-Many policies check:
+#### Common Pattern: Master-Assistant Adoption
+Policies check if user owns the resource OR a master who owns it has adopted them:
 ```sql
-master_user_id = auth.uid() 
+master_user_id = auth.uid()  -- User owns it
 OR EXISTS (
   SELECT 1 FROM public.users 
-  WHERE id = master_user_id 
-  AND jsonb_extract_path_text(metadata, 'assistants')::jsonb ? auth.uid()::text
+  WHERE id = auth.uid() 
+  AND role IN ('dev', 'master_technician')  -- User is a master/dev
+)
+OR EXISTS (
+  SELECT 1 FROM public.master_assistants
+  WHERE master_id = master_user_id
+  AND assistant_id = auth.uid()  -- A master who owns it has adopted this assistant
 )
 ```
 
+This pattern is used in:
+- `customers` table: Assistants can see customers from masters who adopted them
+- `projects` table: Assistants can see projects from masters who adopted them
+
 #### Owner-Only Operations
 ```sql
-EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'owner')
+EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')
 ```
 
 #### User's Own Data
@@ -384,65 +535,148 @@ user_id = auth.uid()
 ### 1. Customer Management
 - **Page**: `Customers.tsx`, `CustomerForm.tsx`
 - **Features**: 
-  - List, create, edit customers
+  - List customers with name, address, **customer owner (master)**
+  - Create/edit customers
+  - **Assistants and devs must select a master** when creating customers
+    - Assistants: Can only select from masters who adopted them
+    - Devs: Can select from all masters in the system
+    - Masters: Automatically assigned as customer owner
+  - **Master can be updated** when editing (for masters and devs)
   - **Quick Fill**: Paste tab-separated data (name, address, email, phone, date) to auto-fill form
   - **Date Met**: Track when customer relationship started
   - **Contact Info**: Structured storage of email and phone (JSONB)
+  - **Customer owner displayed** in customer list
 - **Data**: Name, address, contact info (JSONB), date_met
 
 ### 2. Project Management
 - **Page**: `Projects.tsx`, `ProjectForm.tsx`
 - **Features**:
-  - List projects with status, customer, active stage
+  - List projects with status, customer, active stage, **project owner (master)**
   - Create/edit projects
+  - **Project owner automatically matches customer owner** - cannot be changed or selected separately
   - Delete projects (with confirmation)
   - Link to HouseCallPro number
   - Link to plans
   - Create workflow from template
-- **Data**: Name, description, status, customer, external references
+  - **Project owner displayed** in project list and workflow page
+- **Data**: Name, description, status, customer, master_user_id (project owner, matches customer owner), external references
 
 ### 3. Workflow Management
-- **Page**: `Workflow.tsx`
-- **Features**:
-  - **Visual workflow** with step cards
+- **Page**: `Workflow.tsx` (~1,500 lines - most complex component)
+- **Route**: `/workflows/:projectId`
+- **Purpose**: Central interface for managing project workflows, tracking progress through stages, assigning work, and handling financials
+
+#### Core Features
+
+**Visual Workflow Display**:
   - **Workflow Header**: Shows all stage names with "→" separators, color-coded by status
     - Green: completed/approved
     - Red: rejected
     - Orange: in_progress (bolded)
     - Gray: pending
     - Clickable stage names scroll to specific step cards
-  - **Step Management**:
-    - Add steps at beginning, end, or after specific step
-    - Delete steps (with foreign key cleanup)
-    - Reorder steps via "change order" button
-    - Edit step names inline (for templates)
-  - **Person Assignment**:
-    - Assign people to steps from roster
-    - Display assigned person on right side of card
-    - Show contact info (email/phone) as clickable links next to name
-  - **Step Actions**:
-    - Mark as started/complete
-    - Approve/reject steps (with notes)
-    - Re-open completed/approved/rejected steps
-    - **Approval Tracking**: Shows who approved and when
-    - **Action Ledger**: Complete history of all step actions (who, when, what)
-  - **Notifications**:
-    - Notify assigned person when started/complete/re-opened
-    - Notify current user (ME) when started/complete/re-opened
-    - Cross-step notifications: notify next assignee when complete/approved, notify prior assignee when rejected
-    - All cross-step notifications default to enabled
+  - Step cards displayed in sequence order
+  - Each card shows full stage details, status, assigned person, and actions
+
+**Step Management**:
+  - Add steps at beginning, end, or after specific step
+  - Delete steps (with foreign key cleanup)
+  - Reorder steps via "change order" button
+  - Edit step names and details
+  - Create workflows from templates
+  - Auto-creates workflow if none exists for project
+
+**Person Assignment**:
+  - Assign people to steps from roster or user list
+  - Display assigned person on right side of card
+  - Show contact info (email/phone) as clickable links next to name
+  - Current user always appears first in assignment modal (highlighted with "(You)" label)
+  - Excludes current user from roster list to prevent duplicates
+
+**Step Status Actions**:
+  - **Set Start**: Date/time picker modal to set custom start time (replaces immediate start)
+    - Allows setting historical or future start times
+    - Pre-filled with current date/time
+  - **Complete**: Mark stage as finished (sets `ended_at` timestamp)
+  - **Approve**: Owners/masters can approve with tracking (who approved, when)
+  - **Reject**: Owners/masters can reject with reason notes
+  - **Re-open**: Reopen completed/approved/rejected stages (resets status to pending)
+  - **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
+  - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
+
+**Financial Tracking** (Owners/Masters only):
+  - **Line Items**: Track actual expenses/credits per stage
+    - Fields: Memo (description), Amount (supports negative for credits/refunds)
+    - Located within Private Notes section of each stage
+    - Amounts formatted with commas: `$1,234.56`
+    - Negative amounts displayed in red with parentheses: `($1,234.56)`
+  - **Projections**: Track projected costs for entire workflow
+    - Fields: Stage name, Memo, Amount (supports negative)
+    - Displayed above Ledger section at top of page
+    - Light blue background to distinguish from Ledger
+    - Total calculation at bottom
+  - **Ledger**: Aggregated view of all line items from all stages
+    - Table format: Stage, Memo, Amount
+    - Total sum at bottom (turns red if negative)
+    - Located below Projections section
+
+**Private Notes** (Owners/Masters only):
+  - Separate text area from regular notes
+  - Yellow/amber background (`#fef3c7`) to distinguish visually
+  - Visible only to owners and master_technicians
+  - Line items section located within private notes area
+
+**Action History Ledger**:
+  - Complete audit trail at bottom of each stage card
+  - Shows: Action type, performer name, timestamp, optional notes
+  - Action types: 'started', 'completed', 'approved', 'rejected', 'reopened'
+  - Chronologically ordered (newest first)
+  - Visible to all users who can see the stage
+  - Provides full audit trail for compliance and debugging
+
+**Notification Management**:
+  - **Two Subscription Types**:
+    - **Assigned person**: Notify when step started/complete/re-opened (stored on step as `notify_assigned_when_*`)
+    - **Current user (ME)**: Notify when step started/complete/re-opened (stored in `step_subscriptions`)
+  - **Cross-Step Notifications**:
+    - Notify next step assignee when current step is completed or approved (default: enabled)
+    - Notify prior step assignee when current step is rejected (default: enabled)
+    - Stored on step as `notify_next_assignee_when_complete_or_approved` and `notify_prior_assignee_when_rejected`
+  - Notification preferences displayed in workflow step cards
+  - **Email Delivery**: ✅ Fully implemented
+    - Automatically sends emails when workflow steps change status
+    - Uses `send-workflow-notification` Edge Function
+    - Fetches email templates from `email_templates` table
+    - Replaces template variables (name, email, project_name, stage_name, etc.)
+    - Sends via Resend email service
+    - Respects notification preferences (only sends if enabled)
+    - Non-blocking (sent asynchronously, won't block UI)
+    - Email lookup from both `people` and `users` tables
+    - **Testing Guide**: See [WORKFLOW_EMAIL_TESTING.md](./WORKFLOW_EMAIL_TESTING.md) for comprehensive testing scenarios
+
+**Access Control**:
+  - **Owners/Masters**: See all stages, full access to all features
+  - **Assistants/Subcontractors**: 
+    - Only see stages where `assigned_to_name` matches their name
+    - Can only use Set Start and Complete on assigned stages
+    - Cannot see private notes, line items, projections, or ledger
+    - Cannot add, edit, delete, or assign stages
+    - Error message if accessing workflow with no assigned stages
+    - Notification settings: "ASSIGNED" column hidden, only "ME" column visible
+
+**Additional Features**:
   - **Predefined Phrases**: Quick-add buttons for common steps:
     - "initial walkthrough", "check work walkthrough", "customer walkthrough"
     - "send bill", "wait on payment"
     - "rough in", "top out", "trim"
     - "change order:"
   - **Contact Integration**: Email and phone numbers are clickable (mailto:/tel: links)
-- **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
-- **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
-- **Navigation**: Direct links to specific step cards via hash fragments (`#step-{id}`)
+  - **Direct Navigation**: Links to specific step cards via hash fragments (`#step-{id}`)
+    - Automatically scrolls to step when navigating with hash
+    - Workflow header stage names are clickable and scroll to their cards
 
 ### 4. Template System
-- **Page**: `Templates.tsx` (owner-only)
+- **Page**: `Templates.tsx` (dev-only)
 - **Features**:
   - Create/edit/delete workflow templates
   - Manage template steps (add/edit/remove/reorder)
@@ -468,9 +702,12 @@ user_id = auth.uid()
 - **Features**:
   - Month-view calendar
   - Shows steps assigned to current user (by `assigned_to_name`)
+  - **All dates/times displayed in Central Time (America/Chicago)**
+  - **Two-line display**: Stage name (top, bold) and Project name (bottom, gray)
   - Color-coded by status
   - Links to workflow pages
   - Navigation (prev/next month, "Today")
+  - **Access Control**: Assistants/subcontractors only see stages assigned to them
 
 ### 7. Dashboard
 - **Page**: `Dashboard.tsx`
@@ -492,20 +729,30 @@ user_id = auth.uid()
     - Color-coded by status (green for approved/completed, red for rejected)
 
 ### 8. Settings
-- **Page**: `Settings.tsx` (owner-only)
-- **Features**:
+- **Page**: `Settings.tsx`
+- **Features (All Users)**:
+  - **Change Password**: Change your own password (requires current password verification)
+- **Features (Masters and Devs)**:
+  - **Adopt Assistants**: Checkbox list to adopt/unadopt assistants
+    - Shows all assistants in the system
+    - Checkbox indicates adoption status
+    - Assistants can see which masters adopted them
+    - Adopted assistants gain access to master's customers and projects
+- **Features (Dev Only)**:
   - View all users with roles
   - Change user roles
-  - Enter admin code to claim owner role
+  - Enter admin code to claim dev role
   - Invite users via email (with role)
   - Manually create users (with password)
   - Delete users (with confirmation)
   - Send magic link to user
   - Impersonate users ("Login as user")
   - Display last login time
+  - **Email Template Management**: Create and edit email templates for all notification types
+  - View all people entries (not just own entries)
 
 ### 9. Notifications
-- **System**: `step_subscriptions` table + step-level flags
+- **System**: `step_subscriptions` table + step-level flags + `send-workflow-notification` Edge Function
 - **Features**:
   - **Two Subscription Types**:
     - **Assigned person**: Notify when step started/complete/re-opened (stored on step as `notify_assigned_when_*`)
@@ -516,7 +763,19 @@ user_id = auth.uid()
     - Stored on step as `notify_next_assignee_when_complete_or_approved` and `notify_prior_assignee_when_rejected`
   - Subscribed stages shown in Dashboard
   - Notification preferences displayed in workflow step cards
-- **Note**: Notification delivery not yet implemented (subscription tracking only)
+  - **Email Delivery**: ✅ Fully implemented
+    - Automatically sends emails when workflow steps change status
+    - Uses customizable email templates from `email_templates` table
+    - Sends via Resend email service
+    - Respects notification preferences (only sends if enabled)
+    - Non-blocking (sent asynchronously, won't block UI)
+- **Notification Triggers**:
+  - **Step Started**: Sends `stage_assigned_started` to assigned person, `stage_me_started` to subscribed users
+  - **Step Completed/Approved**: Sends `stage_assigned_complete` to assigned person, `stage_me_complete` to subscribed users, `stage_next_complete_or_approved` to next step assignee
+  - **Step Rejected**: Sends `stage_prior_rejected` to prior step assignee
+  - **Step Reopened**: Sends `stage_assigned_reopened` to assigned person, `stage_me_reopened` to subscribed users
+- **Email Lookup**: Recipients are found by matching names in `people` and `users` tables
+- **Template Variables**: Supports `{{name}}`, `{{email}}`, `{{project_name}}`, `{{stage_name}}`, `{{assigned_to_name}}`, `{{workflow_link}}`, `{{previous_stage_name}}`, `{{rejection_reason}}`
 
 ### 10. Action History & Audit Trail
 - **System**: `project_workflow_step_actions` table
@@ -551,7 +810,7 @@ pipetooling.github.io/
 │       └── deploy.yml          # GitHub Actions deployment
 ├── public/
 │   ├── .nojekyll               # Prevents Jekyll processing
-│   └── favicon.svg             # Site favicon
+│   └── favicon.svg             # Site favicon (orange gear icon)
 ├── src/
 │   ├── components/
 │   │   └── Layout.tsx          # Main layout with navigation
@@ -567,10 +826,12 @@ pipetooling.github.io/
 │   │   ├── People.tsx          # People roster
 │   │   ├── ProjectForm.tsx     # Create/edit project
 │   │   ├── Projects.tsx        # List projects
-│   │   ├── Settings.tsx        # User management (owner)
-│   │   ├── SignIn.tsx          # Sign in page
+│   │   ├── ResetPassword.tsx   # Password reset request page
+│   │   ├── ResetPasswordConfirm.tsx # Password reset confirmation page
+│   │   ├── Settings.tsx        # User management (dev) and password change (all users)
+│   │   ├── SignIn.tsx          # Sign in page (with "Forgot password?" link)
 │   │   ├── SignUp.tsx          # Sign up page
-│   │   ├── Templates.tsx     # Templates (owner)
+│   │   ├── Templates.tsx       # Templates (dev)
 │   │   └── Workflow.tsx        # Workflow management
 │   ├── types/
 │   │   └── database.ts         # TypeScript types for database
@@ -580,7 +841,17 @@ pipetooling.github.io/
 ├── index.html                  # HTML template
 ├── package.json                # Dependencies
 ├── tsconfig.json               # TypeScript config
-└── vite.config.ts              # Vite config
+├── vite.config.ts              # Vite config
+└── supabase/
+    ├── functions/
+    │   ├── delete-user/        # Delete user Edge Function
+    │   ├── login-as-user/      # Impersonation Edge Function
+    │   ├── send-workflow-notification/ # Workflow email notifications
+    │   └── test-email/         # Email template testing
+    └── migrations/
+        ├── rename_owner_to_dev.sql # Role migration
+        ├── fix_email_templates_rls.sql # RLS policy fix
+        └── allow_devs_read_all_people.sql # People table RLS update
 ```
 
 ### Key Files Explained
@@ -607,9 +878,44 @@ pipetooling.github.io/
 - **Note**: Must be manually updated when schema changes
 
 #### `src/pages/Workflow.tsx`
-- Most complex page (475+ lines)
-- Handles step CRUD, status updates, person assignment, notifications
-- Character encoding fixes for special characters (Unicode escapes)
+- **Most complex page** (~1,500+ lines)
+- **Route**: `/workflows/:projectId` (accessed via React Router `useParams`)
+- **Key Responsibilities**:
+  - Manages complete workflow lifecycle for a project
+  - Handles step CRUD operations (create, read, update, delete)
+  - Manages step status transitions (pending → in_progress → completed/approved/rejected)
+  - Person assignment and contact information display
+  - Financial tracking (line items, projections, ledger) for owners/masters
+  - Private notes management (owners/masters only)
+  - Notification subscription management
+  - Action history/audit trail recording and display
+  - Role-based access control and UI visibility
+  - Template-based workflow creation
+- **State Management**: Uses multiple `useState` hooks for:
+  - Project, workflow, and steps data
+  - Modals (step form, reject, set start, assign person, line items, projections)
+  - User role and permissions
+  - Subscriptions, actions, contacts, line items, projections
+- **Data Loading**: 
+  - Loads project, workflow, steps, subscriptions, actions, line items, projections
+  - Filters steps by assignment for assistants/subcontractors
+  - Auto-creates workflow if none exists
+- **Database Operations**: 
+  - CRUD for `project_workflow_steps`, `workflow_step_line_items`, `workflow_projections`
+  - Updates `project_workflow_step_actions` for audit trail
+  - Manages `step_subscriptions` for notification preferences
+  - Triggers email notifications via `send-workflow-notification` Edge Function
+- **Helper Functions**:
+  - `formatAmount()`: Currency formatting with commas
+  - `formatDatetime()`: Date/time display formatting with day of week (e.g., "Tue, 1/21/26, 6:52 PM")
+  - `toDatetimeLocal()` / `fromDatetimeLocal()`: Date/time picker conversion
+  - `calculateLedgerTotal()`: Sum of all line items
+  - `calculateProjectionsTotal()`: Sum of all projections
+  - `recordAction()`: Creates audit trail entries
+  - `getCurrentUserName()`: Gets current user's name for actions
+  - `sendNotification()`: Helper to send individual notifications via Edge Function
+  - `sendWorkflowNotifications()`: Main notification orchestrator - checks preferences, finds recipients, sends appropriate notifications
+- **Character Encoding**: Uses Unicode escapes for special characters (↓, →, etc.) to avoid display issues
 
 ---
 
@@ -642,6 +948,31 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 - Use `mcp_supabase_apply_migration` to create migrations
 - Migration naming: `snake_case_description`
 - Always test migrations on a branch first
+
+#### Important Migrations
+
+##### `rename_owner_to_dev`
+- **Purpose**: Updates the database to change the 'owner' role to 'dev' throughout the system
+- **Location**: `supabase/migrations/rename_owner_to_dev.sql`
+- **What it does**:
+  1. Adds 'dev' to the `user_role` enum type
+  2. Updates all existing user records from 'owner' to 'dev'
+  3. Creates `is_dev()` function (replaces `is_owner()`)
+  4. **Automatically updates all RLS policies** that reference `is_owner()` to use `is_dev()` instead
+  5. Drops the old `is_owner()` function (after all dependencies are updated)
+  6. Renames `claim_owner_with_code()` to `claim_dev_with_code()`
+- **Key Feature**: The migration uses a `DO` block to query `pg_policy` system catalog and automatically find and update all policies that depend on `is_owner()`. This handles 30+ policies across multiple tables without manual updates.
+- **See**: `supabase/migrations/rename_owner_to_dev_README.md` for detailed instructions and troubleshooting
+
+##### `fix_email_templates_rls`
+- **Purpose**: Fixes RLS policies on `email_templates` table to use `is_dev()` function
+- **Location**: `supabase/migrations/fix_email_templates_rls.sql`
+- **What it does**: Updates policies to use `is_dev()` instead of direct queries to avoid recursion issues
+
+##### `allow_devs_read_all_people`
+- **Purpose**: Allows devs to read all people entries (not just their own)
+- **Location**: `supabase/migrations/allow_devs_read_all_people.sql`
+- **What it does**: Adds a policy allowing devs to see all people entries via `is_dev()` function
 
 ### Type Generation
 - `src/types/database.ts` is manually maintained
@@ -684,17 +1015,33 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 - `CNAME` - Custom domain (if used)
 
 ### Edge Functions Deployment
-Edge Functions are deployed via Supabase MCP:
-- `invite-user` - Sends invitation emails
-- `create-user` - Manually creates users
-- `delete-user` - Deletes users
-- `login-as-user` - Generates magic link for impersonation
+Edge Functions are deployed via Supabase CLI or Dashboard:
+- `invite-user` - Sends invitation emails (✅ Implemented)
+- `create-user` - Manually creates users (✅ Implemented)
+- `delete-user` - Deletes users (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
+- `login-as-user` - Generates magic link for impersonation (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
+- `test-email` - Sends test emails using Resend service (✅ Implemented - requires `RESEND_API_KEY`)
+- `send-workflow-notification` - Sends workflow stage notifications via email (✅ Implemented - requires `RESEND_API_KEY`)
 
 **All Edge Functions**:
 - Use `verify_jwt: false` (gateway validation disabled)
 - Implement internal JWT validation
 - Handle CORS explicitly
 - Return structured error responses
+- **Note**: Functions requiring service role key (`delete-user`, `login-as-user`) must have `SUPABASE_SERVICE_ROLE_KEY` secret set
+
+**Deployment**:
+- Deploy via CLI: `supabase functions deploy <function-name> --no-verify-jwt`
+- Or via Supabase Dashboard → Edge Functions
+- See `supabase/functions/<function-name>/DEPLOY.md` for detailed instructions
+
+**Secrets Required**:
+- `RESEND_API_KEY` - Required for `test-email` and `send-workflow-notification` functions
+  - Set via: `supabase secrets set RESEND_API_KEY=your_key`
+- `SUPABASE_SERVICE_ROLE_KEY` - Required for `delete-user` and `login-as-user` functions
+  - Set via: `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_key`
+  - **⚠️ WARNING**: Service role key has full admin access. Never expose in client-side code!
+  - Get from: Supabase Dashboard → Settings → API → Service Role Key
 
 ---
 
@@ -805,22 +1152,43 @@ async function handleSubmit(e: React.FormEvent) {
 }
 ```
 
-### 6. Character Encoding Fix
-Special characters in JSX should use Unicode escapes:
-```typescript
-// Bad: ↓
-// Good: {"\u2193"}
-// Or use ASCII alternatives
-```
 
 ---
 
 ## Known Issues & Gotchas
 
 ### 1. RLS Policy Recursion
-- **Issue**: Policies that query `public.users` can cause infinite recursion
-- **Solution**: Use `public.is_owner()` function instead of direct queries
-- **Example**: `is_owner()` is used in template policies
+- **Issue**: Policies that query `public.users` can cause infinite recursion or performance issues
+- **Solution**: Use `public.is_dev()` function instead of direct queries
+- **Examples**: 
+  - `is_dev()` is used in `email_templates` table policies
+  - `is_dev()` is used in `people` table policies (for devs to read all entries)
+  - All new policies should use `is_dev()` function pattern
+
+### 4. Updating Functions Used by RLS Policies
+- **Issue**: Cannot drop a function (e.g., `is_owner()`) if RLS policies depend on it
+- **Solution**: When renaming functions used by policies:
+  1. Create the new function first (e.g., `is_dev()`)
+  2. Update all dependent policies to use the new function
+  3. Then drop the old function
+- **Example**: The `rename_owner_to_dev` migration demonstrates this pattern by:
+  - Querying `pg_policy` to find all policies using `is_owner()`
+  - Using `pg_get_expr()` to extract policy expressions
+  - Replacing `is_owner()` with `is_dev()` in expressions
+  - Dropping and recreating each policy with updated expressions
+  - Finally dropping `is_owner()` after all dependencies are updated
+
+### 5. RLS Policy Recursion Prevention
+- **Issue**: RLS policies that query `public.users` directly can cause recursion or performance issues
+- **Solution**: Use helper functions like `is_dev()` instead of direct queries
+- **Examples**:
+  - `email_templates` table: Uses `is_dev()` function in all policies
+  - `people` table: Devs can read all entries via `is_dev()` policy
+  - All policies should use `public.is_dev()` instead of `EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')`
+
+### 6. Character Encoding in Workflow
+- **Issue**: Special characters (↓, ·, …, ←, –) display as "?"
+- **Solution**: Use Unicode escapes: `{"\u2193"}` or ASCII alternatives
 
 ### 2. Foreign Key Deletion Order
 - **Issue**: Deleting parent records fails if children exist
@@ -848,7 +1216,9 @@ Special characters in JSX should use Unicode escapes:
   ```typescript
   const authHeader = req.headers.get('Authorization')
   if (!authHeader) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-  // Validate JWT and check permissions
+  // Extract token and validate
+  const token = authHeader.replace(/^Bearer\s+/i, '')
+  const { data: { user }, error } = await supabase.auth.getUser(token)
   ```
 
 ### 5. Environment Variables in Build
@@ -897,8 +1267,8 @@ Special characters in JSX should use Unicode escapes:
 ## Future Development Notes
 
 ### Planned Features (from conversation history)
-- Email notifications for subscribed stages (subscription tracking exists, delivery not implemented)
-- More granular permissions (e.g., assistants can create projects)
+- ✅ Email notifications for subscribed stages (fully implemented)
+- ✅ Assistants can create and edit projects (fully implemented)
 - Workflow step dependencies visualization
 - Export/import templates
 - Project archiving (beyond status changes)
@@ -936,9 +1306,9 @@ Special characters in JSX should use Unicode escapes:
 ## Quick Reference
 
 ### User Roles
-- **owner**: Full access, user management, templates
+- **dev**: Full access, user management, templates
 - **master_technician**: Create/manage projects, customers, workflows
-- **assistant**: View/update workflows, no creation
+- **assistant**: Create/edit projects, view/update workflows (assigned stages only)
 - **subcontractor**: Dashboard and Calendar only
 
 ### Key Routes
@@ -948,22 +1318,25 @@ Special characters in JSX should use Unicode escapes:
 - `/workflows/:projectId` - Workflow management
 - `/people` - People roster
 - `/calendar` - Calendar view
-- `/templates` - Template management (owner)
-- `/settings` - User management (owner)
+- `/templates` - Template management (dev)
+- `/settings` - User management (dev) and password change (all users)
 
 ### Environment Variables
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anon key
+- `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
 - `invite-user` - Send invitation email
 - `create-user` - Manually create user
 - `delete-user` - Delete user
 - `login-as-user` - Generate impersonation magic link
+- `test-email` - Send test emails using Resend service (for email template testing)
+- `send-workflow-notification` - Send workflow stage notifications via email (automatically called when steps change status)
 
 ### Database Enums
-- `user_role`: `'owner' | 'master_technician' | 'assistant' | 'subcontractor'`
-- `project_status`: `'active' | 'completed' | 'on_hold'`
+- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor'`
+- `project_status`: `'awaiting_start' | 'active' | 'completed' | 'on_hold'`
 - `workflow_status`: `'draft' | 'active' | 'completed'`
 - `step_status`: `'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved'`
 - `step_type`: `'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null`
@@ -985,8 +1358,8 @@ Special characters in JSX should use Unicode escapes:
    - Run `npm run dev`
 4. **Create first user**:
    - Sign up via UI
-   - In Supabase dashboard, manually set role to `'owner'` OR
-   - Use Settings page to enter admin code `'admin1234'`
+  - In Supabase dashboard, manually set role to `'dev'` OR
+  - Use Settings page to enter admin code `'admin1234'`
 5. **Explore features**:
    - Create customer
    - Create project
@@ -1007,22 +1380,89 @@ For questions or issues:
 ---
 
 **Last Updated**: 2026-01-18
-**Documentation Version**: 2.0
+**Documentation Version**: 2.2
 
-## Recent Feature Additions (v2.0)
+## Recent Updates (v2.2)
+
+### Password Management
+- ✅ Password reset functionality (forgot password)
+- ✅ Password change in Settings (for all users)
+- Routes: `/reset-password`, `/reset-password-confirm`
+
+### Edge Functions
+- ✅ `delete-user` - Fully implemented (requires `SUPABASE_SERVICE_ROLE_KEY`)
+- ✅ `login-as-user` - Fully implemented (requires `SUPABASE_SERVICE_ROLE_KEY`)
+- ✅ `send-workflow-notification` - Fully implemented (requires `RESEND_API_KEY`)
+
+### Database & RLS
+- ✅ Email templates RLS policies updated to use `is_dev()` function
+- ✅ People table RLS policy added for devs to read all entries
+- ✅ All Edge Functions use manual JWT validation (gateway verification disabled)
+
+### UI Improvements
+- ✅ Date formatting includes day of week (e.g., "Tue, 1/21/26, 6:52 PM")
+- ✅ Orange gear favicon added
+- ✅ "Forgot password?" link on sign-in page
+
+**See [RECENT_FEATURES.md](./RECENT_FEATURES.md) for detailed information about all recent additions.**
+
+## Recent Feature Additions (v2.0+)
 
 ### Major Features Added
-1. **Action History Ledger**: Complete audit trail of all step actions (`project_workflow_step_actions` table)
-2. **Approval Tracking**: Tracks who approved steps and when (`approved_by`, `approved_at`)
-3. **Cross-Step Notifications**: Automatic notifications to adjacent step assignees
-4. **Workflow Header Navigation**: Visual stage overview with color-coding and clickable navigation
-5. **Step Reordering**: Insert steps at any position (beginning, end, or after specific step)
-6. **Contact Integration**: Clickable email/phone links throughout the app
-7. **Google Maps Integration**: Clickable addresses open in Google Maps
-8. **Direct Step Navigation**: Hash fragments enable direct links to specific step cards
-9. **Customer Quick Fill**: Paste tab-separated data to auto-fill customer forms
-10. **Active Stage Display**: Projects list shows currently active workflow stage
-11. **Assigned Stages Dashboard**: Users see all stages assigned to them with full details
-12. **Project Address Field**: Separate address field for projects (can differ from customer address)
-13. **Date Met Tracking**: Track when customer relationship started
-14. **Refresh Token Error Handling**: Graceful handling of expired/invalid tokens
+
+#### Workflow Enhancements
+1. **Private Notes**: Owners and masters can add private notes to each stage (separate from public notes)
+2. **Line Items**: Track expenses/credits per stage with memo and amount fields
+3. **Projections**: Track projected costs for entire workflow (stage, memo, amount)
+4. **Ledger**: Aggregated view of all line items at top of workflow page
+5. **Action History Ledger**: Complete audit trail at bottom of each stage card
+6. **Set Start Date/Time**: Date/time picker for setting custom start times (replaces immediate start)
+7. **Amount Formatting**: All monetary amounts display with comma separators (e.g., `$1,234.56`)
+
+#### Access Control
+8. **Assistant/Subcontractor Restrictions**: 
+   - Only see stages assigned to them
+   - Can only use action buttons on assigned stages
+   - Cannot see private notes, line items, projections, or ledger
+9. **Current User in Person Assignment**: Signed-in user always appears first in "Add person" modal
+
+#### Calendar Improvements
+10. **Central Time Zone**: All calendar dates/times display in Central Time (America/Chicago)
+11. **Two-Line Display**: Each calendar item shows stage name (top) and project name (bottom)
+
+#### Email System
+12. **Email Templates**: Customizable email content for 11 notification types
+13. **Test Email Function**: Edge Function for testing email templates with Resend integration
+14. **Template Variables**: Support for dynamic content (e.g., `{{name}}`, `{{email}}`, `{{link}}`)
+
+#### Settings Enhancements
+15. **People Visibility**: Devs can see all users and all people entries (RLS policy updated)
+16. **Separated People Lists**: "People Created by Me" and "People Created by Other Users"
+17. **Email Template Management**: GUI for devs to edit email templates in Settings
+18. **Password Change**: All users can change their password in Settings (requires current password verification)
+
+#### Authentication & Security
+19. **Password Reset**: Users can request password reset via "Forgot password?" link on sign-in page
+20. **Password Reset Confirmation**: Dedicated page for setting new password after clicking email link
+21. **RLS Policy Fixes**: 
+    - Email templates table uses `is_dev()` function for policies
+    - People table allows devs to read all entries
+
+#### UI Improvements
+20. **Date Formatting**: Date/time displays now include day of week (e.g., "Tue, 1/21/26, 6:52 PM")
+21. **Favicon**: Orange gear icon displayed in browser tabs
+22. **Contact Integration**: Clickable email/phone links throughout the app
+23. **Google Maps Integration**: Clickable addresses open in Google Maps
+24. **Direct Step Navigation**: Hash fragments enable direct links to specific step cards
+
+#### Existing Features (from v2.0)
+25. **Approval Tracking**: Tracks who approved steps and when (`approved_by`, `approved_at`)
+26. **Cross-Step Notifications**: Automatic notifications to adjacent step assignees
+27. **Workflow Header Navigation**: Visual stage overview with color-coding and clickable navigation
+28. **Step Reordering**: Insert steps at any position (beginning, end, or after specific step)
+29. **Customer Quick Fill**: Paste tab-separated data to auto-fill customer forms
+30. **Active Stage Display**: Projects list shows currently active workflow stage
+31. **Assigned Stages Dashboard**: Users see all stages assigned to them with full details
+32. **Project Address Field**: Separate address field for projects (can differ from customer address)
+33. **Date Met Tracking**: Track when customer relationship started
+34. **Refresh Token Error Handling**: Graceful handling of expired/invalid tokens

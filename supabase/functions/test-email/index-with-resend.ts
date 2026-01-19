@@ -51,7 +51,7 @@ serve(async (req) => {
       .eq('id', user.id)
       .single()
 
-    if (!userData || userData.role !== 'owner') {
+    if (!userData || userData.role !== 'dev') {
       return new Response(
         JSON.stringify({ error: 'Forbidden - Only owners can send test emails' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

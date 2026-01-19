@@ -5,8 +5,11 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
 type Project = Database['public']['Tables']['projects']['Row']
-type ProjectWithCustomer = Project & { customers: { name: string } | null }
-type UserRole = 'owner' | 'master_technician' | 'assistant'
+type ProjectWithCustomer = Project & { 
+  customers: { name: string } | null
+  master_user: { id: string; name: string | null; email: string | null } | null
+}
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 export default function Projects() {
   const { user: authUser } = useAuth()
@@ -43,7 +46,26 @@ export default function Projects() {
         return
       }
       const projs = (data as ProjectWithCustomer[]) ?? []
-      setProjects(projs)
+      
+      // Load master information for projects that have master_user_id
+      const projectsWithMasters = await Promise.all(
+        projs.map(async (p) => {
+          if (p.master_user_id) {
+            const { data: masterData } = await supabase
+              .from('users')
+              .select('id, name, email')
+              .eq('id', p.master_user_id)
+              .single()
+            return {
+              ...p,
+              master_user: masterData as { id: string; name: string | null; email: string | null } | null,
+            }
+          }
+          return { ...p, master_user: null }
+        })
+      )
+      
+      setProjects(projectsWithMasters)
       
       // Load active steps for all projects
       if (projs.length > 0) {
@@ -114,7 +136,7 @@ export default function Projects() {
           <Link to="/projects/new" style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 6, textDecoration: 'none' }}>
             Add project
           </Link>
-          {myRole === 'owner' && (
+          {myRole === 'dev' && (
             <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
               Edit templates
             </Link>
@@ -145,6 +167,9 @@ export default function Projects() {
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   {p.customers?.name ?? '—'} · {p.status}
+                  {p.master_user && (
+                    <span> · Master: {p.master_user.name || p.master_user.email || 'Unknown'}</span>
+                  )}
                   {activeSteps[p.id] && <span> · Current stage: {activeSteps[p.id]}</span>}
                 </div>
                 {p.description && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{p.description}</div>}

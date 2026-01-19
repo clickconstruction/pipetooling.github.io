@@ -26,7 +26,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role IN ('owner', 'master_technician')
+    AND role IN ('dev', 'master_technician')
   )
 );
 
@@ -38,7 +38,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role IN ('owner', 'master_technician')
+    AND role IN ('dev', 'master_technician')
   )
 );
 
@@ -50,14 +50,14 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role IN ('owner', 'master_technician')
+    AND role IN ('dev', 'master_technician')
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role IN ('owner', 'master_technician')
+    AND role IN ('dev', 'master_technician')
   )
 );
 
@@ -69,7 +69,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role IN ('owner', 'master_technician')
+    AND role IN ('dev', 'master_technician')
   )
 );
 

@@ -10,14 +10,45 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  async function checkDuplicateName(nameToCheck: string): Promise<boolean> {
+    const trimmedName = nameToCheck.trim().toLowerCase()
+    if (!trimmedName) return false
+    
+    // Check in people table
+    const { data: peopleData } = await supabase
+      .from('people')
+      .select('id, name')
+    const peopleMatch = peopleData?.some(p => p.name?.toLowerCase() === trimmedName)
+    
+    // Check in users table
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, name')
+    const usersMatch = usersData?.some(u => u.name?.toLowerCase() === trimmedName)
+    
+    return !!peopleMatch || !!usersMatch
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
+    
+    const trimmedName = name.trim()
+    if (trimmedName) {
+      // Check for duplicate names (case-insensitive)
+      const isDuplicate = await checkDuplicateName(trimmedName)
+      if (isDuplicate) {
+        setError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+        setLoading(false)
+        return
+      }
+    }
+    
     const { error: err } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name: name.trim() || undefined } },
+      options: { data: { name: trimmedName || undefined } },
     })
     setLoading(false)
     if (err) {

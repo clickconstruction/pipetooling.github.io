@@ -50,7 +50,7 @@ You're getting a 401 error because the Edge Function needs to be redeployed with
    - Try signing out and back in
 
 3. **Check Your Role**
-   - You must be an `owner` role to send test emails
+   - You must be a `dev` role to send test emails
    - Go to Settings → Admin Code to verify your role
 
 4. **Check Function Configuration**

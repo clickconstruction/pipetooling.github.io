@@ -6,6 +6,7 @@ import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   if (ci == null) return { phone: '', email: '' }
@@ -107,6 +108,10 @@ export default function CustomerForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(!isNew)
+  const [myRole, setMyRole] = useState<UserRole | null>(null)
+  const [masterUserId, setMasterUserId] = useState('')
+  const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
+  const [mastersLoading, setMastersLoading] = useState(false)
 
   function handleQuickFill() {
     const parsed = parseQuickFill(quickFill)
@@ -117,6 +122,91 @@ export default function CustomerForm() {
     if (parsed.date) setDateMet(parsed.date || '')
     setQuickFill('')
   }
+
+  // Load user role
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => setMyRole((data as { role: UserRole } | null)?.role ?? null))
+  }, [user?.id])
+
+  // Load masters for assistants and devs (for assistants: only adopted masters; for devs/masters: all masters)
+  useEffect(() => {
+    if (!user?.id || (myRole !== 'assistant' && myRole !== 'dev' && myRole !== 'master_technician')) return
+    
+    setMastersLoading(true)
+    ;(async () => {
+      if (myRole === 'assistant') {
+        // For assistants: Get masters who have adopted this assistant
+        const { data: adoptions, error: adoptionsErr } = await supabase
+          .from('master_assistants')
+          .select('master_id')
+          .eq('assistant_id', user.id)
+        
+        if (adoptionsErr) {
+          console.error('Error loading adoptions:', adoptionsErr)
+          setAvailableMasters([])
+          setMastersLoading(false)
+          return
+        }
+        
+        if (!adoptions || adoptions.length === 0) {
+          setAvailableMasters([])
+          setMastersLoading(false)
+          return
+        }
+        
+        const masterIds = adoptions.map(a => a.master_id)
+        const { data: masters, error: mastersErr } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', masterIds)
+          .in('role', ['master_technician', 'dev'])
+          .order('name')
+        
+        if (mastersErr) {
+          console.error('Error loading masters:', mastersErr)
+          setAvailableMasters([])
+        } else {
+          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
+          // Auto-select first master if only one option (only for new customers)
+          if (isNew && masters && masters.length === 1) {
+            setMasterUserId(masters[0].id)
+          }
+        }
+      } else if (myRole === 'dev' || myRole === 'master_technician') {
+        // For devs and masters: Load all masters (master_technician and dev roles)
+        const { data: masters, error: mastersErr } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('role', ['master_technician', 'dev'])
+          .order('name')
+        
+        if (mastersErr) {
+          console.error('Error loading masters:', mastersErr)
+          setAvailableMasters([])
+        } else {
+          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
+        }
+      }
+      setMastersLoading(false)
+    })()
+  }, [isNew, user?.id, myRole])
+
+  // Auto-set master_user_id for masters only (devs and assistants must select)
+  useEffect(() => {
+    if (!isNew || !user?.id) return
+    
+    if (myRole === 'master_technician') {
+      // Masters own their customers automatically
+      setMasterUserId(user.id)
+    }
+    // Devs and assistants must manually select a master - no auto-set
+  }, [isNew, user?.id, myRole])
 
   useEffect(() => {
     if (!isNew && id) {
@@ -134,6 +224,7 @@ export default function CustomerForm() {
         setPhone(contactInfo.phone || '')
         setEmail(contactInfo.email || '')
         setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
+        setMasterUserId(row.master_user_id ?? '')
         setFetching(false)
       })()
     }
@@ -142,12 +233,30 @@ export default function CustomerForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    
+    if (isNew && (myRole === 'assistant' || myRole === 'dev') && !masterUserId) {
+      setError('Please select a customer owner (master).')
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
+    
+    // Determine master_user_id
+    let customerMasterId = masterUserId
+    if (!customerMasterId) {
+      // For masters, use their own ID
+      if (myRole === 'master_technician' && user?.id) {
+        customerMasterId = user.id
+      }
+    }
+    
     const payload = {
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
+      master_user_id: customerMasterId || null,
     }
     if (isNew) {
       if (!user) {
@@ -155,7 +264,7 @@ export default function CustomerForm() {
         setLoading(false)
         return
       }
-      const { error: err } = await supabase.from('customers').insert({ ...payload, master_user_id: user.id })
+      const { error: err } = await supabase.from('customers').insert(payload)
       if (err) {
         setError(err.message)
         setLoading(false)
@@ -261,6 +370,45 @@ export default function CustomerForm() {
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
+        {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician') && (
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>
+              Customer Owner (Master) {isNew && (myRole === 'assistant' || myRole === 'dev') ? '*' : ''}
+            </label>
+            {mastersLoading ? (
+              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+            ) : isNew && (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
+              <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                {myRole === 'assistant' 
+                  ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
+                  : 'No masters found.'}
+              </p>
+            ) : (
+              <>
+                <select
+                  id="master"
+                  value={masterUserId}
+                  onChange={(e) => setMasterUserId(e.target.value)}
+                  required={isNew && (myRole === 'assistant' || myRole === 'dev')}
+                  disabled={isNew && myRole === 'master_technician'}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select a master...</option>
+                  {availableMasters.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name || m.email}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                  {isNew && myRole === 'master_technician' 
+                    ? 'You are automatically assigned as the customer owner.'
+                    : 'Select which master this customer belongs to.'}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="submit" disabled={loading} style={{ padding: '0.5rem 1rem' }}>

@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 const PROJECT_STATUSES: ProjectRow['status'][] = ['awaiting_start', 'active', 'completed', 'on_hold']
 
 export default function ProjectForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const isNew = !id
 
   const [customerId, setCustomerId] = useState('')
@@ -32,10 +35,21 @@ export default function ProjectForm() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [myRole, setMyRole] = useState<UserRole | null>(null)
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    supabase
+      .from('users')
+      .select('role')
+      .eq('id', authUser.id)
+      .single()
+      .then(({ data }) => setMyRole((data as { role: UserRole } | null)?.role ?? null))
+  }, [authUser?.id])
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('customers').select('id, name, address').order('name')
+      const { data } = await supabase.from('customers').select('id, name, address, master_user_id').order('name')
       setCustomers((data as CustomerRow[]) ?? [])
       setCustomersLoading(false)
     })()
@@ -49,6 +63,7 @@ export default function ProjectForm() {
   }
 
   // Update customer search and auto-fill address when customerId changes
+  // Also auto-set master_user_id from customer's master_user_id
   useEffect(() => {
     if (customerId && customers.length > 0) {
       const selectedCustomer = customers.find((c) => c.id === customerId)
@@ -58,6 +73,7 @@ export default function ProjectForm() {
         if (isNew || !address.trim()) {
           setAddress(selectedCustomer.address ?? '')
         }
+        // Project owner automatically matches customer owner - no need to set state, will use in submit
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,6 +86,7 @@ export default function ProjectForm() {
       )
     }
   }, [isNew])
+
 
   useEffect(() => {
     if (!isNew && id) {
@@ -101,7 +118,25 @@ export default function ProjectForm() {
       return
     }
     setLoading(true)
-    const payload = {
+    
+    // Project owner automatically matches customer owner
+    let projectMasterId: string | null = null
+    if (customerId && customers.length > 0) {
+      const selectedCustomer = customers.find(c => c.id === customerId)
+      projectMasterId = selectedCustomer?.master_user_id || null
+    }
+    
+    // For editing: don't update master_user_id, keep it as-is (it should match customer)
+    const payload: {
+      name: string
+      address: string | null
+      description: string | null
+      housecallpro_number: string | null
+      plans_link: string | null
+      status: ProjectRow['status']
+      customer_id: string
+      master_user_id?: string | null
+    } = {
       name: name.trim(),
       address: address.trim() || null,
       description: description.trim() || null,
@@ -110,6 +145,12 @@ export default function ProjectForm() {
       status,
       customer_id: customerId,
     }
+    
+    // Only set master_user_id for new projects (it matches customer owner)
+    if (isNew) {
+      payload.master_user_id = projectMasterId
+    }
+    // For updates, don't include master_user_id - it should remain tied to the customer
     if (isNew) {
       const { data: inserted, error: err } = await supabase.from('projects').insert(payload).select('id').single()
       if (err) {
@@ -398,7 +439,7 @@ export default function ProjectForm() {
         </div>
       </form>
 
-      {!isNew && (
+      {!isNew && (myRole === 'dev' || myRole === 'master_technician') && (
         <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', maxWidth: 400 }}>
           <button type="button" onClick={openDelete} style={{ padding: '0.5rem 1rem', color: '#b91c1c' }}>
             Delete project

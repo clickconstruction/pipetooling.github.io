@@ -27,7 +27,7 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );
 
@@ -39,7 +39,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );
 
@@ -51,13 +51,13 @@ USING (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 )
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM public.users 
     WHERE id = auth.uid() 
-    AND role = 'owner'
+    AND role = 'dev'
   )
 );

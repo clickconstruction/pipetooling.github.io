@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 
 type Template = { id: string; name: string; description: string | null }
 type TemplateStep = { id: string; template_id: string; sequence_order: number; name: string }
-type UserRole = 'owner' | 'master_technician' | 'assistant'
+type UserRole = 'dev' | 'master_technician' | 'assistant'
 
 export default function Templates() {
   const { user: authUser } = useAuth()
@@ -45,7 +45,7 @@ export default function Templates() {
     }
     const role = (me as { role: UserRole } | null)?.role ?? null
     setMyRole(role)
-    if (role !== 'owner') {
+    if (role !== 'dev') {
       setLoading(false)
       return
     }
@@ -195,9 +195,108 @@ export default function Templates() {
     setUpdatingStepId(null)
   }
 
+  async function copyTemplateStep(step: TemplateStep) {
+    if (!workflowModal) return
+    setError(null)
+    const currentStep = workflowSteps.find((s) => s.id === step.id)
+    if (!currentStep) return
+    
+    // Insert after current step
+    const newOrder = currentStep.sequence_order + 1
+    
+    // Increment sequence_order for all steps that come after
+    const stepsToUpdate = workflowSteps.filter((s) => s.sequence_order >= newOrder)
+    for (const s of stepsToUpdate) {
+      await supabase
+        .from('workflow_template_steps')
+        .update({ sequence_order: s.sequence_order + 1 })
+        .eq('id', s.id)
+    }
+
+    // Keep local state in sync (so UI shows the copy directly below)
+    setWorkflowSteps((prev) =>
+      prev.map((s) => (s.sequence_order >= newOrder ? { ...s, sequence_order: s.sequence_order + 1 } : s))
+    )
+    
+    const { data, error: err } = await supabase
+      .from('workflow_template_steps')
+      .insert({ template_id: workflowModal.templateId, sequence_order: newOrder, name: step.name })
+      .select('id, template_id, sequence_order, name')
+      .single()
+    
+    if (err) {
+      setError(err.message)
+    } else if (data) {
+      setWorkflowSteps((prev) => [...prev, data as TemplateStep].sort((a, b) => a.sequence_order - b.sequence_order))
+    }
+  }
+
+  async function copyTemplate() {
+    if (!editingId) return
+    const template = templates.find((t) => t.id === editingId)
+    if (!template) return
+    
+    setSaving(true)
+    setError(null)
+    
+    // Create new template with copied name and description
+    const { data: newTemplate, error: templateErr } = await supabase
+      .from('workflow_templates')
+      .insert({ name: `${template.name} (copy)`, description: template.description })
+      .select('id, name, description')
+      .single()
+    
+    if (templateErr) {
+      setError(templateErr.message)
+      setSaving(false)
+      return
+    }
+    
+    // Copy all steps from the original template
+    const { data: originalSteps, error: stepsErr } = await supabase
+      .from('workflow_template_steps')
+      .select('sequence_order, name')
+      .eq('template_id', editingId)
+      .order('sequence_order', { ascending: true })
+    
+    if (stepsErr) {
+      setError(stepsErr.message)
+      setSaving(false)
+      return
+    }
+    
+    if (originalSteps && originalSteps.length > 0) {
+      for (const step of originalSteps) {
+        const { error: stepErr } = await supabase
+          .from('workflow_template_steps')
+          .insert({
+            template_id: (newTemplate as Template).id,
+            sequence_order: step.sequence_order,
+            name: step.name,
+          })
+        
+        if (stepErr) {
+          setError(stepErr.message)
+          setSaving(false)
+          return
+        }
+      }
+    }
+    
+    // Refresh templates list
+    await loadRoleAndTemplates()
+    setSaving(false)
+    closeForm()
+    
+    // Open the new template for editing
+    if (newTemplate) {
+      openEdit(newTemplate as Template)
+    }
+  }
+
   if (loading) return <p>Loading...</p>
   if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
-  if (myRole !== 'owner')
+  if (myRole !== 'dev')
     return <p style={{ marginBottom: '1.5rem' }}>Only owners can edit templates.</p>
 
   return (
@@ -282,6 +381,11 @@ export default function Templates() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+                {editingId && (
+                  <button type="button" onClick={copyTemplate} disabled={saving} style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: 4 }}>
+                    Copy
+                  </button>
+                )}
                 <button type="button" onClick={closeForm} disabled={saving}>Cancel</button>
               </div>
             </form>
@@ -338,6 +442,19 @@ export default function Templates() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => {
+                            // Copy the step with current edited name
+                            const stepToCopy = { ...s, name: editingStepName.trim() || s.name }
+                            copyTemplateStep(stepToCopy)
+                            cancelEditStep()
+                          }}
+                          disabled={updatingStepId === s.id}
+                          style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 2 }}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
                           onClick={cancelEditStep}
                           disabled={updatingStepId === s.id}
                           style={{ padding: '2px 6px', fontSize: '0.75rem' }}
@@ -355,6 +472,13 @@ export default function Templates() {
                             style={{ padding: '2px 6px', fontSize: '0.75rem' }}
                           >
                             Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyTemplateStep(s)}
+                            style={{ padding: '2px 6px', fontSize: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 2 }}
+                          >
+                            Copy
                           </button>
                           <button
                             type="button"

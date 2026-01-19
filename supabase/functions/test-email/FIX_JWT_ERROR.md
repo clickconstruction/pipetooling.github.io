@@ -55,4 +55,4 @@ The frontend code should work as-is - the Supabase client automatically includes
 1. **Check browser console** for more error details
 2. **Check Supabase logs** → Edge Functions → `test-email` → Logs
 3. **Verify you're logged in** - try signing out and back in
-4. **Check your role** - make sure you're an owner
+4. **Check your role** - make sure you're a dev

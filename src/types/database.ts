@@ -15,9 +15,14 @@ export type Database = {
         Update: { id?: string; master_user_id?: string; name?: string; address?: string | null; contact_info?: Json | null; date_met?: string | null; created_at?: string | null; updated_at?: string | null }
       }
       projects: {
-        Row: { id: string; customer_id: string; name: string; description: string | null; status: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number: string | null; plans_link: string | null; street_name: string | null; project_type: string | null; address: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; customer_id: string; name: string; description?: string | null; status?: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number?: string | null; plans_link?: string | null; street_name?: string | null; project_type?: string | null; address?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; customer_id?: string; name?: string; description?: string | null; status?: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number?: string | null; plans_link?: string | null; street_name?: string | null; project_type?: string | null; address?: string | null; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; customer_id: string; master_user_id: string | null; name: string; description: string | null; status: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number: string | null; plans_link: string | null; street_name: string | null; project_type: string | null; address: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; customer_id: string; master_user_id?: string | null; name: string; description?: string | null; status?: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number?: string | null; plans_link?: string | null; street_name?: string | null; project_type?: string | null; address?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; customer_id?: string; master_user_id?: string | null; name?: string; description?: string | null; status?: 'awaiting_start' | 'active' | 'completed' | 'on_hold'; housecallpro_number?: string | null; plans_link?: string | null; street_name?: string | null; project_type?: string | null; address?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      master_assistants: {
+        Row: { master_id: string; assistant_id: string; created_at: string | null }
+        Insert: { master_id: string; assistant_id: string; created_at?: string | null }
+        Update: { master_id?: string; assistant_id?: string; created_at?: string | null }
       }
       project_workflows: {
         Row: { id: string; project_id: string; template_id: string | null; name: string; status: 'draft' | 'active' | 'completed'; created_at: string | null; updated_at: string | null }
@@ -85,6 +90,11 @@ export type Database = {
         Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
         Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
         Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+      }
+      workflow_projections: {
+        Row: { id: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; workflow_id?: string; stage_name?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
       }
     }
   }

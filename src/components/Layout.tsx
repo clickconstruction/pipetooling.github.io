@@ -7,7 +7,7 @@ const navStyle = ({ isActive }: { isActive: boolean }) => ({ fontWeight: isActiv
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-type UserRole = 'owner' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar']
 

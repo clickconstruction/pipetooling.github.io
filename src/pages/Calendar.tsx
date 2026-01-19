@@ -13,13 +13,61 @@ type CalendarStep = {
   status: string
 }
 
+// Helper functions for Central Time (America/Chicago timezone)
+function formatDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getCentralDateFromUTC(utcString: string | null): string | null {
+  if (!utcString) return null
+  // Convert UTC string to Central Time date string (YYYY-MM-DD)
+  const utcDate = new Date(utcString)
+  // Use Intl.DateTimeFormat to get date components in Central Time
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const parts = formatter.formatToParts(utcDate)
+  const year = parts.find(p => p.type === 'year')?.value
+  const month = parts.find(p => p.type === 'month')?.value
+  const day = parts.find(p => p.type === 'day')?.value
+  if (year && month && day) {
+    return `${year}-${month}-${day}`
+  }
+  return null
+}
+
+function getCentralDate(date: Date): Date {
+  // Get current date in Central Time
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const parts = formatter.formatToParts(date)
+  const year = parseInt(parts.find(p => p.type === 'year')?.value || '0', 10)
+  const month = parseInt(parts.find(p => p.type === 'month')?.value || '0', 10) - 1
+  const day = parseInt(parts.find(p => p.type === 'day')?.value || '0', 10)
+  return new Date(year, month, day)
+}
+
 export default function Calendar() {
   const { user: authUser } = useAuth()
   const [userName, setUserName] = useState<string | null>(null)
   const [steps, setSteps] = useState<CalendarStep[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [currentMonth, setCurrentMonth] = useState(new Date())
+  // Initialize currentMonth in Central Time
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date()
+    return getCentralDate(now)
+  })
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -133,17 +181,22 @@ export default function Calendar() {
     return days
   }
 
-  function formatDateKey(date: Date): string {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-
   function getStepsForDate(date: Date): CalendarStep[] {
     const dateKey = formatDateKey(date)
     return steps.filter((s) => {
-      const stepDate = s.scheduled_start_date || (s.started_at ? s.started_at.split('T')[0] : null)
+      // Convert UTC timestamps to Central Time before extracting date part
+      // scheduled_start_date might be a date string (YYYY-MM-DD) or a timestamp
+      let stepDate: string | null = null
+      if (s.scheduled_start_date) {
+        // If it contains 'T', it's a timestamp; otherwise it's already a date string
+        if (s.scheduled_start_date.includes('T')) {
+          stepDate = getCentralDateFromUTC(s.scheduled_start_date)
+        } else {
+          stepDate = s.scheduled_start_date
+        }
+      } else if (s.started_at) {
+        stepDate = getCentralDateFromUTC(s.started_at)
+      }
       return stepDate === dateKey
     })
   }
@@ -157,16 +210,19 @@ export default function Calendar() {
   }
 
   function today() {
-    setCurrentMonth(new Date())
+    const now = new Date()
+    setCurrentMonth(getCentralDate(now))
   }
 
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
   const days = getDaysInMonth(currentMonth)
-  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })
-  const todayKey = formatDateKey(new Date())
-  const isCurrentMonth = currentMonth.getMonth() === new Date().getMonth() && currentMonth.getFullYear() === new Date().getFullYear()
+  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'America/Chicago' })
+  const now = new Date()
+  const centralNow = getCentralDate(now)
+  const todayKey = formatDateKey(centralNow)
+  const isCurrentMonth = currentMonth.getMonth() === centralNow.getMonth() && currentMonth.getFullYear() === centralNow.getFullYear()
 
   return (
     <div>
@@ -237,12 +293,17 @@ export default function Calendar() {
                           textDecoration: 'none',
                           borderRadius: 3,
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          display: 'flex',
+                          flexDirection: 'column',
                         }}
                         title={`${step.name} - ${step.project_name}`}
                       >
-                        {step.name}
+                        <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {step.name}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {step.project_name}
+                        </div>
                       </Link>
                     ))}
                   </div>

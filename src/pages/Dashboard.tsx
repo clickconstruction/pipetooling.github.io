@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
-type UserRole = 'owner' | 'master_technician' | 'assistant'
+type UserRole = 'dev' | 'master_technician' | 'assistant'
 
 type SubscribedStep = {
   step_id: string
@@ -27,11 +27,19 @@ type AssignedStep = Step & {
 
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  const date = new Date(iso)
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
+  const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  return `${weekday}, ${dateTime}`
 }
 
-function personDisplay(name: string | null): string {
-  return (name && name.trim()) ? name.trim() : 'Assigned to: unknown'
+function personDisplay(name: string | null, userNames: Set<string>): string {
+  if (!name || !name.trim()) {
+    return 'Assigned to: unknown'
+  }
+  const trimmedName = name.trim()
+  const isUser = userNames.has(trimmedName.toLowerCase())
+  return isUser ? trimmedName : `${trimmedName} (not a user)`
 }
 
 export default function Dashboard() {
@@ -41,6 +49,7 @@ export default function Dashboard() {
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userNames, setUserNames] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -61,6 +70,20 @@ export default function Dashboard() {
       const user = userData as { role: UserRole; name: string | null } | null
       setRole(user?.role ?? null)
       const name = user?.name ?? null
+      
+      // Load all users to check if assigned names are users (case-insensitive comparison)
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('name')
+      const userNamesSet = new Set<string>()
+      if (allUsers) {
+        allUsers.forEach((u) => {
+          if (u.name) {
+            userNamesSet.add(u.name.trim().toLowerCase())
+          }
+        })
+      }
+      setUserNames(userNamesSet)
       
       // Load subscribed steps
       const { data: subs } = await supabase
@@ -177,6 +200,41 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
       <p>Your role: <strong>{role == null ? '—' : role.charAt(0).toUpperCase() + role.slice(1)}</strong></p>
       
+      {(role === 'master_technician' || role === 'dev') && (
+        <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
+          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            <li style={{ marginBottom: '0.5rem' }}>Masters own customers</li>
+            <li style={{ marginBottom: '0.5rem' }}>Customers have projects</li>
+            <li style={{ marginBottom: '0.5rem' }}>Masters adopt assistants</li>
+            <li>Masters assign people to stages</li>
+          </ol>
+          <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Step States</strong>: <code>pending</code> → <code>in_progress</code> → <code>completed</code> / <code>rejected</code> / <code>approved</code>
+          </p>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Access Control</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li>
+                <strong>Masters</strong>: See all stages, full access to all features
+              </li>
+              <li>
+                <strong>Assistants</strong>: Manage a master's stages, add line items
+              </li>
+              <li>
+                <strong>Subcontractors</strong>:
+                <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'circle' }}>
+                  <li>Only see stages where <code>assigned_to_name</code> matches their name</li>
+                  <li>Can only use Set Start and Complete on assigned stages</li>
+                  <li>Cannot see private notes, line items, projections, or ledger</li>
+                  <li>Cannot add, edit, delete, or assign stages</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+      
       {assignedSteps.length > 0 && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Assigned Stages</h2>
@@ -194,7 +252,7 @@ export default function Dashboard() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: 4 }}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>{s.name} - {personDisplay(s.assigned_to_name)}</div>
+                    <div style={{ fontWeight: 600 }}>{s.name} - {personDisplay(s.assigned_to_name, userNames)}</div>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
                       Project: <Link to={`/workflows/${s.project_id}#step-${s.id}`} style={{ color: '#2563eb' }}>{s.project_name}</Link>
                     </div>

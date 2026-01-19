@@ -49,7 +49,7 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 3. Add Resend integration code
 
 The function currently:
-- ✅ Validates authentication (owner only)
+- ✅ Validates authentication (dev only)
 - ✅ Validates email format
 - ✅ Prepares email with custom subject/body
 - ⚠️ Sends via Supabase invite (uses default template)

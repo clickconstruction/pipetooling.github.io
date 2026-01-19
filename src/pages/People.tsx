@@ -150,14 +150,55 @@ export default function People() {
     setFormOpen(false)
   }
 
+  async function checkDuplicateName(nameToCheck: string, excludeId?: string): Promise<boolean> {
+    const trimmedName = nameToCheck.trim().toLowerCase()
+    if (!trimmedName) return false
+    
+    // Check in people table (excluding current person if editing)
+    const peopleQuery = supabase
+      .from('people')
+      .select('id, name')
+    if (excludeId) {
+      peopleQuery.neq('id', excludeId)
+    }
+    const { data: peopleData } = await peopleQuery
+    
+    // Check in users table
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, name')
+    
+    // Case-insensitive comparison
+    const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false
+    const hasDuplicateInUsers = usersData?.some(u => u.name?.toLowerCase() === trimmedName) ?? false
+    
+    return hasDuplicateInPeople || hasDuplicateInUsers
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!authUser?.id) return
     setSaving(true)
     setError(null)
+    
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setError('Name is required')
+      setSaving(false)
+      return
+    }
+    
+    // Check for duplicate names (case-insensitive)
+    const isDuplicate = await checkDuplicateName(trimmedName, editing?.id)
+    if (isDuplicate) {
+      setError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+      setSaving(false)
+      return
+    }
+    
     const payload = {
       kind,
-      name: name.trim(),
+      name: trimmedName,
       email: email.trim() || null,
       phone: phone.trim() || null,
       notes: notes.trim() || null,
