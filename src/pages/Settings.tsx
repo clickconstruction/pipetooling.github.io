@@ -607,7 +607,8 @@ export default function Settings() {
   async function loginAsUser(u: UserRow) {
     setLoggingInAsId(u.id)
     setError(null)
-    const redirectTo = new URL('dashboard', window.location.href).href
+    // Construct redirect URL - use the current origin to ensure it works in all environments
+    const redirectTo = `${window.location.origin}/dashboard`
     const { data, error: eFn } = await supabase.functions.invoke('login-as-user', {
       body: { email: u.email, redirectTo },
     })
