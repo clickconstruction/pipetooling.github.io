@@ -449,20 +449,6 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
-  async function markReopened(step: AssignedStep) {
-    await supabase.from('project_workflow_steps').update({
-      status: 'pending',
-      ended_at: null,
-      rejection_reason: null,
-      approved_by: null,
-      approved_at: null,
-      next_step_rejected_notice: null,
-      next_step_rejection_reason: null,
-    }).eq('id', step.id)
-    await recordAction(step.id, 'reopened')
-    await loadAssignedSteps()
-  }
-
   async function submitReject() {
     if (!rejectStep) return
     await supabase.from('project_workflow_steps').update({

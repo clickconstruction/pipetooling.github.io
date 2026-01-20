@@ -998,13 +998,13 @@ export default function Workflow() {
   function findPreviousStep(step: Step): Step | null {
     const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
     const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
-    return currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
+    return currentIndex > 0 ? (sortedSteps[currentIndex - 1] ?? null) : null
   }
 
   function findNextStep(step: Step): Step | null {
     const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
     const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
-    return currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
+    return currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? (sortedSteps[currentIndex + 1] ?? null) : null
   }
 
   async function markStarted(step: Step, startDateTime?: string) {
@@ -2054,16 +2054,16 @@ function StepFormModal({
         .in('kind', ['master_technician', 'sub'])
     ])
     
-    const fromUsers = (usersRes.data as Array<{name: string | null, role: string}> | null) ?? []
-      .filter(u => u.name)
-      .map(u => ({ name: u.name!, source: 'user' as const }))
+    const fromUsers = ((usersRes.data as Array<{name: string | null, role: string}> | null) ?? [])
+      .filter((u): u is {name: string, role: string} => !!u.name)
+      .map(u => ({ name: u.name, source: 'user' as const }))
     
-    const fromPeople = (peopleRes.data as Array<{name: string, kind: string}> | null) ?? []
+    const fromPeople = ((peopleRes.data as Array<{name: string, kind: string}> | null) ?? [])
       .map(p => ({ name: p.name, source: 'people' as const }))
     
     // Combine and deduplicate by name (case-insensitive)
     const nameMap = new Map<string, {name: string, source: 'user' | 'people'}>()
-    const allPeople = [...fromUsers, ...fromPeople]
+    const allPeople: Array<{name: string, source: 'user' | 'people'}> = [...fromUsers, ...fromPeople]
     for (const item of allPeople) {
       const key = item.name.toLowerCase()
       if (!nameMap.has(key)) {
@@ -2152,7 +2152,7 @@ function StepFormModal({
     }
     
     // Create new person (default to 'sub' for subcontractor)
-    const { data, error: err } = await supabase
+    const { error: err } = await supabase
       .from('people')
       .insert({
         master_user_id: authUser.id,

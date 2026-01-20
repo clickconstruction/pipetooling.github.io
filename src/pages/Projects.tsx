@@ -257,17 +257,17 @@ export default function Projects() {
                   {activeSteps[p.id] && (
                     <span>
                       {' · Current stage: '}
-                      {activeSteps[p.id].name}
+                      {activeSteps[p.id]!.name}
                       {totalSteps[p.id] && (
-                        <span> [{activeSteps[p.id].position} / {totalSteps[p.id]}]</span>
+                        <span> [{activeSteps[p.id]!.position} / {totalSteps[p.id]!}]</span>
                       )}
                     </span>
                   )}
                 </div>
                 {p.description && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{p.description}</div>}
-                {stepSummaries[p.id] && stepSummaries[p.id].length > 0 && (
+                {stepSummaries[p.id] && stepSummaries[p.id]!.length > 0 && (
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                    {stepSummaries[p.id].map((step, i) => {
+                    {stepSummaries[p.id]!.map((step, i) => {
                       let color = '#6b7280' // default gray
                       let fontWeight: 'normal' | 'bold' = 'normal'
                       if (step.status === 'completed' || step.status === 'approved') {
@@ -283,7 +283,7 @@ export default function Projects() {
                           <span style={{ color, fontWeight }}>
                             {step.name}
                           </span>
-                          {i < stepSummaries[p.id].length - 1 && <span> → </span>}
+                          {i < stepSummaries[p.id]!.length - 1 && <span> → </span>}
                         </span>
                       )
                     })}
