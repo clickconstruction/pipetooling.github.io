@@ -24,6 +24,11 @@ export type Database = {
         Insert: { master_id: string; assistant_id: string; created_at?: string | null }
         Update: { master_id?: string; assistant_id?: string; created_at?: string | null }
       }
+      master_shares: {
+        Row: { sharing_master_id: string; viewing_master_id: string; created_at: string | null }
+        Insert: { sharing_master_id: string; viewing_master_id: string; created_at?: string | null }
+        Update: { sharing_master_id?: string; viewing_master_id?: string; created_at?: string | null }
+      }
       project_workflows: {
         Row: { id: string; project_id: string; template_id: string | null; name: string; status: 'draft' | 'active' | 'completed'; created_at: string | null; updated_at: string | null }
         Insert: { id?: string; project_id: string; template_id?: string | null; name: string; status?: 'draft' | 'active' | 'completed'; created_at?: string | null; updated_at?: string | null }

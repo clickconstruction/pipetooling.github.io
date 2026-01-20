@@ -110,6 +110,10 @@ export default function Settings() {
   const [adoptedAssistantIds, setAdoptedAssistantIds] = useState<Set<string>>(new Set())
   const [adoptionSaving, setAdoptionSaving] = useState(false)
   const [adoptionError, setAdoptionError] = useState<string | null>(null)
+  const [masters, setMasters] = useState<UserRow[]>([])
+  const [sharedMasterIds, setSharedMasterIds] = useState<Set<string>>(new Set())
+  const [sharingSaving, setSharingSaving] = useState(false)
+  const [sharingError, setSharingError] = useState<string | null>(null)
   const [convertMasterId, setConvertMasterId] = useState<string>('')
   const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
   const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
@@ -139,6 +143,7 @@ export default function Settings() {
     // Load assistants and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
       await loadAssistantsAndAdoptions(authUser.id)
+      await loadMastersAndShares(authUser.id)
     }
     
     if (role !== 'dev') {
@@ -298,6 +303,80 @@ export default function Settings() {
     }
     
     setAdoptionSaving(false)
+  }
+
+  async function loadMastersAndShares(sharingMasterId: string) {
+    // Load all masters (excluding self)
+    const { data: mastersData, error: mastersErr } = await supabase
+      .from('users')
+      .select('id, email, name, role')
+      .eq('role', 'master_technician')
+      .neq('id', sharingMasterId)
+      .order('name')
+    
+    if (mastersErr) {
+      console.error('Error loading masters:', mastersErr)
+      setSharingError(mastersErr.message)
+    } else {
+      setMasters((mastersData as UserRow[]) ?? [])
+    }
+    
+    // Load current shares for this master
+    const { data: shares, error: sharesErr } = await supabase
+      .from('master_shares')
+      .select('viewing_master_id')
+      .eq('sharing_master_id', sharingMasterId)
+    
+    if (sharesErr) {
+      console.error('Error loading shares:', sharesErr)
+      setSharingError(sharesErr.message)
+    } else {
+      const sharedSet = new Set<string>()
+      shares?.forEach(s => sharedSet.add(s.viewing_master_id))
+      setSharedMasterIds(sharedSet)
+    }
+  }
+
+  async function toggleSharing(viewingMasterId: string, isShared: boolean) {
+    if (!authUser?.id) return
+    
+    setSharingSaving(true)
+    setSharingError(null)
+    
+    if (isShared) {
+      // Unshare: Delete the relationship
+      const { error } = await supabase
+        .from('master_shares')
+        .delete()
+        .eq('sharing_master_id', authUser.id)
+        .eq('viewing_master_id', viewingMasterId)
+      
+      if (error) {
+        setSharingError(error.message)
+      } else {
+        setSharedMasterIds(prev => {
+          const next = new Set(prev)
+          next.delete(viewingMasterId)
+          return next
+        })
+      }
+    } else {
+      // Share: Insert the relationship
+      const { error } = await supabase
+        .from('master_shares')
+        .insert({
+          sharing_master_id: authUser.id,
+          viewing_master_id: viewingMasterId,
+        })
+      
+      if (error) {
+        setSharingError(error.message)
+      } else {
+        setSharedMasterIds(prev => new Set(prev).add(viewingMasterId))
+      }
+    }
+    
+    setSharingSaving(false)
   }
 
   async function loadEmailTemplates() {
@@ -1082,7 +1161,7 @@ export default function Settings() {
                           disabled={loggingInAsId === u.id}
                           style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
                         >
-                          {loggingInAsId === u.id ? 'Redirecting…' : 'Login as user'}
+                          {loggingInAsId === u.id ? 'Redirecting…' : 'imitate'}
                         </button>
                       </div>
                     </td>
@@ -1247,6 +1326,61 @@ export default function Settings() {
                     {isAdopted && (
                       <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
                         Adopted
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {(myRole === 'master_technician' || myRole === 'dev') && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Share with other Master</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            Share your customers and projects with another master. They will see your jobs with assistant-level access (cannot see private notes or financials).
+          </p>
+          {sharingError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{sharingError}</p>}
+          {masters.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No other masters found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+              {masters.map((master) => {
+                const isShared = sharedMasterIds.has(master.id)
+                return (
+                  <label
+                    key={master.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      cursor: sharingSaving ? 'not-allowed' : 'pointer',
+                      background: isShared ? '#f0fdf4' : 'white',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isShared}
+                      onChange={() => toggleSharing(master.id, isShared)}
+                      disabled={sharingSaving}
+                      style={{ cursor: sharingSaving ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500 }}>{master.name || master.email}</span>
+                      {master.email && master.name && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({master.email})
+                        </span>
+                      )}
+                    </span>
+                    {isShared && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        Shared
                       </span>
                     )}
                   </label>

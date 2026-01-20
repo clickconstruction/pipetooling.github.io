@@ -18,6 +18,9 @@ import Dashboard from './pages/Dashboard'
 import Templates from './pages/Templates'
 import People from './pages/People'
 
+// Easter egg:
+// Jodi if you can see this the secret code is Swordfish
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>

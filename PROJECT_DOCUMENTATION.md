@@ -142,7 +142,7 @@ A Master Plumber can:
   - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
   - `date_met` (date, nullable) - Date when customer was first met
 - **RLS**: 
-  - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, or they're in `master_assistants`
+  - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, they're in `master_assistants`, or they're in `master_shares`
   - DELETE: Masters can delete their own customers (`master_user_id = auth.uid()`), devs can delete any customer
 - **Special Features**: 
   - Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
@@ -259,6 +259,20 @@ A Master Plumber can:
   - Assistants can read who adopted them
   - Devs can read all adoptions
 - **Purpose**: Enables assistants to access customers and projects from masters who have adopted them
+
+#### `public.master_shares`
+- **Purpose**: Junction table tracking master-to-master sharing relationships
+- **Key Fields**:
+  - `sharing_master_id` (uuid, FK → `users.id`) - Master who is sharing their jobs
+  - `viewing_master_id` (uuid, FK → `users.id`) - Master who can view the shared jobs
+  - `created_at` (timestamptz, nullable)
+- **Unique Constraint**: `(sharing_master_id, viewing_master_id)` - Composite primary key
+- **Check Constraint**: Prevents self-sharing (`sharing_master_id != viewing_master_id`)
+- **RLS**: 
+  - Masters can manage shares where they are the `sharing_master_id` (they control who sees their jobs)
+  - Viewing masters can read shares where they are the `viewing_master_id` (to see who shared with them)
+  - Devs can manage all shares
+- **Purpose**: Enables masters to grant other masters assistant-level access to their customers and projects
 
 #### `public.people`
 - **Purpose**: Roster of people (may or may not have user accounts)
@@ -397,7 +411,9 @@ users (id)
   ├── people.master_user_id
   ├── projects.master_user_id
   ├── master_assistants.master_id
-  └── master_assistants.assistant_id
+  ├── master_assistants.assistant_id
+  ├── master_shares.sharing_master_id
+  └── master_shares.viewing_master_id
 
 customers (id)
   └── projects.customer_id
@@ -473,7 +489,7 @@ project_workflows (id)
   - Invite users with predefined roles
   - Manually create users
   - Delete users
-  - Impersonate other users (via "Login as user")
+  - Impersonate other users (via "imitate" button)
   - Claim dev role with code `'admin1234'`
 
 #### `master_technician`
@@ -499,6 +515,10 @@ project_workflows (id)
   - Masters can "adopt" assistants via checkboxes in Settings
   - Assistants can work for multiple masters (many-to-many relationship)
   - Assistants can only see customers/projects from masters who adopted them
+- **Master-Sharing Relationship**:
+  - Masters can "share" with other masters via checkboxes in Settings
+  - Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials)
+  - Shared masters can see customers/projects from masters who shared with them
 - **Can**: 
   - **Create and edit customers** (must select a master who adopted them as customer owner)
   - **Create and edit projects** (project owner automatically matches customer owner)
@@ -524,16 +544,16 @@ project_workflows (id)
   - Navigation links hidden (except Dashboard, Calendar)
   - Client-side redirects enforce path restrictions
   - Cannot access Customers, Projects, People, Settings, Templates
-  - **Can only see stages assigned to them** (by name match)
-  - Use action buttons (Set Start, Complete) on assigned stages only
+  - **Can only see stages when a stage is assigned to them** (by name match)
+  - Can only Start and Complete their stages
   - Cannot see stages they're not assigned to
   - Cannot edit/delete/assign stages
-  - Cannot see private notes, line items, projections, or ledger
+  - Cannot see private notes, line items, or projections
 
 ### Row Level Security (RLS) Patterns
 
-#### Common Pattern: Master-Assistant Adoption
-Policies check if user owns the resource OR a master who owns it has adopted them:
+#### Common Pattern: Master-Assistant Adoption and Master Sharing
+Policies check if user owns the resource OR a master who owns it has adopted them OR a master who owns it has shared with them:
 ```sql
 master_user_id = auth.uid()  -- User owns it
 OR EXISTS (
@@ -546,7 +566,14 @@ OR EXISTS (
   WHERE master_id = master_user_id
   AND assistant_id = auth.uid()  -- A master who owns it has adopted this assistant
 )
+OR EXISTS (
+  SELECT 1 FROM public.master_shares
+  WHERE sharing_master_id = master_user_id
+  AND viewing_master_id = auth.uid()  -- A master who owns it has shared with this master
+)
 ```
+
+**Note**: Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials).
 
 This pattern is used in:
 - `customers` table: Assistants can see customers from masters who adopted them
@@ -563,12 +590,14 @@ user_id = auth.uid()
 ```
 
 ### Impersonation Flow
-1. Owner clicks "Login as user" in Settings
+1. Dev/Master clicks "imitate" button in Settings
 2. Frontend calls `login-as-user` Edge Function
 3. Edge Function generates magic link for target user
 4. Frontend stores original session in `sessionStorage` (key: `'impersonation_original'`)
-5. User signs in with magic link
-6. "Back to my account" button restores original session from `sessionStorage`
+5. Browser redirects to magic link URL with tokens in hash
+6. AuthHandler component processes tokens and sets session
+7. User is redirected to dashboard as the target user
+8. "Back to my account" button restores original session from `sessionStorage`
 
 ---
 
@@ -663,10 +692,12 @@ user_id = auth.uid()
   - **Approve**: Owners/masters can approve with tracking (who approved, when)
   - **Reject**: Owners/masters can reject with reason notes
   - **Re-open**: Reopen completed/approved/rejected stages (resets status to pending)
-    - Available for rejected stages via "Re-open" button
-    - Visible to devs/masters and assigned person
-    - Clears rejection reason and approval info
+    - Available for completed, approved, or rejected stages via "Re-open" button
+    - Visible to devs, masters, and assistants (on Workflow page only)
+    - Button appears inline with Edit and Delete buttons (bottom right of card)
+    - Clears rejection reason, approval info, and next step rejection notices
     - Records 'reopened' action in action ledger
+    - Sends notifications to subscribed users
   - **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
   - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
 
@@ -789,13 +820,33 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Features**:
   - **User Role Display**: Shows current user's role
-  - **Assigned Stages**: Lists all steps assigned to current user (by `assigned_to_name`)
+  - **How It Works** (Masters/Devs only): Explains system structure
+    - PipeTooling helps Masters better manage Projects with Subs.
+      Three types of People: Masters, Assistants, Subs
+    - Master accounts have Customers
+    - Customers can have Projects
+    - Masters assign People to Project Stages
+    - When People complete Stages, Masters are updated
+  - **Sharing** (Masters/Devs only): Explains sharing features
+    - Masters can choose to adopt assistants in Settings
+      - → they can manage stages but not see financials or private notes
+    - Masters can choose to share with other Masters
+      - → they have the same permissions as assistants
+  - **Subcontractors** (Masters/Devs only): Quick summary
+    - Only see a stage when it is assigned to them
+    - Can only Start and Complete their stages
+    - Cannot see private notes or financials
+    - Cannot add, edit, delete, or assign stages
+    - When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages below:
+  - **My Assigned Stages**: Lists all steps assigned to current user (by `assigned_to_name`)
     - Shows project name, stage name, status
     - Displays start/end times
     - Clickable project address opens Google Maps in new tab
     - Project links include hash fragment to scroll directly to step card
     - Shows project address and plans link if available
     - Displays notes and rejection reasons if present
+    - Shows next step rejection notices if present
+    - Action buttons: Set Start, Complete, Approve, Reject (based on role and status)
   - **Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
   - **Card Layout**: 
@@ -814,6 +865,11 @@ user_id = auth.uid()
     - Checkbox indicates adoption status
     - Assistants can see which masters adopted them
     - Adopted assistants gain access to master's customers and projects
+  - **Share with other Master**: Checkbox list to share/unshare with other masters
+    - Shows all other masters in the system (excluding self)
+    - Checkbox indicates sharing status
+    - Shared masters receive assistant-level access (cannot see private notes or financials)
+    - Viewing masters can see who has shared with them
 - **Features (Dev Only)**:
   - View all users with roles
   - Change user roles
@@ -822,7 +878,7 @@ user_id = auth.uid()
   - Manually create users (with password)
   - Delete users (with confirmation)
   - Send magic link to user
-  - Impersonate users ("Login as user")
+  - Impersonate users ("imitate" button)
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
@@ -1334,7 +1390,13 @@ async function handleSubmit(e: React.FormEvent) {
 - **Solution**: Errors are handled gracefully in `useAuth` hook - invalid tokens are cleared automatically
 - **Note**: These errors are harmless and indicate user needs to sign in again
 
-### 12. TypeScript Strict Mode
+### 12. Magic Link Authentication Handling
+- **Issue**: Magic links from "imitate" feature redirect with tokens in URL hash but weren't being processed
+- **Solution**: Added `AuthHandler` component in `App.tsx` that detects `type=magiclink` tokens in URL hash, sets session, and redirects to dashboard
+- **Implementation**: Extracts `access_token` and `refresh_token` from hash, calls `supabase.auth.setSession()`, clears hash, and navigates
+- **Files Modified**: `src/App.tsx` - Added AuthHandler component, `src/pages/Settings.tsx` - Fixed redirect URL construction
+
+### 13. TypeScript Strict Mode
 - **Issue**: TypeScript errors for potentially undefined values
 - **Solution**: Always check for undefined before accessing array elements, use non-null assertions (`!`) when type narrowing guarantees existence
 - **Common Patterns**:
@@ -1342,38 +1404,34 @@ async function handleSubmit(e: React.FormEvent) {
   - Use destructuring with validation: `if (dateMatch && dateMatch[1] && dateMatch[2])`
   - Wrap function calls in arrow functions for event handlers: `onClick={() => openAddStep()}`
 
-### 13. Current Stage Position Display
+### 14. Current Stage Position Display
 - **Issue**: Projects page showed invalid positions like "[16 / 13]" when using raw `sequence_order` values
 - **Solution**: Calculate position by finding step's index in sorted list, then add 1 (1-indexed)
 - **Implementation**: `Projects.tsx` sorts steps by `sequence_order` and finds index position instead of using raw value
 - **Result**: Always shows correct position relative to total steps, regardless of sequence_order gaps or non-sequential values
 
-### 14. Users Table RLS Recursion
+### 15. Users Table RLS Recursion
 - **Issue**: Policies on `users` table that query `users` or `master_assistants` (which queries `users`) cause infinite recursion errors
 - **Solution**: Use `SECURITY DEFINER` functions to bypass RLS when checking relationships
 - **Example**: `master_adopted_current_user()` function uses `SECURITY DEFINER` to check `master_assistants` without triggering RLS
 - **Migration**: `supabase/migrations/fix_users_rls_for_project_masters.sql`
 - **Result**: Assistants can now see master information (name/email) when viewing projects without recursion errors
+- **Master Sharing**: Similar pattern used for `master_shares` table - RLS policies check for sharing relationships without recursion
 
-### 15. Line Items RLS Timeout
+### 16. Line Items RLS Timeout
 - **Issue**: Loading line items causes statement timeout errors (500 Internal Server Error)
 - **Solution**: Created `can_access_project_via_step()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, performs single optimized query
 - **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
 - **Result**: Line items load quickly without timeout errors
 
-### 16. Step Actions RLS Errors
+### 17. Step Actions RLS Errors
 - **Issue**: Recording workflow actions causes 403 Forbidden or 500 Internal Server Error
 - **Solution**: Created `can_access_step_for_action()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, checks step access efficiently
 - **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
 - **Result**: Actions can be recorded successfully without errors
 
-### 13. Current Stage Position Calculation
-- **Issue**: Projects page showed invalid positions like "[16 / 13]" when using raw `sequence_order`
-- **Solution**: Calculate position by finding step's index in sorted list, then add 1 (1-indexed)
-- **Implementation**: `Projects.tsx` now sorts steps by `sequence_order` and finds index position
-- **Result**: Always shows correct position relative to total steps, regardless of sequence_order gaps
 
 ---
 
@@ -1493,7 +1551,7 @@ For questions or issues:
 ---
 
 **Last Updated**: 2026-01-21
-**Documentation Version**: 2.4
+**Documentation Version**: 2.5
 
 ## Recent Updates (v2.4)
 
@@ -1512,10 +1570,18 @@ For questions or issues:
 - ✅ Rejected status includes reason inline: "Status: rejected - {reason}"
 - ✅ Removed duplicate status display from bottom of card
 
-### Re-open Rejected Stages
-- ✅ Added "Re-open" button for rejected stages
-- ✅ Resets stage to pending, clears rejection reason and approval info
+### Re-open Stages
+- ✅ Added "Re-open" button for completed, approved, and rejected stages
+- ✅ Available to devs, masters, and assistants (on Workflow page only)
+- ✅ Button appears inline with Edit and Delete buttons (bottom right of card)
+- ✅ Resets stage to pending, clears rejection reason, approval info, and next step rejection notices
 - ✅ Records 'reopened' action and sends notifications
+
+### Master-to-Master Sharing
+- ✅ Added `master_shares` table for master-to-master sharing relationships
+- ✅ Updated all RLS policies to support master sharing (customers, projects, workflows, steps, line items, projections)
+- ✅ Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials)
+- ✅ UI added to Settings page for managing shares
 
 ### Database RLS Optimizations
 - ✅ Optimized `workflow_step_line_items` RLS (prevents timeout errors)

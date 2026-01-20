@@ -81,3 +81,51 @@ Fixes RLS policies for `project_workflow_step_actions` table to allow authentica
 **When to run**: If you see 403 or 500 errors when setting start times, completing stages, or performing other workflow actions.
 
 **Key function**: `public.can_access_step_for_action()` - Efficiently checks step access for recording actions without triggering RLS recursion.
+
+### Master-to-Master Sharing Migrations
+
+**Date**: 2026-01-21
+
+#### `create_master_shares.sql`
+Creates the `master_shares` table for master-to-master sharing relationships.
+
+**What it does**:
+- Creates junction table tracking which masters share with which other masters
+- Prevents self-sharing with CHECK constraint
+- Sets up RLS policies for managing shares
+- Creates indexes for performance
+
+**When to run**: When implementing master-to-master sharing feature.
+
+#### `update_*_rls_for_master_sharing.sql` (6 migration files)
+Updates RLS policies to allow masters to access resources from masters who have shared with them.
+
+**Migration files**:
+- `update_customers_rls_for_master_sharing.sql`
+- `update_projects_rls_for_master_sharing.sql`
+- `update_project_workflows_rls_for_master_sharing.sql`
+- `update_project_workflow_steps_rls_for_master_sharing.sql`
+- `update_workflow_step_line_items_rls_for_master_sharing.sql`
+- `update_workflow_projections_rls_for_master_sharing.sql`
+
+**What they do**:
+- Add `master_shares` checks to existing SELECT policies
+- Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials)
+- Follows same pattern as `master_assistants` adoption checks
+
+**When to run**: After creating `master_shares` table, run all 6 RLS update migrations to enable sharing access.
+
+### RLS Timeout Fix (Master Sharing)
+
+If you see 500 errors like `canceling statement due to statement timeout` after enabling master sharing, run:
+
+#### `optimize_rls_for_master_sharing.sql`
+
+**What it does**:
+- Adds optimized `SECURITY DEFINER` helper functions for access checks (including `master_shares`)
+- Replaces the heaviest RLS policies (which use slow join-based `EXISTS` checks) with helper-function-based policies for:
+  - `project_workflows`
+  - `project_workflow_steps`
+  - `workflow_step_line_items`
+
+**When to run**: If workflow pages start returning statement timeout errors after applying the master sharing RLS migrations.

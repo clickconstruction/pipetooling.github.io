@@ -13,6 +13,84 @@ This document summarizes all recent features and improvements added to Pipetooli
 
 ---
 
+## Latest Updates (v2.5)
+
+### Master-to-Master Sharing
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Added "Share with other Master" feature** in Settings
+  - Masters can grant other masters assistant-level access to their customers and projects
+  - Similar to "Adopt Assistants" but for master-to-master relationships
+  - Shared masters can see customers, projects, workflows, and steps
+  - Shared masters cannot see private notes or financial totals (same restrictions as assistants)
+  - Shared masters cannot modify/delete resources (same restrictions as assistants)
+
+**Database Changes**:
+- ✅ Created `master_shares` table to track sharing relationships
+- ✅ Updated RLS policies for customers, projects, workflows, steps, line items, and projections
+- ✅ All policies now check for `master_shares` relationships in addition to `master_assistants`
+- ✅ **Added RLS timeout fix migration** for master sharing
+  - Introduces helper-function-based policies to avoid statement timeouts (`57014`)
+  - File: `supabase/migrations/optimize_rls_for_master_sharing.sql`
+
+**Files Modified**:
+- `supabase/migrations/create_master_shares.sql` - New table
+- `supabase/migrations/update_*_rls_for_master_sharing.sql` - 6 migration files updating RLS policies
+- `supabase/migrations/optimize_rls_for_master_sharing.sql` - Fix statement timeout errors
+- `src/types/database.ts` - Added master_shares table types
+- `src/pages/Settings.tsx` - Added UI for master sharing
+
+### Re-open Functionality Updates
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Re-open button now available for completed, approved, and rejected stages**
+  - Previously only available for rejected stages
+  - Now available to devs, masters, and assistants (on Workflow page)
+  - Button appears inline with Edit and Delete buttons (bottom right of card)
+  - Removed from Dashboard (only available on Workflow page)
+- ✅ **Re-open clears next step rejection notices**
+  - When reopening a step, clears `next_step_rejected_notice` and `next_step_rejection_reason` if set
+  - Ensures clean state when manually reopening
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Updated re-open button visibility and location
+- `src/pages/Dashboard.tsx` - Removed re-open button
+
+### Dashboard UI Updates
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Updated "How It Works" section**
+  - Added intro line: "PipeTooling helps Masters better manage Projects with Subs. Three types of People: Masters, Assistants, Subs"
+  - Updated bullets to the new “Customers/Projects/Stages” wording
+- ✅ **Updated "Sharing" + Subcontractors help text**
+  - Added explanation lines (→) under sharing bullets
+  - Removed the separate "Access Control" section from the help box
+  - Simplified Subcontractor bullets (cannot see private notes or financials)
+
+**Files Modified**:
+- `src/pages/Dashboard.tsx` - Updated help text sections
+
+### Login-as-User Improvements
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Fixed magic link authentication handling**
+  - Added `AuthHandler` component to process authentication tokens from URL hash
+  - Automatically sets session and redirects to dashboard when coming from magic link
+  - Fixed redirect URL construction to use `window.location.origin`
+- ✅ **Updated button text**: "Login as user" → "imitate"
+
+**Files Modified**:
+- `src/App.tsx` - Added AuthHandler component
+- `src/pages/Settings.tsx` - Updated button text and redirect URL
+
 ## Latest Updates (v2.4)
 
 ### Assistant Workflow Access Improvements

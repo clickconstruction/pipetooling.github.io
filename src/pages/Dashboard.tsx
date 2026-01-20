@@ -496,42 +496,54 @@ export default function Dashboard() {
       
       {(role === 'master_technician' || role === 'dev') && (
         <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            PipeTooling helps Masters better manage Projects with Subs.
+            <br />
+            Three types of People: Masters, Assistants, Subs
+          </div>
           <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
           <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            <li style={{ marginBottom: '0.5rem' }}>Masters own customers</li>
-            <li style={{ marginBottom: '0.5rem' }}>Customers have projects</li>
-            <li style={{ marginBottom: '0.5rem' }}>Masters adopt assistants</li>
-            <li>Masters assign people to stages</li>
+            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
+            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
+            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
+            <li>When People complete Stages, Masters are updated</li>
           </ol>
-          <p style={{ marginTop: '0.75rem', marginBottom: 0, fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Step States</strong>: <code>pending</code> → <code>in_progress</code> → <code>completed</code> / <code>rejected</code> / <code>approved</code>
-          </p>
           <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Access Control</strong>:
+            <strong>Sharing</strong>:
             <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li>
-                <strong>Masters</strong>: See all stages, full access to all features
+              <li style={{ marginBottom: '0.5rem' }}>
+                Masters can choose to adopt assistants in Settings
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they can manage stages but not see financials or private notes
+                </div>
               </li>
               <li>
-                <strong>Assistants</strong>: Manage a master's stages, add line items
-              </li>
-              <li>
-                <strong>Subcontractors</strong>:
-                <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'circle' }}>
-                  <li>Only see stages where <code>assigned_to_name</code> matches their name</li>
-                  <li>Can only use Set Start and Complete on assigned stages</li>
-                  <li>Cannot see private notes, line items, projections, or ledger</li>
-                  <li>Cannot add, edit, delete, or assign stages</li>
-                </ul>
+                Masters can choose to share with other Masters
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they have the same permissions as assistants
+                </div>
               </li>
             </ul>
+          </div>
+
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Subcontractors</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li>Only see a stage when it is assigned to them</li>
+              <li>Can only Start and Complete their stages</li>
+              <li>Cannot see private notes or financials</li>
+              <li>Cannot add, edit, delete, or assign stages</li>
+            </ul>
+            <div style={{ marginTop: '0.5rem' }}>
+              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages below:
+            </div>
           </div>
         </div>
       )}
       
       {assignedSteps.length > 0 && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Assigned Stages</h2>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Assigned Stages</h2>
           <div>
             {assignedSteps.map((s) => (
               <div

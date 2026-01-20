@@ -116,6 +116,9 @@ export default function Workflow() {
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
 
+  const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
+  const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
+
   async function ensureWorkflow(pid: string) {
     const { data: wfs } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
     if (wfs && wfs.length > 0) {
@@ -1315,7 +1318,7 @@ export default function Workflow() {
             </div>
           )}
         </div>
-        {(userRole === 'dev' || userRole === 'master_technician') && (
+        {canManageStages && (
           <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
             Add step
           </button>
@@ -1323,7 +1326,7 @@ export default function Workflow() {
       </div>
 
       {/* Projections - Only visible to devs and masters */}
-      {(userRole === 'dev' || userRole === 'master_technician') && (
+      {isDevOrMaster && (
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
           {/* Projections */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -1402,7 +1405,7 @@ export default function Workflow() {
       )}
 
       {/* Ledger - Visible to devs, masters, and assistants */}
-      {(userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+      {canManageStages && (
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger (Incurred Charges and Payments)</h2>
           {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
@@ -1436,7 +1439,7 @@ export default function Workflow() {
                 </tbody>
               </table>
               {/* Ledger Total - Only visible to devs and masters */}
-              {(userRole === 'dev' || userRole === 'master_technician') && (
+              {isDevOrMaster && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
                     Ledger Total: {formatAmount(calculateLedgerTotal())}
@@ -1451,7 +1454,7 @@ export default function Workflow() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
         {steps.length === 0 ? (
           <div>
-            {(userRole === 'dev' || userRole === 'master_technician') ? (
+            {canManageStages ? (
               <>
                 <p style={{ marginBottom: '1rem' }}>No steps yet. Add a step or create from a template.</p>
                 {templates.length > 0 && (
@@ -1519,7 +1522,7 @@ export default function Workflow() {
                     )}
 
                     {/* Actions (top-left) */}
-                    {((userRole === 'dev' || userRole === 'master_technician') || s.assigned_to_name === currentUserName) && (
+                    {(canManageStages || s.assigned_to_name === currentUserName) && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                         {s.status === 'pending' && (
                           <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
@@ -1531,12 +1534,12 @@ export default function Workflow() {
                             Complete
                           </button>
                         )}
-                        {(s.status === 'pending' || s.status === 'in_progress') && (userRole === 'dev' || userRole === 'master_technician') && (
+                        {(s.status === 'pending' || s.status === 'in_progress') && canManageStages && (
                           <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
                             Approve
                           </button>
                         )}
-                        {(s.status === 'pending' || s.status === 'in_progress') && (userRole === 'dev' || userRole === 'master_technician') && (
+                        {(s.status === 'pending' || s.status === 'in_progress') && canManageStages && (
                           <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>
                             Reject
                           </button>
@@ -1547,21 +1550,21 @@ export default function Workflow() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                     {/* Assign (top-right) */}
-                    {(userRole === 'dev' || userRole === 'master_technician') && (
+                    {canManageStages && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Assign</button>
                       </div>
                     )}
 
                     {/* Only show notification settings for owners and masters, or if user is assigned to this step */}
-                    {((userRole === 'dev' || userRole === 'master_technician') || s.assigned_to_name === currentUserName) && (
+                    {(canManageStages || s.assigned_to_name === currentUserName) && (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
                       <div style={{ marginBottom: 4, fontWeight: 500 }}>Notify when stage:</div>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                         <thead>
                           <tr>
                             <th style={{ textAlign: 'left', padding: '0.25rem 0.5rem', fontWeight: 500 }}></th>
-                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                            {canManageStages && (
                               <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ASSIGNED</th>
                             )}
                             <th style={{ textAlign: 'center', padding: '0.25rem 0.5rem', fontWeight: 500 }}>ME</th>
@@ -1570,7 +1573,7 @@ export default function Workflow() {
                         <tbody>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>started</td>
-                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                            {canManageStages && (
                               <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
@@ -1591,7 +1594,7 @@ export default function Workflow() {
                           </tr>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>complete</td>
-                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                            {canManageStages && (
                               <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
@@ -1612,7 +1615,7 @@ export default function Workflow() {
                           </tr>
                           <tr>
                             <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>re-opened</td>
-                            {(userRole === 'dev' || userRole === 'master_technician') && (
+                            {canManageStages && (
                               <td style={{ padding: '0.25rem 0.5rem', textAlign: 'center' }}>
                                 <input
                                   type="checkbox"
@@ -1633,7 +1636,7 @@ export default function Workflow() {
                           </tr>
                         </tbody>
                       </table>
-                      {(userRole === 'dev' || userRole === 'master_technician') && (
+                      {canManageStages && (
                         <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input
@@ -1701,7 +1704,7 @@ export default function Workflow() {
                   />
                 </div>
                 {/* Private Notes - dev/master only */}
-                {(userRole === 'dev' || userRole === 'master_technician') && (
+                {isDevOrMaster && (
                   <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
                     <label htmlFor={`private-notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500, color: '#0369a1' }}>
                       Private Notes (Only you can see this)
@@ -1719,7 +1722,7 @@ export default function Workflow() {
                 )}
                 
                 {/* Line Items - dev/master/assistant */}
-                {(userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+                {canManageStages && (
                   <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (Master and Assistants only)</label>
@@ -1767,14 +1770,14 @@ export default function Workflow() {
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   {/* Only show management buttons for owners and masters */}
-                  {(userRole === 'dev' || userRole === 'master_technician') && (
+                  {canManageStages && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
                       <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
                     </div>
                   )}
                   {/* Re-open button - in line with Edit and Delete */}
-                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && canManageStages && (
                     <button type="button" onClick={() => markReopened(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#2563eb' }}>
                       Re-open
                     </button>
