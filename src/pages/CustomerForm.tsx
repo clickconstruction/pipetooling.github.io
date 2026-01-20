@@ -112,6 +112,9 @@ export default function CustomerForm() {
   const [masterUserId, setMasterUserId] = useState('')
   const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
   const [mastersLoading, setMastersLoading] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   function handleQuickFill() {
     const parsed = parseQuickFill(quickFill)
@@ -418,6 +421,70 @@ export default function CustomerForm() {
           <Link to="/customers" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>
         </div>
       </form>
+
+      {!isNew && (myRole === 'dev' || myRole === 'master_technician') && (
+        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', maxWidth: 400 }}>
+          <button type="button" onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setError(null) }} style={{ padding: '0.5rem 1rem', color: '#b91c1c' }}>
+            Delete customer
+          </button>
+        </div>
+      )}
+
+      {deleteOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>Delete customer</h2>
+            <p style={{ marginBottom: '1rem' }}>Type the customer name <strong>{name}</strong> to confirm.</p>
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={(e) => { setDeleteConfirm(e.target.value); setError(null) }}
+              placeholder="Customer name"
+              disabled={deleting}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+              autoComplete="off"
+            />
+            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!id || deleteConfirm.trim() !== name.trim()) return
+                  setDeleting(true)
+                  setError(null)
+                  const { error: delErr } = await supabase
+                    .from('customers')
+                    .delete()
+                    .eq('id', id)
+                  setDeleting(false)
+                  if (delErr) {
+                    setError(delErr.message)
+                    return
+                  }
+                  setDeleteOpen(false)
+                  navigate('/customers', { replace: true })
+                }}
+                disabled={deleting || deleteConfirm.trim() !== name.trim()}
+                style={{ padding: '0.5rem 1rem', color: '#b91c1c', background: 'white', border: '1px solid #b91c1c', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete customer'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteOpen(false)
+                  setDeleteConfirm('')
+                  setError(null)
+                }}
+                disabled={deleting}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

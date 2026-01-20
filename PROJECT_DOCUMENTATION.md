@@ -123,7 +123,14 @@ A Master Plumber can:
   - `role` (enum: `'dev' | 'master_technician' | 'assistant' | 'subcontractor'`)
   - `last_sign_in_at` (timestamptz, nullable)
 - **Relationships**: Referenced by `customers.master_user_id`, `people.master_user_id`
-- **RLS**: Users can read their own record; owners can read all
+- **RLS**: 
+  - Users can read their own record
+  - Masters/devs can see all assistants
+  - Users can see masters who have adopted them (via `master_adopted_current_user()` function)
+  - Uses `SECURITY DEFINER` function to avoid recursion in RLS policies
+- **Helper Functions**:
+  - `public.is_dev()` - Checks if current user has dev role (avoids recursion)
+  - `public.master_adopted_current_user(master_user_id UUID)` - Checks if master adopted current user (avoids recursion)
 
 #### `public.customers`
 - **Purpose**: Customer information
@@ -134,7 +141,9 @@ A Master Plumber can:
   - `address` (text, nullable)
   - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
   - `date_met` (date, nullable) - Date when customer was first met
-- **RLS**: Users can only see customers where `master_user_id` matches their ID or they're in `master_assistants`
+- **RLS**: 
+  - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, or they're in `master_assistants`
+  - DELETE: Masters can delete their own customers (`master_user_id = auth.uid()`), devs can delete any customer
 - **Special Features**: 
   - Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
   - **Master selection**: Assistants and devs must select a master when creating customers
@@ -160,6 +169,8 @@ A Master Plumber can:
   - `project_type` (text, nullable) - Project type (for future use)
 - **RLS**: 
   - SELECT: Users can see projects they own OR projects from masters who adopted them
+    - Assistants can see **all projects** from masters who adopted them (not just assigned stages)
+    - Migration: `supabase/migrations/verify_projects_rls_for_assistants.sql` ensures correct policy
   - INSERT: Assistants, masters, and devs can create projects; project owner automatically matches customer owner
   - UPDATE: Assistants, masters, and devs can update projects they own or from masters who adopted them (project owner cannot be changed)
   - DELETE: Only devs and masters can delete projects
@@ -282,11 +293,16 @@ A Master Plumber can:
   - `amount` (numeric(10, 2), required) - **Supports negative numbers** for credits/refunds
   - `sequence_order` (integer) - Order within the step
   - `created_at`, `updated_at` (timestamptz)
-- **RLS**: Devs, masters, and assistants (via master adoption) can read/write line items for projects they can access. UI only exposes line items to devs, masters, and assistants (not subcontractors).
+- **RLS**: 
+  - Devs, masters, and assistants (via master adoption) can read/write line items for projects they can access
+  - Uses `can_access_project_via_step()` helper function to optimize performance and prevent timeout errors
+  - UI only exposes line items to devs, masters, and assistants (not subcontractors)
 - **Special Features**:
   - Aggregated in Ledger at top of workflow page
   - Amounts formatted with commas (e.g., `$1,234.56`)
   - Negative amounts displayed in red with parentheses
+  - Assistants can view Ledger table but cannot see financial totals
+- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
 
 #### `public.workflow_projections`
 - **Purpose**: Project cost projections for entire workflow
@@ -324,8 +340,12 @@ A Master Plumber can:
   - `performed_by` (text) - Name of person who performed the action
   - `performed_at` (timestamptz) - When the action occurred
   - `notes` (text, nullable) - Optional notes about the action
-- **RLS**: Users can read actions for steps they have access to; authenticated users can insert
+- **RLS**: 
+  - Users can read actions for steps they have access to
+  - Authenticated users can insert actions for steps they have access to
+  - Uses `can_access_step_for_action()` helper function to optimize performance
 - **Purpose**: Provides complete audit trail of all step state changes
+- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
 
 ### Database Functions
 
@@ -338,6 +358,28 @@ A Master Plumber can:
 - **Returns**: `boolean`
 - **Purpose**: Checks if current user has `'dev'` role
 - **Usage**: Used in RLS policies to avoid recursion
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS
+
+#### `public.master_adopted_current_user(master_user_id UUID)`
+- **Returns**: `boolean`
+- **Purpose**: Checks if the given master has adopted the current user
+- **Usage**: Used in users table RLS policy to allow assistants to see masters who adopted them
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
+- **Migration**: `supabase/migrations/fix_users_rls_for_project_masters.sql`
+
+#### `public.can_access_project_via_step(step_id_param UUID)`
+- **Returns**: `boolean`
+- **Purpose**: Checks if the current user can access a project via a workflow step
+- **Usage**: Used in `workflow_step_line_items` RLS policies to optimize performance
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
+- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+
+#### `public.can_access_step_for_action(step_id_param UUID)`
+- **Returns**: `boolean`
+- **Purpose**: Checks if the current user can access a step for recording actions
+- **Usage**: Used in `project_workflow_step_actions` RLS policies to optimize performance
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS and avoid recursion
+- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
 
 #### `public.claim_dev_with_code(code text)`
 - **Returns**: `boolean`
@@ -461,8 +503,9 @@ project_workflows (id)
   - **Create and edit customers** (must select a master who adopted them as customer owner)
   - **Create and edit projects** (project owner automatically matches customer owner)
   - View customers and projects from masters who adopted them
-  - View and update workflows **only for stages assigned to them**
-  - Use action buttons (Set Start, Complete) on assigned stages
+  - **View ALL stages** in workflows they have access to (not just assigned stages)
+  - Use action buttons (Set Start, Complete, Re-open) on assigned stages
+  - **View and edit line items** in Ledger (but cannot see financial totals)
   - Subscribe to stage notifications
 - **Cannot**: 
   - Delete projects (restricted to devs/masters)
@@ -470,10 +513,9 @@ project_workflows (id)
   - Change project owner (automatically matches customer owner)
   - Manage users
   - Access Settings (except to see which masters adopted them)
-  - See stages they're not assigned to
   - Edit/delete/assign stages
-  - See private notes or line items
-  - See projections or ledger
+  - See private notes
+  - See projections or financial totals (Ledger Total, Total Left on Job)
   - Create customers without selecting a master who adopted them
 
 #### `subcontractor`
@@ -546,6 +588,9 @@ user_id = auth.uid()
   - **Date Met**: Track when customer relationship started
   - **Contact Info**: Structured storage of email and phone (JSONB)
   - **Customer owner displayed** in customer list
+  - **Delete functionality**: Masters can delete their own customers, devs can delete any customer (delete button in edit form only)
+  - **Contact Icons**: Clickable phone, email, and map icons if contact/address info exists
+  - **Click customer name** to edit (removed redundant "Edit" link)
 - **Data**: Name, address, contact info (JSONB), date_met
 
 ### 2. Project Management
@@ -557,16 +602,33 @@ user_id = auth.uid()
   - Delete projects (with confirmation)
   - Link to HouseCallPro number
   - Link to plans
+  - **Map link**: Clickable map icon next to plans link (if project has address)
   - Create workflow from template
   - **Project owner displayed** in project list and workflow page
-- **Data**: Name, description, status, customer, master_user_id (project owner, matches customer owner), external references
+  - **Stage Summary**: Color-coded workflow stage sequence displayed below description
+    - Green for completed/approved, red for rejected, orange (bold) for in_progress, gray for pending
+  - **Current Stage**: Shows active stage with progress `[current / total]` (e.g., `[3 / 5]`)
+    - Rejected stages stop progress and are shown as current stage
+  - **Click project name** to view workflow (removed redundant "Workflow" link)
+  - **Empty state**: When filtering by customer, shows `**[Customer Name]** has no projects yet. Add one.`
+- **Data**: Name, description, status, customer, master_user_id (project owner, matches customer owner), address, external references
 
 ### 3. Workflow Management
-- **Page**: `Workflow.tsx` (~1,500 lines - most complex component)
+- **Page**: `Workflow.tsx` (~1,500+ lines - most complex component)
 - **Route**: `/workflows/:projectId`
 - **Purpose**: Central interface for managing project workflows, tracking progress through stages, assigning work, and handling financials
 
 #### Core Features
+
+**Step Assignment**:
+- **Autocomplete dropdown** in "Add Step" modal for "Assigned to" field
+- Shows all masters and subcontractors (from `users` and `people` tables)
+- Real-time search/filter as you type
+- Source indicators: "(user)" for signed-up users, "(not user)" for roster entries
+- **Add person prompt**: If name doesn't match, shows "Add [name]" option
+- Opens modal to add name, email, phone, notes (defaults to `kind: 'sub'`)
+- Automatically selects newly added person after creation
+- Duplicate name checking (case-insensitive)
 
 **Visual Workflow Display**:
   - **Workflow Header**: Shows all stage names with "→" separators, color-coded by status
@@ -601,24 +663,31 @@ user_id = auth.uid()
   - **Approve**: Owners/masters can approve with tracking (who approved, when)
   - **Reject**: Owners/masters can reject with reason notes
   - **Re-open**: Reopen completed/approved/rejected stages (resets status to pending)
+    - Available for rejected stages via "Re-open" button
+    - Visible to devs/masters and assigned person
+    - Clears rejection reason and approval info
+    - Records 'reopened' action in action ledger
   - **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
   - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
 
-**Financial Tracking** (Owners/Masters only):
+**Financial Tracking**:
   - **Line Items**: Track actual expenses/credits per stage
     - Fields: Memo (description), Amount (supports negative for credits/refunds)
     - Located within Private Notes section of each stage
     - Amounts formatted with commas: `$1,234.56`
     - Negative amounts displayed in red with parentheses: `($1,234.56)`
-  - **Projections**: Track projected costs for entire workflow
+    - **Assistants**: Can add/edit line items but cannot see financial totals
+  - **Projections**: Track projected costs for entire workflow (Devs/Masters only)
     - Fields: Stage name, Memo, Amount (supports negative)
-    - Displayed above Ledger section at top of page
+    - Displayed in separate section at top of page
     - Light blue background to distinguish from Ledger
     - Total calculation at bottom
+    - Includes "Total Left on Job: Projections - Ledger = ..."
   - **Ledger**: Aggregated view of all line items from all stages
     - Table format: Stage, Memo, Amount
-    - Total sum at bottom (turns red if negative)
-    - Located below Projections section
+    - Visible to devs, masters, and assistants
+    - **Ledger Total**: Only visible to devs/masters (hidden from assistants)
+    - Located in separate section below Projections
 
 **Private Notes** (Owners/Masters only):
   - Separate text area from regular notes
@@ -656,7 +725,14 @@ user_id = auth.uid()
 
 **Access Control**:
   - **Owners/Masters**: See all stages, full access to all features
-  - **Assistants/Subcontractors**: 
+  - **Assistants**: 
+    - See ALL stages in workflows they have access to (via master adoption)
+    - Can use Set Start, Complete, and Re-open on assigned stages
+    - Can view and edit line items (but cannot see financial totals)
+    - Cannot see private notes, projections, or financial totals
+    - Cannot add, edit, delete, or assign stages
+    - Notification settings: "ASSIGNED" column hidden, only "ME" column visible
+  - **Subcontractors**: 
     - Only see stages where `assigned_to_name` matches their name
     - Can only use Set Start and Complete on assigned stages
     - Cannot see private notes, line items, projections, or ledger
@@ -1180,11 +1256,15 @@ async function handleSubmit(e: React.FormEvent) {
 
 ### 5. RLS Policy Recursion Prevention
 - **Issue**: RLS policies that query `public.users` directly can cause recursion or performance issues
-- **Solution**: Use helper functions like `is_dev()` instead of direct queries
+- **Solution**: Use helper functions with `SECURITY DEFINER` instead of direct queries
 - **Examples**:
   - `email_templates` table: Uses `is_dev()` function in all policies
   - `people` table: Devs can read all entries via `is_dev()` policy
-  - All policies should use `public.is_dev()` instead of `EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')`
+  - `users` table: Uses `master_adopted_current_user()` function to check adoptions without recursion
+- **Helper Functions**:
+  - `public.is_dev()` - Checks if current user is dev (SECURITY DEFINER)
+  - `public.master_adopted_current_user(master_user_id UUID)` - Checks if master adopted current user (SECURITY DEFINER)
+- **Best Practice**: All policies should use helper functions instead of direct `EXISTS (SELECT 1 FROM public.users ...)` queries
 
 ### 6. Character Encoding in Workflow
 - **Issue**: Special characters (↓, ·, …, ←, –) display as "?"
@@ -1261,6 +1341,39 @@ async function handleSubmit(e: React.FormEvent) {
   - Check array indices: `if (parts[index] && parts[index])`
   - Use destructuring with validation: `if (dateMatch && dateMatch[1] && dateMatch[2])`
   - Wrap function calls in arrow functions for event handlers: `onClick={() => openAddStep()}`
+
+### 13. Current Stage Position Display
+- **Issue**: Projects page showed invalid positions like "[16 / 13]" when using raw `sequence_order` values
+- **Solution**: Calculate position by finding step's index in sorted list, then add 1 (1-indexed)
+- **Implementation**: `Projects.tsx` sorts steps by `sequence_order` and finds index position instead of using raw value
+- **Result**: Always shows correct position relative to total steps, regardless of sequence_order gaps or non-sequential values
+
+### 14. Users Table RLS Recursion
+- **Issue**: Policies on `users` table that query `users` or `master_assistants` (which queries `users`) cause infinite recursion errors
+- **Solution**: Use `SECURITY DEFINER` functions to bypass RLS when checking relationships
+- **Example**: `master_adopted_current_user()` function uses `SECURITY DEFINER` to check `master_assistants` without triggering RLS
+- **Migration**: `supabase/migrations/fix_users_rls_for_project_masters.sql`
+- **Result**: Assistants can now see master information (name/email) when viewing projects without recursion errors
+
+### 15. Line Items RLS Timeout
+- **Issue**: Loading line items causes statement timeout errors (500 Internal Server Error)
+- **Solution**: Created `can_access_project_via_step()` helper function to optimize RLS policies
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, performs single optimized query
+- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+- **Result**: Line items load quickly without timeout errors
+
+### 16. Step Actions RLS Errors
+- **Issue**: Recording workflow actions causes 403 Forbidden or 500 Internal Server Error
+- **Solution**: Created `can_access_step_for_action()` helper function to optimize RLS policies
+- **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, checks step access efficiently
+- **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+- **Result**: Actions can be recorded successfully without errors
+
+### 13. Current Stage Position Calculation
+- **Issue**: Projects page showed invalid positions like "[16 / 13]" when using raw `sequence_order`
+- **Solution**: Calculate position by finding step's index in sorted list, then add 1 (1-indexed)
+- **Implementation**: `Projects.tsx` now sorts steps by `sequence_order` and finds index position
+- **Result**: Always shows correct position relative to total steps, regardless of sequence_order gaps
 
 ---
 
@@ -1379,8 +1492,51 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-18
-**Documentation Version**: 2.2
+**Last Updated**: 2026-01-21
+**Documentation Version**: 2.4
+
+## Recent Updates (v2.4)
+
+### Assistant Workflow Access
+- ✅ Assistants can now see ALL stages in workflows they have access to (not just assigned stages)
+- ✅ Subcontractors remain restricted to assigned stages only
+- ✅ Fixed line items not updating immediately for assistants after adding/editing
+
+### Financial Tracking Updates
+- ✅ Assistants can add/edit line items but cannot see financial totals (Ledger Total, Total Left on Job)
+- ✅ Updated label: "Line Items (Master and Assistants only)"
+- ✅ Ledger section visible to devs, masters, and assistants (totals hidden from assistants)
+
+### Workflow Stage Status Display
+- ✅ Status moved to top of card (right below "Assigned to")
+- ✅ Rejected status includes reason inline: "Status: rejected - {reason}"
+- ✅ Removed duplicate status display from bottom of card
+
+### Re-open Rejected Stages
+- ✅ Added "Re-open" button for rejected stages
+- ✅ Resets stage to pending, clears rejection reason and approval info
+- ✅ Records 'reopened' action and sends notifications
+
+### Database RLS Optimizations
+- ✅ Optimized `workflow_step_line_items` RLS (prevents timeout errors)
+- ✅ Fixed `project_workflow_step_actions` RLS (fixes 403/500 errors)
+- ✅ Created helper functions: `can_access_project_via_step()`, `can_access_step_for_action()`
+
+## Recent Updates (v2.3)
+
+### Workflow Step Assignment
+- ✅ Autocomplete dropdown in "Add Step" modal for assigning masters and subs
+- ✅ "Add person" prompt when name doesn't exist in list
+- ✅ Shows source indicators: "(user)" vs "(not user)"
+
+### Projects Page Fixes
+- ✅ Fixed current stage position calculation (uses sorted position, not raw sequence_order)
+- ✅ Prevents display of invalid positions like "[16 / 13]"
+
+### RLS Policy Fixes
+- ✅ Fixed users table RLS recursion issue (uses SECURITY DEFINER function)
+- ✅ Assistants can now see master information for projects they have access to
+- ✅ Created `master_adopted_current_user()` function to safely check adoptions
 
 ## Recent Updates (v2.2)
 

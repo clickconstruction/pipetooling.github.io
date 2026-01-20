@@ -13,6 +13,29 @@ This document provides detailed information about all workflow-related features.
 
 ## Stage Management
 
+### Step Assignment
+
+**Location**: "Add Step" modal → "Assigned to" field
+
+**Features**:
+- **Searchable autocomplete dropdown** showing all masters and subcontractors
+- **Real-time filtering** as you type (case-insensitive search)
+- **Source indicators**: 
+  - Shows "(user)" for people with user accounts
+  - Shows "(not user)" for roster entries without accounts
+- **Add new person**: 
+  - If name entered doesn't match any existing person, shows "Add [name]" option in dropdown
+  - Opens modal with fields: Name (pre-filled), Email, Phone, Notes
+  - Defaults to `kind: 'sub'` (subcontractor)
+  - Validates for duplicate names (case-insensitive)
+  - Automatically selects newly added person after creation
+- **Data sources**: 
+  - Queries `users` table for roles `'master_technician'` and `'subcontractor'`
+  - Queries `people` table for kind `'master_technician'` and `'sub'`
+  - Combines and deduplicates by name (case-insensitive)
+
+**Implementation**: `src/pages/Workflow.tsx` - `StepFormModal` component
+
 ### Setting Start Time
 
 **Button**: "Set Start" (replaces old "Start" button)

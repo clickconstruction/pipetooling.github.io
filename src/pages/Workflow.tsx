@@ -163,14 +163,16 @@ export default function Workflow() {
   }
 
   async function loadSteps(wfId: string) {
-    // For assistants and subcontractors, only show steps they're assigned to
+    // Only subcontractors are filtered to assigned steps
+    // Assistants see all stages (RLS handles access control via master adoption)
     let query = supabase
       .from('project_workflow_steps')
       .select('*')
       .eq('workflow_id', wfId)
     
-    // If user is assistant or subcontractor, filter to only their assigned steps
-    if ((userRole === 'assistant' || userRole === 'subcontractor') && currentUserName) {
+    // Only subcontractors are filtered to assigned steps
+    // Assistants see all stages (RLS handles access control via master adoption)
+    if (userRole === 'subcontractor' && currentUserName) {
       query = query.eq('assigned_to_name', currentUserName)
     }
     
@@ -183,8 +185,8 @@ export default function Workflow() {
     const stepData = (data as Step[]) ?? []
     console.log(`Loaded ${stepData.length} steps for workflow ${wfId}`)
     
-    // For assistants/subcontractors, check if they have access to this workflow
-    if ((userRole === 'assistant' || userRole === 'subcontractor') && stepData.length === 0) {
+    // Only subcontractors need this check (assistants see all stages if they have project access)
+    if (userRole === 'subcontractor' && stepData.length === 0) {
       setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one stage.')
       setSteps([])
       return
@@ -239,28 +241,47 @@ export default function Workflow() {
   }
 
   async function loadLineItemsForSteps(stepIds: string[]) {
-    if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data: items, error } = await supabase
-      .from('workflow_step_line_items')
-      .select('*')
-      .in('step_id', stepIds)
-      .order('sequence_order', { ascending: true })
-    if (error) {
-      setError(`Failed to load line items: ${error.message}`)
+    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant') return
+    if (stepIds.length === 0) {
+      setLineItems({})
       return
     }
-    if (items) {
-      const itemsMap: Record<string, LineItem[]> = {}
-      items.forEach((item) => {
-        if (item && item.step_id) {
-          const stepId = item.step_id
-          if (!itemsMap[stepId]) {
-            itemsMap[stepId] = []
-          }
-          itemsMap[stepId].push(item as LineItem)
+    
+    try {
+      const { data: items, error } = await supabase
+        .from('workflow_step_line_items')
+        .select('*')
+        .in('step_id', stepIds)
+        .order('sequence_order', { ascending: true })
+      
+      if (error) {
+        console.error('Error loading line items:', error)
+        // Don't show error to user for RLS/permission issues, just log and continue
+        if (error.code !== 'PGRST116' && error.message && !error.message.includes('permission')) {
+          setError(`Failed to load line items: ${error.message}`)
         }
-      })
-      setLineItems(itemsMap)
+        setLineItems({})
+        return
+      }
+      
+      if (items) {
+        const itemsMap: Record<string, LineItem[]> = {}
+        items.forEach((item) => {
+          if (item && item.step_id) {
+            const stepId = item.step_id
+            if (!itemsMap[stepId]) {
+              itemsMap[stepId] = []
+            }
+            itemsMap[stepId].push(item as LineItem)
+          }
+        })
+        setLineItems(itemsMap)
+      } else {
+        setLineItems({})
+      }
+    } catch (err) {
+      console.error('Exception loading line items:', err)
+      setLineItems({})
     }
   }
 
@@ -279,7 +300,7 @@ export default function Workflow() {
 
   // Load line items when steps and userRole are available
   useEffect(() => {
-    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician')) {
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
       const stepIds = steps.map(s => s.id)
       loadLineItemsForSteps(stepIds)
     } else {
@@ -962,14 +983,28 @@ export default function Workflow() {
     }
   }
 
-  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string; rejection_reason?: string; approved_by?: string | null; approved_at?: string | null }) {
+  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string | null; rejection_reason?: string | null; approved_by?: string | null; approved_at?: string | null; next_step_rejected_notice?: string | null; next_step_rejection_reason?: string | null }) {
     const up: Record<string, unknown> = { status }
-    if (extra?.ended_at) up.ended_at = extra.ended_at
-    if (extra?.rejection_reason != null) up.rejection_reason = extra.rejection_reason
+    if (extra?.ended_at !== undefined) up.ended_at = extra.ended_at
+    if (extra?.rejection_reason !== undefined) up.rejection_reason = extra.rejection_reason
     if (extra?.approved_by !== undefined) up.approved_by = extra.approved_by
     if (extra?.approved_at !== undefined) up.approved_at = extra.approved_at
+    if (extra?.next_step_rejected_notice !== undefined) up.next_step_rejected_notice = extra.next_step_rejected_notice
+    if (extra?.next_step_rejection_reason !== undefined) up.next_step_rejection_reason = extra.next_step_rejection_reason
     await supabase.from('project_workflow_steps').update(up).eq('id', step.id)
     await refreshSteps()
+  }
+
+  function findPreviousStep(step: Step): Step | null {
+    const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
+    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
+    return currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
+  }
+
+  function findNextStep(step: Step): Step | null {
+    const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
+    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
+    return currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
   }
 
   async function markStarted(step: Step, startDateTime?: string) {
@@ -992,6 +1027,27 @@ export default function Workflow() {
     await recordAction(step.id, 'completed')
     // Send notifications (fire and forget - don't block UI)
     void sendWorkflowNotifications(step, 'completed')
+    
+    // Check if next step is rejected and reopen it
+    const nextStep = findNextStep(step)
+    if (nextStep && nextStep.status === 'rejected') {
+      // Clear the notice and rejection reason from current step if they were set
+      if (step.next_step_rejected_notice) {
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: null,
+          next_step_rejection_reason: null,
+        }).eq('id', step.id)
+      }
+      // Reopen the rejected next step
+      await updateStepStatus(nextStep, 'pending', {
+        rejection_reason: null,
+        ended_at: null,
+      })
+      await recordAction(nextStep.id, 'reopened', 'Previous step was re-completed')
+      // Send notifications for the next step being reopened (fire and forget)
+      void sendWorkflowNotifications(nextStep, 'reopened')
+    }
+    
     await refreshSteps()
   }
 
@@ -1007,6 +1063,42 @@ export default function Workflow() {
     await recordAction(step.id, 'approved')
     // Send notifications (fire and forget - don't block UI)
     void sendWorkflowNotifications(step, 'approved')
+    
+    // Check if next step is rejected and reopen it
+    const nextStep = findNextStep(step)
+    if (nextStep && nextStep.status === 'rejected') {
+      // Clear the notice and rejection reason from current step if they were set
+      if (step.next_step_rejected_notice) {
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: null,
+          next_step_rejection_reason: null,
+        }).eq('id', step.id)
+      }
+      // Reopen the rejected next step
+      await updateStepStatus(nextStep, 'pending', {
+        rejection_reason: null,
+        ended_at: null,
+      })
+      await recordAction(nextStep.id, 'reopened', 'Previous step was re-approved')
+      // Send notifications for the next step being reopened (fire and forget)
+      void sendWorkflowNotifications(nextStep, 'reopened')
+    }
+    
+    await refreshSteps()
+  }
+
+  async function markReopened(step: Step) {
+    await updateStepStatus(step, 'pending', { 
+      ended_at: null,
+      rejection_reason: null,
+      approved_by: null,
+      approved_at: null,
+      next_step_rejected_notice: null,
+      next_step_rejection_reason: null,
+    })
+    await recordAction(step.id, 'reopened')
+    // Send notifications (fire and forget - don't block UI)
+    void sendWorkflowNotifications(step, 'reopened')
     await refreshSteps()
   }
 
@@ -1079,6 +1171,11 @@ export default function Workflow() {
     }
     setEditingLineItem(null)
     await refreshSteps()
+    // Reload line items to ensure UI updates for assistants
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+      const stepIds = steps.map(s => s.id)
+      await loadLineItemsForSteps(stepIds)
+    }
   }
 
   async function deleteLineItem(itemId: string) {
@@ -1087,6 +1184,11 @@ export default function Workflow() {
       setError(`Failed to delete line item: ${error.message}`)
     } else {
       await refreshSteps()
+      // Reload line items to ensure UI updates for assistants
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+        const stepIds = steps.map(s => s.id)
+        await loadLineItemsForSteps(stepIds)
+      }
     }
   }
 
@@ -1112,6 +1214,31 @@ export default function Workflow() {
     const updatedStep = { ...rejectStep.step, rejection_reason: rejectStep.reason.trim() || null }
     // Send notifications (fire and forget - don't block UI)
     void sendWorkflowNotifications(updatedStep, 'rejected')
+    
+    // Find previous step and reopen it if it's completed/approved, or set notice if already pending/in_progress
+    const previousStep = findPreviousStep(rejectStep.step)
+    const rejectionReason = rejectStep.reason.trim() || null
+    if (previousStep) {
+      if (previousStep.status === 'completed' || previousStep.status === 'approved') {
+        // Reopen the previous step with notice and rejection reason
+        await updateStepStatus(previousStep, 'pending', {
+          ended_at: null,
+          approved_by: null,
+          approved_at: null,
+          next_step_rejected_notice: rejectStep.step.name,
+          next_step_rejection_reason: rejectionReason,
+        })
+        await recordAction(previousStep.id, 'reopened', `Next step "${rejectStep.step.name}" was rejected`)
+        // Send notifications for the previous step being reopened (fire and forget)
+        void sendWorkflowNotifications(previousStep, 'reopened')
+      } else if (previousStep.status === 'pending' || previousStep.status === 'in_progress') {
+        // Previous step is already pending/in_progress, just set the notice and rejection reason
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: rejectStep.step.name,
+          next_step_rejection_reason: rejectionReason,
+        }).eq('id', previousStep.id)
+      }
+    }
     
     setRejectStep(null)
     await refreshSteps()
@@ -1195,7 +1322,7 @@ export default function Workflow() {
         )}
       </div>
 
-      {/* Projections & Ledger - Only visible to devs and masters */}
+      {/* Projections - Only visible to devs and masters */}
       {(userRole === 'dev' || userRole === 'master_technician') && (
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
           {/* Projections */}
@@ -1260,48 +1387,6 @@ export default function Workflow() {
             </>
           )}
 
-          {/* Ledger */}
-          <div style={{ marginTop: '1.5rem' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger (Incurred Charges and Payments)</h2>
-            {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
-            ) : (
-              <>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
-                      <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
-                      <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {steps.map((step) => {
-                      const items = lineItems[step.id] || []
-                      if (items.length === 0) return null
-                      return items.map((item, idx) => (
-                        <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
-                          <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
-                            {idx === 0 ? step.name : ''}
-                          </td>
-                          <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
-                            {formatAmount(item.amount)}
-                          </td>
-                        </tr>
-                      ))
-                    })}
-                  </tbody>
-                </table>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
-                    Ledger Total: {formatAmount(calculateLedgerTotal())}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Total Left on Job */}
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
             {(() => {
@@ -1313,6 +1398,53 @@ export default function Workflow() {
               )
             })()}
           </div>
+        </div>
+      )}
+
+      {/* Ledger - Visible to devs, masters, and assistants */}
+      {(userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger (Incurred Charges and Payments)</h2>
+          {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
+          ) : (
+            <>
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {steps.map((step) => {
+                    const items = lineItems[step.id] || []
+                    if (items.length === 0) return null
+                    return items.map((item, idx) => (
+                      <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
+                          {idx === 0 ? step.name : ''}
+                        </td>
+                        <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                          {formatAmount(item.amount)}
+                        </td>
+                      </tr>
+                    ))
+                  })}
+                </tbody>
+              </table>
+              {/* Ledger Total - Only visible to devs and masters */}
+              {(userRole === 'dev' || userRole === 'master_technician') && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                    Ledger Total: {formatAmount(calculateLedgerTotal())}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -1372,6 +1504,19 @@ export default function Workflow() {
                     <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 8 }}>
                       <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
                     </div>
+                    <div style={{ fontSize: '0.875rem', color: s.status === 'rejected' ? '#b91c1c' : '#374151', marginBottom: 8, fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                      Status: {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}
+                    </div>
+                    {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
+                      <div style={{ fontSize: '0.875rem', color: '#E87600', marginBottom: 8, fontStyle: 'italic' }}>
+                        (next card rejected: {s.next_step_rejected_notice})
+                        {s.next_step_rejection_reason && (
+                          <div style={{ marginTop: 4, color: '#b91c1c', fontStyle: 'normal' }}>
+                            Reason: {s.next_step_rejection_reason}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Actions (top-left) */}
                     {((userRole === 'dev' || userRole === 'master_technician') || s.assigned_to_name === currentUserName) && (
@@ -1517,7 +1662,6 @@ export default function Workflow() {
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
                   Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
                 </div>
-                <div style={{ fontSize: '0.875rem', marginBottom: 8 }}>Status: {s.status}</div>
                 {s.status === 'approved' && s.approved_by && s.approved_at && (
                   <div style={{ fontSize: '0.875rem', color: '#059669', marginBottom: 8, fontWeight: 500 }}>
                     Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
@@ -1578,7 +1722,7 @@ export default function Workflow() {
                 {(userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
                   <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (You and your assistant only)</label>
+                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (Master and Assistants only)</label>
                       <button
                         type="button"
                         onClick={() => openEditLineItem(s.id, null)}
@@ -1629,8 +1773,13 @@ export default function Workflow() {
                       <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
                     </div>
                   )}
+                  {/* Re-open button - in line with Edit and Delete */}
+                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant') && (
+                    <button type="button" onClick={() => markReopened(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#2563eb' }}>
+                      Re-open
+                    </button>
+                  )}
                 </div>
-                {s.rejection_reason && <div style={{ marginTop: 8, fontSize: '0.875rem', color: '#b91c1c' }}>Rejection: {s.rejection_reason}</div>}
               </div>
               {i < steps.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.25rem', color: '#9ca3af' }}>{"\u2193"}</div>}
             </div>
@@ -1656,13 +1805,13 @@ export default function Workflow() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Reject step: {rejectStep.step.name}</h3>
-            <label style={{ display: 'block', marginBottom: 4 }}>Reason</label>
+            <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
             <textarea
               value={rejectStep.reason}
               onChange={(e) => setRejectStep((r) => r ? { ...r, reason: e.target.value } : null)}
               rows={3}
               style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-              placeholder="Rejection reason (optional)"
+              placeholder="What is wrong and how should it be fixed (optional)"
             />
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={submitReject} style={{ padding: '0.5rem 1rem', color: '#E87600' }}>Reject</button>
@@ -1859,12 +2008,181 @@ function StepFormModal({
   toDatetimeLocal: (iso: string | null) => string
   fromDatetimeLocal: (v: string) => string | null
 }) {
+  const { user: authUser } = useAuth()
   const [name, setName] = useState(step?.name ?? '')
   const [assigned_to_name, setAssignedToName] = useState(step?.assigned_to_name ?? '')
   const [started_at, setStartedAt] = useState(toDatetimeLocal(step?.started_at ?? null))
   const [ended_at, setEndedAt] = useState(toDatetimeLocal(step?.ended_at ?? null))
   const [depends_on_step_id, setDependsOnStepId] = useState(dependsOnStepId ?? '')
   const [insert_after_step_id, setInsertAfterStepId] = useState(insertAfterStepId ?? '')
+  
+  // Autocomplete state
+  const [mastersAndSubs, setMastersAndSubs] = useState<Array<{name: string, source: 'user' | 'people'}>>([])
+  const [assignedSearch, setAssignedSearch] = useState(step?.assigned_to_name ?? '')
+  const [filteredMastersSubs, setFilteredMastersSubs] = useState<Array<{name: string, source: 'user' | 'people'}>>([])
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showAddPerson, setShowAddPerson] = useState(false)
+  const [newPerson, setNewPerson] = useState({name: '', email: '', phone: '', notes: ''})
+  const [savingPerson, setSavingPerson] = useState(false)
+  const [addPersonError, setAddPersonError] = useState<string | null>(null)
+
+  // Load masters and subs when modal opens
+  useEffect(() => {
+    loadMastersAndSubs()
+    // Initialize search with existing assigned_to_name
+    if (step?.assigned_to_name) {
+      setAssignedSearch(step.assigned_to_name)
+      setAssignedToName(step.assigned_to_name)
+    } else {
+      setAssignedSearch('')
+      setAssignedToName('')
+    }
+  }, [step, authUser?.id])
+
+  async function loadMastersAndSubs() {
+    if (!authUser?.id) return
+    
+    const [usersRes, peopleRes] = await Promise.all([
+      supabase
+        .from('users')
+        .select('name, role')
+        .in('role', ['master_technician', 'subcontractor']),
+      supabase
+        .from('people')
+        .select('name, kind')
+        .eq('master_user_id', authUser.id)
+        .in('kind', ['master_technician', 'sub'])
+    ])
+    
+    const fromUsers = (usersRes.data as Array<{name: string | null, role: string}> | null) ?? []
+      .filter(u => u.name)
+      .map(u => ({ name: u.name!, source: 'user' as const }))
+    
+    const fromPeople = (peopleRes.data as Array<{name: string, kind: string}> | null) ?? []
+      .map(p => ({ name: p.name, source: 'people' as const }))
+    
+    // Combine and deduplicate by name (case-insensitive)
+    const nameMap = new Map<string, {name: string, source: 'user' | 'people'}>()
+    const allPeople = [...fromUsers, ...fromPeople]
+    for (const item of allPeople) {
+      const key = item.name.toLowerCase()
+      if (!nameMap.has(key)) {
+        nameMap.set(key, item)
+      }
+    }
+    
+    const combined = Array.from(nameMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    setMastersAndSubs(combined)
+  }
+
+  function handleAssignedSearchChange(value: string) {
+    setAssignedSearch(value)
+    setAssignedToName(value)
+    
+    if (!value.trim()) {
+      setShowDropdown(false)
+      setFilteredMastersSubs([])
+      return
+    }
+    
+    const searchLower = value.toLowerCase()
+    const filtered = mastersAndSubs.filter(item => 
+      item.name.toLowerCase().includes(searchLower)
+    )
+    
+    setFilteredMastersSubs(filtered)
+    setShowDropdown(true)
+  }
+
+  function handleSelectPerson(personName: string) {
+    setAssignedSearch(personName)
+    setAssignedToName(personName)
+    setShowDropdown(false)
+  }
+
+  function handleAddNewPersonClick() {
+    const trimmedName = assignedSearch.trim()
+    if (!trimmedName) return
+    
+    setNewPerson({
+      name: trimmedName,
+      email: '',
+      phone: '',
+      notes: ''
+    })
+    setShowAddPerson(true)
+    setShowDropdown(false)
+  }
+
+  async function checkDuplicateName(nameToCheck: string): Promise<boolean> {
+    const trimmedName = nameToCheck.trim().toLowerCase()
+    if (!trimmedName) return false
+    
+    const [peopleRes, usersRes] = await Promise.all([
+      supabase.from('people').select('id, name'),
+      supabase.from('users').select('id, name')
+    ])
+    
+    const hasDuplicateInPeople = peopleRes.data?.some(p => p.name?.toLowerCase() === trimmedName) ?? false
+    const hasDuplicateInUsers = usersRes.data?.some(u => u.name?.toLowerCase() === trimmedName) ?? false
+    
+    return hasDuplicateInPeople || hasDuplicateInUsers
+  }
+
+  async function handleSaveNewPerson(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id) return
+    
+    setSavingPerson(true)
+    setAddPersonError(null)
+    
+    const trimmedName = newPerson.name.trim()
+    if (!trimmedName) {
+      setAddPersonError('Name is required')
+      setSavingPerson(false)
+      return
+    }
+    
+    // Check for duplicate names
+    const isDuplicate = await checkDuplicateName(trimmedName)
+    if (isDuplicate) {
+      setAddPersonError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+      setSavingPerson(false)
+      return
+    }
+    
+    // Create new person (default to 'sub' for subcontractor)
+    const { data, error: err } = await supabase
+      .from('people')
+      .insert({
+        master_user_id: authUser.id,
+        kind: 'sub',
+        name: trimmedName,
+        email: newPerson.email.trim() || null,
+        phone: newPerson.phone.trim() || null,
+        notes: newPerson.notes.trim() || null,
+      })
+      .select('name')
+      .single()
+    
+    if (err) {
+      setAddPersonError(err.message)
+      setSavingPerson(false)
+      return
+    }
+    
+    // Refresh masters/subs list
+    await loadMastersAndSubs()
+    
+    // Set the assigned name to the new person
+    setAssignedToName(trimmedName)
+    setAssignedSearch(trimmedName)
+    
+    // Close modal and reset form
+    setShowAddPerson(false)
+    setNewPerson({name: '', email: '', phone: '', notes: ''})
+    setSavingPerson(false)
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -1936,16 +2254,102 @@ function StepFormModal({
               </select>
             </div>
           )}
-          <div style={{ marginBottom: '1rem' }}>
+          <div style={{ marginBottom: '1rem', position: 'relative' }}>
             <label htmlFor="step-person" style={{ display: 'block', marginBottom: 4 }}>Assigned to</label>
             <input
               id="step-person"
               type="text"
-              value={assigned_to_name}
-              onChange={(e) => setAssignedToName(e.target.value)}
-              placeholder="e.g. Subcontractor Joey, Mike"
+              value={assignedSearch}
+              onChange={(e) => handleAssignedSearchChange(e.target.value)}
+              onFocus={() => {
+                if (assignedSearch.trim()) {
+                  handleAssignedSearchChange(assignedSearch)
+                }
+              }}
+              onBlur={() => {
+                // Delay hiding dropdown to allow clicks
+                setTimeout(() => setShowDropdown(false), 200)
+              }}
+              placeholder="Search masters and subs..."
               style={{ width: '100%', padding: '0.5rem' }}
             />
+            {showDropdown && (filteredMastersSubs.length > 0 || assignedSearch.trim()) && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '4px',
+                  marginTop: '2px',
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  zIndex: 20,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                {filteredMastersSubs.map((item, idx) => (
+                  <button
+                    key={`${item.name}-${idx}`}
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSelectPerson(item.name)
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      textAlign: 'left',
+                      background: 'white',
+                      border: 'none',
+                      borderBottom: idx < filteredMastersSubs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      cursor: 'pointer',
+                      color: '#111827'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#f9fafb'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'white'
+                    }}
+                  >
+                    {item.name}
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                      ({item.source === 'user' ? 'user' : 'not user'})
+                    </span>
+                  </button>
+                ))}
+                {filteredMastersSubs.length === 0 && assignedSearch.trim() && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleAddNewPersonClick()
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      textAlign: 'left',
+                      background: '#eff6ff',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#2563eb',
+                      fontWeight: 500
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#dbeafe'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#eff6ff'
+                    }}
+                  >
+                    Add &quot;{assignedSearch.trim()}&quot;
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="step-start" style={{ display: 'block', marginBottom: 4 }}>Start time</label>
@@ -1994,6 +2398,81 @@ function StepFormModal({
           </div>
         </form>
       </div>
+
+      {showAddPerson && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Add Person</h3>
+            {addPersonError && (
+              <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{addPersonError}</p>
+            )}
+            <form onSubmit={handleSaveNewPerson}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-person-name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+                <input
+                  id="new-person-name"
+                  type="text"
+                  value={newPerson.name}
+                  onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
+                  required
+                  disabled={savingPerson}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-person-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
+                <input
+                  id="new-person-email"
+                  type="email"
+                  value={newPerson.email}
+                  onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
+                  disabled={savingPerson}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-person-phone" style={{ display: 'block', marginBottom: 4 }}>Phone</label>
+                <input
+                  id="new-person-phone"
+                  type="tel"
+                  value={newPerson.phone}
+                  onChange={(e) => setNewPerson({ ...newPerson, phone: e.target.value })}
+                  disabled={savingPerson}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-person-notes" style={{ display: 'block', marginBottom: 4 }}>Notes</label>
+                <textarea
+                  id="new-person-notes"
+                  value={newPerson.notes}
+                  onChange={(e) => setNewPerson({ ...newPerson, notes: e.target.value })}
+                  disabled={savingPerson}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" disabled={savingPerson} style={{ padding: '0.5rem 1rem' }}>
+                  {savingPerson ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddPerson(false)
+                    setNewPerson({name: '', email: '', phone: '', notes: ''})
+                    setAddPersonError(null)
+                  }}
+                  disabled={savingPerson}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

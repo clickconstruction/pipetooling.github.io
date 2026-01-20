@@ -44,6 +44,8 @@ export type Database = {
           notify_assigned_when_started: boolean | null; notify_assigned_when_complete: boolean | null; notify_assigned_when_reopened: boolean | null;
           notify_next_assignee_when_complete_or_approved: boolean | null; notify_prior_assignee_when_rejected: boolean | null;
           approved_by: string | null; approved_at: string | null;
+          next_step_rejected_notice: string | null;
+          next_step_rejection_reason: string | null;
         }
         Insert: {
           id?: string; workflow_id: string; template_step_id?: string | null; sequence_order: number; name: string;
@@ -59,6 +61,8 @@ export type Database = {
           notify_when_started?: boolean | null; notify_when_complete?: boolean | null; notify_when_reopened?: boolean | null;
           notify_next_assignee_when_complete_or_approved?: boolean | null; notify_prior_assignee_when_rejected?: boolean | null;
           approved_by?: string | null; approved_at?: string | null;
+          next_step_rejected_notice?: string | null;
+          next_step_rejection_reason?: string | null;
         }
         Update: {
           id?: string; workflow_id?: string; template_step_id?: string | null; sequence_order?: number; name?: string;
@@ -74,6 +78,8 @@ export type Database = {
           notify_when_started?: boolean | null; notify_when_complete?: boolean | null; notify_when_reopened?: boolean | null;
           notify_next_assignee_when_complete_or_approved?: boolean | null; notify_prior_assignee_when_rejected?: boolean | null;
           approved_by?: string | null; approved_at?: string | null;
+          next_step_rejected_notice?: string | null;
+          next_step_rejection_reason?: string | null;
         }
       }
       step_subscriptions: {

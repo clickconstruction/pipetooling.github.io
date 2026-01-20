@@ -26,40 +26,41 @@ export default function Customers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function fetchCustomers() {
-      const { data, error: err } = await supabase
-        .from('customers')
-        .select('*')
-        .order('name')
-      if (err) {
-        setError(err.message)
-        setLoading(false)
-        return
-      }
-      const customersData = (data as Customer[]) ?? []
-      
-      // Load master information for customers that have master_user_id
-      const customersWithMasters = await Promise.all(
-        customersData.map(async (c) => {
-          if (c.master_user_id) {
-            const { data: masterData } = await supabase
-              .from('users')
-              .select('id, name, email')
-              .eq('id', c.master_user_id)
-              .single()
-            return {
-              ...c,
-              master_user: masterData as { id: string; name: string | null; email: string | null } | null,
-            }
-          }
-          return { ...c, master_user: null }
-        })
-      )
-      
-      setCustomers(customersWithMasters)
+  async function fetchCustomers() {
+    const { data, error: err } = await supabase
+      .from('customers')
+      .select('*')
+      .order('name')
+    if (err) {
+      setError(err.message)
       setLoading(false)
+      return
     }
+    const customersData = (data as Customer[]) ?? []
+    
+    // Load master information for customers that have master_user_id
+    const customersWithMasters = await Promise.all(
+      customersData.map(async (c) => {
+        if (c.master_user_id) {
+          const { data: masterData } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .eq('id', c.master_user_id)
+            .single()
+          return {
+            ...c,
+            master_user: masterData as { id: string; name: string | null; email: string | null } | null,
+          }
+        }
+        return { ...c, master_user: null }
+      })
+    )
+    
+    setCustomers(customersWithMasters)
+    setLoading(false)
+  }
+
+  useEffect(() => {
     fetchCustomers()
   }, [])
 
@@ -180,7 +181,6 @@ export default function Customers() {
               </div>
               <span style={{ display: 'flex', gap: '0.5rem' }}>
                 <Link to={`/projects?customer=${c.id}`}>Projects</Link>
-                <Link to={`/customers/${c.id}/edit`}>Edit</Link>
               </span>
             </li>
           ))}

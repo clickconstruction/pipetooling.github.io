@@ -3,11 +3,90 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Workflow Features](#workflow-features)
-2. [Calendar Updates](#calendar-updates)
-3. [Access Control](#access-control)
-4. [Email Templates](#email-templates)
-5. [Financial Tracking](#financial-tracking)
+1. [Latest Updates (v2.4)](#latest-updates-v24)
+2. [Workflow Features](#workflow-features)
+3. [Calendar Updates](#calendar-updates)
+4. [Access Control](#access-control)
+5. [Email Templates](#email-templates)
+6. [Financial Tracking](#financial-tracking)
+7. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.4)
+
+### Assistant Workflow Access Improvements
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Assistants can now see ALL stages** in workflows they have access to (via master adoption)
+  - Previously, assistants were incorrectly filtered to only see assigned stages (same as subcontractors)
+  - Now assistants have broader visibility while subcontractors remain restricted to assigned stages only
+- ✅ **Line items update immediately** for assistants after adding/editing
+  - Fixed issue where assistants couldn't see newly added line items until page refresh
+  - Updated `useEffect` to include assistants in line items loading
+  - Added explicit reload after save/delete operations
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Removed assistant filtering from `loadSteps()`, updated line items loading
+
+### Financial Tracking Updates
+
+**Changes**:
+- ✅ **Assistants can add line items** but cannot see financial totals
+  - Assistants can view and edit the Ledger table (all line items)
+  - Assistants cannot see "Ledger Total" or "Total Left on Job" (devs/masters only)
+  - Projections section remains dev/master-only
+- ✅ **Updated label**: "Line Items (You and your assistant only)" → "Line Items (Master and Assistants only)"
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Split Projections and Ledger sections, hid totals from assistants
+
+### Workflow Stage Status Display
+
+**Changes**:
+- ✅ **Status moved to top of card**: Now displays right below "Assigned to" line
+  - Format: `Status: {status}` for all status types
+  - Rejected status includes reason inline: `Status: rejected - {rejection_reason}`
+  - Rejected status shown in red (#b91c1c) with bold font
+- ✅ **Removed duplicate status display** from bottom of card
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Moved status display, removed separate rejection reason display
+
+### Re-open Rejected Stages
+
+**Changes**:
+- ✅ **Added "Re-open" button** for rejected stages
+  - Visible to devs/masters and assigned person
+  - Resets stage to `pending` status
+  - Clears `ended_at`, `rejection_reason`, `approved_by`, and `approved_at`
+  - Records 'reopened' action in action ledger
+  - Sends notifications to subscribed users
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Added `markReopened()` function and button
+
+### Database RLS Optimizations
+
+**Changes**:
+- ✅ **Optimized `workflow_step_line_items` RLS policies**
+  - Created `can_access_project_via_step()` helper function
+  - Prevents timeout errors when loading line items
+  - Uses SECURITY DEFINER to bypass RLS and avoid recursion
+- ✅ **Fixed `project_workflow_step_actions` RLS policies**
+  - Created `can_access_step_for_action()` helper function
+  - Allows authenticated users to insert actions for accessible steps
+  - Fixes 403/500 errors when recording workflow actions
+
+**Migration Files Created**:
+- `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+- `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
+
+**Key Functions**:
+- `public.can_access_project_via_step(step_id_param UUID)` - Checks project access via step
+- `public.can_access_step_for_action(step_id_param UUID)` - Checks step access for actions
 
 ---
 
@@ -60,8 +139,14 @@ This document summarizes all recent features and improvements added to Pipetooli
 - Shows who performed each action and when
 - Displays action notes if provided
 - Chronologically ordered (newest first)
+- **Re-open functionality**: Rejected stages can be reopened via "Re-open" button
+  - Resets stage to `pending` status
+  - Clears rejection reason and approval info
+  - Records 'reopened' action in ledger
+  - Sends notifications to subscribed users
 
 **Database**: `project_workflow_step_actions` table
+**RLS**: Optimized with helper function `can_access_step_for_action()` to prevent timeout errors
 
 ---
 
@@ -103,9 +188,10 @@ This document summarizes all recent features and improvements added to Pipetooli
 - Filters by `assigned_to_name` matching user's name
 
 **Workflow Page**:
-- Only shows stages assigned to the user (for assistants/subcontractors)
-- Error message if no assigned stages: "You do not have access to this workflow..."
-- Action buttons (Set Start, Complete) only visible if:
+- **Assistants**: Can see ALL stages in workflows they have access to (via master adoption)
+- **Subcontractors**: Only shows stages assigned to them (by name match)
+- Error message for subcontractors if no assigned stages: "You do not have access to this workflow..."
+- Action buttons (Set Start, Complete, Re-open) visible if:
   - User is dev/master, OR
   - User is assigned to that specific stage
 - Management buttons (Edit, Delete, Assign) only visible to owners/masters
@@ -166,8 +252,10 @@ This document summarizes all recent features and improvements added to Pipetooli
 - Memo and amount fields
 - Supports negative numbers
 - Aggregated in Ledger inside the shared Projections/Ledger panel at top of workflow
-- Visible to owners, masters, and assistants (assistants can add/edit line items on projects for masters who adopted them)
-- Projections and financial totals remain dev/master-only
+- **Assistants**: Can view Ledger table and add/edit line items, but cannot see "Ledger Total" or "Total Left on Job"
+- **Devs/Masters**: Can see all line items and financial totals
+- Projections section remains dev/master-only
+- Line items update immediately after adding/editing (no page refresh needed)
 
 ### Projections
 
@@ -183,6 +271,60 @@ This document summarizes all recent features and improvements added to Pipetooli
 
 ---
 
+## Customer and Project Management
+
+### Customer Delete Functionality
+
+**Location**: Customer edit form (`CustomerForm.tsx`)
+
+**Features**:
+- **Delete button** appears below the form when editing a customer (not when creating)
+- Only visible to **devs and masters**
+- **Masters**: Can only delete customers they own (`master_user_id = auth.uid()`)
+- **Devs**: Can delete any customer
+- **Confirmation modal** requires typing the customer name to confirm deletion
+- Navigates to customer list after successful deletion
+
+**Database**: RLS policy in `supabase/migrations/add_customers_delete_rls.sql`
+- Masters can delete their own customers
+- Devs can delete any customer
+
+### Projects Page Enhancements
+
+**Location**: Projects list page (`Projects.tsx`)
+
+**Features**:
+- **Stage Summary**: Shows complete workflow stage sequence with color coding
+  - Green (`#059669`) for completed/approved stages
+  - Red (`#b91c1c`) for rejected stages
+  - Orange (`#E87600`) and bold for in_progress stages
+  - Gray (`#6b7280`) for pending stages
+  - Displayed below project description, above plans link
+- **Current Stage Display**: Shows current stage with progress indicator
+  - Format: `Current stage: check subs work [3 / 5]`
+  - Shows stage position (1-indexed) and total stages
+  - **Position calculation**: Uses sorted step list position, not raw `sequence_order` (fixes display issues when sequence_order has gaps)
+  - **Rejected stages stop progress**: If any stage is rejected, it's shown as the current stage (prevents progress past rejected stages)
+- **Map Link**: Clickable map icon next to "Link to plans" (if project has address)
+  - Opens Google Maps with project address
+  - Same icon and styling as customer list
+- **Empty State**: When filtering by customer with no projects, shows: `**[Customer Name]** has no projects yet. Add one.`
+  - Customer name is bolded
+  - "Add one" link includes customer parameter for pre-filling
+
+### UI Improvements
+
+**Customer List**:
+- Removed redundant "Edit" link (clicking customer name goes to edit page)
+- Clicking customer name navigates to edit form
+
+**Projects List**:
+- Removed redundant "Workflow" link (clicking project name goes to workflow page)
+- Clicking project name navigates to workflow page
+- Only "Edit" link remains in action area
+
+---
+
 ## Database Migrations Required
 
 Run these migrations in order:
@@ -191,6 +333,11 @@ Run these migrations in order:
 2. **Line Items**: `supabase/migrations/create_workflow_step_line_items.sql`
 3. **Email Templates**: `supabase/migrations/create_email_templates.sql` (see `EMAIL_TEMPLATES_SETUP.md`)
 4. **Projections**: `supabase/migrations/create_workflow_projections.sql`
+5. **Customer Delete RLS**: `supabase/migrations/add_customers_delete_rls.sql`
+6. **Projects RLS for Assistants**: `supabase/migrations/verify_projects_rls_for_assistants.sql` - Ensures assistants can see all projects from masters who adopted them
+7. **Users RLS Fix**: `supabase/migrations/fix_users_rls_for_project_masters.sql` - Fixes 406 errors when assistants try to load master information (uses SECURITY DEFINER function to avoid recursion)
+8. **Line Items RLS Optimization**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql` - Optimizes RLS policies to prevent timeout errors when loading line items (uses helper function `can_access_project_via_step()`)
+9. **Step Actions RLS Fix**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql` - Fixes 403/500 errors when recording workflow actions (uses helper function `can_access_step_for_action()`)
 
 ---
 
@@ -260,6 +407,7 @@ Before deploying, ensure all migrations are run:
 - [ ] `workflow_step_line_items` table created
 - [ ] `workflow_projections` table created
 - [ ] `email_templates` table created
+- [ ] Customer DELETE RLS policy configured (`add_customers_delete_rls.sql`)
 - [ ] RLS policies configured for all new tables
 - [ ] Edge Functions deployed (`test-email`)
 - [ ] Resend API key configured as Supabase secret
@@ -321,6 +469,31 @@ Before deploying, ensure all migrations are run:
 2. **Email Template Integration**: Templates are stored but not yet used by Edge Functions. Need to update `invite-user` and `login-as-user` functions.
 
 3. **Workflow Notifications**: Stage notifications are tracked but not yet sent. Need to implement email sending in workflow stage transitions.
+
+---
+
+## Workflow Step Assignment Enhancements
+
+### Autocomplete with Add Person Feature
+
+**Location**: "Add Step" modal → "Assigned to" field
+
+**Features**:
+- **Searchable autocomplete dropdown** showing all masters and subcontractors
+- **Real-time filtering** as you type (case-insensitive)
+- **Source indicators**: Shows "(user)" for signed-up users, "(not user)" for roster entries
+- **Add new person**: If name entered doesn't match any existing person, shows "Add [name]" option
+- **Add person modal**: Prompts to add name, email, phone, and notes (similar to Add Subcontractor flow)
+- **Automatic selection**: After adding, automatically selects the newly added person
+- **Duplicate prevention**: Checks for duplicate names (case-insensitive) before saving
+
+**Implementation**: 
+- Queries `users` table for roles `'master_technician'` and `'subcontractor'`
+- Queries `people` table for kind `'master_technician'` and `'sub'`
+- Combines and deduplicates by name
+- New persons default to `kind: 'sub'` (subcontractor)
+
+**See**: `src/pages/Workflow.tsx` - `StepFormModal` component
 
 ---
 

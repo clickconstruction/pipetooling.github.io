@@ -4,7 +4,20 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function fromDatetimeLocal(value: string): string | null {
+  const v = value.trim()
+  if (!v) return null
+  return new Date(v).toISOString()
+}
 
 type SubscribedStep = {
   step_id: string
@@ -50,6 +63,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
+  const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
+  const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -67,8 +82,8 @@ export default function Dashboard() {
         setLoading(false)
         return
       }
-      const user = userData as { role: UserRole; name: string | null } | null
-      setRole(user?.role ?? null)
+      const user = userData as { role: UserRole | 'subcontractor'; name: string | null } | null
+      setRole((user?.role === 'subcontractor' ? null : (user?.role ?? null)) as UserRole | null)
       const name = user?.name ?? null
       
       // Load all users to check if assigned names are users (case-insensitive comparison)
@@ -192,6 +207,299 @@ export default function Dashboard() {
     })()
   }, [authUser?.id])
 
+  async function loadAssignedSteps() {
+    if (!authUser?.id) return
+    const { data: userData } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', authUser.id)
+      .single()
+    const name = (userData as { name: string | null } | null)?.name ?? null
+    
+    if (name) {
+      const { data: steps } = await supabase
+        .from('project_workflow_steps')
+        .select('*')
+        .eq('assigned_to_name', name)
+        .order('created_at', { ascending: false })
+      
+      if (steps && steps.length > 0) {
+        const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
+        const { data: workflows } = await supabase
+          .from('project_workflows')
+          .select('id, project_id')
+          .in('id', workflowIds)
+        
+        if (workflows) {
+          const projectIds = [...new Set(workflows.map((w) => w.project_id))]
+          const { data: projects } = await supabase
+            .from('projects')
+            .select('id, name, address, plans_link')
+            .in('id', projectIds)
+          
+          if (projects) {
+            const workflowToProject = new Map<string, string>()
+            workflows.forEach((w) => workflowToProject.set(w.id, w.project_id))
+            const projectMap = new Map<string, { name: string; address: string | null; plans_link: string | null }>()
+            projects.forEach((p) => projectMap.set(p.id, { name: p.name, address: p.address, plans_link: p.plans_link }))
+            
+            const assigned: AssignedStep[] = steps.map((step) => {
+              const projectId = workflowToProject.get(step.workflow_id) ?? ''
+              const project = projectId ? (projectMap.get(projectId) ?? null) : null
+              return {
+                ...step,
+                project_id: projectId,
+                project_name: project?.name ?? '',
+                project_address: project?.address ?? null,
+                project_plans_link: project?.plans_link ?? null,
+                workflow_id: step.workflow_id,
+              }
+            })
+            setAssignedSteps(assigned)
+          }
+        }
+      } else {
+        setAssignedSteps([])
+      }
+    }
+  }
+
+  async function getCurrentUserName(): Promise<string> {
+    if (!authUser?.id) return 'Unknown'
+    const { data: userData } = await supabase
+      .from('users')
+      .select('name, email')
+      .eq('id', authUser.id)
+      .single()
+    return (userData as { name: string | null; email: string | null } | null)?.name || (userData as { email: string | null } | null)?.email || 'Unknown'
+  }
+
+  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened', notes?: string | null) {
+    const performedBy = await getCurrentUserName()
+    const performedAt = new Date().toISOString()
+    await supabase
+      .from('project_workflow_step_actions')
+      .insert({
+        step_id: stepId,
+        action_type: actionType,
+        performed_by: performedBy,
+        performed_at: performedAt,
+        notes: notes || null,
+      })
+  }
+
+  async function findPreviousStep(step: AssignedStep): Promise<AssignedStep | null> {
+    const { data: allSteps } = await supabase
+      .from('project_workflow_steps')
+      .select('*')
+      .eq('workflow_id', step.workflow_id)
+      .order('sequence_order', { ascending: true })
+    
+    if (!allSteps) return null
+    
+    const sortedSteps = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
+    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
+    if (currentIndex <= 0) return null
+    
+    const previousStep = sortedSteps[currentIndex - 1]
+    // Find the project info for the previous step
+    const { data: workflow } = await supabase
+      .from('project_workflows')
+      .select('project_id')
+      .eq('id', step.workflow_id)
+      .single()
+    
+    if (workflow) {
+      const { data: project } = await supabase
+        .from('projects')
+        .select('id, name, address, plans_link')
+        .eq('id', workflow.project_id)
+        .single()
+      
+      if (project) {
+        return {
+          ...previousStep,
+          project_id: project.id,
+          project_name: project.name,
+          project_address: project.address,
+          project_plans_link: project.plans_link,
+          workflow_id: step.workflow_id,
+        } as AssignedStep
+      }
+    }
+    
+    return null
+  }
+
+  async function findNextStep(step: AssignedStep): Promise<AssignedStep | null> {
+    const { data: allSteps } = await supabase
+      .from('project_workflow_steps')
+      .select('*')
+      .eq('workflow_id', step.workflow_id)
+      .order('sequence_order', { ascending: true })
+    
+    if (!allSteps) return null
+    
+    const sortedSteps = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
+    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
+    if (currentIndex < 0 || currentIndex >= sortedSteps.length - 1) return null
+    
+    const nextStep = sortedSteps[currentIndex + 1]
+    // Find the project info for the next step
+    const { data: workflow } = await supabase
+      .from('project_workflows')
+      .select('project_id')
+      .eq('id', step.workflow_id)
+      .single()
+    
+    if (workflow) {
+      const { data: project } = await supabase
+        .from('projects')
+        .select('id, name, address, plans_link')
+        .eq('id', workflow.project_id)
+        .single()
+      
+      if (project) {
+        return {
+          ...nextStep,
+          project_id: project.id,
+          project_name: project.name,
+          project_address: project.address,
+          project_plans_link: project.plans_link,
+          workflow_id: step.workflow_id,
+        } as AssignedStep
+      }
+    }
+    
+    return null
+  }
+
+  async function markStarted(step: AssignedStep, startDateTime?: string) {
+    const startedAt = startDateTime ? fromDatetimeLocal(startDateTime) : new Date().toISOString()
+    await supabase.from('project_workflow_steps').update({ started_at: startedAt, status: 'in_progress' }).eq('id', step.id)
+    await recordAction(step.id, 'started')
+    await loadAssignedSteps()
+  }
+
+  async function submitSetStart() {
+    if (!setStartStep) return
+    await markStarted(setStartStep.step, setStartStep.startDateTime)
+    setSetStartStep(null)
+  }
+
+  async function markCompleted(step: AssignedStep) {
+    await supabase.from('project_workflow_steps').update({
+      status: 'completed',
+      ended_at: new Date().toISOString(),
+    }).eq('id', step.id)
+    await recordAction(step.id, 'completed')
+    
+    // Check if next step is rejected and reopen it
+    const nextStep = await findNextStep(step)
+    if (nextStep && nextStep.status === 'rejected') {
+      // Clear the notice and rejection reason from current step if they were set
+      if (step.next_step_rejected_notice) {
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: null,
+          next_step_rejection_reason: null,
+        }).eq('id', step.id)
+      }
+      // Reopen the rejected next step
+      await supabase.from('project_workflow_steps').update({
+        status: 'pending',
+        rejection_reason: null,
+        ended_at: null,
+      }).eq('id', nextStep.id)
+      await recordAction(nextStep.id, 'reopened', 'Previous step was re-completed')
+    }
+    
+    await loadAssignedSteps()
+  }
+
+  async function markApproved(step: AssignedStep) {
+    const approvedByName = await getCurrentUserName()
+    const approvedAt = new Date().toISOString()
+    await supabase.from('project_workflow_steps').update({
+      status: 'approved',
+      ended_at: approvedAt,
+      approved_by: approvedByName,
+      approved_at: approvedAt,
+    }).eq('id', step.id)
+    await recordAction(step.id, 'approved')
+    
+    // Check if next step is rejected and reopen it
+    const nextStep = await findNextStep(step)
+    if (nextStep && nextStep.status === 'rejected') {
+      // Clear the notice and rejection reason from current step if they were set
+      if (step.next_step_rejected_notice) {
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: null,
+          next_step_rejection_reason: null,
+        }).eq('id', step.id)
+      }
+      // Reopen the rejected next step
+      await supabase.from('project_workflow_steps').update({
+        status: 'pending',
+        rejection_reason: null,
+        ended_at: null,
+      }).eq('id', nextStep.id)
+      await recordAction(nextStep.id, 'reopened', 'Previous step was re-approved')
+    }
+    
+    await loadAssignedSteps()
+  }
+
+  async function markReopened(step: AssignedStep) {
+    await supabase.from('project_workflow_steps').update({
+      status: 'pending',
+      ended_at: null,
+      rejection_reason: null,
+      approved_by: null,
+      approved_at: null,
+      next_step_rejected_notice: null,
+      next_step_rejection_reason: null,
+    }).eq('id', step.id)
+    await recordAction(step.id, 'reopened')
+    await loadAssignedSteps()
+  }
+
+  async function submitReject() {
+    if (!rejectStep) return
+    await supabase.from('project_workflow_steps').update({
+      status: 'rejected',
+      rejection_reason: rejectStep.reason.trim() || null,
+      ended_at: new Date().toISOString(),
+    }).eq('id', rejectStep.step.id)
+    await recordAction(rejectStep.step.id, 'rejected', rejectStep.reason.trim() || null)
+    
+    // Find previous step and reopen it if it's completed/approved, or set notice if already pending/in_progress
+    const previousStep = await findPreviousStep(rejectStep.step)
+    const rejectionReason = rejectStep.reason.trim() || null
+    if (previousStep) {
+      if (previousStep.status === 'completed' || previousStep.status === 'approved') {
+        // Reopen the previous step with notice and rejection reason
+        await supabase.from('project_workflow_steps').update({
+          status: 'pending',
+          ended_at: null,
+          approved_by: null,
+          approved_at: null,
+          next_step_rejected_notice: rejectStep.step.name,
+          next_step_rejection_reason: rejectionReason,
+        }).eq('id', previousStep.id)
+        await recordAction(previousStep.id, 'reopened', `Next step "${rejectStep.step.name}" was rejected`)
+      } else if (previousStep.status === 'pending' || previousStep.status === 'in_progress') {
+        // Previous step is already pending/in_progress, just set the notice and rejection reason
+        await supabase.from('project_workflow_steps').update({ 
+          next_step_rejected_notice: rejectStep.step.name,
+          next_step_rejection_reason: rejectionReason,
+        }).eq('id', previousStep.id)
+      }
+    }
+    
+    setRejectStep(null)
+    await loadAssignedSteps()
+  }
+
   if (loading) return <p>Loading…</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -259,6 +567,16 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div style={{ fontSize: '0.875rem', marginBottom: 8 }}>Status: {s.status}</div>
+                {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
+                  <div style={{ fontSize: '0.875rem', color: '#E87600', marginBottom: 8, fontStyle: 'italic' }}>
+                    (next card rejected: {s.next_step_rejected_notice})
+                    {s.next_step_rejection_reason && (
+                      <div style={{ marginTop: 4, color: '#b91c1c', fontStyle: 'normal' }}>
+                        Reason: {s.next_step_rejection_reason}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
                   Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
                 </div>
@@ -288,8 +606,90 @@ export default function Dashboard() {
                   </div>
                 )}
                 {s.rejection_reason && <div style={{ marginTop: 8, fontSize: '0.875rem', color: '#b91c1c' }}>Rejection: {s.rejection_reason}</div>}
+                
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
+                  {s.status === 'pending' && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} 
+                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
+                    >
+                      Set Start
+                    </button>
+                  )}
+                  {(s.status === 'pending' || s.status === 'in_progress') && (
+                    <button 
+                      type="button" 
+                      onClick={() => markCompleted(s)} 
+                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
+                    >
+                      Complete
+                    </button>
+                  )}
+                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician') && (
+                    <button 
+                      type="button" 
+                      onClick={() => markApproved(s)} 
+                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician') && (
+                    <button 
+                      type="button" 
+                      onClick={() => setRejectStep({ step: s, reason: '' })} 
+                      style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}
+                    >
+                      Reject
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Reject step: {rejectStep.step.name}</h3>
+            <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
+            <textarea
+              value={rejectStep.reason}
+              onChange={(e) => setRejectStep((r) => r ? { ...r, reason: e.target.value } : null)}
+              rows={3}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+              placeholder="What is wrong and how should it be fixed (optional)"
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={submitReject} style={{ padding: '0.5rem 1rem', color: '#E87600' }}>Reject</button>
+              <button type="button" onClick={() => setRejectStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Start Modal */}
+      {setStartStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Set Start Time: {setStartStep.step.name}</h3>
+            <label htmlFor="start-datetime" style={{ display: 'block', marginBottom: 4 }}>Start Date & Time</label>
+            <input
+              id="start-datetime"
+              type="datetime-local"
+              value={setStartStep.startDateTime}
+              onChange={(e) => setSetStartStep({ step: setStartStep.step, startDateTime: e.target.value })}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={submitSetStart} style={{ padding: '0.5rem 1rem' }}>Set Start</button>
+              <button type="button" onClick={() => setSetStartStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
           </div>
         </div>
       )}
