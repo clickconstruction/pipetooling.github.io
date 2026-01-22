@@ -369,7 +369,7 @@ export default function Workflow() {
       await loadProject(projectId)
       if (cancelled) return
       // Use existing workflow state if available, otherwise ensure it exists
-      let wfId = workflow?.id
+      let wfId: string | null = workflow?.id ?? null
       if (!wfId) {
         wfId = await ensureWorkflow(projectId)
       }
@@ -424,7 +424,7 @@ export default function Workflow() {
 
   async function saveProjection(item: Projection | null, stageName: string, memo: string, amount: string) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
     }
@@ -466,7 +466,7 @@ export default function Workflow() {
 
   async function deleteProjection(itemId: string) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
     }
@@ -570,7 +570,7 @@ export default function Workflow() {
   }, [authUser?.id])
 
   async function refreshSteps(): Promise<string | null> {
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
       console.log(`refreshSteps: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
@@ -908,7 +908,7 @@ export default function Workflow() {
   async function createFromTemplate() {
     if (!selectedTemplateId) return
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
     }
@@ -957,7 +957,7 @@ export default function Workflow() {
 
   async function copyStep(step: Step) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
     }
@@ -1030,7 +1030,7 @@ export default function Workflow() {
 
   async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId = workflow?.id
+    let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
       workflowId = await ensureWorkflow(projectId)
       console.log(`saveStep: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)

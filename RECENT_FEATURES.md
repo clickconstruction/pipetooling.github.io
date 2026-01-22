@@ -13,6 +13,49 @@ This document summarizes all recent features and improvements added to Pipetooli
 
 ---
 
+## Latest Updates (v2.6)
+
+### Workflow Data Persistence & Performance Fixes
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Fixed data persistence issues** for projections and workflow steps
+  - **Problem**: Projections and steps added to new projects would disappear when navigating away and coming back
+  - **Root Cause**: Race condition where `workflow?.id` from React state was `null` during immediate save operations, causing saves to silently fail
+  - **Solution**: Modified all save/delete operations (`saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, `copyStep`) to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null
+  - **Result**: Data now persists correctly on first navigation back
+
+- ✅ **Prevented concurrent workflow creation**
+  - **Problem**: Multiple workflows being created for the same project, causing duplicate entries
+  - **Root Cause**: Race condition where multiple concurrent calls to `ensureWorkflow` could all pass the initial check before any stored their promise
+  - **Solution**: Implemented mutex pattern using `useRef` and placeholder promises
+    - Creates and stores a placeholder promise immediately before executing async logic
+    - Subsequent concurrent calls await the placeholder promise, serializing workflow creation
+    - Added retry logic for insert errors to handle unique constraint violations gracefully
+  - **Result**: Only one workflow is created per project, even with concurrent calls
+
+- ✅ **Optimized redundant loadSteps calls**
+  - **Problem**: Excessive `loadSteps` calls (7+ times) for the same workflow_id, causing performance issues
+  - **Root Cause**: `useEffect` with `workflow?.id` in dependency array re-running when workflow state updates
+  - **Solution**: Added ref tracking to prevent redundant loads
+    - Added `lastLoadedWorkflowId` ref to track which workflow_id has been loaded
+    - `loadSteps` sets the ref after successful load
+    - `useEffect` checks if we've already loaded for the workflow_id before calling `loadSteps`
+    - `refreshSteps` resets tracking to force reload when explicitly called
+    - Tracking resets when `projectId` changes (new project)
+    - Added cleanup function to handle React Strict Mode properly
+  - **Result**: Reduced to 1-2 `loadSteps` calls per page load, significantly improving performance
+
+**Files Modified**:
+- `src/pages/Workflow.tsx` - Added mutex pattern, ref tracking, and workflow_id lookup pattern
+
+**Technical Details**:
+- **Mutex Pattern**: Uses `useRef<Map<string, Promise<string | null>>>` to track pending `ensureWorkflow` calls per project
+- **Ref Tracking**: Uses `useRef<string | null>` to track last loaded workflow_id
+- **Workflow State Sync**: After `ensureWorkflow` returns, workflow state is updated to ensure consistency
+- **Cleanup Function**: Added to useEffect to handle React Strict Mode double-invocation
+
 ## Latest Updates (v2.5)
 
 ### Master-to-Master Sharing

@@ -1284,6 +1284,133 @@ async function handleSubmit(e: React.FormEvent) {
 }
 ```
 
+### 6. Mutex Pattern for Concurrent Async Operations
+**Use Case**: Prevent multiple concurrent calls to the same async function (e.g., creating duplicate resources)
+
+```typescript
+// Declare ref to track pending promises
+const operationPromises = useRef<Map<string, Promise<string | null>>>(new Map())
+
+async function ensureResource(id: string) {
+  // Check if there's already a pending call for this id
+  const existingPromise = operationPromises.current.get(id)
+  if (existingPromise) {
+    return await existingPromise
+  }
+  
+  // Create placeholder promise and store immediately (atomic operation)
+  let resolvePromise: (value: string | null) => void
+  let rejectPromise: (reason?: any) => void
+  const placeholderPromise = new Promise<string | null>((resolve, reject) => {
+    resolvePromise = resolve
+    rejectPromise = reject
+  })
+  
+  // Store placeholder BEFORE async operation
+  operationPromises.current.set(id, placeholderPromise)
+  
+  try {
+    // Perform async operation
+    const result = await performAsyncOperation(id)
+    resolvePromise(result)
+    return result
+  } catch (error) {
+    rejectPromise(error)
+    throw error
+  } finally {
+    // Always remove from map when done
+    operationPromises.current.delete(id)
+  }
+}
+```
+
+**Key Points**:
+- Store placeholder promise immediately before async operation (ensures atomicity)
+- Subsequent concurrent calls will find the placeholder and await it
+- Always clean up in `finally` block
+- Use `Map` keyed by unique identifier (e.g., project_id) to track per-resource
+
+### 7. Ref Tracking Pattern for Preventing Redundant Loads
+**Use Case**: Prevent redundant data loading when useEffect dependencies change but data hasn't actually changed
+
+```typescript
+// Track what has been loaded
+const lastLoadedId = useRef<string | null>(null)
+
+async function loadData(id: string) {
+  // Load data...
+  const data = await fetchData(id)
+  setData(data)
+  
+  // Track that we've loaded for this id
+  lastLoadedId.current = id
+}
+
+useEffect(() => {
+  if (!resourceId) return
+  
+  // Reset tracking when resource changes
+  lastLoadedId.current = null
+  
+  (async () => {
+    // Skip load if we've already loaded for this id
+    if (lastLoadedId.current !== resourceId) {
+      await loadData(resourceId)
+    }
+  })()
+  
+  // Cleanup function for React Strict Mode
+  return () => {
+    // Optional: cancel any pending operations
+  }
+}, [resourceId, otherDeps])
+```
+
+**Key Points**:
+- Use `useRef` to track last loaded identifier (persists across renders, doesn't trigger re-renders)
+- Reset tracking when key dependency changes (e.g., `projectId`)
+- Check before loading to skip redundant loads
+- Force reload by resetting ref (e.g., in `refreshData` function)
+
+### 8. Workflow ID Lookup Pattern
+**Use Case**: Ensure valid workflow_id for operations when React state might be stale
+
+```typescript
+async function saveStep(stepData: StepData) {
+  // Ensure we have a workflow_id - fetch from DB if state isn't ready
+  let workflowId = workflow?.id
+  if (!workflowId && projectId) {
+    workflowId = await ensureWorkflow(projectId)
+    // Optionally sync state if needed
+    if (workflowId && workflow?.id !== workflowId) {
+      const { data: wf } = await supabase
+        .from('project_workflows')
+        .select('*')
+        .eq('id', workflowId)
+        .single()
+      if (wf) setWorkflow(wf as Workflow)
+    }
+  }
+  
+  if (!workflowId) {
+    setError('Workflow not found. Please refresh the page.')
+    return
+  }
+  
+  // Now use workflowId for the operation
+  await supabase.from('project_workflow_steps').insert({
+    workflow_id: workflowId,
+    ...stepData
+  })
+}
+```
+
+**Key Points**:
+- Always check `workflow?.id` from state first
+- Fall back to `ensureWorkflow(projectId)` if state is null
+- Optionally sync state after `ensureWorkflow` to prevent future mismatches
+- Use this pattern in all save/delete operations that depend on workflow_id
+
 
 ---
 
@@ -1432,6 +1559,43 @@ async function handleSubmit(e: React.FormEvent) {
 - **Migration**: `supabase/migrations/fix_project_workflow_step_actions_rls.sql`
 - **Result**: Actions can be recorded successfully without errors
 
+### 18. Workflow Data Persistence Issues
+- **Issue**: Projections and workflow steps (cards) not persisting when navigating away and back to a project
+  - Symptoms: Added projections/steps disappear on first navigation back, but appear on subsequent visits
+  - Root Cause: Race condition where `workflow?.id` from React state was `null` during immediate save operations
+- **Solution**: Modified `saveProjection`, `deleteProjection`, `saveStep`, `refreshSteps`, `createFromTemplate`, and `copyStep` to always obtain a valid `workflowId` by calling `ensureWorkflow(projectId)` if state is null
+- **Implementation**: All save/delete operations now check for `workflow?.id` and fall back to `ensureWorkflow(projectId)` if needed
+- **Files Modified**: `src/pages/Workflow.tsx`
+- **Result**: Projections and steps now persist correctly on first navigation back
+
+### 19. Concurrent Workflow Creation
+- **Issue**: Multiple workflows being created for the same project, causing duplicate workflow entries
+  - Symptoms: Console logs showing multiple "Created new workflow" messages for the same project
+  - Root Cause: Race condition where multiple concurrent calls to `ensureWorkflow` could all pass the initial check before any stored their promise
+- **Solution**: Implemented mutex pattern using `useRef` and placeholder promises
+- **Implementation**: 
+  - Added `ensureWorkflowPromises` ref to track pending calls per project
+  - Creates and stores a placeholder promise immediately before executing async logic
+  - Subsequent concurrent calls await the placeholder promise, serializing workflow creation
+  - Added retry logic for insert errors to handle unique constraint violations gracefully
+- **Files Modified**: `src/pages/Workflow.tsx`
+- **Result**: Only one workflow is created per project, even with concurrent calls
+
+### 20. Redundant loadSteps Calls
+- **Issue**: Excessive `loadSteps` calls (7+ times) for the same workflow_id, causing performance issues
+  - Symptoms: Console logs showing multiple redundant `loadSteps` calls on page load
+  - Root Cause: `useEffect` with `workflow?.id` in dependency array re-running when workflow state updates
+- **Solution**: Added ref tracking to prevent redundant loads
+- **Implementation**:
+  - Added `lastLoadedWorkflowId` ref to track which workflow_id has been loaded
+  - `loadSteps` sets the ref after successful load
+  - `useEffect` checks if we've already loaded for the workflow_id before calling `loadSteps`
+  - `refreshSteps` resets tracking to force reload when explicitly called
+  - Tracking resets when `projectId` changes (new project)
+  - Added cleanup function to handle React Strict Mode properly
+- **Files Modified**: `src/pages/Workflow.tsx`
+- **Result**: Reduced to 1-2 `loadSteps` calls per page load, improving performance
+
 
 ---
 
@@ -1551,7 +1715,23 @@ For questions or issues:
 ---
 
 **Last Updated**: 2026-01-21
-**Documentation Version**: 2.5
+**Documentation Version**: 2.6
+
+## Recent Updates (v2.6)
+
+### Workflow Data Persistence & Performance Fixes
+- ✅ **Fixed data persistence issues** for projections and workflow steps
+  - Projections and steps now persist correctly when navigating away and back
+  - Fixed race condition where `workflow?.id` from state was null during save operations
+  - All save/delete operations now ensure valid workflow_id via `ensureWorkflow(projectId)`
+- ✅ **Prevented concurrent workflow creation**
+  - Implemented mutex pattern using `useRef` and placeholder promises
+  - Only one workflow is created per project, even with concurrent calls
+  - Added retry logic for insert errors to handle unique constraint violations
+- ✅ **Optimized redundant loadSteps calls**
+  - Reduced from 7+ calls to 1-2 calls per page load
+  - Added ref tracking to prevent redundant loads when workflow state updates
+  - Improved performance and reduced database queries
 
 ## Recent Updates (v2.4)
 
