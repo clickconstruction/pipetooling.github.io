@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -119,18 +119,80 @@ export default function Workflow() {
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
 
+  // Mutex to prevent concurrent ensureWorkflow calls for the same project
+  const ensureWorkflowPromises = useRef<Map<string, Promise<string | null>>>(new Map())
+  
+  // Track which workflow_id we've already loaded steps for to prevent redundant loads
+  const lastLoadedWorkflowId = useRef<string | null>(null)
+
   async function ensureWorkflow(pid: string) {
-    const { data: wfs } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
-    if (wfs && wfs.length > 0) {
-      setWorkflow(wfs[0] as Workflow)
-      return (wfs[0] as Workflow).id
+    // Check if there's already a pending call for this project
+    const existingPromise = ensureWorkflowPromises.current.get(pid)
+    if (existingPromise) {
+      console.log(`Waiting for existing ensureWorkflow call for project ${pid}`)
+      return existingPromise
     }
-    const { data: proj } = await supabase.from('projects').select('name').eq('id', pid).single()
-    const name = (proj as { name?: string } | null)?.name ? `${(proj as { name: string }).name} workflow` : 'Workflow'
-    const { data: inserted } = await supabase.from('project_workflows').insert({ project_id: pid, name, status: 'draft' }).select().single()
-    const w = inserted as Workflow
-    setWorkflow(w)
-    return w.id
+    
+    // Create new promise and store it
+    const promise = (async (): Promise<string | null> => {
+      try {
+        // First, try to find existing workflow
+        const { data: wfs, error: queryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
+        if (queryError) {
+          console.error('Error querying workflows:', queryError)
+          setError(`Failed to load workflow: ${queryError.message}`)
+          return null
+        }
+        if (wfs && wfs.length > 0) {
+          // Use the first workflow found (should only be one per project)
+          const existingWorkflow = wfs[0] as Workflow
+          setWorkflow(existingWorkflow)
+          console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid}`)
+          return existingWorkflow.id
+        }
+        // No workflow exists, create one
+        const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
+        if (projError) {
+          console.error('Error loading project:', projError)
+          setError(`Failed to load project: ${projError.message}`)
+          return null
+        }
+        const name = (proj as { name?: string } | null)?.name ? `${(proj as { name: string }).name} workflow` : 'Workflow'
+        const { data: inserted, error: insertError } = await supabase.from('project_workflows').insert({ project_id: pid, name, status: 'draft' }).select().single()
+        if (insertError) {
+          // If insert failed, it might be because another call created it concurrently
+          // Query again to find the existing workflow
+          console.log(`Insert failed for project ${pid}, querying again:`, insertError.message)
+          const { data: wfsRetry, error: retryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
+          if (retryError) {
+            console.error('Error querying workflows on retry:', retryError)
+            setError(`Failed to create workflow: ${insertError.message}`)
+            return null
+          }
+          if (wfsRetry && wfsRetry.length > 0) {
+            // Found it! Another call must have created it
+            const existingWorkflow = wfsRetry[0] as Workflow
+            setWorkflow(existingWorkflow)
+            console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid} (after insert conflict)`)
+            return existingWorkflow.id
+          }
+          // Still not found, return error
+          console.error('Error creating workflow:', insertError)
+          setError(`Failed to create workflow: ${insertError.message}`)
+          return null
+        }
+        const w = inserted as Workflow
+        setWorkflow(w)
+        console.log(`Created new workflow ${w.id} for project ${pid}`)
+        return w.id
+      } finally {
+        // Remove from map when done (success or failure)
+        ensureWorkflowPromises.current.delete(pid)
+      }
+    })()
+    
+    ensureWorkflowPromises.current.set(pid, promise)
+    return promise
   }
 
   async function loadProject(pid: string) {
@@ -166,6 +228,7 @@ export default function Workflow() {
   }
 
   async function loadSteps(wfId: string) {
+    console.log(`loadSteps: Loading steps for workflow_id ${wfId}`)
     // Only subcontractors are filtered to assigned steps
     // Assistants see all stages (RLS handles access control via master adoption)
     let query = supabase
@@ -192,10 +255,15 @@ export default function Workflow() {
     if (userRole === 'subcontractor' && stepData.length === 0) {
       setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one stage.')
       setSteps([])
+      // Track that we've loaded steps for this workflow_id (even if empty)
+      lastLoadedWorkflowId.current = wfId
       return
     }
     
     setSteps(stepData)
+    
+    // Track that we've loaded steps for this workflow_id
+    lastLoadedWorkflowId.current = wfId
     
     if (stepData.length > 0) {
       const stepIds = stepData.map((s) => s.id)
@@ -291,15 +359,33 @@ export default function Workflow() {
   useEffect(() => {
     if (!projectId) {
       setLoading(false)
+      lastLoadedWorkflowId.current = null
       return
     }
-    (async () => {
+    let cancelled = false
+    ;(async () => {
+      // Reset tracking when projectId changes (new project = need to load)
+      lastLoadedWorkflowId.current = null
       await loadProject(projectId)
-      const wfId = await ensureWorkflow(projectId)
-      if (wfId) await loadSteps(wfId)
-      setLoading(false)
+      if (cancelled) return
+      // Use existing workflow state if available, otherwise ensure it exists
+      let wfId = workflow?.id
+      if (!wfId) {
+        wfId = await ensureWorkflow(projectId)
+      }
+      if (cancelled) return
+      // Skip loadSteps if we've already loaded for this workflow_id
+      if (wfId && lastLoadedWorkflowId.current !== wfId) {
+        await loadSteps(wfId)
+      }
+      if (!cancelled) {
+        setLoading(false)
+      }
     })()
-  }, [projectId, userRole, currentUserName])
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, userRole, currentUserName, workflow?.id])
 
   // Load line items when steps and userRole are available
   useEffect(() => {
@@ -337,7 +423,16 @@ export default function Workflow() {
   }
 
   async function saveProjection(item: Projection | null, stageName: string, memo: string, amount: string) {
-    if (!workflow?.id) return
+    // Ensure we have a workflow_id - fetch from DB if state isn't ready
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+    }
+    if (!workflowId) {
+      setError('Workflow not found. Please refresh the page.')
+      return
+    }
+    
     const amountNum = parseFloat(amount) || 0
     if (!stageName.trim() || !memo.trim()) {
       setError('Stage name and memo are required')
@@ -359,20 +454,28 @@ export default function Workflow() {
       const maxOrder = Math.max(0, ...projections.map(p => p.sequence_order))
       const { error } = await supabase
         .from('workflow_projections')
-        .insert({ workflow_id: workflow.id, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+        .insert({ workflow_id: workflowId, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
       if (error) {
         setError(`Failed to insert projection: ${error.message}`)
         return
       }
     }
     setEditingProjection(null)
-    await loadProjections(workflow.id)
+    await loadProjections(workflowId)
   }
 
   async function deleteProjection(itemId: string) {
-    if (!workflow?.id) return
+    // Ensure we have a workflow_id - fetch from DB if state isn't ready
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+    }
+    if (!workflowId) {
+      setError('Workflow not found. Please refresh the page.')
+      return
+    }
     await supabase.from('workflow_projections').delete().eq('id', itemId)
-    await loadProjections(workflow.id)
+    await loadProjections(workflowId)
   }
 
   function openEditProjection(item: Projection | null) {
@@ -467,11 +570,29 @@ export default function Workflow() {
   }, [authUser?.id])
 
   async function refreshSteps(): Promise<string | null> {
-    if (workflow?.id) {
-      await loadSteps(workflow.id)
-      return null
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+      console.log(`refreshSteps: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
+      // Ensure workflow state matches the returned workflow_id
+      if (workflowId && workflow?.id !== workflowId) {
+        // State might be out of sync, reload workflow to ensure consistency
+        const { data: wf } = await supabase.from('project_workflows').select('*').eq('id', workflowId).single()
+        if (wf) {
+          setWorkflow(wf as Workflow)
+          console.log(`refreshSteps: Updated workflow state to match workflow_id ${workflowId}`)
+        }
+      }
+    } else {
+      console.log(`refreshSteps: Using workflow_id ${workflowId} from state for project ${projectId}`)
     }
-    return 'No workflow ID'
+    if (!workflowId) {
+      return 'No workflow ID'
+    }
+    // Force reload by resetting tracking - refreshSteps should always reload
+    lastLoadedWorkflowId.current = null
+    await loadSteps(workflowId)
+    return null
   }
 
   // Calculate total from all line items
@@ -785,7 +906,16 @@ export default function Workflow() {
   }
 
   async function createFromTemplate() {
-    if (!workflow || !selectedTemplateId) return
+    if (!selectedTemplateId) return
+    // Ensure we have a workflow_id - fetch from DB if state isn't ready
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+    }
+    if (!workflowId) {
+      setError('Workflow not found. Please refresh the page.')
+      return
+    }
     setCreatingFromTemplate(true)
     setError(null)
     const { data: tSteps, error: tStepsErr } = await supabase
@@ -802,7 +932,7 @@ export default function Workflow() {
       let insertedCount = 0
       for (const t of tSteps as { sequence_order: number; name: string }[]) {
         const { data: inserted, error: insErr } = await supabase.from('project_workflow_steps').insert({
-          workflow_id: workflow.id,
+          workflow_id: workflowId,
           sequence_order: t.sequence_order,
           name: t.name,
           status: 'pending',
@@ -826,7 +956,15 @@ export default function Workflow() {
   }
 
   async function copyStep(step: Step) {
-    if (!workflow) return
+    // Ensure we have a workflow_id - fetch from DB if state isn't ready
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+    }
+    if (!workflowId) {
+      setError('Workflow not found. Please refresh the page.')
+      return
+    }
     // Find the current step's position
     const currentStep = steps.find((s) => s.id === step.id)
     if (!currentStep) return
@@ -847,7 +985,7 @@ export default function Workflow() {
     const { data: newStep, error: err } = await supabase
       .from('project_workflow_steps')
       .insert({
-        workflow_id: workflow.id,
+        workflow_id: workflowId,
         sequence_order: newOrder,
         name: step.name,
         assigned_to_name: step.assigned_to_name,
@@ -891,7 +1029,27 @@ export default function Workflow() {
   }
 
   async function saveStep(p: { name: string; assigned_to_name: string; started_at: string | null; ended_at: string | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }) {
-    if (!workflow) return
+    // Ensure we have a workflow_id - fetch from DB if state isn't ready
+    let workflowId = workflow?.id
+    if (!workflowId && projectId) {
+      workflowId = await ensureWorkflow(projectId)
+      console.log(`saveStep: Using workflow_id ${workflowId} from ensureWorkflow for project ${projectId}`)
+      // Ensure workflow state matches the returned workflow_id
+      if (workflowId && workflow?.id !== workflowId) {
+        // State might be out of sync, reload workflow to ensure consistency
+        const { data: wf } = await supabase.from('project_workflows').select('*').eq('id', workflowId).single()
+        if (wf) {
+          setWorkflow(wf as Workflow)
+          console.log(`saveStep: Updated workflow state to match workflow_id ${workflowId}`)
+        }
+      }
+    } else {
+      console.log(`saveStep: Using workflow_id ${workflowId} from state for project ${projectId}`)
+    }
+    if (!workflowId) {
+      setError('Workflow not found. Please refresh the page.')
+      return
+    }
     setError(null)
     if (stepForm.step) {
       const { error: upErr } = await supabase.from('project_workflow_steps').update({
@@ -960,8 +1118,9 @@ export default function Workflow() {
         newOrder = maxOrder + 1
       }
       
+      console.log(`saveStep: Inserting step "${p.name.trim()}" with workflow_id ${workflowId}`)
       const { data: inserted, error: insErr } = await supabase.from('project_workflow_steps').insert({
-        workflow_id: workflow.id,
+        workflow_id: workflowId,
         sequence_order: newOrder,
         name: p.name.trim(),
         assigned_to_name: p.assigned_to_name.trim() || null,
@@ -975,7 +1134,7 @@ export default function Workflow() {
       }
       if (inserted && inserted.length > 0) {
         const firstInserted = inserted[0] as { id: string }
-        console.log(`Step inserted with ID: ${firstInserted.id}`)
+        console.log(`saveStep: Step inserted with ID ${firstInserted.id} for workflow_id ${workflowId}`)
       }
     }
     const refreshErr = await refreshSteps()
