@@ -1378,7 +1378,8 @@ useEffect(() => {
 ```typescript
 async function saveStep(stepData: StepData) {
   // Ensure we have a workflow_id - fetch from DB if state isn't ready
-  let workflowId = workflow?.id
+  // Explicitly type as string | null to match ensureWorkflow return type
+  let workflowId: string | null = workflow?.id ?? null
   if (!workflowId && projectId) {
     workflowId = await ensureWorkflow(projectId)
     // Optionally sync state if needed
@@ -1407,9 +1408,38 @@ async function saveStep(stepData: StepData) {
 
 **Key Points**:
 - Always check `workflow?.id` from state first
+- Explicitly type variable as `string | null` to match function return type
+- Use `?? null` to convert `undefined` (from optional chaining) to `null`
 - Fall back to `ensureWorkflow(projectId)` if state is null
 - Optionally sync state after `ensureWorkflow` to prevent future mismatches
 - Use this pattern in all save/delete operations that depend on workflow_id
+
+### 9. TypeScript null vs undefined Pattern
+**Use Case**: Handle type mismatches when functions return `string | null` but variables are inferred as `string | undefined`
+
+```typescript
+// Problem: ensureWorkflow returns Promise<string | null>
+// But workflow?.id is string | undefined (optional chaining)
+async function myFunction() {
+  // ❌ Type error: Type 'string | null' is not assignable to type 'string | undefined'
+  let workflowId = workflow?.id
+  if (!workflowId) {
+    workflowId = await ensureWorkflow(projectId) // Returns string | null
+  }
+  
+  // ✅ Solution: Explicitly type and convert undefined to null
+  let workflowId: string | null = workflow?.id ?? null
+  if (!workflowId) {
+    workflowId = await ensureWorkflow(projectId) // Now types match
+  }
+}
+```
+
+**Key Points**:
+- When a function returns `string | null`, explicitly type variables that receive its value
+- Use `?? null` to convert `undefined` (from optional chaining) to `null`
+- This ensures type consistency throughout the code
+- Both `null` and `undefined` are falsy, so `if (!value)` checks work with both
 
 
 ---
@@ -1596,6 +1626,19 @@ async function saveStep(stepData: StepData) {
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Reduced to 1-2 `loadSteps` calls per page load, improving performance
 
+### 21. TypeScript Type Errors: string | null vs string | undefined
+- **Issue**: TypeScript build errors: `Type 'string | null' is not assignable to type 'string | undefined'`
+  - Symptoms: Build fails with 7 type errors in `Workflow.tsx` when assigning `ensureWorkflow(projectId)` result
+  - Root Cause: `ensureWorkflow` returns `Promise<string | null>`, but variables inferred from `workflow?.id` are typed as `string | undefined` (optional chaining returns `undefined`, not `null`)
+- **Solution**: Explicitly type variables as `string | null` and use nullish coalescing operator
+- **Implementation**:
+  - Changed `let workflowId = workflow?.id` to `let workflowId: string | null = workflow?.id ?? null`
+  - Applied to 7 locations: `useEffect`, `saveProjection`, `deleteProjection`, `refreshSteps`, `createFromTemplate`, `copyStep`, `saveStep`
+  - Using `?? null` converts `undefined` to `null` to match `ensureWorkflow`'s return type
+- **Files Modified**: `src/pages/Workflow.tsx`
+- **Result**: TypeScript build succeeds, type safety maintained
+- **Pattern**: When a function returns `string | null`, explicitly type variables that may receive its value as `string | null` rather than relying on inference
+
 
 ---
 
@@ -1732,6 +1775,11 @@ For questions or issues:
   - Reduced from 7+ calls to 1-2 calls per page load
   - Added ref tracking to prevent redundant loads when workflow state updates
   - Improved performance and reduced database queries
+- ✅ **Fixed TypeScript type errors**
+  - Resolved 7 type errors where `string | null` was not assignable to `string | undefined`
+  - Explicitly typed workflowId variables as `string | null` to match `ensureWorkflow` return type
+  - Used nullish coalescing operator (`?? null`) to convert `undefined` to `null`
+  - TypeScript build now succeeds
 
 ## Recent Updates (v2.4)
 

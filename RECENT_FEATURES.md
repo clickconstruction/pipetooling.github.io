@@ -48,13 +48,14 @@ This document summarizes all recent features and improvements added to Pipetooli
   - **Result**: Reduced to 1-2 `loadSteps` calls per page load, significantly improving performance
 
 **Files Modified**:
-- `src/pages/Workflow.tsx` - Added mutex pattern, ref tracking, and workflow_id lookup pattern
+- `src/pages/Workflow.tsx` - Added mutex pattern, ref tracking, workflow_id lookup pattern, and TypeScript type fixes
 
 **Technical Details**:
 - **Mutex Pattern**: Uses `useRef<Map<string, Promise<string | null>>>` to track pending `ensureWorkflow` calls per project
 - **Ref Tracking**: Uses `useRef<string | null>` to track last loaded workflow_id
 - **Workflow State Sync**: After `ensureWorkflow` returns, workflow state is updated to ensure consistency
 - **Cleanup Function**: Added to useEffect to handle React Strict Mode double-invocation
+- **TypeScript Type Fixes**: Explicitly typed `workflowId` variables as `string | null` (7 locations) to match `ensureWorkflow` return type, using `?? null` to convert `undefined` to `null`
 
 ## Latest Updates (v2.5)
 
