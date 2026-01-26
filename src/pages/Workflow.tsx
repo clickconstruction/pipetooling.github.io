@@ -115,7 +115,7 @@ export default function Workflow() {
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
   const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
-  const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; memo: string; amount: string } | null>(null)
+  const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; link: string; memo: string; amount: string } | null>(null)
   const [projections, setProjections] = useState<Projection[]>([])
   const [viewingPO, setViewingPO] = useState<{ id: string; name: string; items: Array<{ part: { name: string }; quantity: number; supply_house: { name: string } | null; price_at_time: number }> } | null>(null)
   const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
@@ -1426,7 +1426,7 @@ export default function Workflow() {
   }
 
 
-  async function saveLineItem(stepId: string, item: LineItem | null, memo: string, amount: string) {
+  async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string) {
     const amountNum = parseFloat(amount) || 0
     if (!memo.trim()) {
       setError('Memo is required')
@@ -1437,7 +1437,7 @@ export default function Workflow() {
       // Update existing
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .update({ memo: memo.trim(), amount: amountNum })
+        .update({ link: link.trim() || null, memo: memo.trim(), amount: amountNum })
         .eq('id', item.id)
       if (error) {
         setError(`Failed to update line item: ${error.message}`)
@@ -1448,7 +1448,7 @@ export default function Workflow() {
       const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .insert({ step_id: stepId, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+        .insert({ step_id: stepId, link: link.trim() || null, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
       if (error) {
         setError(`Failed to insert line item: ${error.message}`)
         return
@@ -1481,6 +1481,7 @@ export default function Workflow() {
     setEditingLineItem({
       stepId,
       item,
+      link: item?.link || '',
       memo: item?.memo || '',
       amount: item?.amount?.toString() || '',
     })
@@ -1711,7 +1712,25 @@ export default function Workflow() {
                         <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
                           {idx === 0 ? step.name : ''}
                         </td>
-                        <td style={{ padding: '0.5rem', color: '#374151' }}>{item.memo}</td>
+                        <td style={{ padding: '0.5rem', color: '#374151' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>{item.memo}</span>
+                            {item.link && (
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                                title={item.link}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
+                                  <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        </td>
                         <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
                           {formatAmount(item.amount)}
                         </td>
@@ -2032,7 +2051,23 @@ export default function Workflow() {
                         {lineItems[s.id]!.map((item) => (
                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #bae6fd' }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem' }}>{item.memo}</div>
+                              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span>{item.memo}</span>
+                                {item.link && (
+                                  <a
+                                    href={item.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                                    title={item.link}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
+                                      <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
+                                    </svg>
+                                  </a>
+                                )}
+                              </div>
                               <div style={{ fontSize: '0.8125rem', color: (item.amount || 0) < 0 ? '#b91c1c' : '#6b7280' }}>
                                 {formatAmount(item.amount)}
                               </div>
@@ -2196,9 +2231,20 @@ export default function Workflow() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                saveLineItem(editingLineItem.stepId, editingLineItem.item, editingLineItem.memo, editingLineItem.amount)
+                saveLineItem(editingLineItem.stepId, editingLineItem.item, editingLineItem.link, editingLineItem.memo, editingLineItem.amount)
               }}
             >
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="line-item-link" style={{ display: 'block', marginBottom: 4 }}>Link (optional)</label>
+                <input
+                  id="line-item-link"
+                  type="url"
+                  value={editingLineItem.link}
+                  onChange={(e) => setEditingLineItem({ ...editingLineItem, link: e.target.value })}
+                  placeholder="https://..."
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="line-item-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
                 <input

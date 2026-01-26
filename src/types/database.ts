@@ -98,9 +98,9 @@ export type Database = {
         Update: { id?: string; step_id?: string; action_type?: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'; performed_by?: string; performed_at?: string; notes?: string | null; created_at?: string | null }
       }
       workflow_step_line_items: {
-        Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; purchase_order_id: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; purchase_order_id?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; purchase_order_id?: string | null; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; purchase_order_id: string | null; link: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; purchase_order_id?: string | null; link?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; purchase_order_id?: string | null; link?: string | null; created_at?: string | null; updated_at?: string | null }
       }
       workflow_projections: {
         Row: { id: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
