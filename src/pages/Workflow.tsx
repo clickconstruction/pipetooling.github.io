@@ -1433,11 +1433,26 @@ export default function Workflow() {
       return
     }
     
+    // Validate link format if provided
+    const trimmedLink = link.trim()
+    let finalLink: string | null = null
+    if (trimmedLink) {
+      // Auto-add https:// if missing
+      if (trimmedLink.match(/^[a-zA-Z0-9]/)) {
+        finalLink = `https://${trimmedLink}`
+      } else if (trimmedLink.match(/^https?:\/\//i)) {
+        finalLink = trimmedLink
+      } else {
+        setError('Link must be a valid URL (starting with http:// or https://)')
+        return
+      }
+    }
+    
     if (item) {
       // Update existing
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .update({ link: link.trim() || null, memo: memo.trim(), amount: amountNum })
+        .update({ link: finalLink, memo: memo.trim(), amount: amountNum })
         .eq('id', item.id)
       if (error) {
         setError(`Failed to update line item: ${error.message}`)
@@ -1448,7 +1463,7 @@ export default function Workflow() {
       const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
       const { error } = await supabase
         .from('workflow_step_line_items')
-        .insert({ step_id: stepId, link: link.trim() || null, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+        .insert({ step_id: stepId, link: finalLink, memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
       if (error) {
         setError(`Failed to insert line item: ${error.message}`)
         return
@@ -2242,8 +2257,14 @@ export default function Workflow() {
                   value={editingLineItem.link}
                   onChange={(e) => setEditingLineItem({ ...editingLineItem, link: e.target.value })}
                   placeholder="https://..."
+                  pattern="https?://.*"
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
+                {editingLineItem.link && editingLineItem.link.trim() && !editingLineItem.link.trim().match(/^https?:\/\//i) && (
+                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>
+                    Link should start with http:// or https://
+                  </div>
+                )}
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="line-item-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
