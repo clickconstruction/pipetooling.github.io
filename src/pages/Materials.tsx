@@ -1951,21 +1951,37 @@ export default function Materials() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    type="submit"
-                    disabled={savingSupplyHouse}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    {savingSupplyHouse ? 'Saving...' : editingSupplyHouse ? 'Update' : 'Add'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeSupplyHouseForm}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {editingSupplyHouse && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editingSupplyHouse) {
+                          deleteSupplyHouse(editingSupplyHouse.id)
+                          closeSupplyHouseForm()
+                        }
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+                    <button
+                      type="submit"
+                      disabled={savingSupplyHouse}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      {savingSupplyHouse ? 'Saving...' : editingSupplyHouse ? 'Update' : 'Add'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeSupplyHouseForm}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </form>
             )}
@@ -2003,13 +2019,6 @@ export default function Materials() {
                             style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteSupplyHouse(sh.id)}
-                            style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Delete
                           </button>
                         </td>
                       </tr>
@@ -2256,21 +2265,6 @@ export default function Materials() {
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                               {po.items.length} items • ${total.toFixed(2)} total
                             </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                deletePO(po.id)
-                                if (editingPO?.id === po.id) {
-                                  setEditingPO(null)
-                                }
-                              }}
-                              style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              Delete
-                            </button>
                           </div>
                         </div>
                       </div>
@@ -2719,13 +2713,6 @@ export default function Materials() {
                               Finalize
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => deletePO(po.id)}
-                            style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Delete
-                          </button>
                         </td>
                       </tr>
                     )
@@ -2968,48 +2955,68 @@ export default function Materials() {
                     </tfoot>
                   </table>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button
                     type="button"
                     onClick={() => {
-                      setSelectedPO(null)
-                      setEditingPOItemSupplyHouseView(null)
-                      setAvailablePricesForItem([])
-                      setSelectedSupplyHouseForUpdate(null)
+                      if (selectedPO) {
+                        deletePO(selectedPO.id)
+                        setSelectedPO(null)
+                        setEditingPOItemSupplyHouseView(null)
+                        setAvailablePricesForItem([])
+                        setSelectedSupplyHouseForUpdate(null)
+                        if (editingPO?.id === selectedPO.id) {
+                          setEditingPO(null)
+                        }
+                      }
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                   >
-                    Close
+                    Delete
                   </button>
-                  {selectedPO.status === 'finalized' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => duplicatePOAsDraft(selectedPO.id)}
-                        disabled={duplicatingPO === selectedPO.id}
-                        style={{ 
-                          padding: '0.5rem 1rem', 
-                          background: duplicatingPO === selectedPO.id ? '#9ca3af' : '#059669', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: 4, 
-                          cursor: duplicatingPO === selectedPO.id ? 'not-allowed' : 'pointer' 
-                        }}
-                      >
-                        {duplicatingPO === selectedPO.id ? 'Duplicating...' : 'Duplicate as Draft'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // Navigate to projects page - user can then go to workflow and add PO there
-                          window.location.href = '/projects'
-                        }}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        Go to Projects to Add
-                      </button>
-                    </>
-                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPO(null)
+                        setEditingPOItemSupplyHouseView(null)
+                        setAvailablePricesForItem([])
+                        setSelectedSupplyHouseForUpdate(null)
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Close
+                    </button>
+                    {selectedPO.status === 'finalized' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => duplicatePOAsDraft(selectedPO.id)}
+                          disabled={duplicatingPO === selectedPO.id}
+                          style={{ 
+                            padding: '0.5rem 1rem', 
+                            background: duplicatingPO === selectedPO.id ? '#9ca3af' : '#059669', 
+                            color: 'white', 
+                            border: 'none', 
+                            borderRadius: 4, 
+                            cursor: duplicatingPO === selectedPO.id ? 'not-allowed' : 'pointer' 
+                          }}
+                        >
+                          {duplicatingPO === selectedPO.id ? 'Duplicating...' : 'Duplicate as Draft'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Navigate to projects page - user can then go to workflow and add PO there
+                            window.location.href = '/projects'
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Go to Projects to Add
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
