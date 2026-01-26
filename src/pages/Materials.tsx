@@ -82,11 +82,7 @@ export default function Materials() {
   const [newItemTemplateId, setNewItemTemplateId] = useState('')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemNotes, setNewItemNotes] = useState('')
-  const [poFormOpen, setPoFormOpen] = useState(false)
-  const [poName, setPoName] = useState('')
-  const [poNotes, setPoNotes] = useState('')
   const [creatingPOFromTemplate, setCreatingPOFromTemplate] = useState(false)
-  const [poItems, setPoItems] = useState<Array<{ part_id: string; quantity: number; supply_house_id: string | null; price: number }>>([])
   const [addingTemplateToPO, setAddingTemplateToPO] = useState(false)
   const [addingPartToPO, setAddingPartToPO] = useState(false)
   const [selectedTemplateForPO, setSelectedTemplateForPO] = useState('')
@@ -783,6 +779,7 @@ export default function Materials() {
     // Add items to PO
     for (let i = 0; i < poItemsWithPrices.length; i++) {
       const item = poItemsWithPrices[i]
+      if (!item) continue
       const { error: itemError } = await supabase
         .from('purchase_order_items')
         .insert({
@@ -881,11 +878,12 @@ export default function Materials() {
       .order('sequence_order', { ascending: false })
       .limit(1)
     
-    const maxOrder = existingItems && existingItems.length > 0 ? existingItems[0].sequence_order : 0
+    const maxOrder = existingItems && existingItems.length > 0 && existingItems[0] ? existingItems[0].sequence_order : 0
 
     // Add items to PO
     for (let i = 0; i < poItemsWithPrices.length; i++) {
       const item = poItemsWithPrices[i]
+      if (!item) continue
       const { error: itemError } = await supabase
         .from('purchase_order_items')
         .insert({
@@ -1689,7 +1687,7 @@ export default function Materials() {
             >
               <option value="">All Fixture Types</option>
               {fixtureTypes.map(ft => (
-                <option key={ft} value={ft}>{ft}</option>
+                <option key={ft} value={ft || ''}>{ft || ''}</option>
               ))}
             </select>
             <select
@@ -1699,7 +1697,7 @@ export default function Materials() {
             >
               <option value="">All Manufacturers</option>
               {manufacturers.map(m => (
-                <option key={m} value={m}>{m}</option>
+                <option key={m} value={m || ''}>{m || ''}</option>
               ))}
             </select>
           </div>
@@ -1852,7 +1850,7 @@ export default function Materials() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>Prices for {viewingPartPrices.name}</h2>
-            <PartPricesManager part={viewingPartPrices} supplyHouses={supplyHouses} onClose={() => setViewingPartPrices(null)} onSaved={loadParts} />
+            <PartPricesManager part={viewingPartPrices} supplyHouses={supplyHouses} onClose={() => setViewingPartPrices(null)} />
           </div>
         </div>
       )}
@@ -3012,7 +3010,7 @@ type PriceHistory = Database['public']['Tables']['material_part_price_history'][
 }
 
 // Component for managing part prices
-function PartPricesManager({ part, supplyHouses, onClose, onSaved }: { part: MaterialPart; supplyHouses: SupplyHouse[]; onClose: () => void; onSaved: () => void }) {
+function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart; supplyHouses: SupplyHouse[]; onClose: () => void }) {
   const [prices, setPrices] = useState<(MaterialPartPrice & { supply_house: SupplyHouse })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialPartPrice | null>(null)
@@ -3045,10 +3043,6 @@ function PartPricesManager({ part, supplyHouses, onClose, onSaved }: { part: Mat
     setLoading(false)
   }
 
-  function openAddPrice() {
-    setEditingPrice(null)
-    setSelectedSupplyHouse('')
-    setPrice('')
     setEffectiveDate('')
   }
 
@@ -3242,31 +3236,34 @@ function PartPricesManager({ part, supplyHouses, onClose, onSaved }: { part: Mat
                     </td>
                   </tr>
                 ) : (
-                  prices.map(p => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem' }}>{p.supply_house.name}</td>
-                      <td style={{ padding: '0.75rem', fontWeight: prices[0].id === p.id ? 600 : 400, color: prices[0].id === p.id ? '#059669' : 'inherit' }}>
-                        ${p.price.toFixed(2)} {prices[0].id === p.id && '(Best)'}
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>{p.effective_date || '-'}</td>
-                      <td style={{ padding: '0.75rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => loadPriceHistory(p.supply_house_id)}
-                          style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          History
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditPrice(p)}
-                          style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  prices.map(p => {
+                    const isBest = prices.length > 0 && prices[0] && prices[0].id === p.id
+                    return (
+                      <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.75rem' }}>{p.supply_house?.name || 'Unknown'}</td>
+                        <td style={{ padding: '0.75rem', fontWeight: isBest ? 600 : 400, color: isBest ? '#059669' : 'inherit' }}>
+                          ${p.price.toFixed(2)} {isBest && '(Best)'}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>{p.effective_date || '-'}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => loadPriceHistory(p.supply_house_id || '')}
+                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            History
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditPrice(p)}
+                            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
