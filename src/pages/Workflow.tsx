@@ -11,6 +11,10 @@ type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 type Projection = Database['public']['Tables']['workflow_projections']['Row']
+type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
+type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
+type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
+type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -113,6 +117,9 @@ export default function Workflow() {
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; memo: string; amount: string } | null>(null)
   const [projections, setProjections] = useState<Projection[]>([])
+  const [viewingPO, setViewingPO] = useState<{ id: string; name: string; items: Array<{ part: { name: string }; quantity: number; supply_house: { name: string } | null; price_at_time: number }> } | null>(null)
+  const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
+  const [availablePOs, setAvailablePOs] = useState<Array<{ id: string; name: string; total: number }>>([])
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
 
@@ -311,6 +318,115 @@ export default function Workflow() {
     }
   }
 
+  async function loadFinalizedPOs() {
+    if (userRole !== 'dev' && userRole !== 'master_technician') return
+    const { data, error } = await supabase
+      .from('purchase_orders')
+      .select('id, name')
+      .eq('status', 'finalized')
+      .order('created_at', { ascending: false })
+    
+    if (error) {
+      console.error('Error loading POs:', error)
+      return
+    }
+
+    // Calculate totals for each PO
+    const posWithTotals = await Promise.all(
+      ((data as Array<{ id: string; name: string }>) ?? []).map(async (po) => {
+        const { data: items } = await supabase
+          .from('purchase_order_items')
+          .select('price_at_time, quantity')
+          .eq('purchase_order_id', po.id)
+        
+        const total = (items ?? []).reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
+        return { ...po, total }
+      })
+    )
+
+    setAvailablePOs(posWithTotals)
+  }
+
+  async function loadPODetails(poId: string) {
+    const { data: poData, error: poError } = await supabase
+      .from('purchase_orders')
+      .select('*')
+      .eq('id', poId)
+      .single()
+    
+    if (poError) {
+      setError(`Failed to load PO: ${poError.message}`)
+      return
+    }
+
+    const { data: itemsData, error: itemsError } = await supabase
+      .from('purchase_order_items')
+      .select('*, material_parts(*), supply_houses(*)')
+      .eq('purchase_order_id', poId)
+      .order('sequence_order', { ascending: true })
+    
+    if (itemsError) {
+      setError(`Failed to load PO items: ${itemsError.message}`)
+      return
+    }
+
+    const items = (itemsData as Array<PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null }>) ?? []
+    setViewingPO({
+      id: poId,
+      name: (poData as PurchaseOrder).name,
+      items: items.map(item => ({
+        part: { name: item.material_parts.name },
+        quantity: item.quantity,
+        supply_house: item.supply_houses,
+        price_at_time: item.price_at_time,
+      })),
+    })
+  }
+
+  async function addPOToStep(stepId: string, poId: string) {
+    setError(null)
+    
+    // Load PO details to get total
+    const { data: itemsData } = await supabase
+      .from('purchase_order_items')
+      .select('price_at_time, quantity')
+      .eq('purchase_order_id', poId)
+    
+    const total = (itemsData ?? []).reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
+    
+    const { data: poData } = await supabase
+      .from('purchase_orders')
+      .select('name')
+      .eq('id', poId)
+      .single()
+    
+    const poName = (poData as { name: string } | null)?.name || 'Purchase Order'
+    const itemCount = itemsData?.length || 0
+    
+    // Create line item with PO link
+    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
+    const { error } = await supabase
+      .from('workflow_step_line_items')
+      .insert({
+        step_id: stepId,
+        memo: `PO: ${poName} - ${itemCount} items, $${total.toFixed(2)} total`,
+        amount: total,
+        sequence_order: maxOrder + 1,
+        purchase_order_id: poId,
+      })
+    
+    if (error) {
+      setError(`Failed to add PO to step: ${error.message}`)
+    } else {
+      setAddingPOToStep(null)
+      await refreshSteps()
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+        const stepIds = steps.map(s => s.id)
+        await loadLineItemsForSteps(stepIds)
+      }
+    }
+  }
+
   async function loadLineItemsForSteps(stepIds: string[]) {
     if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant') return
     if (stepIds.length === 0) {
@@ -405,6 +521,13 @@ export default function Workflow() {
       setProjections([])
     }
   }, [workflow?.id, userRole])
+
+  // Load finalized purchase orders for adding to steps
+  useEffect(() => {
+    if (userRole === 'dev' || userRole === 'master_technician') {
+      loadFinalizedPOs()
+    }
+  }, [userRole])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -1885,13 +2008,24 @@ export default function Workflow() {
                   <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (Master and Assistants only)</label>
-                      <button
-                        type="button"
-                        onClick={() => openEditLineItem(s.id, null)}
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                      >
-                        + Add Line Item
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        {availablePOs.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setAddingPOToStep(s.id)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                          >
+                            + Add PO
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => openEditLineItem(s.id, null)}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          + Add Line Item
+                        </button>
+                      </div>
                     </div>
                     {lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
                       <div style={{ fontSize: '0.875rem' }}>
@@ -1904,6 +2038,15 @@ export default function Workflow() {
                               </div>
                             </div>
                             <div style={{ display: 'flex', gap: '0.25rem' }}>
+                              {item.purchase_order_id && (
+                                <button
+                                  type="button"
+                                  onClick={() => loadPODetails(item.purchase_order_id!)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#dbeafe', color: '#1e40af', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  View PO
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => openEditLineItem(s.id, item)}
@@ -2142,6 +2285,99 @@ export default function Workflow() {
                 <button type="button" onClick={() => setEditingProjection(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Purchase Order to Step Modal */}
+      {addingPOToStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Add Purchase Order to Step</h3>
+            {availablePOs.length === 0 ? (
+              <p style={{ color: '#6b7280' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
+            ) : (
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
+                  {availablePOs.map(po => (
+                    <div
+                      key={po.id}
+                      onClick={() => addPOToStep(addingPOToStep, po.id)}
+                      style={{
+                        padding: '1rem',
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                        background: 'white',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>${po.total.toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setAddingPOToStep(null)}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Purchase Order Details Modal */}
+      {viewingPO && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <h2 style={{ marginBottom: '1rem' }}>{viewingPO.name}</h2>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewingPO.items.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
+                      <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
+                      <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
+                      <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
+                    <td style={{ padding: '0.75rem', fontWeight: 600 }}>
+                      ${viewingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setViewingPO(null)}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

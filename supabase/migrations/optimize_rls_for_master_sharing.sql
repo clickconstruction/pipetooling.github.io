@@ -277,6 +277,14 @@ USING (
         AND LOWER(TRIM(users.name)) = LOWER(TRIM(project_workflow_steps.assigned_to_name))
     )
   )
+  OR (
+    EXISTS (
+      SELECT 1 FROM public.users
+      WHERE id = auth.uid()
+        AND role = 'assistant'
+    )
+    AND public.can_access_project_via_workflow(workflow_id)
+  )
 )
 WITH CHECK (
   EXISTS (
@@ -285,14 +293,12 @@ WITH CHECK (
       AND role IN ('dev', 'master_technician')
   )
   OR (
-    assigned_to_name IS NOT NULL
-    AND EXISTS (
+    EXISTS (
       SELECT 1 FROM public.users
       WHERE id = auth.uid()
         AND role = 'assistant'
-        AND name IS NOT NULL
-        AND LOWER(TRIM(users.name)) = LOWER(TRIM(project_workflow_steps.assigned_to_name))
     )
+    AND public.can_access_project_via_workflow(workflow_id)
   )
 );
 

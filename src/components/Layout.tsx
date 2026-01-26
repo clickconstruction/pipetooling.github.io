@@ -73,6 +73,9 @@ export default function Layout() {
             <NavLink to="/customers" style={navStyle}>Customers</NavLink>
             <NavLink to="/projects" style={navStyle}>Projects</NavLink>
             <NavLink to="/people" style={navStyle}>People</NavLink>
+            {(role === 'dev' || role === 'master_technician') && (
+              <NavLink to="/materials" style={navStyle}>Materials</NavLink>
+            )}
           </>
         )}
         <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>

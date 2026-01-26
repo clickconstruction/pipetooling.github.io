@@ -98,14 +98,54 @@ export type Database = {
         Update: { id?: string; step_id?: string; action_type?: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'; performed_by?: string; performed_at?: string; notes?: string | null; created_at?: string | null }
       }
       workflow_step_line_items: {
-        Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; step_id: string; memo: string; amount: number; sequence_order: number; purchase_order_id: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; step_id: string; memo: string; amount: number; sequence_order?: number; purchase_order_id?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; step_id?: string; memo?: string; amount?: number; sequence_order?: number; purchase_order_id?: string | null; created_at?: string | null; updated_at?: string | null }
       }
       workflow_projections: {
         Row: { id: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
         Insert: { id?: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
         Update: { id?: string; workflow_id?: string; stage_name?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+      }
+      supply_houses: {
+        Row: { id: string; name: string; contact_name: string | null; phone: string | null; email: string | null; address: string | null; notes: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; contact_name?: string | null; phone?: string | null; email?: string | null; address?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; contact_name?: string | null; phone?: string | null; email?: string | null; address?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      material_parts: {
+        Row: { id: string; name: string; manufacturer: string | null; fixture_type: string | null; notes: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; manufacturer?: string | null; fixture_type?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; manufacturer?: string | null; fixture_type?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      material_part_prices: {
+        Row: { id: string; part_id: string; supply_house_id: string; price: number; effective_date: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; part_id: string; supply_house_id: string; price: number; effective_date?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; part_id?: string; supply_house_id?: string; price?: number; effective_date?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      material_part_price_history: {
+        Row: { id: string; part_id: string; supply_house_id: string; old_price: number | null; new_price: number; price_change_percent: number | null; effective_date: string | null; changed_at: string; changed_by: string | null; notes: string | null; created_at: string | null }
+        Insert: { id?: string; part_id: string; supply_house_id: string; old_price?: number | null; new_price: number; price_change_percent?: number | null; effective_date?: string | null; changed_at?: string; changed_by?: string | null; notes?: string | null; created_at?: string | null }
+        Update: { id?: string; part_id?: string; supply_house_id?: string; old_price?: number | null; new_price?: number; price_change_percent?: number | null; effective_date?: string | null; changed_at?: string; changed_by?: string | null; notes?: string | null; created_at?: string | null }
+      }
+      material_templates: {
+        Row: { id: string; name: string; description: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; description?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; description?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      material_template_items: {
+        Row: { id: string; template_id: string; item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number; sequence_order: number; notes: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; template_id: string; item_type: 'part' | 'template'; part_id?: string | null; nested_template_id?: string | null; quantity?: number; sequence_order?: number; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; template_id?: string; item_type?: 'part' | 'template'; part_id?: string | null; nested_template_id?: string | null; quantity?: number; sequence_order?: number; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      purchase_orders: {
+        Row: { id: string; name: string; status: 'draft' | 'finalized'; created_by: string; finalized_at: string | null; notes: string | null; notes_added_by: string | null; notes_added_at: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; status?: 'draft' | 'finalized'; created_by: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; status?: 'draft' | 'finalized'; created_by?: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      purchase_order_items: {
+        Row: { id: string; purchase_order_id: string; part_id: string; quantity: number; selected_supply_house_id: string | null; price_at_time: number; sequence_order: number; notes: string | null; price_confirmed_at: string | null; price_confirmed_by: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; purchase_order_id: string; part_id: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time: number; sequence_order?: number; notes?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; purchase_order_id?: string; part_id?: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time?: number; sequence_order?: number; notes?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
       }
     }
   }
