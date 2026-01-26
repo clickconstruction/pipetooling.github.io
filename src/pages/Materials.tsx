@@ -960,7 +960,7 @@ export default function Materials() {
       .order('sequence_order', { ascending: false })
       .limit(1)
     
-    const maxOrder = existingItems && existingItems.length > 0 ? existingItems[0].sequence_order : 0
+    const maxOrder = existingItems && existingItems.length > 0 && existingItems[0] ? existingItems[0].sequence_order : 0
 
     // Add item to PO
     const { error: itemError } = await supabase
@@ -3041,9 +3041,6 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
       setPrices(pricesList.map(p => ({ ...p, supply_house: p.supply_houses })))
     }
     setLoading(false)
-  }
-
-    setEffectiveDate('')
   }
 
   function openEditPrice(priceItem: MaterialPartPrice) {
