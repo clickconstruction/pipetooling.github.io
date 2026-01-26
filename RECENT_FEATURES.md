@@ -3,13 +3,65 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.4)](#latest-updates-v24)
-2. [Workflow Features](#workflow-features)
-3. [Calendar Updates](#calendar-updates)
-4. [Access Control](#access-control)
-5. [Email Templates](#email-templates)
-6. [Financial Tracking](#financial-tracking)
-7. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.7)](#latest-updates-v27)
+2. [Latest Updates (v2.6)](#latest-updates-v26)
+3. [Workflow Features](#workflow-features)
+4. [Calendar Updates](#calendar-updates)
+5. [Access Control](#access-control)
+6. [Email Templates](#email-templates)
+7. [Financial Tracking](#financial-tracking)
+8. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.7)
+
+### Materials Management Enhancements
+
+**Date**: 2026-01-21
+
+**Changes**:
+- ✅ **Finalized Purchase Order Notes**
+  - Added ability to add notes to finalized purchase orders (add-only, cannot be edited once added)
+  - Notes display prominently at the top of the PO view modal
+  - Shows user name and timestamp: "Added by [Name] on [Date]"
+  - Use cases: final bill amounts, pickup difficulties, special instructions
+  - Database: Added `notes_added_by` and `notes_added_at` columns to `purchase_orders` table
+  - RLS: New policy allows updating notes fields on finalized POs, but only when `notes` is null (enforcing add-only behavior)
+
+- ✅ **Duplicate as Draft Feature**
+  - Added "Duplicate as Draft" button to finalized purchase order view modal
+  - Creates a new draft PO with all items copied from the finalized PO
+  - Name format: "Copy of [original name]"
+  - Resets confirmation status (price_confirmed_at, price_confirmed_by cleared)
+  - Automatically opens the new draft PO for editing in Templates & Purchase Orders tab
+
+- ✅ **UI Improvements - Delete Buttons Moved to Modals**
+  - Moved delete buttons from list views to edit/view modals for better UX
+  - **Templates**: Delete button now in Edit Template modal (left side)
+  - **Parts**: Delete button now in Edit Part modal (left side)
+  - **Supply Houses**: Delete button now in Edit Supply House form (left side)
+  - **Purchase Orders**: Delete button now in PO view modal (left side)
+  - Delete buttons only appear when editing/viewing existing items (not when creating new ones)
+  - Consistent styling and positioning across all modals
+
+**Database Changes**:
+- ✅ Created `add_finalized_notes_tracking.sql` migration
+  - Adds `notes_added_by` (UUID) and `notes_added_at` (TIMESTAMPTZ) columns
+  - Creates RLS policy for updating notes on finalized POs (add-only enforcement)
+  - Index on `notes_added_by` for faster lookups
+
+**Files Modified**:
+- `supabase/migrations/add_finalized_notes_tracking.sql` - New migration for notes tracking
+- `supabase/migrations/optimize_rls_for_master_sharing.sql` - Fixed UPDATE policy for assistants
+- `src/types/database.ts` - Updated `purchase_orders` table types
+- `src/pages/Materials.tsx` - Added notes functionality, duplicate feature, moved delete buttons
+
+**Technical Details**:
+- **Add-Only Enforcement**: Database RLS policy ensures notes can only be added when `notes` is null, preventing edits
+- **User Name Loading**: User names are loaded and cached in `userNamesMap` for efficient display
+- **Optimistic UI Updates**: Notes form updates UI immediately, with rollback on error
+- **RLS Policy Fix**: Updated `project_workflow_steps` UPDATE policy to allow assistants to update steps in workflows they can access (not just steps assigned to them), fixing 400 errors when changing assignments
 
 ---
 

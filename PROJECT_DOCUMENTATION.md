@@ -404,6 +404,131 @@ A Master Plumber can:
 - **Trigger**: Fires on `auth.users` UPDATE when `last_sign_in_at` changes
 - **Purpose**: Updates `public.users.last_sign_in_at`
 
+#### `public.track_price_history()`
+- **Trigger**: Fires on `material_part_prices` INSERT and UPDATE
+- **Purpose**: Automatically logs price changes to `material_part_price_history` table
+- **Logic**: 
+  - Calculates `price_change_percent` from old and new prices
+  - Handles INSERT (old_price is NULL) and UPDATE (old_price from OLD record) correctly
+  - Records `changed_at` (current timestamp) and `changed_by` (current user)
+- **Migration**: `supabase/migrations/create_price_history_trigger.sql`
+
+### Materials Management Tables
+
+#### `public.supply_houses`
+- **Purpose**: Supply house/vendor information
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `contact_name` (text, nullable)
+  - `phone` (text, nullable)
+  - `email` (text, nullable)
+  - `address` (text, nullable)
+  - `notes` (text, nullable)
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Only devs and master_technicians can CRUD
+
+#### `public.material_parts`
+- **Purpose**: Parts catalog
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `manufacturer` (text, nullable)
+  - `fixture_type` (text, nullable) - Predefined options (Fitting, Pipe, Drain, Sink, etc.)
+  - `notes` (text, nullable) - Can include SKU numbers
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Only devs and master_technicians can CRUD
+
+#### `public.material_part_prices`
+- **Purpose**: Prices for parts by supply house
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `part_id` (uuid, FK → `material_parts.id`)
+  - `supply_house_id` (uuid, FK → `supply_houses.id`)
+  - `price` (numeric(10, 2), required)
+  - `effective_date` (date, nullable)
+  - `created_at`, `updated_at` (timestamptz)
+- **Unique Constraint**: `(part_id, supply_house_id)` - One price per part per supply house
+- **RLS**: Only devs and master_technicians can CRUD
+- **Trigger**: `track_price_history()` automatically logs changes
+
+#### `public.material_part_price_history`
+- **Purpose**: Historical price change tracking
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `part_id` (uuid, FK → `material_parts.id`)
+  - `supply_house_id` (uuid, FK → `supply_houses.id`)
+  - `old_price` (numeric(10, 2), nullable) - NULL for new prices
+  - `new_price` (numeric(10, 2), required)
+  - `price_change_percent` (numeric(5, 2), nullable) - Calculated percentage change
+  - `changed_at` (timestamptz, required)
+  - `changed_by` (uuid, FK → `users.id`, nullable)
+  - `notes` (text, nullable) - Optional notes about the change
+  - `created_at` (timestamptz)
+- **RLS**: Only devs and master_technicians can read
+- **Purpose**: Complete audit trail of all price changes, including manual confirmations
+
+#### `public.material_templates`
+- **Purpose**: Reusable material templates (can contain parts and/or nested templates)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `description` (text, nullable)
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Only devs and master_technicians can CRUD
+
+#### `public.material_template_items`
+- **Purpose**: Items within material templates (supports nested structure)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `template_id` (uuid, FK → `material_templates.id`)
+  - `item_type` (enum: 'part' | 'template', required)
+  - `part_id` (uuid, FK → `material_parts.id`, nullable) - Set if item_type is 'part'
+  - `nested_template_id` (uuid, FK → `material_templates.id`, nullable) - Set if item_type is 'template'
+  - `quantity` (integer, default 1)
+  - `sequence_order` (integer, required)
+  - `notes` (text, nullable)
+  - `created_at`, `updated_at` (timestamptz)
+- **Check Constraint**: Ensures either `part_id` or `nested_template_id` is set based on `item_type`
+- **RLS**: Only devs and master_technicians can CRUD
+
+#### `public.purchase_orders`
+- **Purpose**: Purchase orders for materials
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `status` (enum: 'draft' | 'finalized', default 'draft')
+  - `created_by` (uuid, FK → `users.id`, required)
+  - `finalized_at` (timestamptz, nullable) - Set when status changes to 'finalized'
+  - `notes` (text, nullable) - Can be added to finalized POs (add-only)
+  - `notes_added_by` (uuid, FK → `users.id`, nullable) - User who added notes to finalized PO
+  - `notes_added_at` (timestamptz, nullable) - When notes were added
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: 
+  - Devs and master_technicians can CRUD
+  - Special policy allows updating notes fields on finalized POs (but only when notes is null - add-only)
+- **Special Features**:
+  - Draft POs are editable, finalized POs are immutable (except notes can be added once)
+  - Notes on finalized POs show user name and timestamp
+
+#### `public.purchase_order_items`
+- **Purpose**: Items within purchase orders
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `purchase_order_id` (uuid, FK → `purchase_orders.id`)
+  - `part_id` (uuid, FK → `material_parts.id`, required)
+  - `quantity` (integer, required)
+  - `selected_supply_house_id` (uuid, FK → `supply_houses.id`, nullable) - Supply house selected for this item
+  - `price_at_time` (numeric(10, 2), required) - Price at time of PO creation/finalization
+  - `sequence_order` (integer, required)
+  - `notes` (text, nullable)
+  - `price_confirmed_at` (timestamptz, nullable) - When assistant confirmed the price
+  - `price_confirmed_by` (uuid, FK → `users.id`, nullable) - Assistant who confirmed the price
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: 
+  - Devs and master_technicians can CRUD
+  - Assistants can update `price_confirmed_at` and `price_confirmed_by` fields only
+
 ### Foreign Key Relationships
 ```
 users (id)
@@ -441,15 +566,47 @@ project_workflow_steps (id)
 
 project_workflows (id)
   └── workflow_projections.workflow_id
+
+users (id)
+  ├── purchase_orders.created_by
+  ├── purchase_orders.notes_added_by
+  └── material_part_price_history.changed_by
+
+supply_houses (id)
+  ├── material_part_prices.supply_house_id
+  └── material_part_price_history.supply_house_id
+
+material_parts (id)
+  ├── material_part_prices.part_id
+  ├── material_part_price_history.part_id
+  ├── material_template_items.part_id
+  └── purchase_order_items.part_id
+
+material_templates (id)
+  ├── material_template_items.template_id
+  └── material_template_items.nested_template_id
+
+purchase_orders (id)
+  ├── purchase_order_items.purchase_order_id
+  └── workflow_step_line_items.purchase_order_id
 ```
 
 **Important**: When deleting, respect foreign key order:
 1. `step_subscriptions` (references steps)
 2. `project_workflow_step_actions` (references steps)
-3. `project_workflow_steps` (references workflows)
-4. `project_workflows` (references projects)
-5. `projects` (references customers)
-6. `customers` (references users)
+3. `workflow_step_line_items` (references steps)
+4. `purchase_order_items` (references purchase_orders and parts)
+5. `material_template_items` (references templates and parts)
+6. `material_part_price_history` (references parts and supply_houses)
+7. `material_part_prices` (references parts and supply_houses)
+8. `project_workflow_steps` (references workflows)
+9. `project_workflows` (references projects)
+10. `purchase_orders` (references users)
+11. `material_templates` (no dependencies)
+12. `material_parts` (no dependencies)
+13. `supply_houses` (no dependencies)
+14. `projects` (references customers)
+15. `customers` (references users)
 
 ---
 
@@ -909,7 +1066,93 @@ user_id = auth.uid()
 - **Email Lookup**: Recipients are found by matching names in `people` and `users` tables
 - **Template Variables**: Supports `{{name}}`, `{{email}}`, `{{project_name}}`, `{{stage_name}}`, `{{assigned_to_name}}`, `{{workflow_link}}`, `{{previous_stage_name}}`, `{{rejection_reason}}`
 
-### 10. Action History & Audit Trail
+### 10. Materials Management
+- **Page**: `Materials.tsx`
+- **Route**: `/materials`
+- **Access**: Devs and master_technicians only
+- **Purpose**: Comprehensive system for managing parts, prices, templates, and purchase orders
+
+#### Features
+
+**Price Book Tab**:
+- **Parts Management**:
+  - Create/edit/delete parts with name, manufacturer, fixture type, notes (SKU numbers)
+  - Fixture type dropdown with predefined options (Fitting, Pipe, Drain, Sink, Faucet, Toilet, Shower, Bathtub, Valve, Water Heater, Vent, Trap, Elbow, Tee, Coupling, Other)
+  - Search and filter by name, manufacturer, fixture type, notes
+  - **Delete button**: Located in Edit Part modal (left side)
+- **Supply House Management**:
+  - Create/edit/delete supply houses with contact information
+  - Manage supply house details (name, contact name, phone, email, address, notes)
+  - **Delete button**: Located in Edit Supply House form (left side)
+- **Price Management**:
+  - Add/edit prices for parts across different supply houses
+  - Track effective dates for prices
+  - View price history with change tracking (old price, new price, percentage change, timestamp, user, notes)
+  - Automatic price history tracking via database trigger
+  - Best price highlighting in prices table
+
+**Templates & Purchase Orders Tab**:
+- **Material Templates**:
+  - Create/edit/delete templates for grouping parts
+  - Support nested templates (templates can contain other templates)
+  - Add parts and/or templates to templates with quantities
+  - **Delete button**: Located in Edit Template modal (left side)
+- **Draft Purchase Orders**:
+  - Create purchase orders from templates or manually
+  - Add multiple templates and individual parts to a single PO
+  - Edit PO name inline (default: "New Purchase Order [current date]")
+  - View all items with best prices from available supply houses
+  - Change supply house for individual items (override best price)
+  - Price confirmation system for assistants:
+    - Per-item checkbox to confirm prices
+    - Shows "time since checked"
+    - Creates price history entry when confirmed
+  - Finalize purchase orders (becomes immutable)
+  - **Delete button**: Located in PO view modal (left side)
+
+**Purchase Orders (Management) Tab**:
+- **PO Management**:
+  - View all purchase orders (draft and finalized)
+  - Filter by status (all, draft, finalized)
+  - Search by name
+  - View PO details in modal
+  - **Finalized PO Features**:
+    - **Notes**: Add notes to finalized POs (add-only, cannot be edited)
+      - Notes display at top of PO view with user name and timestamp
+      - Use cases: final bill amounts, pickup difficulties
+    - **Duplicate as Draft**: Create new draft PO from finalized PO
+      - Copies all items with same prices and supply houses
+      - Resets confirmation status
+      - Automatically opens new draft for editing
+    - **Add to Workflow**: Link to add PO as line item to workflow steps
+  - **Delete button**: Located in PO view modal (left side)
+
+**Integration with Workflows**:
+- Finalized purchase orders can be added as line items to workflow steps
+- PO details (name, item count, total) displayed in line item memo
+- Links back to original purchase order
+
+#### Database Schema
+
+**Tables**:
+- `supply_houses` - Supply house information
+- `material_parts` - Parts catalog (name, manufacturer, fixture_type, notes)
+- `material_part_prices` - Prices for parts by supply house (with effective_date)
+- `material_part_price_history` - Historical price changes (old_price, new_price, price_change_percent, changed_at, changed_by, notes)
+- `material_templates` - Reusable material templates
+- `material_template_items` - Items within templates (supports nested templates and parts)
+- `purchase_orders` - Purchase orders (name, status: draft/finalized, notes, notes_added_by, notes_added_at)
+- `purchase_order_items` - Items in purchase orders (part_id, quantity, selected_supply_house_id, price_at_time, price_confirmed_at, price_confirmed_by)
+
+**Database Functions**:
+- `track_price_history()` - Trigger function that automatically logs price changes to history table
+
+**RLS Policies**:
+- All tables restricted to devs and master_technicians
+- Purchase order notes can be added to finalized POs (add-only via RLS policy)
+- Assistants can confirm prices on PO items (update price_confirmed_at, price_confirmed_by)
+
+### 11. Action History & Audit Trail
 - **System**: `project_workflow_step_actions` table
 - **Features**:
   - Complete ledger of all step state changes
@@ -918,7 +1161,7 @@ user_id = auth.uid()
   - Displayed in "Action Ledger" section on each step card
   - Provides full audit trail for compliance and debugging
 
-### 11. Integration Features
+### 12. Integration Features
 - **Google Maps Integration**: 
   - Project addresses on Dashboard are clickable
   - Opens Google Maps search in new tab with project address
@@ -1105,6 +1348,21 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 - **Purpose**: Allows devs to read all people entries (not just their own)
 - **Location**: `supabase/migrations/allow_devs_read_all_people.sql`
 - **What it does**: Adds a policy allowing devs to see all people entries via `is_dev()` function
+
+##### `add_finalized_notes_tracking`
+- **Purpose**: Adds ability to add notes to finalized purchase orders (add-only)
+- **Location**: `supabase/migrations/add_finalized_notes_tracking.sql`
+- **What it does**:
+  1. Adds `notes_added_by` (UUID) and `notes_added_at` (TIMESTAMPTZ) columns to `purchase_orders`
+  2. Creates RLS policy allowing updating notes fields on finalized POs, but only when `notes` is null (enforcing add-only behavior)
+  3. Index on `notes_added_by` for faster lookups
+
+##### `optimize_rls_for_master_sharing` (Updated)
+- **Purpose**: Optimizes RLS policies and fixes assistant step update permissions
+- **Location**: `supabase/migrations/optimize_rls_for_master_sharing.sql`
+- **What it does**:
+  1. Creates helper functions (`can_access_project_via_workflow`, `can_access_project_via_step`) with `SECURITY DEFINER` to optimize performance
+  2. **Fixed UPDATE policy for `project_workflow_steps`**: Updated `WITH CHECK` clause to allow assistants to update steps in workflows they can access (not just steps assigned to them), fixing 400 errors when changing assignments
 
 ### Type Generation
 - `src/types/database.ts` is manually maintained
@@ -1535,6 +1793,12 @@ async function myFunction() {
 ### 9. TypeScript Type Updates
 - **Issue**: Database types can become out of sync
 - **Solution**: Manually update `src/types/database.ts` when schema changes
+
+### 10. RLS Policy for Assistant Step Updates
+- **Issue**: Assistants getting 400 errors when updating workflow steps (especially when changing `assigned_to_name`)
+- **Root Cause**: `WITH CHECK` clause in `project_workflow_steps` UPDATE policy was too restrictive - only allowed assistants to update steps where `assigned_to_name` matched their name, preventing assignment changes
+- **Solution**: Updated `optimize_rls_for_master_sharing.sql` migration to include `can_access_project_via_workflow(workflow_id)` check in `WITH CHECK` clause, allowing assistants to update any step in workflows they can access (via adoption/sharing)
+- **Migration**: `supabase/migrations/optimize_rls_for_master_sharing.sql` (updated UPDATE policy)
 - **Future**: Consider Supabase CLI type generation
 
 ### 10. GitHub Pages MIME Types
