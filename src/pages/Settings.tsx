@@ -1593,6 +1593,7 @@ export default function Settings() {
                   onChange={(e) => { setManualAddEmail(e.target.value); setManualAddError(null) }}
                   required
                   disabled={manualAddSubmitting}
+                  autoComplete="username"
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
