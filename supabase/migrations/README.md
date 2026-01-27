@@ -129,3 +129,15 @@ If you see 500 errors like `canceling statement due to statement timeout` after 
   - `workflow_step_line_items`
 
 **When to run**: If workflow pages start returning statement timeout errors after applying the master sharing RLS migrations.
+
+### Assistants – Materials access
+
+#### `allow_assistants_access_materials.sql`
+
+Allows assistants full access to Materials (same as masters): price book, templates, purchase orders, supply houses.
+
+**What it does**:
+- Updates RLS on `material_parts`, `material_part_prices`, `material_part_price_history`, `material_templates`, `material_template_items`, `purchase_orders`, `purchase_order_items`, `supply_houses`
+- Drops "Devs and masters only" policies and creates "Devs, masters, and assistants" policies for SELECT, INSERT, UPDATE, DELETE (where applicable)
+
+**When to run**: If an assistant gets **"new rows violates row-level security policy for table material_parts"** (or other materials tables) when adding a part or using Materials. Apply via **SQL Editor** (copy the file contents and run) or `supabase db push` if the project is linked.
