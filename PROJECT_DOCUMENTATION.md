@@ -303,8 +303,10 @@ A Master Plumber can:
 - **Key Fields**:
   - `id` (uuid, PK)
   - `step_id` (uuid, FK → `project_workflow_steps.id` ON DELETE CASCADE)
+  - `link` (text, nullable) - Optional link to external resources (e.g., Google Sheets, supply house listings)
   - `memo` (text, required) - Description of the line item
   - `amount` (numeric(10, 2), required) - **Supports negative numbers** for credits/refunds
+  - `purchase_order_id` (uuid, FK → `purchase_orders.id` ON DELETE SET NULL, nullable) - Link to purchase order if added from Materials
   - `sequence_order` (integer) - Order within the step
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: 
@@ -315,8 +317,18 @@ A Master Plumber can:
   - Aggregated in Ledger at top of workflow page
   - Amounts formatted with commas (e.g., `$1,234.56`)
   - Negative amounts displayed in red with parentheses
+  - **Link field**: Optional URL field for external resources (Google Sheets, supply house listings)
+    - Auto-formats URLs (adds https:// if missing)
+    - Displayed as clickable link icon next to memo in both Ledger and Private Notes sections
+    - Opens in new tab with security attributes (`target="_blank"`, `rel="noopener noreferrer"`)
+  - **Purchase Order Integration**: Can be linked to finalized purchase orders from Materials system
+    - Shows "View PO" button when linked to a purchase order
+    - PO details displayed in modal when clicked
   - Assistants can view Ledger table but cannot see financial totals
-- **Migration**: `supabase/migrations/optimize_workflow_step_line_items_rls.sql`
+- **Migrations**: 
+  - `supabase/migrations/optimize_workflow_step_line_items_rls.sql` - RLS optimization
+  - `supabase/migrations/add_link_to_line_items.sql` - Added link field
+  - `supabase/migrations/add_purchase_order_to_line_items.sql` - Added purchase_order_id field
 
 #### `public.workflow_projections`
 - **Purpose**: Project cost projections for entire workflow
@@ -588,7 +600,7 @@ material_templates (id)
 
 purchase_orders (id)
   ├── purchase_order_items.purchase_order_id
-  └── workflow_step_line_items.purchase_order_id
+  └── workflow_step_line_items.purchase_order_id (ON DELETE SET NULL)
 ```
 
 **Important**: When deleting, respect foreign key order:
@@ -860,10 +872,18 @@ user_id = auth.uid()
 
 **Financial Tracking**:
   - **Line Items**: Track actual expenses/credits per stage
-    - Fields: Memo (description), Amount (supports negative for credits/refunds)
+    - Fields: Link (optional URL), Memo (description), Amount (supports negative for credits/refunds)
     - Located within Private Notes section of each stage
+    - **Link field**: Optional URL for external resources (Google Sheets, supply house listings)
+      - Auto-formats URLs (adds https:// if missing)
+      - Displayed as clickable link icon (chain link SVG) next to memo
+      - Opens in new tab with security attributes
     - Amounts formatted with commas: `$1,234.56`
     - Negative amounts displayed in red with parentheses: `($1,234.56)`
+    - **Purchase Order Integration**: Can add finalized purchase orders as line items
+      - "Add PO" button appears when finalized POs are available
+      - Creates line item with PO total and links to original PO
+      - "View PO" button appears on linked line items
     - **Assistants**: Can add/edit line items but cannot see financial totals
   - **Projections**: Track projected costs for entire workflow (Devs/Masters only)
     - Fields: Stage name, Memo, Amount (supports negative)
@@ -1079,17 +1099,23 @@ user_id = auth.uid()
   - Create/edit/delete parts with name, manufacturer, fixture type, notes (SKU numbers)
   - Fixture type dropdown with predefined options (Fitting, Pipe, Drain, Sink, Faucet, Toilet, Shower, Bathtub, Valve, Water Heater, Vent, Trap, Elbow, Tee, Coupling, Other)
   - Search and filter by name, manufacturer, fixture type, notes
-  - **Delete button**: Located in Edit Part modal (left side)
+  - **Delete button**: Located in Edit Part modal (left side, only visible when editing)
 - **Supply House Management**:
+  - "Manage Supply Houses" button opens management modal
   - Create/edit/delete supply houses with contact information
   - Manage supply house details (name, contact name, phone, email, address, notes)
-  - **Delete button**: Located in Edit Supply House form (left side)
+  - **Delete button**: Located in Edit Supply House form (left side, only visible when editing)
+  - Supply houses appear in "Add Price" dropdown after creation
 - **Price Management**:
   - Add/edit prices for parts across different supply houses
   - Track effective dates for prices
-  - View price history with change tracking (old price, new price, percentage change, timestamp, user, notes)
-  - Automatic price history tracking via database trigger
+  - **Price History**: View complete history with "View History" button
+    - Shows: Date Changed, Supply House, Old Price, New Price, Change %, Effective Date, Notes
+    - Highlights positive/negative changes with colors
+    - Shows "Initial Price" for first entry (where old_price is null)
+  - Automatic price history tracking via database trigger (`track_price_history()`)
   - Best price highlighting in prices table
+  - **Edit Price Modal**: Delete button only visible after Edit is pressed (right side, next to Update/Cancel)
 
 **Templates & Purchase Orders Tab**:
 - **Material Templates**:
@@ -1130,27 +1156,34 @@ user_id = auth.uid()
 **Integration with Workflows**:
 - Finalized purchase orders can be added as line items to workflow steps
 - PO details (name, item count, total) displayed in line item memo
-- Links back to original purchase order
+- "View PO" button on line items opens PO details modal
+- Links back to original purchase order for full details
+- Purchase orders sorted by name in "Add PO" dropdown
 
 #### Database Schema
 
 **Tables**:
-- `supply_houses` - Supply house information
+- `supply_houses` - Supply house information (name, contact_name, phone, email, address, notes)
 - `material_parts` - Parts catalog (name, manufacturer, fixture_type, notes)
-- `material_part_prices` - Prices for parts by supply house (with effective_date)
+- `material_part_prices` - Prices for parts by supply house (with effective_date, unique constraint on part_id + supply_house_id)
 - `material_part_price_history` - Historical price changes (old_price, new_price, price_change_percent, changed_at, changed_by, notes)
-- `material_templates` - Reusable material templates
-- `material_template_items` - Items within templates (supports nested templates and parts)
-- `purchase_orders` - Purchase orders (name, status: draft/finalized, notes, notes_added_by, notes_added_at)
-- `purchase_order_items` - Items in purchase orders (part_id, quantity, selected_supply_house_id, price_at_time, price_confirmed_at, price_confirmed_by)
+- `material_templates` - Reusable material templates (name, description)
+- `material_template_items` - Items within templates (supports nested templates and parts with quantities)
+- `purchase_orders` - Purchase orders (name, status: draft/finalized, notes, notes_added_by, notes_added_at, created_by, finalized_at)
+- `purchase_order_items` - Items in purchase orders (part_id, quantity, selected_supply_house_id, price_at_time, price_confirmed_at, price_confirmed_by, sequence_order, notes)
 
 **Database Functions**:
 - `track_price_history()` - Trigger function that automatically logs price changes to history table
+  - Fires on INSERT and UPDATE of `material_part_prices`
+  - Calculates percentage change: `((NEW.price - OLD.price) / OLD.price) * 100`
+  - Records timestamp, user, and optional notes
+  - Handles initial prices (old_price is NULL for new prices)
 
 **RLS Policies**:
-- All tables restricted to devs and master_technicians
-- Purchase order notes can be added to finalized POs (add-only via RLS policy)
-- Assistants can confirm prices on PO items (update price_confirmed_at, price_confirmed_by)
+- All tables restricted to devs and master_technicians for CRUD operations
+- Purchase order notes can be added to finalized POs (add-only via RLS policy - only when notes is null)
+- Assistants can confirm prices on PO items (can update price_confirmed_at and price_confirmed_by fields only)
+- Price history table: devs and master_technicians can read (write handled by trigger)
 
 ### 11. Action History & Audit Trail
 - **System**: `project_workflow_step_actions` table
@@ -1200,6 +1233,7 @@ pipetooling.github.io/
 │   │   ├── Dashboard.tsx       # User dashboard
 │   │   ├── People.tsx          # People roster
 │   │   ├── ProjectForm.tsx     # Create/edit project
+│   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
 │   │   ├── Projects.tsx        # List projects
 │   │   ├── ResetPassword.tsx   # Password reset request page
 │   │   ├── ResetPasswordConfirm.tsx # Password reset confirmation page
@@ -1356,6 +1390,49 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
   1. Adds `notes_added_by` (UUID) and `notes_added_at` (TIMESTAMPTZ) columns to `purchase_orders`
   2. Creates RLS policy allowing updating notes fields on finalized POs, but only when `notes` is null (enforcing add-only behavior)
   3. Index on `notes_added_by` for faster lookups
+
+##### `add_link_to_line_items`
+- **Purpose**: Adds optional link field to workflow step line items
+- **Location**: `supabase/migrations/add_link_to_line_items.sql`
+- **What it does**:
+  1. Adds `link` (TEXT, nullable) column to `workflow_step_line_items` table
+  2. Allows linking to external resources like Google Sheets or supply house listings
+  3. Used for linking purchase orders, supply house part listings, or other external documents
+
+##### `add_purchase_order_to_line_items`
+- **Purpose**: Links purchase orders to workflow step line items
+- **Location**: `supabase/migrations/add_purchase_order_to_line_items.sql`
+- **What it does**:
+  1. Adds `purchase_order_id` (UUID, nullable, FK → `purchase_orders.id` ON DELETE SET NULL) to `workflow_step_line_items`
+  2. Enables linking finalized purchase orders as line items in workflow steps
+  3. ON DELETE SET NULL ensures line items remain if PO is deleted
+
+##### `add_price_confirmation_to_po_items`
+- **Purpose**: Adds price confirmation tracking to purchase order items
+- **Location**: `supabase/migrations/add_price_confirmation_to_po_items.sql`
+- **What it does**:
+  1. Adds `price_confirmed_at` (TIMESTAMPTZ, nullable) and `price_confirmed_by` (UUID, nullable, FK → `users.id`) to `purchase_order_items`
+  2. Allows assistants to confirm prices before finalizing purchase orders
+  3. Creates index on `price_confirmed_at` for performance
+  4. RLS policy allows assistants to update these fields only
+
+##### `create_material_part_price_history`
+- **Purpose**: Creates table for tracking historical price changes
+- **Location**: `supabase/migrations/create_material_part_price_history.sql`
+- **What it does**:
+  1. Creates `material_part_price_history` table with columns: id, part_id, supply_house_id, old_price, new_price, price_change_percent, effective_date, changed_at, changed_by, notes
+  2. Adds indexes on part_id, supply_house_id, and changed_at for performance
+  3. Provides complete audit trail of all price changes
+
+##### `create_price_history_trigger`
+- **Purpose**: Creates trigger to automatically log price changes
+- **Location**: `supabase/migrations/create_price_history_trigger.sql`
+- **What it does**:
+  1. Creates `track_price_history()` function that fires AFTER INSERT OR UPDATE on `material_part_prices`
+  2. Calculates percentage change: `((NEW.price - OLD.price) / OLD.price) * 100`
+  3. Handles INSERT (old_price is NULL) and UPDATE (old_price from OLD record) correctly
+  4. Records changed_at (current timestamp) and changed_by (current user)
+  5. Creates trigger `material_part_prices_history_trigger` to execute function
 
 ##### `optimize_rls_for_master_sharing` (Updated)
 - **Purpose**: Optimizes RLS policies and fixes assistant step update permissions
@@ -1960,6 +2037,7 @@ async function myFunction() {
 - `/workflows/:projectId` - Workflow management
 - `/people` - People roster
 - `/calendar` - Calendar view
+- `/materials` - Materials management (devs and masters only: price book, templates, purchase orders)
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
 
@@ -2021,8 +2099,53 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-21
-**Documentation Version**: 2.6
+**Last Updated**: 2026-01-25
+**Documentation Version**: 2.7
+
+## Recent Updates (v2.7)
+
+### Materials Management System
+- ✅ **Complete Materials Management System** with three main tabs:
+  - **Price Book**: Parts, supply houses, and price management
+  - **Templates & Purchase Orders**: Template creation and draft PO building
+  - **Purchase Orders (Management)**: PO management and workflow integration
+- ✅ **Supply House Management**:
+  - Full CRUD for supply houses (create, edit, delete)
+  - Contact information tracking (name, contact person, phone, email, address, notes)
+  - Delete button in Edit Supply House form
+- ✅ **Price History Tracking**:
+  - Automatic price change tracking via database trigger
+  - View price history with old price, new price, percentage change, timestamp, user, and notes
+  - "View History" button in price management modal
+  - History entries created on price updates and confirmations
+- ✅ **Price Confirmation System**:
+  - Per-item checkbox in PO view for assistants to confirm prices
+  - Shows "time since checked" (e.g., "2 hours ago")
+  - Creates price history entry when confirmed (for charting/analysis)
+  - Tracks who confirmed and when
+- ✅ **Finalized PO Notes**:
+  - Add-only notes to finalized purchase orders
+  - Shows user name and timestamp
+  - Use cases: final bill amounts, pickup difficulties
+  - Notes display prominently at top of PO view
+- ✅ **Purchase Order Features**:
+  - Default name: "New Purchase Order [current date]"
+  - Inline name editing for draft POs
+  - "Duplicate as Draft" button for finalized POs
+  - Change supply house for individual items (even if higher price)
+  - Delete button moved to PO view modal
+- ✅ **UI Improvements**:
+  - Delete buttons moved to edit modals (parts, templates, supply houses, POs)
+  - Price edit modal: Delete button only visible after Edit is pressed
+  - Improved sorting and organization
+
+### Line Items Enhancement
+- ✅ **Link Field Added**:
+  - Optional link field in Add/Edit Line Item modal (positioned at top, above memo)
+  - Auto-formats URLs (adds https:// if missing)
+  - Displayed as clickable link icon (chain link SVG) next to memo
+  - Available in both Ledger table and Private Notes section
+  - Opens in new tab with security attributes
 
 ## Recent Updates (v2.6)
 

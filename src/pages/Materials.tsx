@@ -348,8 +348,8 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician') {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs and masters can access materials.</div>
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant') {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, and assistants can access materials.</div>
   }
 
   // Filter parts based on search and filters

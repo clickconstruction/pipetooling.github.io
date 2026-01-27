@@ -718,6 +718,33 @@ export default function Workflow() {
     return null
   }
 
+  // Normalize URL to ensure it has a proper protocol
+  function normalizeUrl(url: string | null | undefined): string {
+    if (!url) return ''
+    const trimmed = url.trim()
+    if (!trimmed) return ''
+    
+    // First, check if URL already has a valid protocol with colon (most common case)
+    // This check must come first to avoid double-processing
+    if (trimmed.match(/^https?:\/\//i)) {
+      return trimmed
+    }
+    
+    // Fix common issues: if https// or http// (missing colon), fix it
+    if (trimmed.match(/^https?\/\//i)) {
+      // Replace https// with https:// or http// with http://
+      return trimmed.replace(/^(https?)\/\//i, '$1://')
+    }
+    
+    // If it starts with //, add https:
+    if (trimmed.startsWith('//')) {
+      return `https:${trimmed}`
+    }
+    
+    // Otherwise, add https://
+    return `https://${trimmed}`
+  }
+
   // Calculate total from all line items
   function calculateLedgerTotal(): number {
     let total = 0
@@ -1276,7 +1303,11 @@ export default function Workflow() {
     if (extra?.approved_at !== undefined) up.approved_at = extra.approved_at
     if (extra?.next_step_rejected_notice !== undefined) up.next_step_rejected_notice = extra.next_step_rejected_notice
     if (extra?.next_step_rejection_reason !== undefined) up.next_step_rejection_reason = extra.next_step_rejection_reason
-    await supabase.from('project_workflow_steps').update(up).eq('id', step.id)
+    const { error } = await supabase.from('project_workflow_steps').update(up).eq('id', step.id)
+    if (error) {
+      setError(`Failed to update step: ${error.message}`)
+      return
+    }
     await refreshSteps()
   }
 
@@ -1388,12 +1419,20 @@ export default function Workflow() {
   }
 
   async function updateNotifyAssigned(step: Step, field: 'notify_assigned_when_started' | 'notify_assigned_when_complete' | 'notify_assigned_when_reopened', value: boolean) {
-    await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
+    const { error } = await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
+    if (error) {
+      setError(`Failed to update notification setting: ${error.message}`)
+      return
+    }
     await refreshSteps()
   }
 
   async function updateCrossStepNotify(step: Step, field: 'notify_next_assignee_when_complete_or_approved' | 'notify_prior_assignee_when_rejected', value: boolean) {
-    await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
+    const { error } = await supabase.from('project_workflow_steps').update({ [field]: value }).eq('id', step.id)
+    if (error) {
+      setError(`Failed to update notification setting: ${error.message}`)
+      return
+    }
     await refreshSteps()
   }
 
@@ -1416,12 +1455,20 @@ export default function Workflow() {
   }
 
   async function updateNotes(step: Step, notes: string) {
-    await supabase.from('project_workflow_steps').update({ notes: notes.trim() || null }).eq('id', step.id)
+    const { error } = await supabase.from('project_workflow_steps').update({ notes: notes.trim() || null }).eq('id', step.id)
+    if (error) {
+      setError(`Failed to update notes: ${error.message}`)
+      return
+    }
     await refreshSteps()
   }
 
   async function updatePrivateNotes(step: Step, privateNotes: string) {
-    await supabase.from('project_workflow_steps').update({ private_notes: privateNotes.trim() || null }).eq('id', step.id)
+    const { error } = await supabase.from('project_workflow_steps').update({ private_notes: privateNotes.trim() || null }).eq('id', step.id)
+    if (error) {
+      setError(`Failed to update private notes: ${error.message}`)
+      return
+    }
     await refreshSteps()
   }
 
@@ -1437,13 +1484,12 @@ export default function Workflow() {
     const trimmedLink = link.trim()
     let finalLink: string | null = null
     if (trimmedLink) {
-      // Auto-add https:// if missing
-      if (trimmedLink.match(/^[a-zA-Z0-9]/)) {
-        finalLink = `https://${trimmedLink}`
-      } else if (trimmedLink.match(/^https?:\/\//i)) {
-        finalLink = trimmedLink
+      // Use normalizeUrl for consistency with display logic
+      const normalized = normalizeUrl(trimmedLink)
+      if (normalized && normalized.trim()) {
+        finalLink = normalized
       } else {
-        setError('Link must be a valid URL (starting with http:// or https://)')
+        setError('Link must be a valid URL')
         return
       }
     }
@@ -1560,8 +1606,12 @@ export default function Workflow() {
 
   async function assignPerson(step: Step, name: string | null) {
     const { error: err } = await supabase.from('project_workflow_steps').update({ assigned_to_name: name }).eq('id', step.id)
-    if (err) setError(err.message)
-    else await refreshSteps()
+    if (err) {
+      setError(`Failed to assign person: ${err.message}`)
+      setAssignPersonStep(null)
+      return
+    }
+    await refreshSteps()
     setAssignPersonStep(null)
   }
 
@@ -1732,12 +1782,19 @@ export default function Workflow() {
                             <span>{item.memo}</span>
                             {item.link && (
                               <a
-                                href={item.link}
+                                href={normalizeUrl(item.link)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                                 title={item.link}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  const normalizedLink = normalizeUrl(item.link)
+                                  if (normalizedLink) {
+                                    window.open(normalizedLink, '_blank', 'noopener,noreferrer')
+                                  }
+                                }}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
                                   <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
@@ -2070,12 +2127,19 @@ export default function Workflow() {
                                 <span>{item.memo}</span>
                                 {item.link && (
                                   <a
-                                    href={item.link}
+                                    href={normalizeUrl(item.link)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                                     title={item.link}
-                                    onClick={(e) => e.stopPropagation()}
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      const normalizedLink = normalizeUrl(item.link)
+                                      if (normalizedLink) {
+                                        window.open(normalizedLink, '_blank', 'noopener,noreferrer')
+                                      }
+                                    }}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
                                       <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
