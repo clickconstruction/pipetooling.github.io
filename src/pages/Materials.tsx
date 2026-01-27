@@ -126,11 +126,11 @@ export default function Materials() {
     }
     const role = (me as { role: UserRole } | null)?.role ?? null
     setMyRole(role)
-    if (role !== 'dev' && role !== 'master_technician') {
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') {
       setLoading(false)
       return
     }
-    setLoading(false)
+    // For allowed roles, do not set loading false here; data-load effect will set it after parts etc. load
   }
 
   async function loadSupplyHouses() {
@@ -298,11 +298,20 @@ export default function Materials() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician') {
-      loadSupplyHouses()
-      loadParts()
-      loadMaterialTemplates()
-      loadPurchaseOrders()
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') {
+      const loadInitial = async () => {
+        try {
+          await Promise.all([
+            loadSupplyHouses(),
+            loadParts(),
+            loadMaterialTemplates(),
+            loadPurchaseOrders(),
+          ])
+        } finally {
+          setLoading(false)
+        }
+      }
+      loadInitial()
     }
   }, [myRole])
 
