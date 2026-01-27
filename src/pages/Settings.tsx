@@ -121,6 +121,95 @@ export default function Settings() {
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertSummary, setConvertSummary] = useState<string | null>(null)
+  const [exportProjectsLoading, setExportProjectsLoading] = useState(false)
+  const [exportMaterialsLoading, setExportMaterialsLoading] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  function downloadJson(filename: string, data: unknown) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function exportProjectsBackup() {
+    setExportError(null)
+    setExportProjectsLoading(true)
+    try {
+      const [
+        r1, r2, r3, r4, r5, r6, r7, r8,
+      ] = await Promise.all([
+        supabase.from('customers').select('*'),
+        supabase.from('projects').select('*'),
+        supabase.from('project_workflows').select('*'),
+        supabase.from('project_workflow_steps').select('*'),
+        supabase.from('project_workflow_step_actions').select('*'),
+        supabase.from('step_subscriptions').select('*'),
+        supabase.from('workflow_step_line_items').select('*'),
+        supabase.from('workflow_projections').select('*'),
+      ])
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error
+      if (err) {
+        setExportError(err.message)
+        return
+      }
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        tables: {
+          customers: r1.data ?? [],
+          projects: r2.data ?? [],
+          project_workflows: r3.data ?? [],
+          project_workflow_steps: r4.data ?? [],
+          project_workflow_step_actions: r5.data ?? [],
+          step_subscriptions: r6.data ?? [],
+          workflow_step_line_items: r7.data ?? [],
+          workflow_projections: r8.data ?? [],
+        },
+      }
+      downloadJson(`projects-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExportProjectsLoading(false)
+    }
+  }
+
+  async function exportMaterialsBackup() {
+    setExportError(null)
+    setExportMaterialsLoading(true)
+    try {
+      const [r1, r2, r3, r4, r5] = await Promise.all([
+        supabase.from('supply_houses').select('*'),
+        supabase.from('material_parts').select('*'),
+        supabase.from('material_part_prices').select('*'),
+        supabase.from('material_templates').select('*'),
+        supabase.from('material_template_items').select('*'),
+      ])
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error
+      if (err) {
+        setExportError(err.message)
+        return
+      }
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        tables: {
+          supply_houses: r1.data ?? [],
+          material_parts: r2.data ?? [],
+          material_part_prices: r3.data ?? [],
+          material_templates: r4.data ?? [],
+          material_template_items: r5.data ?? [],
+        },
+      }
+      downloadJson(`materials-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExportMaterialsLoading(false)
+    }
+  }
 
   async function loadData() {
     if (!authUser?.id) {
@@ -1710,6 +1799,34 @@ export default function Settings() {
         </div>
         {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
       </form>
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Data backup (dev)</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Export projects (customers, projects, workflows, steps, line items, projections) or materials (supply houses, parts, prices, templates, template items) as JSON for backup. Files respect RLS.
+          </p>
+          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={exportProjectsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportMaterialsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
+            </button>
+          </div>
+        </>
+      )}
 
       {myRole === 'dev' && (
         <>
