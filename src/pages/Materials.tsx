@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
@@ -51,6 +51,7 @@ export default function Materials() {
   const [partNotes, setPartNotes] = useState('')
   const [savingPart, setSavingPart] = useState(false)
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
+  const [expandedPartId, setExpandedPartId] = useState<string | null>(null)
 
   // Supply House Management state
   const [viewingSupplyHouses, setViewingSupplyHouses] = useState(false)
@@ -79,6 +80,8 @@ export default function Materials() {
   const [addingItemToTemplate, setAddingItemToTemplate] = useState(false)
   const [newItemType, setNewItemType] = useState<'part' | 'template'>('part')
   const [newItemPartId, setNewItemPartId] = useState('')
+  const [templatePartSearchQuery, setTemplatePartSearchQuery] = useState('')
+  const [templatePartDropdownOpen, setTemplatePartDropdownOpen] = useState(false)
   const [newItemTemplateId, setNewItemTemplateId] = useState('')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemNotes, setNewItemNotes] = useState('')
@@ -87,6 +90,8 @@ export default function Materials() {
   const [addingPartToPO, setAddingPartToPO] = useState(false)
   const [selectedTemplateForPO, setSelectedTemplateForPO] = useState('')
   const [selectedPartForPO, setSelectedPartForPO] = useState('')
+  const [poPartSearchQuery, setPoPartSearchQuery] = useState('')
+  const [poPartDropdownOpen, setPoPartDropdownOpen] = useState(false)
   const [partQuantityForPO, setPartQuantityForPO] = useState('1')
   const [editingPOItem, setEditingPOItem] = useState<string | null>(null)
   const [editingPOItemQuantity, setEditingPOItemQuantity] = useState('')
@@ -102,6 +107,9 @@ export default function Materials() {
   const [duplicatingPO, setDuplicatingPO] = useState<string | null>(null)
   const [addingNotesToPO, setAddingNotesToPO] = useState<string | null>(null)
   const [notesValue, setNotesValue] = useState('')
+
+  const templatePartPickerRef = useRef<HTMLDivElement>(null)
+  const poPartPickerRef = useRef<HTMLDivElement>(null)
 
   // Purchase Orders state
   const [allPOs, setAllPOs] = useState<PurchaseOrderWithItems[]>([])
@@ -353,12 +361,44 @@ export default function Materials() {
     }
   }, [editingPO?.id])
 
+  // Close part picker dropdowns when clicking outside
+  useEffect(() => {
+    if (!templatePartDropdownOpen) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (templatePartPickerRef.current && !templatePartPickerRef.current.contains(e.target as Node)) {
+        setTemplatePartDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [templatePartDropdownOpen])
+
+  useEffect(() => {
+    if (!poPartDropdownOpen) return
+    const onMouseDown = (e: MouseEvent) => {
+      if (poPartPickerRef.current && !poPartPickerRef.current.contains(e.target as Node)) {
+        setPoPartDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [poPartDropdownOpen])
+
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
   if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant') {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, and assistants can access materials.</div>
+  }
+
+  // Filter parts by search query (name, manufacturer, fixture_type, notes) — used by part pickers
+  function filterPartsByQuery(partList: PartWithPrices[], query: string, limit = 50): PartWithPrices[] {
+    const q = (query || '').trim().toLowerCase()
+    if (!q) return partList.slice(0, limit)
+    return partList
+      .filter(p => [p.name, p.manufacturer, p.fixture_type, p.notes].some(f => (f || '').toLowerCase().includes(q)))
+      .slice(0, limit)
   }
 
   // Filter parts based on search and filters
@@ -1732,31 +1772,60 @@ export default function Materials() {
                 ) : (
                   filteredParts.map(part => {
                     const bestPrice = part.prices.length > 0 ? part.prices[0] : null
+                    const isExpanded = expandedPartId === part.id
                     return (
-                      <tr key={part.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.75rem' }}>{part.name}</td>
-                        <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
-                        <td style={{ padding: '0.75rem' }}>{part.fixture_type || '-'}</td>
-                        <td style={{ padding: '0.75rem' }}>
-                          {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : 'No prices'}
-                        </td>
-                        <td style={{ padding: '0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => setViewingPartPrices(part)}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Prices
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditPart(part)}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
+                      <Fragment key={part.id}>
+                        <tr
+                          onClick={() => setExpandedPartId(isExpanded ? null : part.id)}
+                          style={{
+                            borderBottom: isExpanded ? 'none' : '1px solid #e5e7eb',
+                            cursor: 'pointer',
+                            background: isExpanded ? '#f3f4f6' : undefined,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isExpanded) e.currentTarget.style.background = '#f9fafb'
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isExpanded) e.currentTarget.style.background = ''
+                          }}
+                        >
+                          <td style={{ padding: '0.75rem' }}>
+                            <span style={{ marginRight: '0.5rem', display: 'inline-block', width: '1rem', textAlign: 'center' }}>
+                              {isExpanded ? '\u25BC' : '\u25B6'}
+                            </span>
+                            {part.name}
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
+                          <td style={{ padding: '0.75rem' }}>{part.fixture_type || '-'}</td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : 'No prices'}
+                          </td>
+                          <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setViewingPartPrices(part) }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Prices
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); openEditPart(part) }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${part.id}-notes`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td colSpan={5} style={{ padding: '0.75rem 0.75rem 0.75rem 2.5rem', background: '#f9fafb', whiteSpace: 'pre-wrap' }}>
+                              <strong>Notes (SKU, etc.)</strong>
+                              <div style={{ marginTop: '0.25rem' }}>{part.notes?.trim() || 'No notes'}</div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     )
                   })
                 )}
@@ -2118,16 +2187,78 @@ export default function Materials() {
                     </select>
                   </div>
                   {newItemType === 'part' ? (
-                    <select
-                      value={newItemPartId}
-                      onChange={(e) => setNewItemPartId(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
-                    >
-                      <option value="">Select part</option>
-                      {parts.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                    <div ref={templatePartPickerRef} style={{ position: 'relative', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          value={newItemPartId ? (parts.find(p => p.id === newItemPartId)?.name ?? '') : templatePartSearchQuery}
+                          onChange={(e) => setTemplatePartSearchQuery(e.target.value)}
+                          onFocus={() => setTemplatePartDropdownOpen(true)}
+                          onBlur={() => setTimeout(() => setTemplatePartDropdownOpen(false), 150)}
+                          onKeyDown={(e) => e.key === 'Escape' && setTemplatePartDropdownOpen(false)}
+                          readOnly={!!newItemPartId}
+                          placeholder="Search parts by name, manufacturer, type, or notes…"
+                          style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: newItemPartId ? '#f3f4f6' : undefined }}
+                        />
+                        {newItemPartId && (
+                          <button
+                            type="button"
+                            onClick={() => { setNewItemPartId(''); setTemplatePartSearchQuery(''); setTemplatePartDropdownOpen(true) }}
+                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      {templatePartDropdownOpen && (
+                        <ul
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            top: '100%',
+                            margin: 0,
+                            marginTop: 2,
+                            padding: 0,
+                            listStyle: 'none',
+                            maxHeight: 240,
+                            overflowY: 'auto',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: '#fff',
+                            zIndex: 50,
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          }}
+                        >
+                          {filterPartsByQuery(parts, templatePartSearchQuery).length === 0 ? (
+                            <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match</li>
+                          ) : (
+                            filterPartsByQuery(parts, templatePartSearchQuery).map(p => (
+                              <li
+                                key={p.id}
+                                onClick={() => {
+                                  setNewItemPartId(p.id)
+                                  setTemplatePartSearchQuery('')
+                                  setTemplatePartDropdownOpen(false)
+                                }}
+                                style={{
+                                  padding: '0.5rem 0.75rem',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #f3f4f6',
+                                }}
+                              >
+                                <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                {(p.manufacturer || p.fixture_type) && (
+                                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                    {[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}
+                                  </div>
+                                )}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      )}
+                    </div>
                   ) : (
                     <select
                       value={newItemTemplateId}
@@ -2512,16 +2643,78 @@ export default function Materials() {
                   <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Part</label>
                     <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <select
-                        value={selectedPartForPO}
-                        onChange={(e) => setSelectedPartForPO(e.target.value)}
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      >
-                        <option value="">Select part...</option>
-                        {parts.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                      <div ref={poPartPickerRef} style={{ position: 'relative', flex: 1 }}>
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            value={selectedPartForPO ? (parts.find(p => p.id === selectedPartForPO)?.name ?? '') : poPartSearchQuery}
+                            onChange={(e) => setPoPartSearchQuery(e.target.value)}
+                            onFocus={() => setPoPartDropdownOpen(true)}
+                            onBlur={() => setTimeout(() => setPoPartDropdownOpen(false), 150)}
+                            onKeyDown={(e) => e.key === 'Escape' && setPoPartDropdownOpen(false)}
+                            readOnly={!!selectedPartForPO}
+                            placeholder="Search parts by name, manufacturer, type, or notes…"
+                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: selectedPartForPO ? '#f3f4f6' : undefined }}
+                          />
+                          {selectedPartForPO && (
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedPartForPO(''); setPoPartSearchQuery(''); setPoPartDropdownOpen(true) }}
+                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {poPartDropdownOpen && (
+                          <ul
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              top: '100%',
+                              margin: 0,
+                              marginTop: 2,
+                              padding: 0,
+                              listStyle: 'none',
+                              maxHeight: 240,
+                              overflowY: 'auto',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: '#fff',
+                              zIndex: 50,
+                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            }}
+                          >
+                            {filterPartsByQuery(parts, poPartSearchQuery).length === 0 ? (
+                              <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match</li>
+                            ) : (
+                              filterPartsByQuery(parts, poPartSearchQuery).map(p => (
+                                <li
+                                  key={p.id}
+                                  onClick={() => {
+                                    setSelectedPartForPO(p.id)
+                                    setPoPartSearchQuery('')
+                                    setPoPartDropdownOpen(false)
+                                  }}
+                                  style={{
+                                    padding: '0.5rem 0.75rem',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid #f3f4f6',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 500 }}>{p.name}</div>
+                                  {(p.manufacturer || p.fixture_type) && (
+                                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                      {[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}
+                                    </div>
+                                  )}
+                                </li>
+                              ))
+                            )}
+                          </ul>
+                        )}
+                      </div>
                       <input
                         type="number"
                         min="1"
