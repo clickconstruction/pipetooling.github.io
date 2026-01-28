@@ -68,6 +68,7 @@ export default function Materials() {
   // Templates & PO Builder state
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<MaterialTemplate | null>(null)
+  const [templateSearchQuery, setTemplateSearchQuery] = useState('')
   const [templateItems, setTemplateItems] = useState<TemplateItemWithDetails[]>([])
   const [draftPOs, setDraftPOs] = useState<PurchaseOrderWithItems[]>([])
   const [selectedPO, setSelectedPO] = useState<PurchaseOrderWithItems | null>(null)
@@ -422,6 +423,13 @@ export default function Materials() {
     const matchesStatus = poStatusFilter === 'all' || po.status === poStatusFilter
     const matchesSearch = !poSearchQuery || po.name.toLowerCase().includes(poSearchQuery.toLowerCase())
     return matchesStatus && matchesSearch
+  })
+
+  // Filter material templates by search (name, description)
+  const filteredTemplates = materialTemplates.filter(t => {
+    const q = templateSearchQuery.trim().toLowerCase()
+    if (!q) return true
+    return [t.name, t.description].some(f => (f || '').toLowerCase().includes(q))
   })
 
   // Price Book Tab Functions
@@ -2125,14 +2133,26 @@ export default function Materials() {
               </button>
             </div>
 
+            <input
+              type="text"
+              value={templateSearchQuery}
+              onChange={(e) => setTemplateSearchQuery(e.target.value)}
+              placeholder="Search templates by name or description…"
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem' }}
+            />
+
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
               {materialTemplates.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                   No templates yet. Create your first template!
                 </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                  No templates match
+                </div>
               ) : (
                 <div>
-                  {materialTemplates.map(template => (
+                  {filteredTemplates.map(template => (
                     <div
                       key={template.id}
                       style={{
