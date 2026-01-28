@@ -1059,6 +1059,10 @@ user_id = auth.uid()
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
+  - **Data backup (dev)**: Export projects or materials as JSON for backup
+    - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
+    - "Export materials backup" downloads supply houses, material parts, part prices, material templates, template items
+    - Filenames include date (e.g. `projects-backup-2026-01-26.json`). Exports respect RLS.
 
 ### 9. Notifications
 - **System**: `step_subscriptions` table + step-level flags + `send-workflow-notification` Edge Function
@@ -1119,13 +1123,16 @@ user_id = auth.uid()
 
 **Templates & Purchase Orders Tab**:
 - **Material Templates**:
+  - Search templates by name or description (text input above the list; "No templates match" when filter has no results)
   - Create/edit/delete templates for grouping parts
   - Support nested templates (templates can contain other templates)
   - Add parts and/or templates to templates with quantities
+  - **Searchable part picker (Add Item – Part)**: When adding a part to a template, type to filter parts by name, manufacturer, fixture type, or notes; dropdown shows matching parts (up to 50); click to select, Clear to reset. Same filter logic as Price Book.
   - **Delete button**: Located in Edit Template modal (left side)
 - **Draft Purchase Orders**:
   - Create purchase orders from templates or manually
   - Add multiple templates and individual parts to a single PO
+  - **Searchable part picker (Add Part)**: When adding a part to a draft PO, same combobox as template Add Item—search by name, manufacturer, fixture type, or notes; dropdown with Clear. Uses same filter as Price Book.
   - Edit PO name inline (default: "New Purchase Order [current date]")
   - View all items with best prices from available supply houses
   - Change supply house for individual items (override best price)
@@ -2099,8 +2106,23 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-25
-**Documentation Version**: 2.7
+**Last Updated**: 2026-01-26
+**Documentation Version**: 2.8
+
+## Recent Updates (v2.8)
+
+### Materials – Searchable Part Pickers
+- **Template Add Item (Part)**: Replaced plain part `<select>` with a searchable combobox. Type to filter parts by name, manufacturer, fixture type, or notes (same fields as Price Book). Dropdown shows up to 50 matches with optional second line (manufacturer · fixture type). Select or Clear; closes on outside click, blur, or Escape.
+- **PO Add Part**: Same searchable part picker when adding a part to a draft purchase order. Quantity input remains beside the picker.
+
+### Materials – Template Search
+- **Material Templates list**: Search input above the template list filters by name or description (case-insensitive). Empty search shows all templates; "No templates match" when the filter returns no results.
+
+### Settings – Data Backup (Dev Only)
+- **Data backup (dev)** section: Two export buttons for devs only.
+  - **Export projects backup**: Downloads JSON with customers, projects, project_workflows, project_workflow_steps, project_workflow_step_actions, step_subscriptions, workflow_step_line_items, workflow_projections. Filename: `projects-backup-YYYY-MM-DD.json`.
+  - **Export materials backup**: Downloads JSON with supply_houses, material_parts, material_part_prices, material_templates, material_template_items. Filename: `materials-backup-YYYY-MM-DD.json`.
+- Exports respect RLS (user only receives data they can read). Each file includes an `exportedAt` timestamp.
 
 ## Recent Updates (v2.7)
 
