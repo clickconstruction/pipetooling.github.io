@@ -1195,6 +1195,79 @@ export default function Materials() {
     setLoadingDraftPOSupplyHouseOptions(false)
   }
 
+  async function fetchPricesForPart(partId: string): Promise<Array<{ supply_house_name: string; price: number }>> {
+    const { data, error } = await supabase
+      .from('material_part_prices')
+      .select('*, supply_houses(*)')
+      .eq('part_id', partId)
+      .order('price', { ascending: true })
+    if (error) return []
+    const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    return pricesList.map(p => ({
+      supply_house_name: p.supply_houses.name,
+      price: p.price,
+    }))
+  }
+
+  async function printPO(po: PurchaseOrderWithItems) {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(po.name)
+    const grandTotal = po.items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
+    let tableRows = ''
+    if (po.status === 'finalized') {
+      tableRows = po.items.map(item => {
+        const partName = escapeHtml(item.part.name ?? '')
+        const qty = item.quantity
+        const sh = item.supply_house?.name ? escapeHtml(item.supply_house.name) : '—'
+        const price = item.price_at_time.toFixed(2)
+        const total = (item.price_at_time * item.quantity).toFixed(2)
+        return `<tr><td>${partName}</td><td>${qty}</td><td>${sh}</td><td>$${price}</td><td>$${total}</td></tr>`
+      }).join('')
+    } else {
+      const allPricesPerItem = await Promise.all(po.items.map(item => fetchPricesForPart(item.part.id)))
+      po.items.forEach((item, i) => {
+        const partName = escapeHtml(item.part.name ?? '')
+        const qty = item.quantity
+        const prices = allPricesPerItem[i]
+        const allPricesStr = prices.length === 0 ? '—' : prices.map(p => `${escapeHtml(p.supply_house_name)}: $${p.price.toFixed(2)}`).join('; ')
+        const chosenStr = item.supply_house?.name ? `${escapeHtml(item.supply_house.name)}: $${item.price_at_time.toFixed(2)}` : '—'
+        const total = (item.price_at_time * item.quantity).toFixed(2)
+        tableRows += `<tr><td>${partName}</td><td>${qty}</td><td>${allPricesStr}</td><td>${chosenStr}</td><td>$${total}</td></tr>`
+      })
+    }
+    const statusLabel = po.status === 'finalized' ? 'Finalized' : 'Draft'
+    const dateStr = po.status === 'finalized' && po.finalized_at
+      ? new Date(po.finalized_at).toLocaleString()
+      : po.created_at ? new Date(po.created_at).toLocaleDateString() : ''
+    const theadFinalized = '<tr><th>Part</th><th>Qty</th><th>Supply House</th><th>Price</th><th>Total</th></tr>'
+    const theadDraft = '<tr><th>Part</th><th>Qty</th><th>All prices</th><th>Chosen</th><th>Total</th></tr>'
+    const thead = po.status === 'finalized' ? theadFinalized : theadDraft
+    const footerColspan = po.status === 'finalized' ? 4 : 4
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+      th { background: #f5f5f5; }
+      .meta { margin-bottom: 0.5rem; color: #666; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>${title}</h1>
+      <div class="meta">${statusLabel}${dateStr ? ` · ${dateStr}` : ''}</div>
+      <table>
+        <thead>${thead}</thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr><td colspan="${footerColspan}" style="text-align:right; font-weight:600;">Grand Total</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr></tfoot>
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   async function updatePartPriceInBook(priceId: string, newPrice: number, partId?: string) {
     setUpdatingPriceId(priceId)
     setError(null)
@@ -2974,6 +3047,452 @@ export default function Materials() {
       {/* Purchase Orders Tab */}
       {activeTab === 'purchase-orders' && (
         <div>
+          {/* Selected PO section (inline, above Search) */}
+          {selectedPO && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+              <h2 style={{ marginBottom: '1rem' }}>{selectedPO.name}</h2>
+              
+              {/* Notes section - displayed at top for finalized POs */}
+              {selectedPO.status === 'finalized' && (
+                <>
+                  {selectedPO.notes ? (
+                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#0369a1' }}>Notes</div>
+                      <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
+                      {selectedPO.notes_added_by && (
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>
+                          Added by {userNamesMap[selectedPO.notes_added_by] || 'Unknown'} 
+                          {selectedPO.notes_added_at && ` on ${new Date(selectedPO.notes_added_at).toLocaleString()}`}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {addingNotesToPO === selectedPO.id ? (
+                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Notes</label>
+                          <textarea
+                            value={notesValue}
+                            onChange={(e) => setNotesValue(e.target.value)}
+                            placeholder="Enter notes (e.g., final bill amount, pickup difficulties)..."
+                            rows={4}
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', fontFamily: 'inherit' }}
+                          />
+                          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAddingNotesToPO(null)
+                                setNotesValue('')
+                              }}
+                              style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => addNotesToFinalizedPO(selectedPO.id, notesValue)}
+                              disabled={!notesValue.trim()}
+                              style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Save Notes
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingNotesToPO(selectedPO.id)
+                              setNotesValue('')
+                            }}
+                            style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Add Notes
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              <div style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                Status: <strong>{selectedPO.status}</strong>
+                {selectedPO.finalized_at && (
+                  <> • Finalized: {new Date(selectedPO.finalized_at).toLocaleString()}</>
+                )}
+              </div>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
+                      {selectedPO.status === 'draft' && (
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedPO.items.map(item => {
+                      const isEditing = editingPOItemSupplyHouseView === item.id
+                      return (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
+                          <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {isEditing ? (
+                              <div style={{ maxWidth: '100%', overflow: 'auto' }}>
+                                {loadingAvailablePrices ? (
+                                  <span style={{ color: '#6b7280' }}>Loading prices...</span>
+                                ) : availablePricesForItem.length > 0 ? (
+                                  <>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                                      <thead>
+                                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Supply House</th>
+                                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Current Price</th>
+                                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>New Price</th>
+                                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {availablePricesForItem.map(row => {
+                                          const newPriceStr = editingPricesByPriceId[row.price_id] ?? row.price.toString()
+                                          const newPriceNum = parseFloat(newPriceStr)
+                                          const isValidPrice = !isNaN(newPriceNum) && newPriceNum >= 0
+                                          return (
+                                            <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                              <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
+                                              <td style={{ padding: '0.5rem' }}>${row.price.toFixed(2)}</td>
+                                              <td style={{ padding: '0.5rem' }}>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  value={newPriceStr}
+                                                  onChange={(e) => setEditingPricesByPriceId(prev => ({ ...prev, [row.price_id]: e.target.value }))}
+                                                  style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                                />
+                                              </td>
+                                              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    if (isValidPrice) updatePartPriceInBook(row.price_id, newPriceNum, item.part.id)
+                                                  }}
+                                                  disabled={!isValidPrice || updatingPriceId === row.price_id}
+                                                  style={{ marginRight: '0.25rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                                >
+                                                  {updatingPriceId === row.price_id ? 'Updating…' : (newPriceNum === 0 ? 'Remove from supply house' : 'Update price')}
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    const priceToUse = isValidPrice ? newPriceNum : row.price
+                                                    updatePOItemSupplyHouse(item.id, row.supply_house_id, priceToUse)
+                                                  }}
+                                                  style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                                >
+                                                  Use for PO
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                    </table>
+                                    {(() => {
+                                      const supplyHousesWithoutPrice = supplyHouses.filter(sh => !availablePricesForItem.some(p => p.supply_house_id === sh.id))
+                                      const addPriceNum = parseFloat(addPriceValue)
+                                      const canAddPrice = addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice
+                                      return supplyHousesWithoutPrice.length > 0 ? (
+                                        <div style={{ padding: '0.5rem 0', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                          <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
+                                          <select
+                                            value={addPriceSupplyHouseId}
+                                            onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
+                                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                                          >
+                                            <option value="">Select supply house</option>
+                                            {supplyHousesWithoutPrice.map(sh => (
+                                              <option key={sh.id} value={sh.id}>{sh.name}</option>
+                                            ))}
+                                          </select>
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={addPriceValue}
+                                            onChange={(e) => setAddPriceValue(e.target.value)}
+                                            placeholder="Price"
+                                            style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (canAddPrice) addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
+                                            }}
+                                            disabled={!canAddPrice}
+                                            style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                          >
+                                            {addingNewPrice ? 'Adding…' : 'Add price'}
+                                          </button>
+                                        </div>
+                                      ) : null
+                                    })()}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingPOItemSupplyHouseView(null)
+                                        setAvailablePricesForItem([])
+                                        setEditingPricesByPriceId({})
+                                        setAddPriceSupplyHouseId('')
+                                        setAddPriceValue('')
+                                      }}
+                                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', marginTop: '0.5rem' }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span style={{ color: '#6b7280' }}>No prices available.</span>
+                                    {supplyHouses.length > 0 && (
+                                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
+                                        <select
+                                          value={addPriceSupplyHouseId}
+                                          onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
+                                          style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                                        >
+                                          <option value="">Select supply house</option>
+                                          {supplyHouses.map(sh => (
+                                            <option key={sh.id} value={sh.id}>{sh.name}</option>
+                                          ))}
+                                        </select>
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          value={addPriceValue}
+                                          onChange={(e) => setAddPriceValue(e.target.value)}
+                                          placeholder="Price"
+                                          style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const addPriceNum = parseFloat(addPriceValue)
+                                            if (addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice) {
+                                              addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
+                                            }
+                                          }}
+                                          disabled={!addPriceSupplyHouseId || !addPriceValue || isNaN(parseFloat(addPriceValue)) || parseFloat(addPriceValue) <= 0 || addingNewPrice}
+                                          style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                        >
+                                          {addingNewPrice ? 'Adding…' : 'Add price'}
+                                        </button>
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingPOItemSupplyHouseView(null)
+                                        setAvailablePricesForItem([])
+                                        setEditingPricesByPriceId({})
+                                        setAddPriceSupplyHouseId('')
+                                        setAddPriceValue('')
+                                      }}
+                                      style={{ marginLeft: '0.5rem', marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            ) : selectedPO.status === 'draft' ? (
+                              <select
+                                value={item.supply_house?.id ?? ''}
+                                onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  if (val === '') {
+                                    updatePOItemSupplyHouse(item.id, '', 0)
+                                    return
+                                  }
+                                  const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
+                                  const opt = opts.find(o => o.supply_house_id === val)
+                                  if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
+                                  else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
+                                }}
+                                style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                              >
+                                {draftPOSupplyHouseOptionsPartId === item.part.id ? (
+                                  loadingDraftPOSupplyHouseOptions ? (
+                                    <option value={item.supply_house?.id ?? ''}>Loading...</option>
+                                  ) : (
+                                    <>
+                                      <option value="">None</option>
+                                      {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
+                                        <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
+                                      )}
+                                      {draftPOSupplyHouseOptions.map(o => (
+                                        <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
+                                      ))}
+                                    </>
+                                  )
+                                ) : (
+                                  <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
+                                )}
+                              </select>
+                            ) : (
+                              item.supply_house?.name || '-'
+                            )}
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
+                          <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                          {selectedPO.status === 'draft' && (
+                            <td style={{ padding: '0.75rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={!!item.price_confirmed_at}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        confirmPOItemPrice(item.id, item.part.id, item.supply_house?.id || null, item.price_at_time)
+                                      } else {
+                                        unconfirmPOItemPrice(item.id)
+                                      }
+                                    }}
+                                    disabled={confirmingPriceForItem === item.id}
+                                    style={{ cursor: confirmingPriceForItem === item.id ? 'not-allowed' : 'pointer' }}
+                                  />
+                                  {confirmingPriceForItem === item.id && (
+                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Updating...</span>
+                                  )}
+                                </label>
+                                {item.price_confirmed_at && (
+                                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '1.5rem' }}>
+                                    {formatTimeSince(item.price_confirmed_at)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          )}
+                          {selectedPO.status === 'draft' && (
+                            <td style={{ padding: '0.75rem' }}>
+                              {!isEditing ? (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    setEditingPOItemSupplyHouseView(item.id)
+                                    await loadAvailablePricesForPart(item.part.id)
+                                  }}
+                                  style={{ padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  Update
+                                </button>
+                              ) : null}
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <td colSpan={selectedPO.status === 'draft' ? 6 : 4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
+                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>
+                        ${selectedPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedPO) {
+                      deletePO(selectedPO.id)
+                      setSelectedPO(null)
+                      setEditingPOItemSupplyHouseView(null)
+                      setAvailablePricesForItem([])
+                      setEditingPricesByPriceId({})
+                      setAddPriceSupplyHouseId('')
+                      setAddPriceValue('')
+                      if (editingPO?.id === selectedPO.id) {
+                        setEditingPO(null)
+                      }
+                    }
+                  }}
+                  style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Delete
+                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+                  <button
+                    type="button"
+                    onClick={() => printPO(selectedPO)}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPO(null)
+                      setEditingPOItemSupplyHouseView(null)
+                      setAvailablePricesForItem([])
+                      setEditingPricesByPriceId({})
+                      setAddPriceSupplyHouseId('')
+                      setAddPriceValue('')
+                    }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                  {selectedPO.status === 'finalized' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => duplicatePOAsDraft(selectedPO.id)}
+                        disabled={duplicatingPO === selectedPO.id}
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          background: duplicatingPO === selectedPO.id ? '#9ca3af' : '#059669', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: 4, 
+                          cursor: duplicatingPO === selectedPO.id ? 'not-allowed' : 'pointer' 
+                        }}
+                      >
+                        {duplicatingPO === selectedPO.id ? 'Duplicating...' : 'Duplicate as Draft'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = '/projects'
+                        }}
+                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Go to Projects to Add
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
             <input
               type="text"
@@ -3060,450 +3579,6 @@ export default function Materials() {
               </tbody>
             </table>
           </div>
-
-          {/* PO Detail Modal */}
-          {selectedPO && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                <h2 style={{ marginBottom: '1rem' }}>{selectedPO.name}</h2>
-                
-                {/* Notes section - displayed at top for finalized POs */}
-                {selectedPO.status === 'finalized' && (
-                  <>
-                    {selectedPO.notes ? (
-                      <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                        <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#0369a1' }}>Notes</div>
-                        <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
-                        {selectedPO.notes_added_by && (
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>
-                            Added by {userNamesMap[selectedPO.notes_added_by] || 'Unknown'} 
-                            {selectedPO.notes_added_at && ` on ${new Date(selectedPO.notes_added_at).toLocaleString()}`}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        {addingNotesToPO === selectedPO.id ? (
-                          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Notes</label>
-                            <textarea
-                              value={notesValue}
-                              onChange={(e) => setNotesValue(e.target.value)}
-                              placeholder="Enter notes (e.g., final bill amount, pickup difficulties)..."
-                              rows={4}
-                              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', fontFamily: 'inherit' }}
-                            />
-                            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAddingNotesToPO(null)
-                                  setNotesValue('')
-                                }}
-                                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => addNotesToFinalizedPO(selectedPO.id, notesValue)}
-                                disabled={!notesValue.trim()}
-                                style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Save Notes
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ marginBottom: '1.5rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAddingNotesToPO(selectedPO.id)
-                                setNotesValue('')
-                              }}
-                              style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              Add Notes
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
-
-                <div style={{ marginBottom: '1rem', color: '#6b7280' }}>
-                  Status: <strong>{selectedPO.status}</strong>
-                  {selectedPO.finalized_at && (
-                    <> • Finalized: {new Date(selectedPO.finalized_at).toLocaleString()}</>
-                  )}
-                </div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                        {selectedPO.status === 'draft' && (
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
-                        )}
-                        {selectedPO.status === 'draft' && (
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedPO.items.map(item => {
-                        const isEditing = editingPOItemSupplyHouseView === item.id
-                        return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
-                            <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {isEditing ? (
-                                <div style={{ maxWidth: '100%', overflow: 'auto' }}>
-                                  {loadingAvailablePrices ? (
-                                    <span style={{ color: '#6b7280' }}>Loading prices...</span>
-                                  ) : availablePricesForItem.length > 0 ? (
-                                    <>
-                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                                        <thead>
-                                          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Supply House</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Current Price</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>New Price</th>
-                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {availablePricesForItem.map(row => {
-                                            const newPriceStr = editingPricesByPriceId[row.price_id] ?? row.price.toString()
-                                            const newPriceNum = parseFloat(newPriceStr)
-                                            const isValidPrice = !isNaN(newPriceNum) && newPriceNum >= 0
-                                            return (
-                                              <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                                <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
-                                                <td style={{ padding: '0.5rem' }}>${row.price.toFixed(2)}</td>
-                                                <td style={{ padding: '0.5rem' }}>
-                                                  <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={newPriceStr}
-                                                    onChange={(e) => setEditingPricesByPriceId(prev => ({ ...prev, [row.price_id]: e.target.value }))}
-                                                    style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                                  />
-                                                </td>
-                                                <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      if (isValidPrice) updatePartPriceInBook(row.price_id, newPriceNum, item.part.id)
-                                                    }}
-                                                    disabled={!isValidPrice || updatingPriceId === row.price_id}
-                                                    style={{ marginRight: '0.25rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                                  >
-                                                    {updatingPriceId === row.price_id ? 'Updating…' : (newPriceNum === 0 ? 'Remove from supply house' : 'Update price')}
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      const priceToUse = isValidPrice ? newPriceNum : row.price
-                                                      updatePOItemSupplyHouse(item.id, row.supply_house_id, priceToUse)
-                                                    }}
-                                                    style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                                  >
-                                                    Use for PO
-                                                  </button>
-                                                </td>
-                                              </tr>
-                                            )
-                                          })}
-                                        </tbody>
-                                      </table>
-                                      {(() => {
-                                        const supplyHousesWithoutPrice = supplyHouses.filter(sh => !availablePricesForItem.some(p => p.supply_house_id === sh.id))
-                                        const addPriceNum = parseFloat(addPriceValue)
-                                        const canAddPrice = addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice
-                                        return supplyHousesWithoutPrice.length > 0 ? (
-                                          <div style={{ padding: '0.5rem 0', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                            <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
-                                            <select
-                                              value={addPriceSupplyHouseId}
-                                              onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
-                                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
-                                            >
-                                              <option value="">Select supply house</option>
-                                              {supplyHousesWithoutPrice.map(sh => (
-                                                <option key={sh.id} value={sh.id}>{sh.name}</option>
-                                              ))}
-                                            </select>
-                                            <input
-                                              type="number"
-                                              step="0.01"
-                                              min="0"
-                                              value={addPriceValue}
-                                              onChange={(e) => setAddPriceValue(e.target.value)}
-                                              placeholder="Price"
-                                              style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                            />
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                if (canAddPrice) addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
-                                              }}
-                                              disabled={!canAddPrice}
-                                              style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                            >
-                                              {addingNewPrice ? 'Adding…' : 'Add price'}
-                                            </button>
-                                          </div>
-                                        ) : null
-                                      })()}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setEditingPOItemSupplyHouseView(null)
-                                          setAvailablePricesForItem([])
-                                          setEditingPricesByPriceId({})
-                                          setAddPriceSupplyHouseId('')
-                                          setAddPriceValue('')
-                                        }}
-                                        style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', marginTop: '0.5rem' }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span style={{ color: '#6b7280' }}>No prices available.</span>
-                                      {supplyHouses.length > 0 && (
-                                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                          <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
-                                          <select
-                                            value={addPriceSupplyHouseId}
-                                            onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
-                                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
-                                          >
-                                            <option value="">Select supply house</option>
-                                            {supplyHouses.map(sh => (
-                                              <option key={sh.id} value={sh.id}>{sh.name}</option>
-                                            ))}
-                                          </select>
-                                          <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={addPriceValue}
-                                            onChange={(e) => setAddPriceValue(e.target.value)}
-                                            placeholder="Price"
-                                            style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              const addPriceNum = parseFloat(addPriceValue)
-                                              if (addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice) {
-                                                addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
-                                              }
-                                            }}
-                                            disabled={!addPriceSupplyHouseId || !addPriceValue || isNaN(parseFloat(addPriceValue)) || parseFloat(addPriceValue) <= 0 || addingNewPrice}
-                                            style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                          >
-                                            {addingNewPrice ? 'Adding…' : 'Add price'}
-                                          </button>
-                                        </div>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setEditingPOItemSupplyHouseView(null)
-                                          setAvailablePricesForItem([])
-                                          setEditingPricesByPriceId({})
-                                          setAddPriceSupplyHouseId('')
-                                          setAddPriceValue('')
-                                        }}
-                                        style={{ marginLeft: '0.5rem', marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              ) : selectedPO.status === 'draft' ? (
-                                <select
-                                  value={item.supply_house?.id ?? ''}
-                                  onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
-                                  onChange={(e) => {
-                                    const val = e.target.value
-                                    if (val === '') {
-                                      updatePOItemSupplyHouse(item.id, '', 0)
-                                      return
-                                    }
-                                    const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
-                                    const opt = opts.find(o => o.supply_house_id === val)
-                                    if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
-                                    else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
-                                  }}
-                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                >
-                                  {draftPOSupplyHouseOptionsPartId === item.part.id ? (
-                                    loadingDraftPOSupplyHouseOptions ? (
-                                      <option value={item.supply_house?.id ?? ''}>Loading...</option>
-                                    ) : (
-                                      <>
-                                        <option value="">None</option>
-                                        {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
-                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
-                                        )}
-                                        {draftPOSupplyHouseOptions.map(o => (
-                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
-                                        ))}
-                                      </>
-                                    )
-                                  ) : (
-                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
-                                  )}
-                                </select>
-                              ) : (
-                                item.supply_house?.name || '-'
-                              )}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
-                            {selectedPO.status === 'draft' && (
-                              <td style={{ padding: '0.75rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={!!item.price_confirmed_at}
-                                      onChange={(e) => {
-                                        if (e.target.checked) {
-                                          confirmPOItemPrice(item.id, item.part.id, item.supply_house?.id || null, item.price_at_time)
-                                        } else {
-                                          unconfirmPOItemPrice(item.id)
-                                        }
-                                      }}
-                                      disabled={confirmingPriceForItem === item.id}
-                                      style={{ cursor: confirmingPriceForItem === item.id ? 'not-allowed' : 'pointer' }}
-                                    />
-                                    {confirmingPriceForItem === item.id && (
-                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Updating...</span>
-                                    )}
-                                  </label>
-                                  {item.price_confirmed_at && (
-                                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '1.5rem' }}>
-                                      {formatTimeSince(item.price_confirmed_at)}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                            )}
-                            {selectedPO.status === 'draft' && (
-                              <td style={{ padding: '0.75rem' }}>
-                                {!isEditing ? (
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      setEditingPOItemSupplyHouseView(item.id)
-                                      await loadAvailablePricesForPart(item.part.id)
-                                    }}
-                                    style={{ padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
-                                  >
-                                    Update
-                                  </button>
-                                ) : null}
-                              </td>
-                            )}
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                    <tfoot style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <td colSpan={selectedPO.status === 'draft' ? 6 : 4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
-                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                          ${selectedPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedPO) {
-                        deletePO(selectedPO.id)
-                        setSelectedPO(null)
-                        setEditingPOItemSupplyHouseView(null)
-                        setAvailablePricesForItem([])
-                        setEditingPricesByPriceId({})
-                        setAddPriceSupplyHouseId('')
-                        setAddPriceValue('')
-                        if (editingPO?.id === selectedPO.id) {
-                          setEditingPO(null)
-                        }
-                      }
-                    }}
-                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedPO(null)
-                        setEditingPOItemSupplyHouseView(null)
-                        setAvailablePricesForItem([])
-                        setEditingPricesByPriceId({})
-                        setAddPriceSupplyHouseId('')
-                        setAddPriceValue('')
-                      }}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Close
-                    </button>
-                    {selectedPO.status === 'finalized' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => duplicatePOAsDraft(selectedPO.id)}
-                          disabled={duplicatingPO === selectedPO.id}
-                          style={{ 
-                            padding: '0.5rem 1rem', 
-                            background: duplicatingPO === selectedPO.id ? '#9ca3af' : '#059669', 
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: 4, 
-                            cursor: duplicatingPO === selectedPO.id ? 'not-allowed' : 'pointer' 
-                          }}
-                        >
-                          {duplicatingPO === selectedPO.id ? 'Duplicating...' : 'Duplicate as Draft'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Navigate to projects page - user can then go to workflow and add PO there
-                            window.location.href = '/projects'
-                          }}
-                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Go to Projects to Add
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
