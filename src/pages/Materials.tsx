@@ -101,7 +101,6 @@ export default function Materials() {
   const [editingPOItemSupplyHouseView, setEditingPOItemSupplyHouseView] = useState<string | null>(null)
   const [availablePricesForItem, setAvailablePricesForItem] = useState<Array<{ price_id: string; supply_house_id: string; supply_house_name: string; price: number }>>([])
   const [loadingAvailablePrices, setLoadingAvailablePrices] = useState(false)
-  const [selectedSupplyHouseForUpdate, setSelectedSupplyHouseForUpdate] = useState<{ supply_house_id: string; price: number } | null>(null)
   const [editingPricesByPriceId, setEditingPricesByPriceId] = useState<Record<string, string>>({})
   const [updatingPriceId, setUpdatingPriceId] = useState<string | null>(null)
   const [addPriceSupplyHouseId, setAddPriceSupplyHouseId] = useState('')
@@ -1164,15 +1163,6 @@ export default function Materials() {
     }))
     
     setAvailablePricesForItem(availablePrices)
-    // Set initial selected value to current supply house
-    if (currentItem) {
-      const currentPrice = availablePrices.find(p => p.supply_house_id === currentItem.supply_house?.id)
-      if (currentPrice) {
-        setSelectedSupplyHouseForUpdate({ supply_house_id: currentPrice.supply_house_id, price: currentPrice.price })
-      } else {
-        setSelectedSupplyHouseForUpdate(null)
-      }
-    }
     setLoadingAvailablePrices(false)
   }
 
@@ -1286,7 +1276,6 @@ export default function Materials() {
 
     setEditingPOItemSupplyHouseView(null)
     setAvailablePricesForItem([])
-    setSelectedSupplyHouseForUpdate(null)
     setEditingPricesByPriceId({})
     setAddPriceSupplyHouseId('')
     setAddPriceValue('')
@@ -3214,7 +3203,6 @@ export default function Materials() {
                                         onClick={() => {
                                           setEditingPOItemSupplyHouseView(null)
                                           setAvailablePricesForItem([])
-                                          setSelectedSupplyHouseForUpdate(null)
                                           setEditingPricesByPriceId({})
                                           setAddPriceSupplyHouseId('')
                                           setAddPriceValue('')
@@ -3269,7 +3257,6 @@ export default function Materials() {
                                         onClick={() => {
                                           setEditingPOItemSupplyHouseView(null)
                                           setAvailablePricesForItem([])
-                                          setSelectedSupplyHouseForUpdate(null)
                                           setEditingPricesByPriceId({})
                                           setAddPriceSupplyHouseId('')
                                           setAddPriceValue('')
@@ -3353,7 +3340,6 @@ export default function Materials() {
                         setSelectedPO(null)
                         setEditingPOItemSupplyHouseView(null)
                         setAvailablePricesForItem([])
-                        setSelectedSupplyHouseForUpdate(null)
                         setEditingPricesByPriceId({})
                         setAddPriceSupplyHouseId('')
                         setAddPriceValue('')
@@ -3373,7 +3359,6 @@ export default function Materials() {
                         setSelectedPO(null)
                         setEditingPOItemSupplyHouseView(null)
                         setAvailablePricesForItem([])
-                        setSelectedSupplyHouseForUpdate(null)
                         setEditingPricesByPriceId({})
                         setAddPriceSupplyHouseId('')
                         setAddPriceValue('')
