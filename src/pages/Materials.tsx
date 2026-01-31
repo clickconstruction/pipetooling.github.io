@@ -1228,7 +1228,7 @@ export default function Materials() {
       po.items.forEach((item, i) => {
         const partName = escapeHtml(item.part.name ?? '')
         const qty = item.quantity
-        const prices = allPricesPerItem[i]
+        const prices = allPricesPerItem[i] ?? []
         const allPricesStr = prices.length === 0 ? '—' : prices.map(p => `${escapeHtml(p.supply_house_name)}: $${p.price.toFixed(2)}`).join('; ')
         const chosenStr = item.supply_house?.name ? `${escapeHtml(item.supply_house.name)}: $${item.price_at_time.toFixed(2)}` : '—'
         const total = (item.price_at_time * item.quantity).toFixed(2)
