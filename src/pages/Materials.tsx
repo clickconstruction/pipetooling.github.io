@@ -2027,7 +2027,7 @@ export default function Materials() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>Prices for {viewingPartPrices.name}</h2>
-            <PartPricesManager part={viewingPartPrices} supplyHouses={supplyHouses} onClose={() => setViewingPartPrices(null)} />
+            <PartPricesManager part={viewingPartPrices} supplyHouses={supplyHouses} onClose={() => { setViewingPartPrices(null); loadParts() }} />
           </div>
         </div>
       )}
