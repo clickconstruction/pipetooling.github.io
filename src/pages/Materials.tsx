@@ -1139,7 +1139,7 @@ export default function Materials() {
     }
   }
 
-  async function loadAvailablePricesForPart(partId: string, currentItem?: POItemWithDetails) {
+  async function loadAvailablePricesForPart(partId: string) {
     setLoadingAvailablePrices(true)
     setError(null)
     const { data, error } = await supabase
@@ -1185,11 +1185,11 @@ export default function Materials() {
     })
     const currentItem = selectedPO?.items.find(i => i.id === editingPOItemSupplyHouseView)
     if (currentItem) {
-      await loadAvailablePricesForPart(currentItem.part.id, currentItem)
+      await loadAvailablePricesForPart(currentItem.part.id)
     }
   }
 
-  async function addPartPriceFromPOModal(partId: string, supplyHouseId: string, price: number, currentItem: POItemWithDetails) {
+  async function addPartPriceFromPOModal(partId: string, supplyHouseId: string, price: number) {
     setAddingNewPrice(true)
     setError(null)
     const { error } = await supabase
@@ -1206,7 +1206,7 @@ export default function Materials() {
     }
     setAddPriceSupplyHouseId('')
     setAddPriceValue('')
-    await loadAvailablePricesForPart(partId, currentItem)
+    await loadAvailablePricesForPart(partId)
   }
 
   async function updatePOItemSupplyHouse(itemId: string, supplyHouseId: string, price: number) {
@@ -3188,7 +3188,7 @@ export default function Materials() {
                                             <button
                                               type="button"
                                               onClick={() => {
-                                                if (canAddPrice) addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum, item)
+                                                if (canAddPrice) addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
                                               }}
                                               disabled={!canAddPrice}
                                               style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
@@ -3242,7 +3242,7 @@ export default function Materials() {
                                             onClick={() => {
                                               const addPriceNum = parseFloat(addPriceValue)
                                               if (addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice) {
-                                                addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum, item)
+                                                addPartPriceFromPOModal(item.part.id, addPriceSupplyHouseId, addPriceNum)
                                               }
                                             }}
                                             disabled={!addPriceSupplyHouseId || !addPriceValue || isNaN(parseFloat(addPriceValue)) || parseFloat(addPriceValue) <= 0 || addingNewPrice}
@@ -3308,7 +3308,7 @@ export default function Materials() {
                                     type="button"
                                     onClick={async () => {
                                       setEditingPOItemSupplyHouseView(item.id)
-                                      await loadAvailablePricesForPart(item.part.id, item)
+                                      await loadAvailablePricesForPart(item.part.id)
                                     }}
                                     style={{ padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
                                   >
