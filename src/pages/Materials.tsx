@@ -1166,16 +1166,16 @@ export default function Materials() {
     setLoadingAvailablePrices(false)
   }
 
-  async function updatePartPriceInBook(priceId: string, newPrice: number) {
+  async function updatePartPriceInBook(priceId: string, newPrice: number, partId?: string) {
     setUpdatingPriceId(priceId)
     setError(null)
-    const { error } = await supabase
-      .from('material_part_prices')
-      .update({ price: newPrice })
-      .eq('id', priceId)
+    const isRemove = newPrice === 0
+    const { error } = isRemove
+      ? await supabase.from('material_part_prices').delete().eq('id', priceId)
+      : await supabase.from('material_part_prices').update({ price: newPrice }).eq('id', priceId)
     setUpdatingPriceId(null)
     if (error) {
-      setError(`Failed to update price: ${error.message}`)
+      setError(isRemove ? `Failed to remove price: ${error.message}` : `Failed to update price: ${error.message}`)
       return
     }
     setEditingPricesByPriceId(prev => {
@@ -1183,10 +1183,8 @@ export default function Materials() {
       delete next[priceId]
       return next
     })
-    const currentItem = selectedPO?.items.find(i => i.id === editingPOItemSupplyHouseView)
-    if (currentItem) {
-      await loadAvailablePricesForPart(currentItem.part.id)
-    }
+    const partIdToReload = partId ?? selectedPO?.items.find(i => i.id === editingPOItemSupplyHouseView)?.part.id
+    if (partIdToReload) await loadAvailablePricesForPart(partIdToReload)
   }
 
   async function addPartPriceFromPOModal(partId: string, supplyHouseId: string, price: number) {
@@ -3117,7 +3115,7 @@ export default function Materials() {
                                           {availablePricesForItem.map(row => {
                                             const newPriceStr = editingPricesByPriceId[row.price_id] ?? row.price.toString()
                                             const newPriceNum = parseFloat(newPriceStr)
-                                            const isValidPrice = !isNaN(newPriceNum) && newPriceNum > 0
+                                            const isValidPrice = !isNaN(newPriceNum) && newPriceNum >= 0
                                             return (
                                               <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                                 <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
@@ -3136,12 +3134,12 @@ export default function Materials() {
                                                   <button
                                                     type="button"
                                                     onClick={() => {
-                                                      if (isValidPrice) updatePartPriceInBook(row.price_id, newPriceNum)
+                                                      if (isValidPrice) updatePartPriceInBook(row.price_id, newPriceNum, item.part.id)
                                                     }}
                                                     disabled={!isValidPrice || updatingPriceId === row.price_id}
                                                     style={{ marginRight: '0.25rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                                                   >
-                                                    {updatingPriceId === row.price_id ? 'Updating…' : 'Update price'}
+                                                    {updatingPriceId === row.price_id ? 'Updating…' : (newPriceNum === 0 ? 'Remove from supply house' : 'Update price')}
                                                   </button>
                                                   <button
                                                     type="button"
