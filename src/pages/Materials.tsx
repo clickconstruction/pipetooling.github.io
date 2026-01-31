@@ -106,6 +106,9 @@ export default function Materials() {
   const [addPriceSupplyHouseId, setAddPriceSupplyHouseId] = useState('')
   const [addPriceValue, setAddPriceValue] = useState('')
   const [addingNewPrice, setAddingNewPrice] = useState(false)
+  const [draftPOSupplyHouseOptionsPartId, setDraftPOSupplyHouseOptionsPartId] = useState<string | null>(null)
+  const [draftPOSupplyHouseOptions, setDraftPOSupplyHouseOptions] = useState<Array<{ supply_house_id: string; supply_house_name: string; price: number }>>([])
+  const [loadingDraftPOSupplyHouseOptions, setLoadingDraftPOSupplyHouseOptions] = useState(false)
   const [confirmingPriceForItem, setConfirmingPriceForItem] = useState<string | null>(null)
   const [editingPOName, setEditingPOName] = useState<string | null>(null)
   const [editingPONameValue, setEditingPONameValue] = useState('')
@@ -1166,6 +1169,32 @@ export default function Materials() {
     setLoadingAvailablePrices(false)
   }
 
+  async function loadSupplyHouseOptionsForPart(partId: string) {
+    setLoadingDraftPOSupplyHouseOptions(true)
+    setError(null)
+    const { data, error } = await supabase
+      .from('material_part_prices')
+      .select('*, supply_houses(*)')
+      .eq('part_id', partId)
+      .order('price', { ascending: true })
+
+    if (error) {
+      setError(`Failed to load prices: ${error.message}`)
+      setLoadingDraftPOSupplyHouseOptions(false)
+      return
+    }
+
+    const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    const options = pricesList.map(p => ({
+      supply_house_id: p.supply_house_id,
+      supply_house_name: p.supply_houses.name,
+      price: p.price,
+    }))
+    setDraftPOSupplyHouseOptionsPartId(partId)
+    setDraftPOSupplyHouseOptions(options)
+    setLoadingDraftPOSupplyHouseOptions(false)
+  }
+
   async function updatePartPriceInBook(priceId: string, newPrice: number, partId?: string) {
     setUpdatingPriceId(priceId)
     setError(null)
@@ -1212,10 +1241,11 @@ export default function Materials() {
 
     // Get the supply house name for optimistic update
     const supplyHouse = supplyHouses.find(sh => sh.id === supplyHouseId)
-    
-    // Optimistically update UI (selectedPO and editingPO if same PO)
-    const updatedItems = selectedPO
-      ? selectedPO.items.map(item => {
+
+    // Build updated items from selectedPO or editingPO (when dropdown used in draft modal without selectedPO)
+    const sourcePO = selectedPO ?? (editingPO?.items.some(i => i.id === itemId) ? editingPO : null)
+    const updatedItems = sourcePO
+      ? sourcePO.items.map(item => {
           if (item.id === itemId) {
             return {
               ...item,
@@ -1227,14 +1257,15 @@ export default function Materials() {
           return item
         })
       : []
-    if (selectedPO) {
+    if (selectedPO && sourcePO?.id === selectedPO.id) {
       setSelectedPO({ ...selectedPO, items: updatedItems })
     }
-    if (editingPO && selectedPO && editingPO.id === selectedPO.id) {
+    if (editingPO && sourcePO && editingPO.id === sourcePO.id) {
       setEditingPO({ ...editingPO, items: updatedItems })
     }
-    setDraftPOs(prev => prev.map(po => po.id === selectedPO?.id ? { ...po, items: updatedItems } : po))
-    setAllPOs(prev => prev.map(po => po.id === selectedPO?.id ? { ...po, items: updatedItems } : po))
+    const poIdToUpdate = sourcePO?.id
+    setDraftPOs(prev => prev.map(po => po.id === poIdToUpdate ? { ...po, items: updatedItems } : po))
+    setAllPOs(prev => prev.map(po => po.id === poIdToUpdate ? { ...po, items: updatedItems } : po))
 
     const { error } = await supabase
       .from('purchase_order_items')
@@ -2645,7 +2676,42 @@ export default function Materials() {
                             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                               <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
                               <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
-                              <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
+                              <td style={{ padding: '0.75rem' }}>
+                                <select
+                                  value={item.supply_house?.id ?? ''}
+                                  onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    if (val === '') {
+                                      updatePOItemSupplyHouse(item.id, '', 0)
+                                      return
+                                    }
+                                    const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
+                                    const opt = opts.find(o => o.supply_house_id === val)
+                                    if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
+                                    else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
+                                  }}
+                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                >
+                                  {draftPOSupplyHouseOptionsPartId === item.part.id ? (
+                                    loadingDraftPOSupplyHouseOptions ? (
+                                      <option value={item.supply_house?.id ?? ''}>Loading...</option>
+                                    ) : (
+                                      <>
+                                        <option value="">None</option>
+                                        {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
+                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
+                                        )}
+                                        {draftPOSupplyHouseOptions.map(o => (
+                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
+                                        ))}
+                                      </>
+                                    )
+                                  ) : (
+                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
+                                  )}
+                                </select>
+                              </td>
                               <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
                               <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
                               <td style={{ padding: '0.75rem' }}>
@@ -3082,7 +3148,9 @@ export default function Materials() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
+                        {selectedPO.status === 'draft' && (
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
+                        )}
                         {selectedPO.status === 'draft' && (
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                         )}
@@ -3266,39 +3334,76 @@ export default function Materials() {
                                     </>
                                   )}
                                 </div>
+                              ) : selectedPO.status === 'draft' ? (
+                                <select
+                                  value={item.supply_house?.id ?? ''}
+                                  onFocus={() => loadSupplyHouseOptionsForPart(item.part.id)}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    if (val === '') {
+                                      updatePOItemSupplyHouse(item.id, '', 0)
+                                      return
+                                    }
+                                    const opts = draftPOSupplyHouseOptionsPartId === item.part.id ? draftPOSupplyHouseOptions : []
+                                    const opt = opts.find(o => o.supply_house_id === val)
+                                    if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
+                                    else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
+                                  }}
+                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                >
+                                  {draftPOSupplyHouseOptionsPartId === item.part.id ? (
+                                    loadingDraftPOSupplyHouseOptions ? (
+                                      <option value={item.supply_house?.id ?? ''}>Loading...</option>
+                                    ) : (
+                                      <>
+                                        <option value="">None</option>
+                                        {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
+                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
+                                        )}
+                                        {draftPOSupplyHouseOptions.map(o => (
+                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
+                                        ))}
+                                      </>
+                                    )
+                                  ) : (
+                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
+                                  )}
+                                </select>
                               ) : (
                                 item.supply_house?.name || '-'
                               )}
                             </td>
                             <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={!!item.price_confirmed_at}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        confirmPOItemPrice(item.id, item.part.id, item.supply_house?.id || null, item.price_at_time)
-                                      } else {
-                                        unconfirmPOItemPrice(item.id)
-                                      }
-                                    }}
-                                    disabled={confirmingPriceForItem === item.id}
-                                    style={{ cursor: confirmingPriceForItem === item.id ? 'not-allowed' : 'pointer' }}
-                                  />
-                                  {confirmingPriceForItem === item.id && (
-                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Updating...</span>
+                            {selectedPO.status === 'draft' && (
+                              <td style={{ padding: '0.75rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!item.price_confirmed_at}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          confirmPOItemPrice(item.id, item.part.id, item.supply_house?.id || null, item.price_at_time)
+                                        } else {
+                                          unconfirmPOItemPrice(item.id)
+                                        }
+                                      }}
+                                      disabled={confirmingPriceForItem === item.id}
+                                      style={{ cursor: confirmingPriceForItem === item.id ? 'not-allowed' : 'pointer' }}
+                                    />
+                                    {confirmingPriceForItem === item.id && (
+                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Updating...</span>
+                                    )}
+                                  </label>
+                                  {item.price_confirmed_at && (
+                                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '1.5rem' }}>
+                                      {formatTimeSince(item.price_confirmed_at)}
+                                    </span>
                                   )}
-                                </label>
-                                {item.price_confirmed_at && (
-                                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '1.5rem' }}>
-                                    {formatTimeSince(item.price_confirmed_at)}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
+                                </div>
+                              </td>
+                            )}
                             {selectedPO.status === 'draft' && (
                               <td style={{ padding: '0.75rem' }}>
                                 {!isEditing ? (
@@ -3321,7 +3426,7 @@ export default function Materials() {
                     </tbody>
                     <tfoot style={{ background: '#f9fafb' }}>
                       <tr>
-                        <td colSpan={selectedPO.status === 'draft' ? 6 : 5} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
+                        <td colSpan={selectedPO.status === 'draft' ? 6 : 4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
                         <td style={{ padding: '0.75rem', fontWeight: 600 }}>
                           ${selectedPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
                         </td>
