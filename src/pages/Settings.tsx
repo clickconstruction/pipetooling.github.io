@@ -3,7 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 type UserRow = {
   id: string
@@ -37,7 +37,7 @@ type EmailTemplate = {
   updated_at: string | null
 }
 
-const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor']
+const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 

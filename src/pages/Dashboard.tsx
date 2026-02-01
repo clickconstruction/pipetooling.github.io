@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -82,8 +82,8 @@ export default function Dashboard() {
         setLoading(false)
         return
       }
-      const user = userData as { role: UserRole | 'subcontractor'; name: string | null } | null
-      setRole((user?.role === 'subcontractor' ? null : (user?.role ?? null)) as UserRole | null)
+      const user = userData as { role: UserRole | 'subcontractor' | 'estimator'; name: string | null } | null
+      setRole((user?.role === 'subcontractor' || user?.role === 'estimator' ? null : (user?.role ?? null)) as UserRole | null)
       const name = user?.name ?? null
       
       // Load all users to check if assigned names are users (case-insensitive comparison)

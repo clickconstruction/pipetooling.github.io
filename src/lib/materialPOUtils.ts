@@ -1,0 +1,105 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../types/database'
+
+export type ExpandedPart = { part_id: string; quantity: number }
+
+/**
+ * Expand a material template recursively to a flat list of parts with quantities.
+ * Nested templates are expanded with quantity multiplied through.
+ */
+export async function expandTemplate(
+  supabase: SupabaseClient<Database>,
+  tid: string,
+  multiplier: number = 1
+): Promise<ExpandedPart[]> {
+  const { data: items } = await supabase
+    .from('material_template_items')
+    .select('*')
+    .eq('template_id', tid)
+
+  if (!items) return []
+
+  const result: ExpandedPart[] = []
+  for (const item of items) {
+    if (item.item_type === 'part' && item.part_id) {
+      result.push({ part_id: item.part_id, quantity: item.quantity * multiplier })
+    } else if (item.item_type === 'template' && item.nested_template_id) {
+      const nested = await expandTemplate(supabase, item.nested_template_id, item.quantity * multiplier)
+      result.push(...nested)
+    }
+  }
+  return result
+}
+
+/**
+ * Merge expanded parts by part_id (sum quantities), resolve best price per part,
+ * then insert purchase_order_items. Returns error message or null on success.
+ * When templateId is provided, items are tagged with that template (for "From template" display).
+ */
+export async function addExpandedPartsToPO(
+  supabase: SupabaseClient<Database>,
+  poId: string,
+  expandedParts: ExpandedPart[],
+  templateId?: string
+): Promise<string | null> {
+  if (expandedParts.length === 0) return null
+
+  // Merge by part_id (sum quantities)
+  const merged = new Map<string, number>()
+  for (const { part_id, quantity } of expandedParts) {
+    merged.set(part_id, (merged.get(part_id) ?? 0) + quantity)
+  }
+
+  const poItemsWithPrices: Array<{ part_id: string; quantity: number; supply_house_id: string | null; price: number }> = []
+  for (const [part_id, quantity] of merged) {
+    const { data: prices } = await supabase
+      .from('material_part_prices')
+      .select('supply_house_id, price')
+      .eq('part_id', part_id)
+      .order('price', { ascending: true })
+      .limit(1)
+
+    if (prices && prices.length > 0) {
+      poItemsWithPrices.push({
+        part_id,
+        quantity,
+        supply_house_id: prices[0].supply_house_id,
+        price: prices[0].price,
+      })
+    } else {
+      poItemsWithPrices.push({
+        part_id,
+        quantity,
+        supply_house_id: null,
+        price: 0,
+      })
+    }
+  }
+
+  const { data: existingItems } = await supabase
+    .from('purchase_order_items')
+    .select('sequence_order')
+    .eq('purchase_order_id', poId)
+    .order('sequence_order', { ascending: false })
+    .limit(1)
+
+  const maxOrder = existingItems && existingItems.length > 0 && existingItems[0] ? existingItems[0].sequence_order : 0
+
+  for (let i = 0; i < poItemsWithPrices.length; i++) {
+    const item = poItemsWithPrices[i]
+    if (!item) continue
+    const { error: itemError } = await supabase
+      .from('purchase_order_items')
+      .insert({
+        purchase_order_id: poId,
+        part_id: item.part_id,
+        quantity: item.quantity,
+        selected_supply_house_id: item.supply_house_id,
+        price_at_time: item.price,
+        sequence_order: maxOrder + i + 1,
+        source_template_id: templateId ?? null,
+      })
+    if (itemError) return `Failed to add item: ${itemError.message}`
+  }
+  return null
+}

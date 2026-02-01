@@ -3,14 +3,195 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.7)](#latest-updates-v27)
-2. [Latest Updates (v2.6)](#latest-updates-v26)
-3. [Workflow Features](#workflow-features)
-4. [Calendar Updates](#calendar-updates)
-5. [Access Control](#access-control)
-6. [Email Templates](#email-templates)
-7. [Financial Tracking](#financial-tracking)
-8. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.11)](#latest-updates-v211)
+2. [Latest Updates (v2.10)](#latest-updates-v210)
+3. [Latest Updates (v2.9)](#latest-updates-v29)
+4. [Latest Updates (v2.8)](#latest-updates-v28)
+5. [Latest Updates (v2.7)](#latest-updates-v27)
+6. [Latest Updates (v2.6)](#latest-updates-v26)
+7. [Workflow Features](#workflow-features)
+8. [Calendar Updates](#calendar-updates)
+9. [Access Control](#access-control)
+10. [Email Templates](#email-templates)
+11. [Financial Tracking](#financial-tracking)
+12. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.11)
+
+### Bids UI, Counts, Takeoff, Purchase Orders
+
+**Date**: 2026-01-31
+
+**Changes**:
+
+- **Bid Board**
+  - **Edit column**: Header text hidden (only gear icon visible; `title` and `aria-label` kept for accessibility). Edit button wrapper styled invisible (no background/border/padding) so only the SVG icon shows.
+
+- **Edit Bid modal**
+  - **Cancel button** moved from bottom row to **top right**, next to the modal title.
+
+- **New Bid modal**
+  - **"Save and start Counts"** button (bottom left): Saves the bid and opens it in the Counts tab (creates or updates bid, then sets `activeTab` to counts and `selectedBidForCounts` to the saved bid).
+  - **Project Name required**: Label shows "Project Name *"; client-side validation prevents save when empty and shows "Project Name is required."; input has `required` and clears error on change.
+
+- **Counts tab**
+  - **Search box** moved **below** the selected-bid panel (above the bids list table). Search bar is **full width** (`boxSizing: 'border-box'`).
+  - **Column header**: "Project / GC" changed to **"Project Name"**.
+  - **"Edit Bid" button** in tab header (next to Close) opens the Edit Bid modal for the selected bid.
+  - **NewCountRow (add row)**:
+    - **Fixture quick-select**: Buttons below Fixture input (Bathrooms, Kitchen, Laundry, Plumbing Fixtures, Appliances, etc.) populate the Fixture field when clicked.
+    - **Number pad** below Count: digits 0–9, **C** (all clear), **0**, **Delete** (backspace); layout 1–9 then C, 0, Delete; centered.
+    - **Combined inputs**: Fixture, Count, and Plan Page in a single cell (`colSpan={3}`), arranged horizontally; table headers **Fixture\***, **Count\***, **Plan Page**, **Actions** centered.
+    - **Save** (renamed from "Add") and **Save and Add**: Save and Add saves the row, clears form, refreshes counts, keeps form open for another row; styled to match "Add row" (blue).
+    - Fixture and Count are required (placeholders show "Fixture*", "Count*").
+
+- **Takeoff tab**
+  - **Full implementation** (replaces "Coming soon"): Select a bid; table maps fixture counts to material templates and quantities. **Create purchase order** creates a new draft PO from current mappings; **Add to selected PO** adds items to an existing draft PO (uses shared `materialPOUtils`: `expandTemplate`, `addExpandedPartsToPO`).
+  - **Multiple templates per fixture**: Each fixture can have multiple template mappings (Add template / Remove per row); each mapping has a unique `id`.
+  - **Template search**: Centered filter above table ("only show templates with these words", 360px width); template dropdowns use filtered options while always including selected templates.
+  - **View purchase order**: After creating or adding to a PO, a "View purchase order" link appears; it navigates to `/materials` with `state.openPOId` so the Materials page opens the Purchase Orders tab and displays that PO. Materials page clears `location.state` after handling to avoid re-opening on refresh.
+
+- **Cover Letter tab**
+  - Content: "Cover Letter – coming soon" and "Until then, please use [BidTooling.com](https://BidTooling.com)" (link opens in new tab).
+
+- **Purchase Orders (Materials page)**
+  - **Grand Total**: `colSpan` in footer set to **5** for finalized POs; totals coerce `price_at_time` and `quantity` to number with NaN fallback to 0.
+  - **With Tax row**: New row below Grand Total: label "With Tax", editable tax % (default 8.25, width 6rem), and calculated total (Grand Total × (1 + tax% / 100)); state `viewedPOTaxPercent`.
+  - **Column headers**: "Quantity" changed to **"Qty"** in PO tables.
+
+- **RLS (workflow_templates)**
+  - Migration `optimize_workflow_templates_rls.sql`: Replaces bare `auth.uid()`/`auth.jwt()` with `(select auth.uid())`/`(select auth.jwt())` in RLS policies on `public.workflow_templates` so they are evaluated once per query (see Supabase RLS performance best practices).
+
+**Files modified**:
+- `src/pages/Bids.tsx` – Bid Board Edit column/button, Edit Bid Cancel position, New Bid "Save and start Counts" and Project Name required, Counts search/column/Edit Bid button, NewCountRow (Fixture quick-select, number pad, Save/Save and Add, combined inputs, required labels), Takeoff (state, loaders, mappings, template search, Create PO / Add to PO, View purchase order link)
+- `src/pages/Materials.tsx` – PO Grand Total colspan and NaN handling, With Tax row and `viewedPOTaxPercent`, "Qty" headers, `location.state.openPOId` handling to open PO from Bids
+- `src/lib/materialPOUtils.ts` – Shared `expandTemplate`, `addExpandedPartsToPO` (used by Materials and Bids Takeoff)
+
+**Files added**:
+- `supabase/migrations/optimize_workflow_templates_rls.sql` – RLS optimization for workflow_templates
+
+---
+
+## Latest Updates (v2.10)
+
+### Add Customer from Edit Bid Modal, Estimator Customer Access, Quick Fill UI
+
+**Date**: 2026-01-31
+
+**Changes**:
+
+- **Add Customer from Edit Bid modal**
+  - In the Edit/New Bid modal, the GC/Builder (customer) dropdown now includes a **"+ Add new customer"** option at the top (for dev, master_technician, assistant, and estimator).
+  - Clicking it opens an **Add Customer** modal with the same form as `/customers/new` but **without** the Quick Fill block (Name, Address, Phone, Email, Date Met, Customer Owner (Master)).
+  - On save, the new customer is created, the customer list is refetched, the new customer is selected as the bid’s GC/Builder, and the Add Customer modal closes.
+  - Shared component **`NewCustomerForm`** (`src/components/NewCustomerForm.tsx`) is used for both `/customers/new` (with Quick Fill) and the Add Customer modal (without Quick Fill). CustomerForm uses it for the create path; Bids renders it inside the Add Customer modal with `showQuickFill={false}`, `mode="modal"`, `onCancel`, and `onCreated`.
+
+- **Estimators: see and add customers in Bids only**
+  - **Customers RLS**: New migration `allow_estimators_select_customers.sql` lets estimators **SELECT** all customers (for the GC/Builder dropdown and joined customer data on bids) and **INSERT** into `customers` only when `master_user_id` is set to a valid master (dev or master_technician). Estimators cannot UPDATE or DELETE customers.
+  - **Bids page**: Estimators now load the customer list (`loadCustomers()` is called for estimators as well as dev/master/assistant), so the GC/Builder dropdown is populated. Estimators also see the "+ Add new customer" option and can open the Add Customer modal.
+  - **NewCustomerForm**: Estimator role is supported: estimators see the Customer Owner (Master) dropdown (all masters), must select a master when creating a customer, and can create customers from the Add Customer modal in Bids. Estimators still have **no access** to `/customers` or `/projects` (Layout redirects them to `/bids` for those paths).
+
+- **Quick Fill on New Customer page**
+  - On `/customers/new`, the **Quick Fill** block (paste tab-separated data to fill Name, Address, Email, Phone, Date) is now **expandable** and **collapsed by default**.
+  - A **Quick Fill** button (with ▶ when collapsed, ▼ when expanded) sits **next to** the "New customer" title. Clicking it toggles the textarea and "Fill Fields" button.
+  - When expanded, the label "Paste: Name	Address	Email	Phone	Date (M/D/YYYY)" and the textarea and "Fill Fields" button are shown below the title row.
+
+**Files added**:
+- `src/components/NewCustomerForm.tsx` – shared create-only customer form (used by CustomerForm for create and by Bids Add Customer modal).
+- `supabase/migrations/allow_estimators_select_customers.sql` – customers SELECT policy includes estimator; new INSERT policy for estimators when master is assigned.
+
+**Files modified**:
+- `src/pages/CustomerForm.tsx` – uses `NewCustomerForm` when `isNew`; edit/delete flow unchanged.
+- `src/pages/Bids.tsx` – `addCustomerModalOpen` state; "+ Add new customer" in GC/Builder dropdown (all four roles); Add Customer modal with `NewCustomerForm`; `loadCustomers()` called for estimators.
+- `src/components/NewCustomerForm.tsx` – `estimator` in UserRole; load all masters for estimator; require master selection for estimator; show Customer Owner dropdown for estimator; Quick Fill expandable (default collapsed), Quick Fill button next to title.
+
+---
+
+## Latest Updates (v2.9)
+
+### Bids Page Enhancements
+
+**Date**: 2026-01-31
+
+**Changes**:
+- ✅ **Estimated Job Start Date**
+  - Added nullable `estimated_job_start_date` column to `public.bids` (migration: `add_bids_estimated_job_start_date.sql`).
+  - New/Edit Bid modal: when outcome is "Won", a date input for "Estimated Job Start Date" is shown and saved.
+  - Submission & Followup tab: Won table header is "Estimated Job Start Date"; cell shows the date (YY/MM/DD format).
+  - Types updated in `src/types/database.ts` (Row, Insert, Update).
+
+- ✅ **Collapsible Submission & Followup tables**
+  - Each of the four sections (Unsent bids, Not yet won or lost, Won, Lost) has a clickable header with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)").
+  - Tables are shown or hidden based on section state. "Lost" is collapsed by default.
+
+- ✅ **Bid Board search**
+  - Full-width search input on Bid Board tab. Filters bids by project name, address, customer name, or GC/builder name (case-insensitive). Empty state reflects search and "hide lost" filter.
+
+- ✅ **Bid Board columns**
+  - Removed "Agreed Value" and "Maximum Profit" columns from the Bid Board table.
+  - "Win/ Loss" and "Bid Value" moved to appear after "Address" and before "Estimator".
+  - "Win/ Loss" header is a button that toggles hiding/showing lost bids; when hiding lost, the label shows "(hiding lost)" and is underlined.
+
+- ✅ **Delete Bid confirmation modal**
+  - Edit Bid modal: inline delete replaced with a "Delete bid" button that opens a separate confirmation modal.
+  - Confirmation modal requires typing the project name (or leaving empty if no project name) to enable Delete. Cancel closes only the delete modal. Delete uses existing `deleteBid()` and closes both modals on success.
+
+- ✅ **Submission & Followup Edit column**
+  - Each of the four Submission & Followup tables has an "Edit" column (last column) with a gear icon button per row when that row is the selected bid. Clicking it opens that bid's full edit modal; click uses `stopPropagation` so row selection does not fire.
+
+- ✅ **Wording**
+  - "X day(s) overdue" in Time to/from bid due date is now "X day(s) since deadline".
+
+- ✅ **GC/Builder contact fields (per bid)**
+  - Added nullable columns to `public.bids`: `gc_contact_name`, `gc_contact_phone`, `gc_contact_email` (migration: `add_bids_gc_contact.sql`).
+  - **New/Edit Bid modal**: After the GC/Builder (customer) picker and before Project Name, three fields: **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**. Saved with the bid; types updated in `src/types/database.ts`.
+  - **Submission & Followup only**: When a bid is selected, the panel above the submission entries table shows Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size. Project contact fields are **not** shown on the Bid Board table.
+
+**Files Modified**:
+- `supabase/migrations/add_bids_gc_contact.sql` – New migration for gc_contact_name, gc_contact_phone, gc_contact_email
+- `src/types/database.ts` – `bids`: added `estimated_job_start_date`, `gc_contact_name`, `gc_contact_phone`, `gc_contact_email`
+- `src/pages/Bids.tsx` – state, form field, save payload, collapsible sections, search, column order/visibility, delete modal, Edit column, Won table column, wording, GC/Builder contact state/form/panel
+
+---
+
+## Latest Updates (v2.8)
+
+### Purchase Order and Price Book Enhancements
+
+**Date**: 2026-01-26
+
+**Changes**:
+- ✅ **Supply house dropdown with active prices**
+  - In the draft PO items table and in the selected PO section, each line item’s Supply House cell is now a **dropdown** instead of plain text or a generic list.
+  - Options show supply houses that have a price for that part, formatted as "Supply House Name - $X.XX" (from the price book).
+  - Selecting an option immediately updates the PO item’s supply house and price and recalculates the PO total (no Edit/Update step).
+  - "None" option clears the supply house and sets price to 0. Options load when the dropdown is opened (on focus).
+
+- ✅ **Finalized POs: read-only supply house and hidden Confirmed**
+  - When a PO is **finalized**, the Supply House cell shows read-only text (supply house name or "—") instead of the dropdown; users cannot change prices or supply house.
+  - The **Confirmed** column is **hidden** for finalized POs (header and body); the table shows Part, Quantity, Supply House, Price, Total only. Footer colspan is adjusted so Grand Total aligns correctly.
+
+- ✅ **Update price to zero removes part from supply house**
+  - In the PO modal’s supply-house price table (when "Update" is expanded), setting the New Price to **0** and clicking "Update price" now **deletes** that price record from the price book (removes the part from that supply house) instead of saving a zero price. The button label changes to "Remove from supply house" when the value is 0.
+
+- ✅ **Price book refresh on close of Part Prices modal**
+  - When the user closes the "Prices" modal (Part Prices Manager) after editing or adding prices for a part, the Price Book table now **refetches parts** so the "Best Price" and part data update without a full page refresh.
+
+- ✅ **View purchase order inline (no modal)**
+  - Viewing a purchase order no longer opens a fixed overlay modal. The selected PO details (name, notes, status, items table, Grand Total, Delete/Close/Print/Duplicate/Go to Projects) now appear in an **inline section** on the Purchase Orders tab, **above** the "Search purchase orders" bar and table. Close hides the section; the search and table remain visible.
+
+- ✅ **Print purchase order**
+  - A **Print** button appears in the selected PO section (next to Close). Clicking it opens a new window with a print-friendly document and triggers the browser print dialog.
+  - **Draft POs**: Print view shows **all prices** for each part (every supply house and price from the price book for that part), plus the currently chosen supply house and price and line total. Columns: Part, Qty, All prices, Chosen, Total; Grand Total.
+  - **Finalized POs**: Print view shows only the **chosen price** per line. Columns: Part, Qty, Supply House, Price, Total; Grand Total. The print window closes after the user prints or cancels.
+
+- ✅ **Reliable refresh after "Update price" in PO modal**
+  - The "Update price" action in the PO modal’s supply-house table now passes the part id from the row into the update function so the price list refreshes correctly even when selection state is stale. "Use for PO" and "Add price" are unchanged.
+
+**Files Modified**:
+- `src/pages/Materials.tsx` - Supply house dropdown state and loader, inline PO section, Print button and printPO handler, fetchPricesForPart helper, finalized read-only/hidden Confirmed, loadParts on Part Prices modal close, updatePartPriceInBook partId and zero-price delete, updatePOItemSupplyHouse for draft-only PO
 
 ---
 

@@ -143,9 +143,44 @@ export type Database = {
         Update: { id?: string; name?: string; status?: 'draft' | 'finalized'; created_by?: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null }
       }
       purchase_order_items: {
-        Row: { id: string; purchase_order_id: string; part_id: string; quantity: number; selected_supply_house_id: string | null; price_at_time: number; sequence_order: number; notes: string | null; price_confirmed_at: string | null; price_confirmed_by: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; purchase_order_id: string; part_id: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time: number; sequence_order?: number; notes?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; purchase_order_id?: string; part_id?: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time?: number; sequence_order?: number; notes?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; purchase_order_id: string; part_id: string; quantity: number; selected_supply_house_id: string | null; price_at_time: number; sequence_order: number; notes: string | null; source_template_id: string | null; price_confirmed_at: string | null; price_confirmed_by: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; purchase_order_id: string; part_id: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time: number; sequence_order?: number; notes?: string | null; source_template_id?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; purchase_order_id?: string; part_id?: string; quantity?: number; selected_supply_house_id?: string | null; price_at_time?: number; sequence_order?: number; notes?: string | null; source_template_id?: string | null; price_confirmed_at?: string | null; price_confirmed_by?: string | null; created_at?: string | null; updated_at?: string | null }
+      }
+      bids_gc_builders: {
+        Row: { id: string; name: string; address: string | null; contact_number: string | null; email: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; address?: string | null; contact_number?: string | null; email?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; address?: string | null; contact_number?: string | null; email?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+      }
+      bids: {
+        Row: { id: string; drive_link: string | null; plans_link: string | null; gc_builder_id: string | null; customer_id: string | null; project_name: string | null; address: string | null; gc_contact_name: string | null; gc_contact_phone: string | null; gc_contact_email: string | null; estimator_id: string | null; bid_due_date: string | null; estimated_job_start_date: string | null; bid_date_sent: string | null; outcome: 'won' | 'lost' | null; bid_value: number | null; agreed_value: number | null; profit: number | null; distance_from_office: string | null; last_contact: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+      }
+      bids_count_rows: {
+        Row: { id: string; bid_id: string; fixture: string; count: number; page: string | null; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; bid_id: string; fixture: string; count?: number; page?: string | null; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; bid_id?: string; fixture?: string; count?: number; page?: string | null; sequence_order?: number; created_at?: string | null }
+      }
+      bids_submission_entries: {
+        Row: { id: string; bid_id: string; contact_method: string | null; notes: string | null; occurred_at: string; created_at: string | null }
+        Insert: { id?: string; bid_id: string; contact_method?: string | null; notes?: string | null; occurred_at?: string; created_at?: string | null }
+        Update: { id?: string; bid_id?: string; contact_method?: string | null; notes?: string | null; occurred_at?: string; created_at?: string | null }
+      }
+      cost_estimates: {
+        Row: { id: string; bid_id: string; purchase_order_id_rough_in: string | null; purchase_order_id_top_out: string | null; purchase_order_id_trim_set: string | null; labor_rate: number | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; bid_id: string; purchase_order_id_rough_in?: string | null; purchase_order_id_top_out?: string | null; purchase_order_id_trim_set?: string | null; labor_rate?: number | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; bid_id?: string; purchase_order_id_rough_in?: string | null; purchase_order_id_top_out?: string | null; purchase_order_id_trim_set?: string | null; labor_rate?: number | null; created_at?: string | null; updated_at?: string | null }
+      }
+      cost_estimate_labor_rows: {
+        Row: { id: string; cost_estimate_id: string; fixture: string; count: number; rough_in_hrs_per_unit: number; top_out_hrs_per_unit: number; trim_set_hrs_per_unit: number; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; cost_estimate_id: string; fixture: string; count?: number; rough_in_hrs_per_unit?: number; top_out_hrs_per_unit?: number; trim_set_hrs_per_unit?: number; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; cost_estimate_id?: string; fixture?: string; count?: number; rough_in_hrs_per_unit?: number; top_out_hrs_per_unit?: number; trim_set_hrs_per_unit?: number; sequence_order?: number; created_at?: string | null }
+      }
+      fixture_labor_defaults: {
+        Row: { fixture: string; rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }
+        Insert: { fixture: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number }
+        Update: { fixture?: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number }
       }
     }
   }

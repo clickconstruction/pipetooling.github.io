@@ -77,6 +77,6 @@ After deployment, you should see:
 - **Authentication**: Only devs can create users
 - **Email**: Must be unique, automatically lowercased
 - **Password**: Set during creation, user can change later
-- **Role**: Must be one of: `dev`, `master_technician`, `assistant`
+- **Role**: Must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`
 - **Name**: Optional, can be set later
 - **Email Confirmation**: Automatically confirmed for manually created users

@@ -61,15 +61,21 @@ The main documentation includes:
 - People roster (with or without user accounts)
 - Workflow templates
 - **Calendar view** (Central Time, two-line display)
-- **Role-based access control** (Owner, Master, Assistant, Subcontractor)
+- **Role-based access control** (Dev, Master, Assistant, Subcontractor, Estimator)
   - Assistants/subcontractors only see assigned stages
+  - Estimators: Materials and Bids only; can see and add customers from Bids (no access to /customers or /projects)
 - **Private notes and line items** (owners/masters only)
 - **Projections and Ledger** (financial tracking)
 - **Action Ledger** (complete stage history)
 - **Set Start** with date/time picker
 - Notification subscriptions
 - **Email templates** (customizable notification content)
-- User impersonation (owners)
+- User impersonation (devs)
+- **Add new customer from Bids**: GC/Builder dropdown includes "+ Add new customer"; opens modal (same form as /customers/new without Quick Fill); new customer can be assigned to a master and is then selected as the bid's GC/Builder
+- **New customer Quick Fill**: On /customers/new, Quick Fill is expandable (collapsed by default) with button next to the title
+- **Bids Counts**: Fixture quick-select buttons, number pad for count, Save / Save and Add; Project Name required; "Save and start Counts" in New Bid modal; Edit Bid button on Counts tab
+- **Bids Takeoff**: Map fixture counts to material templates; multiple templates per fixture; template search; Create PO / Add to PO; "View purchase order" opens Materials with that PO
+- **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId)
 
 ## Deployment
 

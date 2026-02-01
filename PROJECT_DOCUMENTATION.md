@@ -120,7 +120,7 @@ A Master Plumber can:
   - `id` (uuid, PK) - Matches `auth.users.id`
   - `email` (text)
   - `name` (text, nullable)
-  - `role` (enum: `'dev' | 'master_technician' | 'assistant' | 'subcontractor'`)
+  - `role` (enum: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'`)
   - `last_sign_in_at` (timestamptz, nullable)
 - **Relationships**: Referenced by `customers.master_user_id`, `people.master_user_id`
 - **RLS**: 
@@ -142,13 +142,15 @@ A Master Plumber can:
   - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
   - `date_met` (date, nullable) - Date when customer was first met
 - **RLS**: 
-  - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, they're in `master_assistants`, or they're in `master_shares`
+  - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, they're in `master_assistants`, they're in `master_shares`, or they're an **estimator** (estimators can see all customers, for Bids GC/Builder dropdown only; they cannot access `/customers` page)
+  - INSERT: Estimators can insert customers only when `master_user_id` is set to a valid master (dev or master_technician); see migration `allow_estimators_select_customers.sql`
   - DELETE: Masters can delete their own customers (`master_user_id = auth.uid()`), devs can delete any customer
 - **Special Features**: 
-  - Quick fill form allows pasting tab-separated data (name, address, email, phone, date)
-  - **Master selection**: Assistants and devs must select a master when creating customers
+  - **Quick Fill**: Expandable block (collapsed by default) with a "Quick Fill" button next to the "New customer" title; when expanded, paste tab-separated data (name, address, email, phone, date) and click "Fill Fields" to auto-fill the form
+  - **Master selection**: Assistants, devs, and **estimators** (when creating from Bids Add Customer modal) must select a master when creating customers
     - Assistants: Can only select from masters who adopted them
     - Devs: Can select from all masters in the system
+    - Estimators: Can select from all masters when creating from the Add Customer modal in Bids (they cannot access `/customers` page)
     - Masters: Automatically assigned as customer owner
   - **Master can be updated**: When editing, masters and devs can change the customer owner
   - **Customer owner displayed** in customer list
@@ -541,6 +543,77 @@ A Master Plumber can:
   - Devs and master_technicians can CRUD
   - Assistants can update `price_confirmed_at` and `price_confirmed_by` fields only
 
+### Bids Management Tables
+
+#### `public.bids_gc_builders`
+- **Purpose**: GC/Builder entities for bids (legacy; prefer linking bids to `customers` via `bids.customer_id`)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `address` (text, nullable)
+  - `contact_number` (text, nullable)
+  - `email` (text, nullable)
+  - `notes` (text, nullable)
+  - `created_by` (uuid, FK → `users.id`, required)
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Devs and masters can CRUD; assistants have full access (see `allow_assistants_access_bids.sql`)
+- **Migrations**: `create_bids_gc_builders.sql`, `allow_assistants_access_bids.sql`
+
+#### `public.bids`
+- **Purpose**: Main bids (Bid Board)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `drive_link` (text, nullable) - Project folder link
+  - `plans_link` (text, nullable) - Plans link from project folder
+  - `gc_builder_id` (uuid, FK → `bids_gc_builders.id` ON DELETE SET NULL, nullable) - Legacy GC/Builder
+  - `customer_id` (uuid, FK → `customers.id` ON DELETE SET NULL, nullable) - Customer (GC/Builder); same list as Customers page
+  - `project_name` (text, nullable)
+  - `address` (text, nullable)
+  - `gc_contact_name` (text, nullable) - Project contact person for this bid
+  - `gc_contact_phone` (text, nullable) - Project contact phone for this bid
+  - `gc_contact_email` (text, nullable) - Project contact email for this bid
+  - `bid_due_date` (date, nullable)
+  - `bid_date_sent` (date, nullable)
+  - `outcome` (text, nullable) - `'won' | 'lost'`
+  - `bid_value` (numeric(14, 2), nullable)
+  - `agreed_value` (numeric(14, 2), nullable)
+  - `profit` (numeric(14, 2), nullable) - Projected maximum profit
+  - `estimated_job_start_date` (date, nullable) - When outcome is won; shown in New/Edit modal and Won table
+  - `distance_from_office` (text, nullable) - Distance from office (miles; UI uses number input)
+  - `last_contact` (timestamptz, nullable)
+  - `notes` (text, nullable)
+  - `created_by` (uuid, FK → `users.id`, required)
+  - `estimator_id` (uuid, FK → `users.id` ON DELETE SET NULL, nullable) - Estimator user assigned to this bid
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Devs and masters can CRUD; assistants and estimators have full access (see `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`)
+- **Special Features**: GC/Builder field uses `customers` table as primary source (searchable combobox); legacy `gc_builder_id` retained for backward compatibility. Clicking GC/Builder name opens modal with customer or legacy GC/Builder details and won/lost bid counts.
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+
+#### `public.bids_count_rows`
+- **Purpose**: Fixture and count rows per bid (Counts tab)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE, required)
+  - `fixture` (text, required)
+  - `count` (numeric(12, 2), required, default 0)
+  - `page` (text, nullable) - Plan page reference
+  - `sequence_order` (integer, required, default 0)
+  - `created_at` (timestamptz)
+- **RLS**: Access follows parent bid; devs, masters, and assistants (via `allow_assistants_access_bids.sql`)
+- **Migrations**: `create_bids_count_rows.sql`, `add_bids_count_rows_page.sql`, `allow_assistants_access_bids.sql`
+
+#### `public.bids_submission_entries`
+- **Purpose**: Submission and follow-up entries per bid (Submission & Followup tab)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE, required)
+  - `contact_method` (text, nullable)
+  - `notes` (text, nullable)
+  - `occurred_at` (timestamptz, required, default now())
+  - `created_at` (timestamptz)
+- **RLS**: Access follows parent bid; devs, masters, and assistants (via `allow_assistants_access_bids.sql`)
+- **Migrations**: `create_bids_submission_entries.sql`, `allow_assistants_access_bids.sql`
+
 ### Foreign Key Relationships
 ```
 users (id)
@@ -553,7 +626,8 @@ users (id)
   └── master_shares.viewing_master_id
 
 customers (id)
-  └── projects.customer_id
+  ├── projects.customer_id
+  └── bids.customer_id
 
 projects (id)
   └── project_workflows.project_id
@@ -601,6 +675,17 @@ material_templates (id)
 purchase_orders (id)
   ├── purchase_order_items.purchase_order_id
   └── workflow_step_line_items.purchase_order_id (ON DELETE SET NULL)
+
+bids_gc_builders (id)
+  └── bids.gc_builder_id (ON DELETE SET NULL)
+
+users (id)
+  ├── bids_gc_builders.created_by
+  └── bids.created_by
+
+bids (id)
+  ├── bids_count_rows.bid_id (ON DELETE CASCADE)
+  └── bids_submission_entries.bid_id (ON DELETE CASCADE)
 ```
 
 **Important**: When deleting, respect foreign key order:
@@ -617,8 +702,12 @@ purchase_orders (id)
 11. `material_templates` (no dependencies)
 12. `material_parts` (no dependencies)
 13. `supply_houses` (no dependencies)
-14. `projects` (references customers)
-15. `customers` (references users)
+14. `bids_count_rows` (references bids)
+15. `bids_submission_entries` (references bids)
+16. `bids` (references customers, users, bids_gc_builders)
+17. `bids_gc_builders` (references users)
+18. `projects` (references customers)
+19. `customers` (references users)
 
 ---
 
@@ -719,6 +808,16 @@ purchase_orders (id)
   - Cannot edit/delete/assign stages
   - Cannot see private notes, line items, or projections
 
+#### `estimator`
+- **Access**: Materials, Bids only (no Dashboard, Customers, Projects, People, Settings, Calendar)
+- **Restrictions**:
+  - Navigation links: only Materials and Bids; client-side redirect sends estimators to `/bids` for any other path (including `/customers`, `/projects`)
+  - **Cannot** access `/customers` or `/projects` pages (no ongoing customer or project management)
+- **Bids**:
+  - Can see all customers in the GC/Builder dropdown and when viewing bid data (customers RLS allows estimator SELECT)
+  - Can create new customers from the **Add Customer** modal (opened via "+ Add new customer" in the GC/Builder dropdown); must assign a **Customer Owner (Master)**; new customer is then selected as the bid's GC/Builder (customers RLS allows estimator INSERT when `master_user_id` is set to a valid master)
+  - Full access to Bids (bid board, counts, takeoffs, cover letter, submission & followup) per `allow_estimators_access_bids.sql`
+
 ### Row Level Security (RLS) Patterns
 
 #### Common Pattern: Master-Assistant Adoption and Master Sharing
@@ -782,7 +881,7 @@ user_id = auth.uid()
     - Devs: Can select from all masters in the system
     - Masters: Automatically assigned as customer owner
   - **Master can be updated** when editing (for masters and devs)
-  - **Quick Fill**: Paste tab-separated data (name, address, email, phone, date) to auto-fill form
+  - **Quick Fill**: Expandable block (collapsed by default) with a "Quick Fill" button next to the "New customer" title; when expanded, paste tab-separated data (name, address, email, phone, date) and click "Fill Fields" to auto-fill form
   - **Date Met**: Track when customer relationship started
   - **Contact Info**: Structured storage of email and phone (JSONB)
   - **Customer owner displayed** in customer list
@@ -1099,6 +1198,7 @@ user_id = auth.uid()
 #### Features
 
 **Price Book Tab**:
+- **Refresh on close**: When the user closes the "Prices" modal (Part Prices Manager) after editing or adding prices for a part, the Price Book table refetches parts so "Best Price" and part data update without a full page refresh.
 - **Parts Management**:
   - Create/edit/delete parts with name, manufacturer, fixture type, notes (SKU numbers)
   - Fixture type dropdown with predefined options (Fitting, Pipe, Drain, Sink, Faucet, Toilet, Shower, Bathtub, Valve, Water Heater, Vent, Trap, Elbow, Tee, Coupling, Other)
@@ -1112,6 +1212,7 @@ user_id = auth.uid()
   - Supply houses appear in "Add Price" dropdown after creation
 - **Price Management**:
   - Add/edit prices for parts across different supply houses
+  - In the PO modal’s supply-house price table, setting New Price to **0** and clicking "Update price" **removes** that price from the price book (deletes the part from that supply house); button label shows "Remove from supply house" when value is 0
   - Track effective dates for prices
   - **Price History**: View complete history with "View History" button
     - Shows: Date Changed, Supply House, Old Price, New Price, Change %, Effective Date, Notes
@@ -1135,20 +1236,24 @@ user_id = auth.uid()
   - **Searchable part picker (Add Part)**: When adding a part to a draft PO, same combobox as template Add Item—search by name, manufacturer, fixture type, or notes; dropdown with Clear. Uses same filter as Price Book.
   - Edit PO name inline (default: "New Purchase Order [current date]")
   - View all items with best prices from available supply houses
-  - Change supply house for individual items (override best price)
+  - **Supply house dropdown**: Each line item’s Supply House cell is a dropdown showing supply houses that have a price for that part, formatted as "Supply House Name - $X.XX". Selecting an option immediately updates the PO item’s supply house and price and recalculates the PO total. "None" clears the supply house. Options load when the dropdown is opened.
+  - **Update price in PO**: In the selected PO section, "Update" expands a per-part price table (supply house, current price, new price). "Update price" saves or, if new price is 0, **removes** that price from the price book ("Remove from supply house"). "Use for PO" sets the PO item’s supply house and price.
   - Price confirmation system for assistants:
     - Per-item checkbox to confirm prices
     - Shows "time since checked"
     - Creates price history entry when confirmed
   - Finalize purchase orders (becomes immutable)
-  - **Delete button**: Located in PO view modal (left side)
+  - **Delete button**: Located in selected PO section (left side)
 
 **Purchase Orders (Management) Tab**:
 - **PO Management**:
   - View all purchase orders (draft and finalized)
   - Filter by status (all, draft, finalized)
   - Search by name
-  - View PO details in modal
+  - **View PO details inline**: When a PO is selected (View), its details appear in an **inline section** above the "Search purchase orders" bar and table (no modal). Section shows PO name, notes (if finalized), status, items table (column headers use **"Qty"**), **Grand Total** (footer colspan 5; totals coerce to number with NaN fallback), **With Tax** row (editable tax % default 8.25, calculated total), and buttons (Delete, Print, Close, Duplicate as Draft, Go to Projects). Close hides the section. **Open from Bids**: Navigating from Bids Takeoff "View purchase order" passes `location.state.openPOId`; Materials opens Purchase Orders tab and displays that PO, then clears state.
+  - **Supply house dropdown**: In the selected PO section, each line item’s Supply House cell is a dropdown (draft only) showing "Supply House Name - $X.XX" options; selecting one updates the PO item and total. For **finalized** POs, Supply House is read-only text (no dropdown).
+  - **Confirmed column**: Shown only for **draft** POs (checkbox and timestamp). Hidden for finalized POs.
+  - **Print**: Print button opens a new window with a print-friendly document. **Draft**: shows Part, Qty, All prices (every supply house price for that part), Chosen, Total; **Finalized**: shows Part, Qty, Supply House, Price, Total. Grand Total in both. Print window closes after print/cancel.
   - **Finalized PO Features**:
     - **Notes**: Add notes to finalized POs (add-only, cannot be edited)
       - Notes display at top of PO view with user name and timestamp
@@ -1158,7 +1263,7 @@ user_id = auth.uid()
       - Resets confirmation status
       - Automatically opens new draft for editing
     - **Add to Workflow**: Link to add PO as line item to workflow steps
-  - **Delete button**: Located in PO view modal (left side)
+  - **Delete button**: Located in selected PO section (left side)
 
 **Integration with Workflows**:
 - Finalized purchase orders can be added as line items to workflow steps
@@ -1201,7 +1306,57 @@ user_id = auth.uid()
   - Displayed in "Action Ledger" section on each step card
   - Provides full audit trail for compliance and debugging
 
-### 12. Integration Features
+### 12. Bids Management
+- **Page**: `Bids.tsx`
+- **Route**: `/bids`
+- **Access**: Devs, master_technicians, assistants, and **estimators** (estimators see only Materials and Bids in nav; no access to `/customers` or `/projects`)
+- **Purpose**: Track bids, fixture counts, and submission/follow-up per bid
+
+#### Features
+
+**Bid Board Tab**:
+- **Search**: Full-width search input filters bids by project name, address, customer name, or GC/builder name (case-insensitive). Empty state reflects search and "hide lost" filter.
+- Table of bids; all column headers and cells are **centered**. Columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, Win/ Loss, Bid Value, Estimator, Bid Due Date, Bid Date Sent, Distance to Office, Last Contact, Notes, Edit. (Agreed Value and Maximum Profit columns are not shown.)
+- **Win/ Loss**: Header is a **button** that toggles hiding/showing lost bids; when hiding lost, label shows "(hiding lost)" and is underlined.
+- **Display formatting**: Bid Due Date and Bid Date Sent use **YY/MM/DD** (e.g. 26/02/12). Last Contact uses **short date with day of week** (e.g. "Sun 2/1"). Bid Value uses **compact currency** (e.g. $121k). Distance from Office shows value + **mi** (e.g. 66.6mi). Column label is "Distance from Office" (not "Distance from Office (Miles)").
+- **Notes**: Clicking the Notes cell opens a **quick-edit modal** (Notes – [project name]) with a textarea; Save updates the bid's notes and refreshes the table; Cancel closes without saving. Notes cell is clickable with cursor pointer and tooltip "Click to add notes" / "(click to edit)".
+- **Edit**: Edit column shows only a **gear/settings icon** (no visible button box; header text hidden, `title`/`aria-label` for accessibility). Opens the full New/Edit Bid modal.
+- "New" button opens modal to create/edit bids. **Project Name** is **required** (label "Project Name *"; validation blocks save with "Project Name is required."). **"Save and start Counts"** (bottom left) saves the bid and opens it in the Counts tab. Project Folder label includes inline links: "bid folders: [plumbing] [electrical] [HVAC]". Job Plans and Address are separate URL/text fields. After GC/Builder (customer) picker: **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per-bid; not shown on Bid Board). Project Name and Address are two separate fields. When outcome is **Won**, an **Estimated Job Start Date** date input is shown and saved. Distance to Office is a number input (min 0, step 0.1). Profit label is "Maximum Profit".
+- **Edit Bid modal**: **Cancel** button is at **top right** next to the title. **Delete**: "Delete bid" opens a separate confirmation modal; user must type the project name (or leave empty) to enable Delete.
+- **GC/Builder**: Uses `customers` table as data source with searchable combobox (same pattern as customer picker in ProjectForm). **"+ Add new customer"** option at the top of the dropdown (for dev, master_technician, assistant, and estimator) opens an **Add Customer** modal with the same form as `/customers/new` but without Quick Fill; on save, the new customer is created, list is refetched, and the new customer is selected as the bid's GC/Builder. Legacy `bids_gc_builders` retained for backward compatibility.
+- Clicking a GC/Builder name opens a modal: customer details (name, address, phone/email from contact_info, won/lost bids) or legacy GC/Builder details (name, address, contact number, won/lost bids) depending on whether bid has `customer_id` or `gc_builder_id`.
+
+**Counts Tab**:
+- **Search** box is **below** the selected-bid panel, **full width**; column header is **"Project Name"**. **"Edit Bid"** button in tab header (next to Close) opens Edit Bid modal for the selected bid.
+- Selecting a bid shows an inline panel with **Add row** and its fixture/count rows. Table columns: **Fixture\***, **Count\***, **Plan Page**, **Actions** (centered headers).
+- **NewCountRow (add row)**: Fixture, Count, and Plan Page in a **combined** cell; **Fixture quick-select** buttons (Bathrooms, Kitchen, Laundry, etc.) below Fixture input; **number pad** below Count (1–9, C, 0, Delete). **Save** and **Save and Add** (Save and Add keeps form open for another row). Fixture and Count required.
+
+**Takeoffs Tab**:
+- Select a bid; table maps fixture counts to **material templates** and quantities. **Template search** above table ("only show templates with these words"); dropdowns use filtered options and always include selected. **Multiple templates per fixture** (Add template / Remove per mapping).
+- **Create purchase order** creates a new draft PO from current mappings; **Add to selected PO** adds items to an existing draft PO (uses shared `materialPOUtils`). **View purchase order** link after create/add navigates to Materials with that PO open (`location.state.openPOId`).
+
+**Cover Letter Tab**: "Cover Letter – coming soon" and link to [BidTooling.com](https://BidTooling.com).
+
+**Submission & Followup Tab**:
+- **Four tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost), **Won**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all four. Clicking a row selects the bid and shows its submission entries in a panel above.
+- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). Below that: submission entries table (Contact method, Notes, Time and date), "Add row", **Edit icon** (gear) next to Close (opens that bid's full edit modal), and Close.
+- **Not yet won or lost** and **Unsent bids** tables: Columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit**. **Time since last contact** uses the more recent of `bid.last_contact` or the latest submission entry's `occurred_at`; a 60-second re-render (when tab is active) keeps relative times updated. Adding or editing a submission entry updates the bid's `last_contact` to that entry's date and refetches bids. **Time to/from bid due date** shows e.g. "X days since deadline", "Due today", "X days until due". **Edit** column: gear icon button when that row is the selected bid; opens full edit modal (click uses stopPropagation).
+- **Won** and **Lost** tables: Columns Project/GC, **Estimated Job Start Date** (Won only; YY/MM/DD), **Edit**. Lost table shows Project/GC and Edit.
+- **Submission entry rows**: Edit and Delete are **icon buttons** (gear for Edit, trash for Delete) with tooltips; same behavior as before (inline edit for Edit, confirm then delete for Delete).
+
+#### Database Schema (Bids)
+
+**Tables**:
+- `bids_gc_builders` – Legacy GC/Builder entities (name, address, contact_number, email, notes, created_by)
+- `bids` – Main bids (drive_link, plans_link, gc_builder_id, customer_id, project_name, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id)
+- `bids_count_rows` – Fixture/count per bid (bid_id, fixture, count, page, sequence_order)
+- `bids_submission_entries` – Submission/follow-up entries per bid (bid_id, contact_method, notes, occurred_at)
+
+**Migrations**: `create_bids_gc_builders.sql`, `create_bids.sql`, `create_bids_count_rows.sql`, `create_bids_submission_entries.sql`, `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`, `allow_estimators_select_customers.sql` (customers SELECT/INSERT for estimators).
+
+**RLS**: Bids tables allow devs, masters, assistants, and estimators full access (assistants via `allow_assistants_access_bids.sql`, estimators via `allow_estimators_access_bids.sql`). Child tables (bids_count_rows, bids_submission_entries) follow parent bid access. Customers table: estimators can SELECT all and INSERT when master is assigned (see `allow_estimators_select_customers.sql`).
+
+### 13. Integration Features
 - **Google Maps Integration**: 
   - Project addresses on Dashboard are clickable
   - Opens Google Maps search in new tab with project address
@@ -1228,11 +1383,13 @@ pipetooling.github.io/
 │   └── favicon.svg             # Site favicon (orange gear icon)
 ├── src/
 │   ├── components/
-│   │   └── Layout.tsx          # Main layout with navigation
+│   │   ├── Layout.tsx          # Main layout with navigation
+│   │   └── NewCustomerForm.tsx # Shared create-only customer form (Bids Add Customer modal, /customers/new)
 │   ├── hooks/
 │   │   └── useAuth.ts          # Authentication hook
 │   ├── lib/
-│   │   └── supabase.ts         # Supabase client initialization
+│   │   ├── supabase.ts         # Supabase client initialization
+│   │   └── materialPOUtils.ts # Shared PO helpers (expandTemplate, addExpandedPartsToPO; Materials & Bids Takeoff)
 │   ├── pages/
 │   │   ├── Calendar.tsx        # Calendar view
 │   │   ├── CustomerForm.tsx    # Create/edit customer
@@ -1241,7 +1398,8 @@ pipetooling.github.io/
 │   │   ├── People.tsx          # People roster
 │   │   ├── ProjectForm.tsx     # Create/edit project
 │   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
-│   │   ├── Projects.tsx        # List projects
+│   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
+│   │   ├── Projects.tsx       # List projects
 │   │   ├── ResetPassword.tsx   # Password reset request page
 │   │   ├── ResetPasswordConfirm.tsx # Password reset confirmation page
 │   │   ├── Settings.tsx        # User management (dev) and password change (all users)
@@ -1292,6 +1450,13 @@ pipetooling.github.io/
 - TypeScript types generated from database schema
 - Used for type-safe database queries
 - **Note**: Must be manually updated when schema changes
+
+#### `src/pages/Bids.tsx`
+- **Route**: `/bids`
+- **Access**: Devs, master_technicians, assistants
+- **Tabs**: Bid Board (search, table with Win/Loss toggle to hide lost, columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, Win/Loss, Bid Value, Estimator, Bid Due Date, Bid Date Sent, Distance, Last Contact, Notes, Edit; create/edit modal with Project Contact Name, Project Contact Phone, Project Contact Email, Estimated Job Start Date when outcome is Won; delete bid opens separate confirmation modal; project contact fields not shown on Bid Board), Counts (fixture/count/page per bid), Takeoffs (placeholder), Cover Letter (placeholder), Submission & Followup (four collapsible tables; selected-bid panel shows Builder Name, Builder Address, Builder Phone Number, Builder Email (from customer or legacy GC/Builder), Project Name, Project Address, Project Contact Name, Project Contact Phone, Project Contact Email, Bid Size then submission entries table; each table has Edit column with gear when row is selected; Won table shows Estimated Job Start Date; edit icon next to Close; submission entry Edit/Delete icons)
+- **Database**: `bids`, `bids_gc_builders`, `bids_count_rows`, `bids_submission_entries`; GC/Builder picker uses `customers` table
+- **Helpers**: `formatShortDate` (e.g. "Sun 2/1"), `formatDateYYMMDD` (e.g. 26/02/12), `formatCompactCurrency` (e.g. $121k), `formatTimeSinceLastContact`, `formatTimeSinceDueDate` (e.g. "X days since deadline", "Due today", "X days until due")
 
 #### `src/pages/Workflow.tsx`
 - **Most complex page** (~1,500+ lines)
@@ -1491,7 +1656,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ### Edge Functions Deployment
 Edge Functions are deployed via Supabase CLI or Dashboard:
 - `invite-user` - Sends invitation emails (✅ Implemented)
-- `create-user` - Manually creates users (✅ Implemented)
+- `create-user` - Manually creates users (✅ Implemented). **Role** in request body must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`.
 - `delete-user` - Deletes users (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
 - `login-as-user` - Generates magic link for impersonation (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
 - `test-email` - Sends test emails using Resend service (✅ Implemented - requires `RESEND_API_KEY`)
@@ -2034,7 +2199,7 @@ async function myFunction() {
 ### User Roles
 - **dev**: Full access, user management, templates
 - **master_technician**: Create/manage projects, customers, workflows
-- **assistant**: Create/edit projects, view/update workflows (assigned stages only)
+- **assistant**: Create/edit projects, view/update workflows (assigned stages only), full access to Bids
 - **subcontractor**: Dashboard and Calendar only
 
 ### Key Routes
@@ -2045,6 +2210,7 @@ async function myFunction() {
 - `/people` - People roster
 - `/calendar` - Calendar view
 - `/materials` - Materials management (devs and masters only: price book, templates, purchase orders)
+- `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup; devs, masters, assistants)
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
 
@@ -2055,14 +2221,14 @@ async function myFunction() {
 
 ### Edge Functions
 - `invite-user` - Send invitation email
-- `create-user` - Manually create user
+- `create-user` - Manually create user; **role** must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`
 - `delete-user` - Delete user
 - `login-as-user` - Generate impersonation magic link
 - `test-email` - Send test emails using Resend service (for email template testing)
 - `send-workflow-notification` - Send workflow stage notifications via email (automatically called when steps change status)
 
 ### Database Enums
-- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor'`
+- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'`
 - `project_status`: `'awaiting_start' | 'active' | 'completed' | 'on_hold'`
 - `workflow_status`: `'draft' | 'active' | 'completed'`
 - `step_status`: `'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved'`
@@ -2106,8 +2272,24 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-26
-**Documentation Version**: 2.8
+**Last Updated**: 2026-01-31
+**Documentation Version**: 2.10
+
+## Recent Updates (v2.10)
+
+### Bids – Bid Board and Submission & Followup
+- **Bid Board**: **Search** input (full width) filters by project name, address, customer name, or GC/builder name. Columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, **Win/ Loss** (toggle button to hide/show lost bids; when hiding, label "(hiding lost)" and underlined), **Bid Value**, Estimator, Bid Due Date, Bid Date Sent, Distance from Office, Last Contact, Notes, Edit. Agreed Value and Maximum Profit columns removed. All column headers and cells **centered**. **Plans Link Folder**. **Distance from Office** (value e.g. 66.6mi). **Last Contact** short date with day of week (e.g. "Sun 2/1"). **Bid Due Date** and **Bid Date Sent** **YY/MM/DD** (e.g. 26/02/12). **Bid Value** **compact currency** (e.g. $121k). **Edit** column **gear icon** (opens full edit modal). **Notes** cell **clickable** → quick-edit modal; Save updates notes and refreshes table. **New/Edit modal**: After GC/Builder picker, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per bid; not shown on Bid Board). When outcome is Won, **Estimated Job Start Date** date input is shown and saved. **Delete**: "Delete bid" button in Edit modal opens **separate confirmation modal**; type project name (or leave empty if none) to enable Delete; Cancel closes only delete modal.
+- **Submission & Followup**: **Four collapsible sections** with clickable headers (chevron ▼/▶ and item count). "Lost" collapsed by default. **Unsent bids**, **Not yet won or lost**, **Won**, **Lost**. **Selected-bid panel**: Bid title, then summary: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size; then submission entries table, Add row, Edit icon, Close. **Not yet won or lost** and **Unsent bids**: columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit** (gear when row is selected; opens full edit modal). **Time to/from bid due date**: e.g. "X days since deadline", "Due today", "X days until due". **Won** table: columns Project/GC, **Estimated Job Start Date** (YY/MM/DD), Edit. **Lost** table: Project/GC, Edit. **Edit icon** (gear) next to Close opens that bid's full edit modal. **Submission entry rows**: Edit and Delete **icon buttons** (gear, trash) with tooltips.
+
+## Recent Updates (v2.9)
+
+### Bids Management
+- **New Bids section** with route `/bids` and nav link for devs, master_technicians, and assistants (same as Materials visibility except subcontractors).
+- **Bid Board tab**: Table of bids (project folder link, plans link, GC/Builder, project name/address, bid due date, bid date sent, won/lost, bid value, agreed value, projected maximum profit, distance from office, last contact, notes). New/Edit modal with bid folders links [plumbing] [electrical] [HVAC]; distance as number input; profit labeled "Projected Maximum Profit". GC/Builder uses **customers** table with searchable combobox (same pattern as ProjectForm customer picker). Clicking GC/Builder name opens modal with customer or legacy GC/Builder details and won/lost bid counts.
+- **Counts tab**: Search bids; select bid to show fixture/count rows. Columns: Fixture, Count, Plan Page, actions. Plan Page field added to `bids_count_rows` and persisted.
+- **Takeoffs / Cover Letter tabs**: Placeholders ("Coming soon").
+- **Submission & Followup tab**: Add rows (contact method, notes, time/date) per selected bid.
+- **Database**: Tables `bids_gc_builders`, `bids`, `bids_count_rows`, `bids_submission_entries`; migrations `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `allow_assistants_access_bids.sql`. RLS grants devs, masters, and assistants full access to bids tables.
 
 ## Recent Updates (v2.8)
 
@@ -2123,6 +2305,17 @@ For questions or issues:
   - **Export projects backup**: Downloads JSON with customers, projects, project_workflows, project_workflow_steps, project_workflow_step_actions, step_subscriptions, workflow_step_line_items, workflow_projections. Filename: `projects-backup-YYYY-MM-DD.json`.
   - **Export materials backup**: Downloads JSON with supply_houses, material_parts, material_part_prices, material_templates, material_template_items. Filename: `materials-backup-YYYY-MM-DD.json`.
 - Exports respect RLS (user only receives data they can read). Each file includes an `exportedAt` timestamp.
+
+## Recent Updates (v2.8)
+
+### Purchase Order and Price Book Enhancements
+- ✅ **Supply house dropdown with active prices**: Draft PO items and selected PO section use a dropdown per line showing "Supply House Name - $X.XX" options; selecting one updates the PO item and total. Finalized POs show read-only supply house text.
+- ✅ **Finalized POs**: Supply House cell is read-only (no dropdown). Confirmed column is hidden (table shows Part, Qty, Supply House, Price, Total only).
+- ✅ **Update price to zero**: In the PO supply-house price table, setting New Price to 0 and "Update price" removes that price from the price book (button label: "Remove from supply house").
+- ✅ **Price book refresh**: Closing the Part Prices modal refetches parts so the Price Book table shows updated Best Price without a full page refresh.
+- ✅ **View PO inline**: Selected PO details appear in an inline section above "Search purchase orders" (no modal). Close hides the section.
+- ✅ **Print PO**: Print button opens a print-friendly document: draft shows Part, Qty, All prices, Chosen, Total; finalized shows Part, Qty, Supply House, Price, Total. Grand Total in both. Print window closes after print/cancel.
+- ✅ **Reliable refresh**: "Update price" in the PO modal passes part id so the price list refreshes correctly after update.
 
 ## Recent Updates (v2.7)
 
@@ -2141,7 +2334,7 @@ For questions or issues:
   - "View History" button in price management modal
   - History entries created on price updates and confirmations
 - ✅ **Price Confirmation System**:
-  - Per-item checkbox in PO view for assistants to confirm prices
+  - Per-item checkbox in PO view for assistants to confirm prices (draft POs only; Confirmed column hidden for finalized)
   - Shows "time since checked" (e.g., "2 hours ago")
   - Creates price history entry when confirmed (for charting/analysis)
   - Tracks who confirmed and when
@@ -2154,8 +2347,8 @@ For questions or issues:
   - Default name: "New Purchase Order [current date]"
   - Inline name editing for draft POs
   - "Duplicate as Draft" button for finalized POs
-  - Change supply house for individual items (even if higher price)
-  - Delete button moved to PO view modal
+  - Change supply house for individual items (even if higher price) via supply house dropdown
+  - Delete button in selected PO section (inline view)
 - ✅ **UI Improvements**:
   - Delete buttons moved to edit modals (parts, templates, supply houses, POs)
   - Price edit modal: Delete button only visible after Edit is pressed

@@ -3,13 +3,17 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
-const navStyle = ({ isActive }: { isActive: boolean }) => ({ fontWeight: isActive ? 600 : undefined })
+const navStyle = ({ isActive }: { isActive: boolean }) => ({
+  fontWeight: isActive ? 600 : undefined,
+  textDecoration: isActive ? 'underline' : undefined,
+})
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar']
+const ESTIMATOR_PATHS = ['/materials', '/bids']
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -33,6 +37,9 @@ export default function Layout() {
   useEffect(() => {
     if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
+    }
+    if (role === 'estimator' && (location.pathname === '/' || location.pathname === '/dashboard' || !ESTIMATOR_PATHS.includes(location.pathname))) {
+      navigate('/bids', { replace: true })
     }
   }, [role, location.pathname, navigate])
 
@@ -67,20 +74,32 @@ export default function Layout() {
           alignItems: 'center',
         }}
       >
-        <NavLink to="/dashboard" style={navStyle} end>Dashboard</NavLink>
-        {role !== 'subcontractor' && (
+        {role === 'estimator' ? (
           <>
-            <NavLink to="/customers" style={navStyle}>Customers</NavLink>
-            <NavLink to="/projects" style={navStyle}>Projects</NavLink>
-            <NavLink to="/people" style={navStyle}>People</NavLink>
-            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-              <NavLink to="/materials" style={navStyle}>Materials</NavLink>
+            <NavLink to="/materials" style={navStyle}>Materials</NavLink>
+            <NavLink to="/bids" style={navStyle}>Bids</NavLink>
+          </>
+        ) : (
+          <>
+            <NavLink to="/dashboard" style={navStyle} end>Dashboard</NavLink>
+            {role !== 'subcontractor' && (
+              <>
+                <NavLink to="/customers" style={navStyle}>Customers</NavLink>
+                <NavLink to="/projects" style={navStyle}>Projects</NavLink>
+                <NavLink to="/people" style={navStyle}>People</NavLink>
+                {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+                  <>
+                    <NavLink to="/materials" style={navStyle}>Materials</NavLink>
+                    <NavLink to="/bids" style={navStyle}>Bids</NavLink>
+                  </>
+                )}
+              </>
             )}
+            <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
           </>
         )}
-        <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {role !== 'subcontractor' && <NavLink to="/settings" style={navStyle}>Settings</NavLink>}
+          {role !== 'subcontractor' && role !== 'estimator' && <NavLink to="/settings" style={navStyle}>Settings</NavLink>}
           {impersonating && (
             <button
               type="button"

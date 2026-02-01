@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
 
@@ -10,7 +12,7 @@ type MaterialTemplate = Database['public']['Tables']['material_templates']['Row'
 type MaterialTemplateItem = Database['public']['Tables']['material_template_items']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
 
 type PartWithPrices = MaterialPart & {
   prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
@@ -24,6 +26,7 @@ type TemplateItemWithDetails = MaterialTemplateItem & {
 type POItemWithDetails = PurchaseOrderItem & {
   part: MaterialPart
   supply_house?: SupplyHouse
+  source_template?: { id: string; name: string } | null
 }
 
 type PurchaseOrderWithItems = PurchaseOrder & {
@@ -32,6 +35,8 @@ type PurchaseOrderWithItems = PurchaseOrder & {
 
 export default function Materials() {
   const { user: authUser } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<'price-book' | 'templates-po' | 'purchase-orders'>('price-book')
   const [loading, setLoading] = useState(true)
@@ -98,6 +103,8 @@ export default function Materials() {
   const [editingPOItemQuantity, setEditingPOItemQuantity] = useState('')
   const [editingPOItemSupplyHouse, setEditingPOItemSupplyHouse] = useState('')
   const [editingPOItemPrice, setEditingPOItemPrice] = useState('')
+  const [editingPOItemNotesId, setEditingPOItemNotesId] = useState<string | null>(null)
+  const [editingPOItemNotesValue, setEditingPOItemNotesValue] = useState('')
   const [editingPOItemSupplyHouseView, setEditingPOItemSupplyHouseView] = useState<string | null>(null)
   const [availablePricesForItem, setAvailablePricesForItem] = useState<Array<{ price_id: string; supply_house_id: string; supply_house_name: string; price: number }>>([])
   const [loadingAvailablePrices, setLoadingAvailablePrices] = useState(false)
@@ -115,6 +122,7 @@ export default function Materials() {
   const [duplicatingPO, setDuplicatingPO] = useState<string | null>(null)
   const [addingNotesToPO, setAddingNotesToPO] = useState<string | null>(null)
   const [notesValue, setNotesValue] = useState('')
+  const [viewedPOTaxPercent, setViewedPOTaxPercent] = useState('8.25')
 
   const templatePartPickerRef = useRef<HTMLDivElement>(null)
   const poPartPickerRef = useRef<HTMLDivElement>(null)
@@ -142,7 +150,7 @@ export default function Materials() {
     }
     const role = (me as { role: UserRole } | null)?.role ?? null
     setMyRole(role)
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') {
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator') {
       setLoading(false)
       return
     }
@@ -268,7 +276,7 @@ export default function Materials() {
       pos.map(async (po) => {
         const { data: itemsData, error: itemsError } = await supabase
           .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*)')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
           .eq('purchase_order_id', po.id)
           .order('sequence_order', { ascending: true })
         
@@ -276,11 +284,12 @@ export default function Materials() {
           return { ...po, items: [] }
         }
 
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
           supply_house: item.supply_houses || undefined,
+          source_template: item.source_template ?? null,
         }))
 
         return { ...po, items: itemsWithDetails }
@@ -314,7 +323,7 @@ export default function Materials() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') {
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
       const loadInitial = async () => {
         try {
           await Promise.all([
@@ -350,16 +359,17 @@ export default function Materials() {
         if (poData) {
           const { data: itemsData, error: itemsError } = await supabase
             .from('purchase_order_items')
-            .select('*, material_parts(*), supply_houses(*)')
+            .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
             .eq('purchase_order_id', editingPO.id)
             .order('sequence_order', { ascending: true })
           
           if (!itemsError && itemsData) {
-            const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+            const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
             const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
               ...item,
               part: item.material_parts,
               supply_house: item.supply_houses || undefined,
+              source_template: item.source_template ?? null,
             }))
             setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
           }
@@ -368,6 +378,41 @@ export default function Materials() {
       loadPODetails()
     }
   }, [editingPO?.id])
+
+  // Open a specific PO when navigating from Bids (e.g. "View purchase order")
+  useEffect(() => {
+    const openPOId = (location.state as { openPOId?: string } | null)?.openPOId
+    if (!openPOId) return
+    setActiveTab('purchase-orders')
+    const loadPO = async () => {
+      const { data: poData } = await supabase
+        .from('purchase_orders')
+        .select('*')
+        .eq('id', openPOId)
+        .single()
+      if (poData) {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('purchase_order_items')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
+          .eq('purchase_order_id', openPOId)
+          .order('sequence_order', { ascending: true })
+        if (!itemsError && itemsData) {
+          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
+            ...item,
+            part: item.material_parts,
+            supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
+          }))
+          setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
+        } else {
+          setEditingPO({ ...poData as PurchaseOrder, items: [] })
+        }
+      }
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    loadPO()
+  }, [location.state])
 
   // Close part picker dropdowns when clicking outside
   useEffect(() => {
@@ -396,8 +441,8 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant') {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, and assistants can access materials.</div>
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator') {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, and estimators can access materials.</div>
   }
 
   // Filter parts by search query (name, manufacturer, fixture_type, notes) — used by part pickers
@@ -764,64 +809,14 @@ export default function Materials() {
   }
 
   // Purchase Order Functions
-  
-  // Expand template recursively to get all parts (reusable function)
-  async function expandTemplate(tid: string, multiplier: number = 1): Promise<Array<{ part_id: string; quantity: number }>> {
-    const { data: items } = await supabase
-      .from('material_template_items')
-      .select('*')
-      .eq('template_id', tid)
-    
-    if (!items) return []
-
-    const result: Array<{ part_id: string; quantity: number }> = []
-    for (const item of items) {
-      if (item.item_type === 'part' && item.part_id) {
-        result.push({ part_id: item.part_id, quantity: item.quantity * multiplier })
-      } else if (item.item_type === 'template' && item.nested_template_id) {
-        const nested = await expandTemplate(item.nested_template_id, item.quantity * multiplier)
-        result.push(...nested)
-      }
-    }
-    return result
-  }
 
   async function createPOFromTemplate(templateId: string) {
     if (!authUser?.id) return
     setCreatingPOFromTemplate(true)
     setError(null)
 
-    const expandedParts = await expandTemplate(templateId)
-    
-    // Get best prices for each part
-    const poItemsWithPrices: Array<{ part_id: string; quantity: number; supply_house_id: string | null; price: number }> = []
-    for (const { part_id, quantity } of expandedParts) {
-      const { data: prices } = await supabase
-        .from('material_part_prices')
-        .select('*, supply_houses(*)')
-        .eq('part_id', part_id)
-        .order('price', { ascending: true })
-        .limit(1)
-      
-      if (prices && prices.length > 0) {
-        const bestPrice = prices[0] as MaterialPartPrice & { supply_houses: SupplyHouse }
-        poItemsWithPrices.push({
-          part_id,
-          quantity,
-          supply_house_id: bestPrice.supply_house_id,
-          price: bestPrice.price,
-        })
-      } else {
-        poItemsWithPrices.push({
-          part_id,
-          quantity,
-          supply_house_id: null,
-          price: 0,
-        })
-      }
-    }
+    const expandedParts = await expandTemplate(supabase, templateId)
 
-    // Create PO
     const template = materialTemplates.find(t => t.id === templateId)
     const { data: poData, error: poError } = await supabase
       .from('purchase_orders')
@@ -840,24 +835,11 @@ export default function Materials() {
       return
     }
 
-    // Add items to PO
-    for (let i = 0; i < poItemsWithPrices.length; i++) {
-      const item = poItemsWithPrices[i]
-      if (!item) continue
-      const { error: itemError } = await supabase
-        .from('purchase_order_items')
-        .insert({
-          purchase_order_id: poData.id,
-          part_id: item.part_id,
-          quantity: item.quantity,
-          selected_supply_house_id: item.supply_house_id,
-          price_at_time: item.price,
-          sequence_order: i + 1,
-        })
-      if (itemError) {
-        setError(`Failed to add item: ${itemError.message}`)
-        break
-      }
+    const addError = await addExpandedPartsToPO(supabase, poData.id, expandedParts, templateId)
+    if (addError) {
+      setError(addError)
+      setCreatingPOFromTemplate(false)
+      return
     }
 
     await loadPurchaseOrders()
@@ -904,64 +886,13 @@ export default function Materials() {
     setAddingTemplateToPO(true)
     setError(null)
 
-    const expandedParts = await expandTemplate(templateId)
-    
-    // Get best prices for each part
-    const poItemsWithPrices: Array<{ part_id: string; quantity: number; supply_house_id: string | null; price: number }> = []
-    for (const { part_id, quantity } of expandedParts) {
-      const { data: prices } = await supabase
-        .from('material_part_prices')
-        .select('*, supply_houses(*)')
-        .eq('part_id', part_id)
-        .order('price', { ascending: true })
-        .limit(1)
-      
-      if (prices && prices.length > 0) {
-        const bestPrice = prices[0] as MaterialPartPrice & { supply_houses: SupplyHouse }
-        poItemsWithPrices.push({
-          part_id,
-          quantity,
-          supply_house_id: bestPrice.supply_house_id,
-          price: bestPrice.price,
-        })
-      } else {
-        poItemsWithPrices.push({
-          part_id,
-          quantity,
-          supply_house_id: null,
-          price: 0,
-        })
-      }
-    }
-
-    // Get current max sequence_order for this PO
-    const { data: existingItems } = await supabase
-      .from('purchase_order_items')
-      .select('sequence_order')
-      .eq('purchase_order_id', poId)
-      .order('sequence_order', { ascending: false })
-      .limit(1)
-    
-    const maxOrder = existingItems && existingItems.length > 0 && existingItems[0] ? existingItems[0].sequence_order : 0
-
-    // Add items to PO
-    for (let i = 0; i < poItemsWithPrices.length; i++) {
-      const item = poItemsWithPrices[i]
-      if (!item) continue
-      const { error: itemError } = await supabase
-        .from('purchase_order_items')
-        .insert({
-          purchase_order_id: poId,
-          part_id: item.part_id,
-          quantity: item.quantity,
-          selected_supply_house_id: item.supply_house_id,
-          price_at_time: item.price,
-          sequence_order: maxOrder + i + 1,
-        })
-      if (itemError) {
-        setError(`Failed to add item: ${itemError.message}`)
-        break
-      }
+    const expandedParts = await expandTemplate(supabase, templateId)
+    const addError = await addExpandedPartsToPO(supabase, poId, expandedParts, templateId)
+    if (addError) {
+      setError(addError)
+      setAddingTemplateToPO(false)
+      setSelectedTemplateForPO('')
+      return
     }
 
     await loadPurchaseOrders()
@@ -976,16 +907,17 @@ export default function Materials() {
       if (poData) {
         const { data: itemsData, error: itemsError } = await supabase
           .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*)')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
           .eq('purchase_order_id', poId)
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
             supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
           }))
           setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
         }
@@ -1056,16 +988,17 @@ export default function Materials() {
       if (poData) {
         const { data: itemsData, error: itemsError } = await supabase
           .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*)')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
           .eq('purchase_order_id', poId)
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
             supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
           }))
           setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
         }
@@ -1076,7 +1009,7 @@ export default function Materials() {
     setPartQuantityForPO('1')
   }
 
-  async function updatePOItem(itemId: string, updates: { quantity?: number; supply_house_id?: string | null; price_at_time?: number }) {
+  async function updatePOItem(itemId: string, updates: { quantity?: number; supply_house_id?: string | null; price_at_time?: number; notes?: string | null }) {
     setError(null)
     const { error } = await supabase
       .from('purchase_order_items')
@@ -1092,21 +1025,23 @@ export default function Materials() {
     if (editingPO) {
       const { data: itemsData, error: itemsError } = await supabase
         .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*)')
+        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
         .eq('purchase_order_id', editingPO.id)
         .order('sequence_order', { ascending: true })
       
       if (!itemsError && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
           supply_house: item.supply_houses || undefined,
+          source_template: item.source_template ?? null,
         }))
         setEditingPO({ ...editingPO, items: itemsWithDetails })
       }
     }
     setEditingPOItem(null)
+    setEditingPOItemNotesId(null)
   }
 
   async function removePOItem(itemId: string) {
@@ -1126,16 +1061,17 @@ export default function Materials() {
     if (editingPO) {
       const { data: itemsData, error: itemsError } = await supabase
         .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*)')
+        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
         .eq('purchase_order_id', editingPO.id)
         .order('sequence_order', { ascending: true })
       
       if (!itemsError && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
           supply_house: item.supply_houses || undefined,
+          source_template: item.source_template ?? null,
         }))
         setEditingPO({ ...editingPO, items: itemsWithDetails })
       }
@@ -1354,16 +1290,17 @@ export default function Materials() {
       if (selectedPO) {
         const { data: itemsData, error: itemsError } = await supabase
           .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*)')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
           .eq('purchase_order_id', selectedPO.id)
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
             supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
           }))
           setSelectedPO({ ...selectedPO, items: itemsWithDetails })
           if (editingPO && editingPO.id === selectedPO.id) {
@@ -1492,16 +1429,17 @@ export default function Materials() {
       if (selectedPO) {
         const { data: itemsData, error: itemsError } = await supabase
           .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*)')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
           .eq('purchase_order_id', selectedPO.id)
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
             supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
           }))
           setSelectedPO({ ...selectedPO, items: itemsWithDetails })
         }
@@ -1631,6 +1569,7 @@ export default function Materials() {
             price_at_time: item.price_at_time,
             sequence_order: item.sequence_order,
             notes: item.notes,
+            source_template_id: item.source_template_id ?? null,
             // price_confirmed_at and price_confirmed_by are not copied (reset confirmation status)
           })
 
@@ -1657,16 +1596,17 @@ export default function Materials() {
     if (!loadError && newPO) {
       const { data: itemsData, error: itemsError2 } = await supabase
         .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*)')
+        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
         .eq('purchase_order_id', newPOData.id)
         .order('sequence_order', { ascending: true })
 
       if (!itemsError2 && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
           supply_house: item.supply_houses || undefined,
+          source_template: item.source_template ?? null,
         }))
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: itemsWithDetails }
         setEditingPO(poWithItems)
@@ -1767,16 +1707,17 @@ export default function Materials() {
       // Load items for the updated PO
       const { data: itemsData } = await supabase
         .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*)')
+        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
         .eq('purchase_order_id', poId)
         .order('sequence_order', { ascending: true })
       
       if (itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
+        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
           supply_house: item.supply_houses || undefined,
+          source_template: item.source_template ?? null,
         }))
         const poWithItems: PurchaseOrderWithItems = { ...updatedPOData as PurchaseOrder, items: itemsWithDetails }
         setSelectedPO(poWithItems)
@@ -2477,7 +2418,7 @@ export default function Materials() {
                       <tr>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                       </tr>
                     </thead>
@@ -2555,17 +2496,18 @@ export default function Materials() {
                           // Load full PO details with items
                           const { data: itemsData, error: itemsError } = await supabase
                             .from('purchase_order_items')
-                            .select('*, material_parts(*), supply_houses(*)')
+                            .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
                             .eq('purchase_order_id', po.id)
                             .order('sequence_order', { ascending: true })
                           
                           if (!itemsError && itemsData) {
-                            const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null })[]) ?? []
-                            const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-                              ...item,
-                              part: item.material_parts,
-                              supply_house: item.supply_houses || undefined,
-                            }))
+const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
+            ...item,
+            part: item.material_parts,
+            supply_house: item.supply_houses || undefined,
+            source_template: item.source_template ?? null,
+          }))
                             setEditingPO({ ...po, items: itemsWithDetails })
                             setSelectedPO({ ...po, items: itemsWithDetails })
                           } else {
@@ -2646,6 +2588,8 @@ export default function Materials() {
                     onClick={() => {
                       setEditingPO(null)
                       setEditingPOItem(null)
+                      setEditingPOItemNotesId(null)
+                      setEditingPOItemNotesValue('')
                       setEditingPOName(null)
                       setEditingPONameValue('')
                     }}
@@ -2662,10 +2606,12 @@ export default function Materials() {
                       <thead style={{ background: '#f9fafb' }}>
                         <tr>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From template</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                         </tr>
                       </thead>
@@ -2675,7 +2621,7 @@ export default function Materials() {
                             // Edit mode
                             return (
                               <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
-                                <td colSpan={6} style={{ padding: '1rem' }}>
+                                <td colSpan={8} style={{ padding: '1rem' }}>
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', alignItems: 'end' }}>
                                     <div>
                                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Quantity</label>
@@ -2787,6 +2733,63 @@ export default function Materials() {
                               </td>
                               <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
                               <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                              <td style={{ padding: '0.75rem' }}>
+                                {item.source_template ? (
+                                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
+                                    From: {item.source_template.name}
+                                  </span>
+                                ) : '—'}
+                              </td>
+                              <td style={{ padding: '0.75rem', maxWidth: 200 }}>
+                                {editingPOItemNotesId === item.id ? (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    <textarea
+                                      value={editingPOItemNotesValue}
+                                      onChange={(e) => setEditingPOItemNotesValue(e.target.value)}
+                                      rows={2}
+                                      placeholder="Item notes…"
+                                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                                    />
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updatePOItem(item.id, { notes: editingPOItemNotesValue.trim() || null })
+                                          setEditingPOItemNotesId(null)
+                                          setEditingPOItemNotesValue('')
+                                        }}
+                                        style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingPOItemNotesId(null)
+                                          setEditingPOItemNotesValue('')
+                                        }}
+                                        style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span style={{ fontSize: '0.875rem' }}>{item.notes?.trim() || '—'}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingPOItemNotesId(item.id)
+                                        setEditingPOItemNotesValue(item.notes?.trim() || '')
+                                      }}
+                                      style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </>
+                                )}
+                              </td>
                               <td style={{ padding: '0.75rem' }}>
                                 <button
                                   type="button"
@@ -3129,13 +3132,17 @@ export default function Materials() {
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From template</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                       {selectedPO.status === 'draft' && (
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                        <>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                        </>
                       )}
                     </tr>
                   </thead>
@@ -3358,6 +3365,14 @@ export default function Materials() {
                           </td>
                           <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
                           <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {item.source_template ? (
+                              <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
+                                From: {item.source_template.name}
+                              </span>
+                            ) : '—'}
+                          </td>
+                          <td style={{ padding: '0.75rem', maxWidth: 200 }}>{item.notes?.trim() || '—'}</td>
                           {selectedPO.status === 'draft' && (
                             <td style={{ padding: '0.75rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
@@ -3408,12 +3423,37 @@ export default function Materials() {
                     })}
                   </tbody>
                   <tfoot style={{ background: '#f9fafb' }}>
-                    <tr>
-                      <td colSpan={selectedPO.status === 'draft' ? 6 : 4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
-                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                        ${selectedPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)}
-                      </td>
-                    </tr>
+                    {(() => {
+                      const viewedPOGrandTotal = selectedPO.items.reduce((sum, item) => sum + (Number(item.price_at_time) * Number(item.quantity)), 0) || 0
+                      const withTaxAmount = viewedPOGrandTotal * (1 + (parseFloat(viewedPOTaxPercent) || 0) / 100)
+                      return (
+                        <>
+                          <tr>
+                            <td colSpan={selectedPO.status === 'draft' ? 6 : 5} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
+                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>
+                              ${viewedPOGrandTotal.toFixed(2)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={selectedPO.status === 'draft' ? 6 : 5} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                              With Tax{' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={viewedPOTaxPercent}
+                                onChange={(e) => setViewedPOTaxPercent(e.target.value)}
+                                style={{ width: '6rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                              />
+                              %:
+                            </td>
+                            <td style={{ padding: '0.75rem', fontWeight: 600 }}>
+                              ${withTaxAmount.toFixed(2)}
+                            </td>
+                          </tr>
+                        </>
+                      )
+                    })()}
                   </tfoot>
                 </table>
               </div>
