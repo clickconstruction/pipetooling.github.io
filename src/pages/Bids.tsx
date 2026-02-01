@@ -1760,7 +1760,7 @@ export default function Bids() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBidsForCostEstimate.map((bid) => (
+                  {filteredBidsForCostEstimate.map((bid: BidWithBuilder) => (
                     <tr
                       key={bid.id}
                       onClick={() => setSelectedBidForCostEstimate(bid)}

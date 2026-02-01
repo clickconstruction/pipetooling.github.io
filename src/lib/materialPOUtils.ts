@@ -3,6 +3,8 @@ import type { Database } from '../types/database'
 
 export type ExpandedPart = { part_id: string; quantity: number }
 
+type MaterialTemplateItemRow = Database['public']['Tables']['material_template_items']['Row']
+
 /**
  * Expand a material template recursively to a flat list of parts with quantities.
  * Nested templates are expanded with quantity multiplied through.
@@ -12,11 +14,12 @@ export async function expandTemplate(
   tid: string,
   multiplier: number = 1
 ): Promise<ExpandedPart[]> {
-  const { data: items } = await supabase
+  const { data } = await supabase
     .from('material_template_items')
     .select('*')
     .eq('template_id', tid)
 
+  const items = (data ?? null) as MaterialTemplateItemRow[] | null
   if (!items) return []
 
   const result: ExpandedPart[] = []
