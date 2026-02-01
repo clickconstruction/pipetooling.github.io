@@ -370,7 +370,7 @@ export default function Workflow() {
       return
     }
 
-    const items = (itemsData as Array<PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null }>) ?? []
+    const items = (itemsData as unknown as Array<PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null }>) ?? []
     setViewingPO({
       id: poId,
       name: (poData as PurchaseOrder).name,

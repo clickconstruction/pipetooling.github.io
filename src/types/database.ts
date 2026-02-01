@@ -11,14 +11,20 @@ export type Database = {
     Tables: {
       customers: {
         Row: { id: string; master_user_id: string; name: string; address: string | null; contact_info: Json | null; date_met: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; master_user_id: string; name: string; address?: string | null; contact_info?: Json | null; date_met?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; master_user_id?: string; name?: string; address?: string | null; contact_info?: Json | null; date_met?: string | null; created_at?: string | null; updated_at?: string | null }
+        Insert: { id?: string; master_user_id?: string | null; name: string; address?: string | null; contact_info?: Json | null; date_met?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; master_user_id?: string | null; name?: string; address?: string | null; contact_info?: Json | null; date_met?: string | null; created_at?: string | null; updated_at?: string | null }
+        Relationships: []
+      }
+      email_templates: {
+        Row: { id: string; template_type: string; subject: string; body: string; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; template_type: string; subject: string; body: string; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; template_type?: string; subject?: string; body?: string; created_at?: string | null; updated_at?: string | null }
         Relationships: []
       }
       users: {
-        Row: { id: string; name: string | null; email: string | null; role: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; name?: string | null; email?: string | null; role?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; name?: string | null; email?: string | null; role?: string | null; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; name: string | null; email: string | null; role: string | null; last_sign_in_at: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name?: string | null; email?: string | null; role?: string | null; last_sign_in_at?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string | null; email?: string | null; role?: string | null; last_sign_in_at?: string | null; created_at?: string | null; updated_at?: string | null }
         Relationships: []
       }
       projects: {
@@ -37,6 +43,12 @@ export type Database = {
         Row: { sharing_master_id: string; viewing_master_id: string; created_at: string | null }
         Insert: { sharing_master_id: string; viewing_master_id: string; created_at?: string | null }
         Update: { sharing_master_id?: string; viewing_master_id?: string; created_at?: string | null }
+        Relationships: []
+      }
+      people: {
+        Row: { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; master_user_id: string; kind: string; name: string; email?: string | null; phone?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; master_user_id?: string; kind?: string; name?: string; email?: string | null; phone?: string | null; notes?: string | null; created_at?: string | null; updated_at?: string | null }
         Relationships: []
       }
       project_workflows: {
@@ -121,6 +133,24 @@ export type Database = {
         Row: { id: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order: number; created_at: string | null; updated_at: string | null }
         Insert: { id?: string; workflow_id: string; stage_name: string; memo: string; amount: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
         Update: { id?: string; workflow_id?: string; stage_name?: string; memo?: string; amount?: number; sequence_order?: number; created_at?: string | null; updated_at?: string | null }
+        Relationships: []
+      }
+      workflow_step_dependencies: {
+        Row: { step_id: string; depends_on_step_id: string }
+        Insert: { step_id: string; depends_on_step_id: string }
+        Update: { step_id?: string; depends_on_step_id?: string }
+        Relationships: []
+      }
+      workflow_templates: {
+        Row: { id: string; name: string; description: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; name: string; description?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; name?: string; description?: string | null; created_at?: string | null; updated_at?: string | null }
+        Relationships: []
+      }
+      workflow_template_steps: {
+        Row: { id: string; template_id: string; sequence_order: number; name: string; step_type: 'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null; required_skill: string | null; created_at: string | null; updated_at: string | null }
+        Insert: { id?: string; template_id: string; sequence_order: number; name: string; step_type?: 'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null; required_skill?: string | null; created_at?: string | null; updated_at?: string | null }
+        Update: { id?: string; template_id?: string; sequence_order?: number; name?: string; step_type?: 'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null; required_skill?: string | null; created_at?: string | null; updated_at?: string | null }
         Relationships: []
       }
       supply_houses: {
@@ -215,6 +245,10 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      claim_dev_with_code: { Args: { code_input: string }; Returns: unknown }
+      convert_master_user: { Args: { old_master_id: string; new_master_id: string; new_role: string; auto_adopt: boolean }; Returns: unknown }
+      touch_last_sign_in: { Args: Record<string, never>; Returns: unknown }
+    }
   }
 }

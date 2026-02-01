@@ -262,7 +262,7 @@ export default function Bids() {
       return []
     }
     type Raw = Bid & { customers: Customer | Customer[] | null; bids_gc_builders: GcBuilder | GcBuilder[] | null; estimator?: EstimatorUser | EstimatorUser[] | null }
-    const raw = (data as Raw[]) ?? []
+    const raw = (data as unknown as Raw[]) ?? []
     const rows: BidWithBuilder[] = raw.map((b) => {
       const est = b.estimator
       const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
@@ -1001,15 +1001,17 @@ export default function Bids() {
       )
     : bids
 
-  const filteredBidsForCostEstimate = costEstimateSearchQuery.trim()
-    ? bids.filter(
+  const bidsTyped = bids as BidWithBuilder[]
+  const filteredBidsForCostEstimate: BidWithBuilder[] = costEstimateSearchQuery.trim()
+    ? bidsTyped.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false)
       )
-    : bids
+    : bidsTyped
+  const costEstimateBidList: BidWithBuilder[] = Array.from(filteredBidsForCostEstimate, (row) => row as BidWithBuilder)
 
   const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
 
@@ -1760,20 +1762,24 @@ export default function Bids() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredBidsForCostEstimate.map((bid: BidWithBuilder) => (
-                    <tr
-                      key={bid.id}
-                      onClick={() => setSelectedBidForCostEstimate(bid)}
-                      style={{
-                        cursor: 'pointer',
-                        borderBottom: '1px solid #e5e7eb',
-                        background: selectedBidForCostEstimate?.id === bid.id ? '#eff6ff' : undefined,
-                      }}
-                    >
-                      <td style={{ padding: '0.75rem' }}>{bid.project_name ?? '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{bid.address ?? '—'}</td>
-                    </tr>
-                  ))}
+                  {costEstimateBidList.map((row) => {
+                    const bid = row as unknown as BidWithBuilder
+                    const sel = selectedBidForCostEstimate as BidWithBuilder | null
+                    return (
+                      <tr
+                        key={bid.id}
+                        onClick={() => setSelectedBidForCostEstimate(bid)}
+                        style={{
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #e5e7eb',
+                          background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bid.project_name ?? '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{bid.address ?? '—'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

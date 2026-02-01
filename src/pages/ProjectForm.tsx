@@ -176,7 +176,7 @@ export default function ProjectForm() {
               template_step_id: ts.id,
               sequence_order: ts.sequence_order,
               name: ts.name,
-              step_type: ts.step_type,
+              step_type: (ts.step_type ?? null) as 'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null,
               assigned_skill: ts.required_skill,
               status: 'pending',
             })

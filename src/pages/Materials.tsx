@@ -191,7 +191,7 @@ export default function Materials() {
     }
 
     const partsList = (partsData as MaterialPart[]) ?? []
-    const pricesList = (pricesData as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
 
     const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
       ...part,
@@ -284,7 +284,7 @@ export default function Materials() {
           return { ...po, items: [] }
         }
 
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
@@ -364,7 +364,7 @@ export default function Materials() {
             .order('sequence_order', { ascending: true })
           
           if (!itemsError && itemsData) {
-            const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+            const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
             const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
               ...item,
               part: item.material_parts,
@@ -397,7 +397,7 @@ export default function Materials() {
           .eq('purchase_order_id', openPOId)
           .order('sequence_order', { ascending: true })
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -912,7 +912,7 @@ export default function Materials() {
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -944,8 +944,9 @@ export default function Materials() {
       .order('price', { ascending: true })
       .limit(1)
     
-    const bestPrice = prices && prices.length > 0 
-      ? (prices[0] as MaterialPartPrice & { supply_houses: SupplyHouse })
+    const firstPrice = prices && prices.length > 0 ? prices[0] : undefined
+    const bestPrice = firstPrice != null
+      ? (firstPrice as unknown as MaterialPartPrice & { supply_houses: SupplyHouse })
       : null
 
     // Get current max sequence_order for this PO
@@ -993,7 +994,7 @@ export default function Materials() {
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -1030,7 +1031,7 @@ export default function Materials() {
         .order('sequence_order', { ascending: true })
       
       if (!itemsError && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
@@ -1066,7 +1067,7 @@ export default function Materials() {
         .order('sequence_order', { ascending: true })
       
       if (!itemsError && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
@@ -1093,7 +1094,7 @@ export default function Materials() {
       return
     }
 
-    const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
     const availablePrices = pricesList.map(p => ({
       price_id: p.id,
       supply_house_id: p.supply_house_id,
@@ -1120,7 +1121,7 @@ export default function Materials() {
       return
     }
 
-    const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
     const options = pricesList.map(p => ({
       supply_house_id: p.supply_house_id,
       supply_house_name: p.supply_houses.name,
@@ -1138,7 +1139,7 @@ export default function Materials() {
       .eq('part_id', partId)
       .order('price', { ascending: true })
     if (error) return []
-    const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
     return pricesList.map(p => ({
       supply_house_name: p.supply_houses.name,
       price: p.price,
@@ -1295,7 +1296,7 @@ export default function Materials() {
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -1434,7 +1435,7 @@ export default function Materials() {
           .order('sequence_order', { ascending: true })
         
         if (!itemsError && itemsData) {
-          const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -1556,9 +1557,11 @@ export default function Materials() {
     }
 
     // Copy all items to the new PO
-    if (sourceItems && sourceItems.length > 0) {
-      for (let i = 0; i < sourceItems.length; i++) {
-        const item = sourceItems[i]
+    const typedSourceItems = (sourceItems ?? []) as PurchaseOrderItem[]
+    if (typedSourceItems.length > 0) {
+      for (let i = 0; i < typedSourceItems.length; i++) {
+        const item = typedSourceItems[i]
+        if (!item) continue
         const { error: itemError } = await supabase
           .from('purchase_order_items')
           .insert({
@@ -1601,7 +1604,7 @@ export default function Materials() {
         .order('sequence_order', { ascending: true })
 
       if (!itemsError2 && itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
@@ -1712,7 +1715,7 @@ export default function Materials() {
         .order('sequence_order', { ascending: true })
       
       if (itemsData) {
-        const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
         const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
           ...item,
           part: item.material_parts,
@@ -2501,7 +2504,7 @@ export default function Materials() {
                             .order('sequence_order', { ascending: true })
                           
                           if (!itemsError && itemsData) {
-const items = (itemsData as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
           const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
             ...item,
             part: item.material_parts,
@@ -3657,7 +3660,7 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
     if (error) {
       console.error('Error loading prices:', error)
     } else {
-      const pricesList = (data as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+      const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
       setPrices(pricesList.map(p => ({ ...p, supply_house: p.supply_houses })))
     }
     setLoading(false)
@@ -3742,7 +3745,7 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
       console.error('Error loading price history:', error)
       alert(`Failed to load price history: ${error.message}`)
     } else {
-      const historyList = (data as (Database['public']['Tables']['material_part_price_history']['Row'] & { supply_houses: SupplyHouse })[]) ?? []
+      const historyList = (data as unknown as (Database['public']['Tables']['material_part_price_history']['Row'] & { supply_houses: SupplyHouse })[]) ?? []
       setPriceHistory(historyList.map(h => ({ ...h, supply_house: h.supply_houses })))
     }
     setLoadingHistory(false)

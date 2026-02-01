@@ -60,7 +60,7 @@ export default function Projects() {
         setLoading(false)
         return
       }
-      const projs = (data as ProjectWithCustomer[]) ?? []
+      const projs = (data as unknown as ProjectWithCustomer[]) ?? []
       
       // Load master information for projects that have master_user_id
       const projectsWithMasters = await Promise.all(

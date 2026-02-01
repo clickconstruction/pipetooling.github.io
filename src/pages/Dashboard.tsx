@@ -159,13 +159,13 @@ export default function Dashboard() {
       
       // Load assigned steps
       if (name) {
-        const { data: steps } = await supabase
+        const { data: stepsData } = await supabase
           .from('project_workflow_steps')
           .select('*')
           .eq('assigned_to_name', name)
           .order('created_at', { ascending: false })
-        
-        if (steps && steps.length > 0) {
+        const steps = (stepsData ?? []) as Step[]
+        if (steps.length > 0) {
           const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
           const { data: workflows } = await supabase
             .from('project_workflows')
@@ -217,13 +217,13 @@ export default function Dashboard() {
     const name = (userData as { name: string | null } | null)?.name ?? null
     
     if (name) {
-      const { data: steps } = await supabase
+      const { data: stepsData } = await supabase
         .from('project_workflow_steps')
         .select('*')
         .eq('assigned_to_name', name)
         .order('created_at', { ascending: false })
-      
-      if (steps && steps.length > 0) {
+      const steps = (stepsData ?? []) as Step[]
+      if (steps.length > 0) {
         const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
         const { data: workflows } = await supabase
           .from('project_workflows')
@@ -289,15 +289,15 @@ export default function Dashboard() {
   }
 
   async function findPreviousStep(step: AssignedStep): Promise<AssignedStep | null> {
-    const { data: allSteps } = await supabase
+    const { data: allStepsData } = await supabase
       .from('project_workflow_steps')
       .select('*')
       .eq('workflow_id', step.workflow_id)
       .order('sequence_order', { ascending: true })
+    const allSteps = (allStepsData ?? []) as Step[]
+    if (allSteps.length === 0) return null
     
-    if (!allSteps) return null
-    
-    const sortedSteps = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
+    const sortedSteps = allSteps.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
     const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
     if (currentIndex <= 0) return null
     
@@ -332,15 +332,15 @@ export default function Dashboard() {
   }
 
   async function findNextStep(step: AssignedStep): Promise<AssignedStep | null> {
-    const { data: allSteps } = await supabase
+    const { data: allStepsData } = await supabase
       .from('project_workflow_steps')
       .select('*')
       .eq('workflow_id', step.workflow_id)
       .order('sequence_order', { ascending: true })
+    const allSteps = (allStepsData ?? []) as Step[]
+    if (allSteps.length === 0) return null
     
-    if (!allSteps) return null
-    
-    const sortedSteps = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
+    const sortedSteps = allSteps.sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
     const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
     if (currentIndex < 0 || currentIndex >= sortedSteps.length - 1) return null
     
