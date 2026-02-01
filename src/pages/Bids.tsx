@@ -1679,8 +1679,6 @@ export default function Bids() {
                             const totalTop = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.top_out_hrs_per_unit), 0)
                             const totalTrim = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.trim_set_hrs_per_unit), 0)
                             const totalHours = totalRough + totalTop + totalTrim
-                            const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-                            const laborCost = totalHours * rate
                             return (
                               <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
                                 <td style={{ padding: '0.75rem' }}>Totals</td>

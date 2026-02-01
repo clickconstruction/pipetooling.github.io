@@ -73,9 +73,10 @@ The main documentation includes:
 - User impersonation (devs)
 - **Add new customer from Bids**: GC/Builder dropdown includes "+ Add new customer"; opens modal (same form as /customers/new without Quick Fill); new customer can be assigned to a master and is then selected as the bid's GC/Builder
 - **New customer Quick Fill**: On /customers/new, Quick Fill is expandable (collapsed by default) with button next to the title
-- **Bids Counts**: Fixture quick-select buttons, number pad for count, Save / Save and Add; Project Name required; "Save and start Counts" in New Bid modal; Edit Bid button on Counts tab
-- **Bids Takeoff**: Map fixture counts to material templates; multiple templates per fixture; template search; Create PO / Add to PO; "View purchase order" opens Materials with that PO
-- **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId)
+- **Bids Counts**: Fixture or Tie-in quick-select, number pad for count, Save / Save and Add; Project Name required; "Save and start Counts" in New Bid modal; Edit Bid button on Counts tab. Updating Counts refreshes Takeoff and Cost Estimate for the same bid; switching to Takeoff or Cost Estimate refetches so data stays current without a page refresh.
+- **Bids Takeoff**: Map fixture or tie-in counts to material templates; multiple templates per fixture; template search; Create PO / Add to PO; "View purchase order" opens Materials with that PO
+- **Bids Cost Estimate**: Combine material and labor by bid; link up to three POs (Rough In, Top Out, Trim Set) per stage; editable labor hours per fixture and labor rate; fixture labor matrix synced with Counts; total materials, labor, and grand total; Save and Print
+- **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId). PO items can have notes and a "From template" tag when added via a template
 
 ## Deployment
 

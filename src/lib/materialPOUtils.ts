@@ -60,12 +60,17 @@ export async function addExpandedPartsToPO(
       .limit(1)
 
     if (prices && prices.length > 0) {
-      poItemsWithPrices.push({
-        part_id,
-        quantity,
-        supply_house_id: prices[0].supply_house_id,
-        price: prices[0].price,
-      })
+      const first = prices[0]
+      if (first != null) {
+        poItemsWithPrices.push({
+          part_id,
+          quantity,
+          supply_house_id: first.supply_house_id,
+          price: first.price,
+        })
+      } else {
+        poItemsWithPrices.push({ part_id, quantity, supply_house_id: null, price: 0 })
+      }
     } else {
       poItemsWithPrices.push({
         part_id,
