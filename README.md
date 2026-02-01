@@ -80,6 +80,8 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Bids Takeoff**: Map fixture or tie-in counts to material templates; multiple templates per fixture; template search; Create PO / Add to PO; "View purchase order" opens Materials with that PO
 - **Bids Cost Estimate**: Combine material and labor by bid; link up to three POs (Rough In, Top Out, Trim Set) per stage; editable labor hours per fixture and labor rate; fixture labor matrix synced with Counts; total materials, labor, and grand total; Save and Print
 - **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId). PO items can have notes and a "From template" tag when added via a template
+- **Materials Price Book**: Summary at bottom (item count, % with prices, % with more than one price). "Prices" button colored by price count: red (none), yellow (one), gray (two or more)
+- **Materials Templates & Purchase Orders**: Summary at bottom (# templates, % with unpriced parts, % with no missing prices). Template items use Remove / Edit / Price icon buttons; price icon colored by part price count (red / yellow / gray)
 
 ## Deployment
 
