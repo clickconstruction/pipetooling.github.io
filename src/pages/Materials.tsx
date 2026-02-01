@@ -75,6 +75,7 @@ export default function Materials() {
   const [selectedTemplate, setSelectedTemplate] = useState<MaterialTemplate | null>(null)
   const [templateSearchQuery, setTemplateSearchQuery] = useState('')
   const [templateItems, setTemplateItems] = useState<TemplateItemWithDetails[]>([])
+  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null }>>([])
   const [draftPOs, setDraftPOs] = useState<PurchaseOrderWithItems[]>([])
   const [selectedPO, setSelectedPO] = useState<PurchaseOrderWithItems | null>(null)
   const [editingPO, setEditingPO] = useState<PurchaseOrderWithItems | null>(null)
@@ -347,6 +348,22 @@ export default function Materials() {
   }, [selectedTemplate])
 
   useEffect(() => {
+    if (activeTab === 'templates-po') {
+      const load = async () => {
+        const { data, error } = await supabase
+          .from('material_template_items')
+          .select('template_id, item_type, part_id')
+        if (!error && data) {
+          setAllTemplateItemsForStats(data as Array<{ template_id: string; item_type: string; part_id: string | null }>)
+        } else {
+          setAllTemplateItemsForStats([])
+        }
+      }
+      load()
+    }
+  }, [activeTab])
+
+  useEffect(() => {
     if (editingPO?.id) {
       // Reload PO to get latest items
       const loadPODetails = async () => {
@@ -470,6 +487,13 @@ export default function Materials() {
   const fixtureTypes = [...new Set(parts.map(p => p.fixture_type).filter(Boolean))].sort()
   const manufacturers = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort()
 
+  // Price book summary stats (full catalog)
+  const priceBookTotalItems = parts.length
+  const priceBookWithPrices = parts.filter(p => p.prices.length > 0).length
+  const priceBookWithMoreThanOne = parts.filter(p => p.prices.length > 1).length
+  const priceBookPctWithPrices = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithPrices / priceBookTotalItems) * 100)
+  const priceBookPctMoreThanOne = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithMoreThanOne / priceBookTotalItems) * 100)
+
   // Filter purchase orders
   const filteredPOs = allPOs.filter(po => {
     const matchesStatus = poStatusFilter === 'all' || po.status === poStatusFilter
@@ -483,6 +507,16 @@ export default function Materials() {
     if (!q) return true
     return [t.name, t.description].some(f => (f || '').toLowerCase().includes(q))
   })
+
+  // Template stats: # of templates, % with at least one part item that has no price in price book
+  const partIdsWithNoPrice = new Set(parts.filter(p => p.prices.length === 0).map(p => p.id))
+  const templatesWithItemsWithNoPrice = materialTemplates.filter(t =>
+    allTemplateItemsForStats.some(i =>
+      i.template_id === t.id && i.item_type === 'part' && i.part_id != null && partIdsWithNoPrice.has(i.part_id)
+    )
+  ).length
+  const templateStatsTotal = materialTemplates.length
+  const templateStatsPctWithNoPrice = templateStatsTotal === 0 ? 0 : Math.round((templatesWithItemsWithNoPrice / templateStatsTotal) * 100)
 
   // Price Book Tab Functions
   function openAddPart() {
@@ -1880,6 +1914,8 @@ export default function Materials() {
                   filteredParts.map(part => {
                     const bestPrice = part.prices.length > 0 ? part.prices[0] : null
                     const isExpanded = expandedPartId === part.id
+                    const priceCount = part.prices.length
+                    const priceButtonColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
                     return (
                       <Fragment key={part.id}>
                         <tr
@@ -1911,7 +1947,7 @@ export default function Materials() {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setViewingPartPrices(part) }}
-                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', color: priceButtonColor }}
                             >
                               Prices
                             </button>
@@ -1939,6 +1975,9 @@ export default function Materials() {
               </tbody>
             </table>
           </div>
+          <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            {priceBookTotalItems} items | {priceBookPctWithPrices}% have prices | {priceBookPctMoreThanOne}% have more than 1 price
+          </p>
         </div>
       )}
 
@@ -2433,7 +2472,11 @@ export default function Materials() {
                           </td>
                         </tr>
                       ) : (
-                        templateItems.map(item => (
+                        (templateItems.map(item => {
+                          const partWithPrices = item.item_type === 'part' && item.part_id ? parts.find(p => p.id === item.part_id) : null
+                          const priceCount = partWithPrices?.prices.length ?? 0
+                          const priceIconColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
+                          return (
                           <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Template'}</td>
                             <td style={{ padding: '0.75rem' }}>
@@ -2441,22 +2484,58 @@ export default function Materials() {
                             </td>
                             <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                             <td style={{ padding: '0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => removeItemFromTemplate(item.id)}
-                                style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Remove
-                              </button>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemFromTemplate(item.id)}
+                                  title="Remove from template"
+                                  aria-label="Remove from template"
+                                  style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                    <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                                  </svg>
+                                </button>
+                                {item.item_type === 'part' && item.part && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openEditPart(item.part!) }}
+                                      title="Edit part"
+                                      aria-label="Edit part"
+                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                        <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setViewingPartPrices(item.part!) }}
+                                      title="Part prices"
+                                      aria-label="Part prices"
+                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: priceIconColor }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                        <path d="M128 128C92.7 128 64 156.7 64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192C576 156.7 547.3 128 512 128L128 128zM320 224C373 224 416 267 416 320C416 373 373 416 320 416C267 416 224 373 224 320C224 267 267 224 320 224zM512 248C512 252.4 508.4 256.1 504 255.5C475 251.9 452.1 228.9 448.5 200C448 195.6 451.6 192 456 192L504 192C508.4 192 512 195.6 512 200L512 248zM128 392C128 387.6 131.6 383.9 136 384.5C165 388.1 187.9 411.1 191.5 440C192 444.4 188.4 448 184 448L136 448C131.6 448 128 444.4 128 440L128 392zM136 255.5C131.6 256 128 252.4 128 248L128 200C128 195.6 131.6 192 136 192L184 192C188.4 192 192.1 195.6 191.5 200C187.9 229 164.9 251.9 136 255.5zM504 384.5C508.4 384 512 387.6 512 392L512 440C512 444.4 508.4 448 504 448L456 448C451.6 448 447.9 444.4 448.5 440C452.1 411 475.1 388.1 504 384.5z" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
-                        ))
+                          )
+                        }))
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
+            <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              {templateStatsTotal} templates | {templateStatsPctWithNoPrice}% of templates have unpriced parts
+            </p>
           </div>
 
           {/* Right Panel: Draft Purchase Orders */}

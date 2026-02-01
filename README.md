@@ -41,6 +41,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 The main documentation includes:
 - Project overview and architecture
 - Database schema and relationships
+- **TypeScript types** (`src/types/database.ts`) and how to keep them in sync with the schema
 - Authentication and authorization patterns
 - Development workflow
 - Deployment instructions
@@ -53,6 +54,8 @@ The main documentation includes:
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
 - **Hosting**: GitHub Pages
+
+The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase table and RPC types are maintained in **`src/types/database.ts`**; update them when the database schema or RPCs change so `npm run build` stays clean. See [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) for type-update patterns and known issues.
 
 ## Features
 
