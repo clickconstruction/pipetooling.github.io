@@ -1239,6 +1239,42 @@ export default function Materials() {
     win.onafterprint = () => win.close()
   }
 
+  function printPOForSupplyHouse(po: PurchaseOrderWithItems, taxPercent: number) {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(po.name)
+    const grandTotal = po.items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
+    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
+    const tableRows = po.items.map(item => {
+      const partName = escapeHtml(item.part.name ?? '')
+      const qty = item.quantity
+      const price = item.price_at_time.toFixed(2)
+      const total = (item.price_at_time * item.quantity).toFixed(2)
+      return `<tr><td>${partName}</td><td>${qty}</td><td>$${price}</td><td>$${total}</td></tr>`
+    }).join('')
+    const thead = '<tr><th>Part</th><th>Qty</th><th>Price</th><th>Total</th></tr>'
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+      th { background: #f5f5f5; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>${title}</h1>
+      <table>
+        <thead>${thead}</thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   async function updatePartPriceInBook(priceId: string, newPrice: number, partId?: string) {
     setUpdatingPriceId(priceId)
     setError(null)
@@ -3566,7 +3602,14 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     onClick={() => printPO(selectedPO)}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
-                    Print
+                    Print for Review
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => printPOForSupplyHouse(selectedPO, parseFloat(viewedPOTaxPercent) || 0)}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print for Supply House
                   </button>
                   <button
                     type="button"

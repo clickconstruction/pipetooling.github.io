@@ -190,9 +190,9 @@ export type Database = {
         Relationships: []
       }
       purchase_orders: {
-        Row: { id: string; name: string; status: 'draft' | 'finalized'; created_by: string; finalized_at: string | null; notes: string | null; notes_added_by: string | null; notes_added_at: string | null; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; name: string; status?: 'draft' | 'finalized'; created_by: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; name?: string; status?: 'draft' | 'finalized'; created_by?: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; name: string; status: 'draft' | 'finalized'; created_by: string; finalized_at: string | null; notes: string | null; notes_added_by: string | null; notes_added_at: string | null; created_at: string | null; updated_at: string | null; stage: string | null }
+        Insert: { id?: string; name: string; status?: 'draft' | 'finalized'; created_by: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null; stage?: string | null }
+        Update: { id?: string; name?: string; status?: 'draft' | 'finalized'; created_by?: string; finalized_at?: string | null; notes?: string | null; notes_added_by?: string | null; notes_added_at?: string | null; created_at?: string | null; updated_at?: string | null; stage?: string | null }
         Relationships: []
       }
       purchase_order_items: {
@@ -208,9 +208,9 @@ export type Database = {
         Relationships: []
       }
       bids: {
-        Row: { id: string; drive_link: string | null; plans_link: string | null; gc_builder_id: string | null; customer_id: string | null; project_name: string | null; address: string | null; gc_contact_name: string | null; gc_contact_phone: string | null; gc_contact_email: string | null; estimator_id: string | null; bid_due_date: string | null; estimated_job_start_date: string | null; bid_date_sent: string | null; outcome: 'won' | 'lost' | null; bid_value: number | null; agreed_value: number | null; profit: number | null; distance_from_office: string | null; last_contact: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null }
-        Insert: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null }
-        Update: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null }
+        Row: { id: string; drive_link: string | null; plans_link: string | null; gc_builder_id: string | null; customer_id: string | null; project_name: string | null; address: string | null; gc_contact_name: string | null; gc_contact_phone: string | null; gc_contact_email: string | null; estimator_id: string | null; bid_due_date: string | null; estimated_job_start_date: string | null; bid_date_sent: string | null; outcome: 'won' | 'lost' | null; bid_value: number | null; agreed_value: number | null; profit: number | null; distance_from_office: string | null; last_contact: string | null; notes: string | null; created_by: string; created_at: string | null; updated_at: string | null; selected_price_book_version_id: string | null; selected_labor_book_version_id: string | null; selected_takeoff_book_version_id: string | null }
+        Insert: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by: string; created_at?: string | null; updated_at?: string | null; selected_price_book_version_id?: string | null; selected_labor_book_version_id?: string | null; selected_takeoff_book_version_id?: string | null }
+        Update: { id?: string; drive_link?: string | null; plans_link?: string | null; gc_builder_id?: string | null; customer_id?: string | null; project_name?: string | null; address?: string | null; gc_contact_name?: string | null; gc_contact_phone?: string | null; gc_contact_email?: string | null; estimator_id?: string | null; bid_due_date?: string | null; estimated_job_start_date?: string | null; bid_date_sent?: string | null; outcome?: 'won' | 'lost' | null; bid_value?: number | null; agreed_value?: number | null; profit?: number | null; distance_from_office?: string | null; last_contact?: string | null; notes?: string | null; created_by?: string; created_at?: string | null; updated_at?: string | null; selected_price_book_version_id?: string | null; selected_labor_book_version_id?: string | null; selected_takeoff_book_version_id?: string | null }
         Relationships: []
       }
       bids_count_rows: {
@@ -241,6 +241,48 @@ export type Database = {
         Row: { fixture: string; rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }
         Insert: { fixture: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number }
         Update: { fixture?: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number }
+        Relationships: []
+      }
+      price_book_versions: {
+        Row: { id: string; name: string; created_at: string | null }
+        Insert: { id?: string; name: string; created_at?: string | null }
+        Update: { id?: string; name?: string; created_at?: string | null }
+        Relationships: []
+      }
+      price_book_entries: {
+        Row: { id: string; version_id: string; fixture_name: string; rough_in_price: number; top_out_price: number; trim_set_price: number; total_price: number; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; version_id: string; fixture_name: string; rough_in_price?: number; top_out_price?: number; trim_set_price?: number; total_price?: number; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; version_id?: string; fixture_name?: string; rough_in_price?: number; top_out_price?: number; trim_set_price?: number; total_price?: number; sequence_order?: number; created_at?: string | null }
+        Relationships: []
+      }
+      bid_pricing_assignments: {
+        Row: { id: string; bid_id: string; count_row_id: string; price_book_entry_id: string; price_book_version_id: string; created_at: string | null }
+        Insert: { id?: string; bid_id: string; count_row_id: string; price_book_entry_id: string; price_book_version_id: string; created_at?: string | null }
+        Update: { id?: string; bid_id?: string; count_row_id?: string; price_book_entry_id?: string; price_book_version_id?: string; created_at?: string | null }
+        Relationships: []
+      }
+      labor_book_versions: {
+        Row: { id: string; name: string; created_at: string | null }
+        Insert: { id?: string; name: string; created_at?: string | null }
+        Update: { id?: string; name?: string; created_at?: string | null }
+        Relationships: []
+      }
+      labor_book_entries: {
+        Row: { id: string; version_id: string; fixture_name: string; rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; version_id: string; fixture_name: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; version_id?: string; fixture_name?: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
+        Relationships: []
+      }
+      takeoff_book_versions: {
+        Row: { id: string; name: string; created_at: string | null }
+        Insert: { id?: string; name: string; created_at?: string | null }
+        Update: { id?: string; name?: string; created_at?: string | null }
+        Relationships: []
+      }
+      takeoff_book_entries: {
+        Row: { id: string; version_id: string; fixture_name: string; template_id: string; stage: string; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; version_id: string; fixture_name: string; template_id: string; stage: string; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; version_id?: string; fixture_name?: string; template_id?: string; stage?: string; sequence_order?: number; created_at?: string | null }
         Relationships: []
       }
     }

@@ -3,18 +3,117 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.11)](#latest-updates-v211)
-2. [Latest Updates (v2.10)](#latest-updates-v210)
-3. [Latest Updates (v2.9)](#latest-updates-v29)
-4. [Latest Updates (v2.8)](#latest-updates-v28)
-5. [Latest Updates (v2.7)](#latest-updates-v27)
-6. [Latest Updates (v2.6)](#latest-updates-v26)
-7. [Workflow Features](#workflow-features)
-8. [Calendar Updates](#calendar-updates)
-9. [Access Control](#access-control)
-10. [Email Templates](#email-templates)
-11. [Financial Tracking](#financial-tracking)
-12. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.14)](#latest-updates-v214)
+2. [Latest Updates (v2.13)](#latest-updates-v213)
+3. [Latest Updates (v2.12)](#latest-updates-v212)
+4. [Latest Updates (v2.11)](#latest-updates-v211)
+5. [Latest Updates (v2.10)](#latest-updates-v210)
+6. [Latest Updates (v2.9)](#latest-updates-v29)
+7. [Latest Updates (v2.8)](#latest-updates-v28)
+8. [Latest Updates (v2.7)](#latest-updates-v27)
+9. [Latest Updates (v2.6)](#latest-updates-v26)
+10. [Workflow Features](#workflow-features)
+11. [Calendar Updates](#calendar-updates)
+12. [Access Control](#access-control)
+13. [Email Templates](#email-templates)
+14. [Financial Tracking](#financial-tracking)
+15. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.14)
+
+### Cost Estimate Tab: Labor Book and Version Prefill
+
+**Date**: 2026-02-01
+
+**Changes**:
+
+- **Labor book (Cost Estimate tab)**
+  - **Labor book versions**: Create, edit, and delete named labor book versions. Each version has a list of entries.
+  - **Labor book entries**: Per version, add/edit/delete fixture or tie-in entries with hours per stage: Rough In, Top Out, Trim Set. Entries ordered by sequence and fixture name.
+  - **Bid-level version selection**: Each bid can have a selected labor book version (`selected_labor_book_version_id`). A "Labor book version" dropdown on the Cost Estimate tab (when a bid is selected) lets you choose a version or "— Use defaults —".
+  - **Prefill for new labor rows**: When syncing cost estimate labor rows from count rows, **new** labor rows get hours from the selected labor book version's entries (match by fixture name). If no version is selected, or a fixture has no matching entry, the app uses global `fixture_labor_defaults` (or 0). Existing labor rows are not overwritten when the version changes.
+
+**Database**:
+- **`labor_book_versions`**: `id`, `name`, `created_at`. RLS: dev, master_technician, assistant, estimator (full CRUD).
+- **`labor_book_entries`**: `id`, `version_id` (FK, CASCADE), `fixture_name`, `rough_in_hrs`, `top_out_hrs`, `trim_set_hrs`, `sequence_order`, `created_at`. Unique `(version_id, fixture_name)`. RLS: same roles.
+- **`bids.selected_labor_book_version_id`**: Nullable FK to `labor_book_versions` (ON DELETE SET NULL).
+
+**Files modified**:
+- `src/types/database.ts` – Added `labor_book_versions`, `labor_book_entries`; extended `bids` with `selected_labor_book_version_id`.
+- `src/pages/Bids.tsx` – Cost Estimate tab: labor book state, loaders, version dropdown, sync prefill from labor book, Labor Book management (versions + entries CRUD, modals).
+- `src/pages/Settings.tsx` – Bids backup export now includes `labor_book_versions` and `labor_book_entries`.
+
+**Files added**:
+- `supabase/migrations/create_labor_book_versions_and_entries.sql` – Creates `labor_book_versions` and `labor_book_entries` with RLS; seeds one "Default" version and sample entries.
+- `supabase/migrations/add_bids_selected_labor_book_version.sql` – Adds `bids.selected_labor_book_version_id` column.
+
+---
+
+## Latest Updates (v2.13)
+
+### Pricing Tab: Price Book and Margin Comparison
+
+**Date**: 2026-02-01
+
+**Changes**:
+
+- **Pricing tab – full implementation**
+  - **Price book versions**: Create, edit, and delete named price book versions. Each version has a list of entries.
+  - **Price book entries**: Per version, add/edit/delete fixture or tie-in entries with prices per stage: Rough In, Top Out, Trim Set, and Total. Entries ordered by sequence and fixture name.
+  - **Bid margin comparison**: Select a bid and a price book version. For each count row (fixture) on the bid, assign a price book entry (dropdown). Compare our cost (labor + allocated materials) to price book revenue; show margin % and flag: red (&lt; 20%), yellow (&lt; 40%), green (≥ 40%). Totals row shows total cost, total revenue, overall margin %, and overall flag.
+  - **Cost allocation**: Per-fixture labor cost from cost estimate labor rows; materials allocated to fixtures proportionally by labor hours. Margin = (revenue − cost) / revenue.
+  - **Version persistence**: Selected price book version for a bid is stored on the bid (`selected_price_book_version_id`) and restored when reopening the Pricing tab.
+  - **Create Cost Estimate prompt**: If the selected bid has count rows but no cost estimate, a message and "Go to Cost Estimate" button are shown so the user can create one first.
+
+**Database**:
+- **`price_book_versions`**: `id`, `name`, `created_at`. RLS: dev, master_technician, assistant, estimator (full CRUD).
+- **`price_book_entries`**: `id`, `version_id` (FK, CASCADE), `fixture_name`, `rough_in_price`, `top_out_price`, `trim_set_price`, `total_price`, `sequence_order`, `created_at`. Unique `(version_id, fixture_name)`. RLS: same roles.
+- **`bid_pricing_assignments`**: `id`, `bid_id` (FK, CASCADE), `count_row_id` (FK to `bids_count_rows`, CASCADE), `price_book_entry_id` (FK, CASCADE). Unique `(bid_id, count_row_id)`. RLS: same as bids (access via bid).
+- **`bids.selected_price_book_version_id`**: Nullable FK to `price_book_versions` (ON DELETE SET NULL).
+
+**Files modified**:
+- `src/types/database.ts` – Added `price_book_versions`, `price_book_entries`, `bid_pricing_assignments` table types; extended `bids` Row/Insert/Update with `selected_price_book_version_id`.
+- `src/pages/Bids.tsx` – Pricing tab state and loaders; price book version/entry CRUD; bid pricing assignments; margin comparison table with assignment dropdowns and flags; version dropdown and "Go to Cost Estimate" prompt.
+
+**Files added**:
+- `supabase/migrations/create_price_book_versions_and_entries.sql` – Creates `price_book_versions` and `price_book_entries` with RLS.
+- `supabase/migrations/create_bid_pricing_assignments.sql` – Creates `bid_pricing_assignments` with RLS.
+- `supabase/migrations/add_bids_selected_price_book_version.sql` – Adds `bids.selected_price_book_version_id` column.
+
+---
+
+## Latest Updates (v2.12)
+
+### Submissions Cost Estimate Indicator, Currency Formatting, Pricing Tab, Revert Migration
+
+**Date**: 2026-02-01
+
+**Changes**:
+
+- **Submission & Followup – Cost estimate indicator and link**
+  - When a bid is selected in the Submission & Followup tab, the bid preview panel now shows whether a cost estimate exists for that bid.
+  - **Cost estimate:** Displays the computed grand total (materials + labor) with comma formatting (e.g. $12,345.67) when a cost estimate exists, or "Not yet created" when it does not. Loading state shows "Loading cost estimate info…".
+  - **View cost estimate** / **Create cost estimate** button: Switches to the Cost Estimate tab and preselects the same bid so the user can view or create the cost estimate.
+
+- **Cost estimate totals and Submission preview – Comma formatting**
+  - Numbers over 999 now display with commas (e.g. $1,000.00, $12,345.67) in:
+    - Cost Estimate tab: Rough In / Top Out / Trim Set materials, Total materials, Labor total line, Summary (Total materials, Labor total, Grand total).
+    - Submission & Followup cost estimate preview (the amount shown next to "Cost estimate:").
+  - New helper **`formatCurrency(n)`** in Bids.tsx uses `toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })`.
+
+- **Pricing tab**
+  - New **Pricing** tab added between Cost Estimate and Cover Letter on the Bids page. Placeholder content: "Pricing – coming soon."
+
+- **Revert migration (price book)**
+  - Migration **`revert_price_book_and_bids_job_type.sql`** reverses previously applied price-book–related schema changes: drops `bid_pricing_assignments`, `price_book_entries`, `price_book_versions`, and the `bids.job_type` column. Use this if the price book feature was reverted in code but migrations had already been run.
+
+**Files modified**:
+- `src/pages/Bids.tsx` – `submissionBidHasCostEstimate` and `submissionBidCostEstimateAmount` state; `useEffect` to load cost estimate existence and amount for selected Submission bid; cost estimate indicator and View/Create button in Submission panel; `formatCurrency` helper; Cost Estimate tab and Submission preview use `formatCurrency`; Pricing tab (placeholder); `activeTab` type includes `'pricing'`.
+
+**Files added**:
+- `supabase/migrations/revert_price_book_and_bids_job_type.sql` – Drops price book tables and `bids.job_type` in dependency order.
 
 ---
 

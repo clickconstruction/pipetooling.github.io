@@ -231,3 +231,19 @@ Allows estimators to see all customers (for the Bids GC/Builder dropdown and joi
 - No change to UPDATE or DELETE (estimators cannot edit or delete customers)
 
 **When to run**: When enabling estimators to use the Bids page GC/Builder dropdown (see and select customers, or add new customers from "+ Add new customer" and assign them to a master). Estimators still have no access to the `/customers` or `/projects` pages (enforced by Layout redirect).
+
+### Revert price book and bids.job_type
+
+#### `revert_price_book_and_bids_job_type.sql`
+
+Reverses previously applied price-book–related schema changes (e.g. if the price book feature was reverted in code but migrations had already been run).
+
+**What it does**:
+- Drops `public.bid_pricing_assignments` (if exists)
+- Drops `public.price_book_entries` (if exists)
+- Drops `public.price_book_versions` (if exists)
+- Drops `public.bids.job_type` column (if exists)
+
+**Order**: Drops in dependency order so foreign keys are respected. Uses `IF EXISTS` so the migration is safe if some objects were already removed.
+
+**When to run**: When you want to remove the price book tables and `bids.job_type` from the database (e.g. after reverting the price book feature in the codebase).

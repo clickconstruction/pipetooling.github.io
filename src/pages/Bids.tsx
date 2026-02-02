@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
+import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
 import NewCustomerForm from '../components/NewCustomerForm'
 import { Database } from '../types/database'
@@ -16,11 +16,21 @@ type MaterialTemplate = Database['public']['Tables']['material_templates']['Row'
 type CostEstimate = Database['public']['Tables']['cost_estimates']['Row']
 type CostEstimateLaborRow = Database['public']['Tables']['cost_estimate_labor_rows']['Row']
 type FixtureLaborDefault = Database['public']['Tables']['fixture_labor_defaults']['Row']
+type PriceBookVersion = Database['public']['Tables']['price_book_versions']['Row']
+type PriceBookEntry = Database['public']['Tables']['price_book_entries']['Row']
+type BidPricingAssignment = Database['public']['Tables']['bid_pricing_assignments']['Row']
+type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
+type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
+type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions']['Row']
+type TakeoffBookEntry = Database['public']['Tables']['takeoff_book_entries']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
 
-type TakeoffMapping = { id: string; countRowId: string; templateId: string; quantity: number }
+type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
+type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number }
 type DraftPO = { id: string; name: string }
-type CostEstimatePO = { id: string; name: string }
+type CostEstimatePO = { id: string; name: string; stage: string | null }
+
+const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
 
 type EstimatorUser = { id: string; name: string | null; email: string }
 
@@ -102,8 +112,19 @@ function formatCompactCurrency(n: number | null): string {
   return `$${k.toFixed(1)}k`
 }
 
+function formatCurrency(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 function bidDisplayName(b: Bid): string {
   return [b.project_name, b.address].filter(Boolean).join(' – ') || ''
+}
+
+function marginFlag(marginPercent: number | null): 'red' | 'yellow' | 'green' | null {
+  if (marginPercent == null) return null
+  if (marginPercent < 20) return 'red'
+  if (marginPercent < 40) return 'yellow'
+  return 'green'
 }
 
 export default function Bids() {
@@ -111,7 +132,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'counts' | 'takeoffs' | 'cost-estimate' | 'cover-letter' | 'submission-followup'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup'>('bid-board')
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -167,6 +188,8 @@ export default function Bids() {
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
   const [submissionEntries, setSubmissionEntries] = useState<BidSubmissionEntry[]>([])
   const [addingSubmissionEntry, setAddingSubmissionEntry] = useState(false)
+  const [submissionBidHasCostEstimate, setSubmissionBidHasCostEstimate] = useState<boolean | 'loading' | null>(null)
+  const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, lost: false })
   const [, setTick] = useState(0)
 
@@ -183,6 +206,27 @@ export default function Bids() {
   const [takeoffSuccessMessage, setTakeoffSuccessMessage] = useState<string | null>(null)
   const [takeoffTemplateSearch, setTakeoffTemplateSearch] = useState('')
   const [takeoffCreatedPOId, setTakeoffCreatedPOId] = useState<string | null>(null)
+  const [takeoffTemplatePreviewCache, setTakeoffTemplatePreviewCache] = useState<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>({})
+  const [takeoffPreviewModalTemplateId, setTakeoffPreviewModalTemplateId] = useState<string | null>(null)
+  const [takeoffPreviewModalTemplateName, setTakeoffPreviewModalTemplateName] = useState<string | null>(null)
+  const [takeoffExistingPOItems, setTakeoffExistingPOItems] = useState<Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> | 'loading' | null>(null)
+  const [takeoffBookVersions, setTakeoffBookVersions] = useState<TakeoffBookVersion[]>([])
+  const [takeoffBookEntries, setTakeoffBookEntries] = useState<TakeoffBookEntry[]>([])
+  const [selectedTakeoffBookVersionId, setSelectedTakeoffBookVersionId] = useState<string | null>(null)
+  const [takeoffBookSectionOpen, setTakeoffBookSectionOpen] = useState(true)
+  const [takeoffBookEntriesVersionId, setTakeoffBookEntriesVersionId] = useState<string | null>(null)
+  const [takeoffBookVersionFormOpen, setTakeoffBookVersionFormOpen] = useState(false)
+  const [editingTakeoffBookVersion, setEditingTakeoffBookVersion] = useState<TakeoffBookVersion | null>(null)
+  const [takeoffBookVersionNameInput, setTakeoffBookVersionNameInput] = useState('')
+  const [savingTakeoffBookVersion, setSavingTakeoffBookVersion] = useState(false)
+  const [takeoffBookEntryFormOpen, setTakeoffBookEntryFormOpen] = useState(false)
+  const [editingTakeoffBookEntry, setEditingTakeoffBookEntry] = useState<TakeoffBookEntry | null>(null)
+  const [takeoffBookEntryFixtureName, setTakeoffBookEntryFixtureName] = useState('')
+  const [takeoffBookEntryTemplateId, setTakeoffBookEntryTemplateId] = useState('')
+  const [takeoffBookEntryStage, setTakeoffBookEntryStage] = useState<TakeoffStage>('rough_in')
+  const [savingTakeoffBookEntry, setSavingTakeoffBookEntry] = useState(false)
+  const [applyingTakeoffBookTemplates, setApplyingTakeoffBookTemplates] = useState(false)
+  const [takeoffBookApplyMessage, setTakeoffBookApplyMessage] = useState<string | null>(null)
 
   // Cost Estimate tab
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
@@ -196,6 +240,66 @@ export default function Bids() {
   const [costEstimateMaterialTotalTrimSet, setCostEstimateMaterialTotalTrimSet] = useState<number | null>(null)
   const [laborRateInput, setLaborRateInput] = useState('')
   const [savingCostEstimate, setSavingCostEstimate] = useState(false)
+  const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
+  const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
+  const [costEstimatePOModalTaxPercent, setCostEstimatePOModalTaxPercent] = useState('8.25')
+  const [laborBookVersions, setLaborBookVersions] = useState<LaborBookVersion[]>([])
+  const [laborBookEntries, setLaborBookEntries] = useState<LaborBookEntry[]>([])
+  const [selectedLaborBookVersionId, setSelectedLaborBookVersionId] = useState<string | null>(null)
+  const [laborBookEntriesVersionId, setLaborBookEntriesVersionId] = useState<string | null>(null)
+  const costEstimateBidIdRef = useRef<string | null>(null)
+  const [laborVersionFormOpen, setLaborVersionFormOpen] = useState(false)
+  const [editingLaborVersion, setEditingLaborVersion] = useState<LaborBookVersion | null>(null)
+  const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
+  const [savingLaborVersion, setSavingLaborVersion] = useState(false)
+  const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
+  const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntry | null>(null)
+  const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
+  const [laborEntryRoughIn, setLaborEntryRoughIn] = useState('')
+  const [laborEntryTopOut, setLaborEntryTopOut] = useState('')
+  const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
+  const [savingLaborEntry, setSavingLaborEntry] = useState(false)
+  const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
+  const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
+  const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(true)
+
+  // Pricing tab
+  const [pricingSearchQuery, setPricingSearchQuery] = useState('')
+  const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(true)
+  const [selectedBidForPricing, setSelectedBidForPricing] = useState<BidWithBuilder | null>(null)
+  const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
+  const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntry[]>([])
+  const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
+  const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
+  const pricingBidIdRef = useRef<string | null>(null)
+  const [pricingCountRows, setPricingCountRows] = useState<BidCountRow[]>([])
+  const [pricingCostEstimate, setPricingCostEstimate] = useState<CostEstimate | null>(null)
+  const [pricingLaborRows, setPricingLaborRows] = useState<CostEstimateLaborRow[]>([])
+  const [pricingMaterialTotalRoughIn, setPricingMaterialTotalRoughIn] = useState<number | null>(null)
+  const [pricingMaterialTotalTopOut, setPricingMaterialTotalTopOut] = useState<number | null>(null)
+  const [pricingMaterialTotalTrimSet, setPricingMaterialTotalTrimSet] = useState<number | null>(null)
+  const [pricingLaborRate, setPricingLaborRate] = useState<number | null>(null)
+  const [pricingVersionFormOpen, setPricingVersionFormOpen] = useState(false)
+  const [editingPricingVersion, setEditingPricingVersion] = useState<PriceBookVersion | null>(null)
+  const [pricingVersionNameInput, setPricingVersionNameInput] = useState('')
+  const [savingPricingVersion, setSavingPricingVersion] = useState(false)
+  const [pricingEntryFormOpen, setPricingEntryFormOpen] = useState(false)
+  const [editingPricingEntry, setEditingPricingEntry] = useState<PriceBookEntry | null>(null)
+  const [pricingEntryFixtureName, setPricingEntryFixtureName] = useState('')
+  const [pricingEntryRoughIn, setPricingEntryRoughIn] = useState('')
+  const [pricingEntryTopOut, setPricingEntryTopOut] = useState('')
+  const [pricingEntryTrimSet, setPricingEntryTrimSet] = useState('')
+  const [pricingEntryTotal, setPricingEntryTotal] = useState('')
+  const [savingPricingEntry, setSavingPricingEntry] = useState(false)
+  const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
+
+  /** Set selected bid for Counts, Takeoffs, Cost Estimate, and Pricing so selection stays in sync across tabs. */
+  function setSharedBid(bid: BidWithBuilder | null) {
+    setSelectedBidForCounts(bid)
+    setSelectedBidForTakeoff(bid)
+    setSelectedBidForCostEstimate(bid)
+    setSelectedBidForPricing(bid)
+  }
 
   function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'lost') {
     setSubmissionSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -312,7 +416,7 @@ export default function Bids() {
     if (!bidId) return
     loadCountRows(bidId)
     if (selectedBidForTakeoff?.id === bidId) loadTakeoffCountRows(bidId)
-    if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId)
+    if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
   }
 
   async function loadSubmissionEntries(bidId: string) {
@@ -340,7 +444,7 @@ export default function Bids() {
     }
     const rows = (data as BidCountRow[]) ?? []
     setTakeoffCountRows(rows)
-    setTakeoffMappings(rows.map((row) => ({ id: crypto.randomUUID(), countRowId: row.id, templateId: '', quantity: Number(row.count) })))
+    setTakeoffMappings(rows.map((row) => ({ id: crypto.randomUUID(), countRowId: row.id, templateId: '', stage: 'rough_in' as TakeoffStage, quantity: Number(row.count) })))
   }
 
   async function loadMaterialTemplates() {
@@ -365,10 +469,53 @@ export default function Bids() {
     setDraftPOs((data as DraftPO[]) ?? [])
   }
 
+  async function loadTakeoffBookVersions() {
+    const { data, error } = await supabase
+      .from('takeoff_book_versions')
+      .select('*')
+      .order('name', { ascending: true })
+    if (error) {
+      setError(`Failed to load takeoff book versions: ${error.message}`)
+      return
+    }
+    setTakeoffBookVersions((data as TakeoffBookVersion[]) ?? [])
+  }
+
+  async function loadTakeoffBookEntries(versionId: string | null) {
+    if (!versionId) {
+      setTakeoffBookEntries([])
+      return
+    }
+    const { data, error } = await supabase
+      .from('takeoff_book_entries')
+      .select('*')
+      .eq('version_id', versionId)
+      .order('sequence_order', { ascending: true })
+      .order('fixture_name', { ascending: true })
+    if (error) {
+      setError(`Failed to load takeoff book entries: ${error.message}`)
+      setTakeoffBookEntries([])
+      return
+    }
+    setTakeoffBookEntries((data as TakeoffBookEntry[]) ?? [])
+  }
+
+  async function saveBidSelectedTakeoffBookVersion(bidId: string, versionId: string | null) {
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ selected_takeoff_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .eq('id', bidId)
+    if (err) {
+      setError(`Failed to save takeoff book version: ${err.message}`)
+      return
+    }
+    await loadBids()
+  }
+
   async function loadPurchaseOrdersForCostEstimate() {
     const { data, error } = await supabase
       .from('purchase_orders')
-      .select('id, name')
+      .select('id, name, stage')
       .order('updated_at', { ascending: false })
     if (error) {
       setError(`Failed to load purchase orders: ${error.message}`)
@@ -509,7 +656,7 @@ export default function Bids() {
     return est
   }
 
-  async function loadCostEstimateData(bidId: string) {
+  async function loadCostEstimateData(bidId: string, laborBookVersionId: string | null) {
     const countRows = await loadCostEstimateCountRows(bidId)
     if (countRows.length === 0) {
       setCostEstimateLaborRows([])
@@ -519,8 +666,669 @@ export default function Bids() {
     }
     const est = await ensureCostEstimateForBid(bidId)
     if (!est) return
-    const defaults = await loadFixtureLaborDefaults()
+    let defaults: FixtureLaborDefault[]
+    if (laborBookVersionId) {
+      const { data: entries, error } = await supabase
+        .from('labor_book_entries')
+        .select('*')
+        .eq('version_id', laborBookVersionId)
+        .order('sequence_order', { ascending: true })
+      if (error || !entries?.length) {
+        defaults = await loadFixtureLaborDefaults()
+      } else {
+        defaults = (entries as LaborBookEntry[]).map((e) => ({
+          fixture: e.fixture_name,
+          rough_in_hrs: Number(e.rough_in_hrs),
+          top_out_hrs: Number(e.top_out_hrs),
+          trim_set_hrs: Number(e.trim_set_hrs),
+        }))
+      }
+    } else {
+      defaults = await loadFixtureLaborDefaults()
+    }
     await loadCostEstimateLaborRowsAndSync(est.id, countRows, defaults)
+  }
+
+  async function loadLaborBookVersions() {
+    const { data, error } = await supabase
+      .from('labor_book_versions')
+      .select('*')
+      .order('name', { ascending: true })
+    if (error) {
+      setError(`Failed to load labor book versions: ${error.message}`)
+      return
+    }
+    setLaborBookVersions((data as LaborBookVersion[]) ?? [])
+  }
+
+  async function loadLaborBookEntries(versionId: string | null) {
+    if (!versionId) {
+      setLaborBookEntries([])
+      return
+    }
+    const { data, error } = await supabase
+      .from('labor_book_entries')
+      .select('*')
+      .eq('version_id', versionId)
+      .order('sequence_order', { ascending: true })
+      .order('fixture_name', { ascending: true })
+    if (error) {
+      setError(`Failed to load labor book entries: ${error.message}`)
+      setLaborBookEntries([])
+      return
+    }
+    setLaborBookEntries((data as LaborBookEntry[]) ?? [])
+  }
+
+  async function saveBidSelectedLaborBookVersion(bidId: string, versionId: string | null) {
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ selected_labor_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .eq('id', bidId)
+    if (err) {
+      setError(`Failed to save labor book version: ${err.message}`)
+      return
+    }
+    await loadBids()
+  }
+
+  async function handleLaborBookVersionChange(bidId: string, versionId: string) {
+    setSelectedLaborBookVersionId(versionId)
+    await saveBidSelectedLaborBookVersion(bidId, versionId)
+    await loadCostEstimateData(bidId, versionId)
+  }
+
+  async function loadPriceBookVersions() {
+    const { data, error } = await supabase
+      .from('price_book_versions')
+      .select('*')
+      .order('name', { ascending: true })
+    if (error) {
+      setError(`Failed to load price book versions: ${error.message}`)
+      return
+    }
+    setPriceBookVersions((data as PriceBookVersion[]) ?? [])
+  }
+
+  async function loadPriceBookEntries(versionId: string | null) {
+    if (!versionId) {
+      setPriceBookEntries([])
+      return
+    }
+    const { data, error } = await supabase
+      .from('price_book_entries')
+      .select('*')
+      .eq('version_id', versionId)
+      .order('sequence_order', { ascending: true })
+      .order('fixture_name', { ascending: true })
+    if (error) {
+      setError(`Failed to load price book entries: ${error.message}`)
+      setPriceBookEntries([])
+      return
+    }
+    setPriceBookEntries((data as PriceBookEntry[]) ?? [])
+  }
+
+  async function loadBidPricingAssignments(bidId: string, versionId: string | null) {
+    if (versionId == null) {
+      setBidPricingAssignments([])
+      return
+    }
+    const { data, error } = await supabase
+      .from('bid_pricing_assignments')
+      .select('*')
+      .eq('bid_id', bidId)
+      .eq('price_book_version_id', versionId)
+    if (error) {
+      setError(`Failed to load pricing assignments: ${error.message}`)
+      setBidPricingAssignments([])
+      return
+    }
+    setBidPricingAssignments((data as BidPricingAssignment[]) ?? [])
+  }
+
+  async function loadPricingDataForBid(bidId: string) {
+    const { data: countData, error: countErr } = await supabase
+      .from('bids_count_rows')
+      .select('*')
+      .eq('bid_id', bidId)
+      .order('sequence_order', { ascending: true })
+    if (countErr) {
+      setPricingCountRows([])
+      setPricingCostEstimate(null)
+      setPricingLaborRows([])
+      setPricingMaterialTotalRoughIn(null)
+      setPricingMaterialTotalTopOut(null)
+      setPricingMaterialTotalTrimSet(null)
+      setPricingLaborRate(null)
+      return
+    }
+    const countRows = (countData as BidCountRow[]) ?? []
+    setPricingCountRows(countRows)
+    const { data: estData, error: estErr } = await supabase
+      .from('cost_estimates')
+      .select('*')
+      .eq('bid_id', bidId)
+      .maybeSingle()
+    if (estErr || !estData) {
+      setPricingCostEstimate(null)
+      setPricingLaborRows([])
+      setPricingMaterialTotalRoughIn(null)
+      setPricingMaterialTotalTopOut(null)
+      setPricingMaterialTotalTrimSet(null)
+      setPricingLaborRate(null)
+      return
+    }
+    const est = estData as CostEstimate
+    setPricingCostEstimate(est)
+    setPricingLaborRate(est.labor_rate != null ? Number(est.labor_rate) : null)
+    const [roughTotal, topTotal, trimTotal] = await Promise.all([
+      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
+      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
+      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+    ])
+    setPricingMaterialTotalRoughIn(est.purchase_order_id_rough_in ? roughTotal : null)
+    setPricingMaterialTotalTopOut(est.purchase_order_id_top_out ? topTotal : null)
+    setPricingMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trimTotal : null)
+    const { data: laborData, error: laborErr } = await supabase
+      .from('cost_estimate_labor_rows')
+      .select('*')
+      .eq('cost_estimate_id', est.id)
+      .order('sequence_order', { ascending: true })
+    if (laborErr) {
+      setPricingLaborRows([])
+      return
+    }
+    setPricingLaborRows((laborData as CostEstimateLaborRow[]) ?? [])
+  }
+
+  async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ selected_price_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .eq('id', bidId)
+    if (err) {
+      setError(`Failed to save version: ${err.message}`)
+      return
+    }
+    await loadBids()
+  }
+
+  async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    setSavingPricingAssignment(countRowId)
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    if (existing) {
+      const { error: err } = await supabase
+        .from('bid_pricing_assignments')
+        .update({ price_book_entry_id: priceBookEntryId })
+        .eq('id', existing.id)
+      if (err) setError(err.message)
+      else await loadBidPricingAssignments(bidId, versionId)
+    } else {
+      const { error: err } = await supabase
+        .from('bid_pricing_assignments')
+        .insert({ bid_id: bidId, count_row_id: countRowId, price_book_entry_id: priceBookEntryId, price_book_version_id: versionId })
+      if (err) setError(err.message)
+      else await loadBidPricingAssignments(bidId, versionId)
+    }
+    setSavingPricingAssignment(null)
+  }
+
+  async function removePricingAssignment(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    if (!existing) return
+    const { error: err } = await supabase.from('bid_pricing_assignments').delete().eq('id', existing.id)
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+  }
+
+  function openNewPricingVersion() {
+    setEditingPricingVersion(null)
+    setPricingVersionNameInput('')
+    setPricingVersionFormOpen(true)
+  }
+
+  function openEditPricingVersion(v: PriceBookVersion) {
+    setEditingPricingVersion(v)
+    setPricingVersionNameInput(v.name)
+    setPricingVersionFormOpen(true)
+  }
+
+  function closePricingVersionForm() {
+    setPricingVersionFormOpen(false)
+    setEditingPricingVersion(null)
+    setPricingVersionNameInput('')
+  }
+
+  async function savePricingVersion(e: React.FormEvent) {
+    e.preventDefault()
+    const name = pricingVersionNameInput.trim()
+    if (!name) return
+    setSavingPricingVersion(true)
+    setError(null)
+    if (editingPricingVersion) {
+      const { error: err } = await supabase.from('price_book_versions').update({ name }).eq('id', editingPricingVersion.id)
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookVersions()
+        closePricingVersionForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('price_book_versions').insert({ name })
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookVersions()
+        closePricingVersionForm()
+      }
+    }
+    setSavingPricingVersion(false)
+  }
+
+  async function deletePricingVersion(v: PriceBookVersion) {
+    if (!confirm(`Delete price book "${v.name}"? This will delete all entries in this version.`)) return
+    const { error: err } = await supabase.from('price_book_versions').delete().eq('id', v.id)
+    if (err) setError(err.message)
+    else {
+      await loadPriceBookVersions()
+      if (selectedPricingVersionId === v.id) {
+        setSelectedPricingVersionId(null)
+        setPriceBookEntries([])
+        if (selectedBidForPricing?.selected_price_book_version_id === v.id) {
+          saveBidSelectedPriceBookVersion(selectedBidForPricing.id, null)
+          await loadBids()
+        }
+      }
+    }
+  }
+
+  function openNewPricingEntry() {
+    setEditingPricingEntry(null)
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setPricingEntryFormOpen(true)
+  }
+
+  function openEditPricingEntry(entry: PriceBookEntry) {
+    setEditingPricingEntry(entry)
+    setPricingEntryFixtureName(entry.fixture_name)
+    setPricingEntryRoughIn(String(entry.rough_in_price))
+    setPricingEntryTopOut(String(entry.top_out_price))
+    setPricingEntryTrimSet(String(entry.trim_set_price))
+    setPricingEntryTotal(String(entry.total_price))
+    setPricingEntryFormOpen(true)
+  }
+
+  function closePricingEntryForm() {
+    setPricingEntryFormOpen(false)
+    setEditingPricingEntry(null)
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+  }
+
+  async function savePricingEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPricingVersionId) return
+    const fixtureName = pricingEntryFixtureName.trim()
+    if (!fixtureName) return
+    const rough = parseFloat(pricingEntryRoughIn) || 0
+    const top = parseFloat(pricingEntryTopOut) || 0
+    const trim = parseFloat(pricingEntryTrimSet) || 0
+    const total = parseFloat(pricingEntryTotal) || 0
+    setSavingPricingEntry(true)
+    setError(null)
+    if (editingPricingEntry) {
+      const { error: err } = await supabase
+        .from('price_book_entries')
+        .update({ fixture_name: fixtureName, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
+        .eq('id', editingPricingEntry.id)
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookEntries(selectedPricingVersionId)
+        closePricingEntryForm()
+      }
+    } else {
+      const maxSeq = priceBookEntries.length === 0 ? 0 : Math.max(...priceBookEntries.map((e) => e.sequence_order))
+      const { error: err } = await supabase
+        .from('price_book_entries')
+        .insert({ version_id: selectedPricingVersionId, fixture_name: fixtureName, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookEntries(selectedPricingVersionId)
+        closePricingEntryForm()
+      }
+    }
+    setSavingPricingEntry(false)
+  }
+
+  async function deletePricingEntry(entry: PriceBookEntry) {
+    if (!confirm(`Delete "${entry.fixture_name}" from this price book?`)) return
+    const { error: err } = await supabase.from('price_book_entries').delete().eq('id', entry.id)
+    if (err) setError(err.message)
+    else if (selectedPricingVersionId) await loadPriceBookEntries(selectedPricingVersionId)
+  }
+
+  function openNewLaborVersion() {
+    setEditingLaborVersion(null)
+    setLaborVersionNameInput('')
+    setLaborVersionFormOpen(true)
+  }
+
+  function openEditLaborVersion(v: LaborBookVersion) {
+    setEditingLaborVersion(v)
+    setLaborVersionNameInput(v.name)
+    setLaborVersionFormOpen(true)
+  }
+
+  function closeLaborVersionForm() {
+    setLaborVersionFormOpen(false)
+    setEditingLaborVersion(null)
+    setLaborVersionNameInput('')
+  }
+
+  async function saveLaborVersion(e: React.FormEvent) {
+    e.preventDefault()
+    const name = laborVersionNameInput.trim()
+    if (!name) return
+    setSavingLaborVersion(true)
+    setError(null)
+    if (editingLaborVersion) {
+      const { error: err } = await supabase.from('labor_book_versions').update({ name }).eq('id', editingLaborVersion.id)
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookVersions()
+        closeLaborVersionForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('labor_book_versions').insert({ name })
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookVersions()
+        closeLaborVersionForm()
+      }
+    }
+    setSavingLaborVersion(false)
+  }
+
+  async function deleteLaborVersion(v: LaborBookVersion) {
+    if (!confirm(`Delete labor book "${v.name}"? This will delete all entries in this version.`)) return
+    const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
+    if (err) setError(err.message)
+    else {
+      await loadLaborBookVersions()
+      if (laborBookEntriesVersionId === v.id) {
+        setLaborBookEntriesVersionId(null)
+        setLaborBookEntries([])
+      }
+      if (selectedLaborBookVersionId === v.id) {
+        setSelectedLaborBookVersionId(null)
+        if (selectedBidForCostEstimate?.selected_labor_book_version_id === v.id) {
+          saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
+          await loadBids()
+        }
+      }
+    }
+  }
+
+  function openNewLaborEntry() {
+    setEditingLaborEntry(null)
+    setLaborEntryFixtureName('')
+    setLaborEntryRoughIn('')
+    setLaborEntryTopOut('')
+    setLaborEntryTrimSet('')
+    setLaborEntryFormOpen(true)
+  }
+
+  function openEditLaborEntry(entry: LaborBookEntry) {
+    setEditingLaborEntry(entry)
+    setLaborEntryFixtureName(entry.fixture_name)
+    setLaborEntryRoughIn(String(entry.rough_in_hrs))
+    setLaborEntryTopOut(String(entry.top_out_hrs))
+    setLaborEntryTrimSet(String(entry.trim_set_hrs))
+    setLaborEntryFormOpen(true)
+  }
+
+  function closeLaborEntryForm() {
+    setLaborEntryFormOpen(false)
+    setEditingLaborEntry(null)
+    setLaborEntryFixtureName('')
+    setLaborEntryRoughIn('')
+    setLaborEntryTopOut('')
+    setLaborEntryTrimSet('')
+  }
+
+  async function saveLaborEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!laborBookEntriesVersionId) return
+    const fixtureName = laborEntryFixtureName.trim()
+    if (!fixtureName) return
+    const rough = parseFloat(laborEntryRoughIn) || 0
+    const top = parseFloat(laborEntryTopOut) || 0
+    const trim = parseFloat(laborEntryTrimSet) || 0
+    setSavingLaborEntry(true)
+    setError(null)
+    if (editingLaborEntry) {
+      const { error: err } = await supabase
+        .from('labor_book_entries')
+        .update({ fixture_name: fixtureName, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
+        .eq('id', editingLaborEntry.id)
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookEntries(laborBookEntriesVersionId)
+        closeLaborEntryForm()
+      }
+    } else {
+      const maxSeq = laborBookEntries.length === 0 ? 0 : Math.max(...laborBookEntries.map((e) => e.sequence_order))
+      const { error: err } = await supabase
+        .from('labor_book_entries')
+        .insert({ version_id: laborBookEntriesVersionId, fixture_name: fixtureName, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookEntries(laborBookEntriesVersionId)
+        closeLaborEntryForm()
+      }
+    }
+    setSavingLaborEntry(false)
+  }
+
+  async function deleteLaborEntry(entry: LaborBookEntry) {
+    if (!confirm(`Delete "${entry.fixture_name}" from this labor book?`)) return
+    const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
+    if (err) setError(err.message)
+    else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
+  }
+
+  function openEditTakeoffBookVersion(v: TakeoffBookVersion) {
+    setEditingTakeoffBookVersion(v)
+    setTakeoffBookVersionNameInput(v.name)
+    setTakeoffBookVersionFormOpen(true)
+  }
+
+  function closeTakeoffBookVersionForm() {
+    setTakeoffBookVersionFormOpen(false)
+    setEditingTakeoffBookVersion(null)
+    setTakeoffBookVersionNameInput('')
+  }
+
+  async function saveTakeoffBookVersion(e: React.FormEvent) {
+    e.preventDefault()
+    const name = takeoffBookVersionNameInput.trim()
+    if (!name) return
+    setSavingTakeoffBookVersion(true)
+    setError(null)
+    if (editingTakeoffBookVersion) {
+      const { error: err } = await supabase.from('takeoff_book_versions').update({ name }).eq('id', editingTakeoffBookVersion.id)
+      if (err) setError(err.message)
+      else {
+        await loadTakeoffBookVersions()
+        closeTakeoffBookVersionForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('takeoff_book_versions').insert({ name })
+      if (err) setError(err.message)
+      else {
+        await loadTakeoffBookVersions()
+        closeTakeoffBookVersionForm()
+      }
+    }
+    setSavingTakeoffBookVersion(false)
+  }
+
+  async function deleteTakeoffBookVersion(v: TakeoffBookVersion) {
+    if (!confirm(`Delete takeoff book "${v.name}"? This will delete all entries in this version.`)) return
+    const { error: err } = await supabase.from('takeoff_book_versions').delete().eq('id', v.id)
+    if (err) setError(err.message)
+    else {
+      await loadTakeoffBookVersions()
+      if (takeoffBookEntriesVersionId === v.id) {
+        setTakeoffBookEntriesVersionId(null)
+        setTakeoffBookEntries([])
+      }
+      if (selectedTakeoffBookVersionId === v.id) {
+        setSelectedTakeoffBookVersionId(null)
+        if (selectedBidForTakeoff?.selected_takeoff_book_version_id === v.id) {
+          saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
+          void loadBids()
+        }
+      }
+    }
+  }
+
+  function openNewTakeoffBookVersion() {
+    setEditingTakeoffBookVersion(null)
+    setTakeoffBookVersionNameInput('')
+    setTakeoffBookVersionFormOpen(true)
+  }
+
+  function openNewTakeoffBookEntry() {
+    setEditingTakeoffBookEntry(null)
+    setTakeoffBookEntryFixtureName('')
+    setTakeoffBookEntryTemplateId('')
+    setTakeoffBookEntryStage('rough_in')
+    setTakeoffBookEntryFormOpen(true)
+  }
+
+  function openEditTakeoffBookEntry(entry: TakeoffBookEntry) {
+    setEditingTakeoffBookEntry(entry)
+    setTakeoffBookEntryFixtureName(entry.fixture_name)
+    setTakeoffBookEntryTemplateId(entry.template_id)
+    setTakeoffBookEntryStage(entry.stage as TakeoffStage)
+    setTakeoffBookEntryFormOpen(true)
+  }
+
+  function closeTakeoffBookEntryForm() {
+    setTakeoffBookEntryFormOpen(false)
+    setEditingTakeoffBookEntry(null)
+    setTakeoffBookEntryFixtureName('')
+    setTakeoffBookEntryTemplateId('')
+    setTakeoffBookEntryStage('rough_in')
+  }
+
+  async function saveTakeoffBookEntry(e: React.FormEvent) {
+    e.preventDefault()
+    const fixtureName = takeoffBookEntryFixtureName.trim()
+    if (!fixtureName || !takeoffBookEntryTemplateId || !takeoffBookEntriesVersionId) return
+    const stage = takeoffBookEntryStage
+    setSavingTakeoffBookEntry(true)
+    setError(null)
+    if (editingTakeoffBookEntry) {
+      const { error: err } = await supabase
+        .from('takeoff_book_entries')
+        .update({ fixture_name: fixtureName, template_id: takeoffBookEntryTemplateId, stage })
+        .eq('id', editingTakeoffBookEntry.id)
+      if (err) setError(err.message)
+      else {
+        await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+        closeTakeoffBookEntryForm()
+      }
+    } else {
+      const maxSeq = takeoffBookEntries.length === 0 ? 0 : Math.max(...takeoffBookEntries.map((e) => e.sequence_order), 0)
+      const { error: err } = await supabase
+        .from('takeoff_book_entries')
+        .insert({
+          version_id: takeoffBookEntriesVersionId,
+          fixture_name: fixtureName,
+          template_id: takeoffBookEntryTemplateId,
+          stage,
+          sequence_order: maxSeq + 1,
+        })
+      if (err) setError(err.message)
+      else {
+        await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+        closeTakeoffBookEntryForm()
+      }
+    }
+    setSavingTakeoffBookEntry(false)
+  }
+
+  async function deleteTakeoffBookEntry(entry: TakeoffBookEntry) {
+    if (!confirm(`Delete "${entry.fixture_name}" / ${materialTemplates.find((t) => t.id === entry.template_id)?.name ?? 'template'} from this takeoff book?`)) return
+    const { error: err } = await supabase.from('takeoff_book_entries').delete().eq('id', entry.id)
+    if (err) setError(err.message)
+    else if (takeoffBookEntriesVersionId) await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+  }
+
+  async function applyTakeoffBookTemplates() {
+    if (!selectedBidForTakeoff || takeoffCountRows.length === 0 || !selectedTakeoffBookVersionId) return
+    setTakeoffBookApplyMessage(null)
+    setApplyingTakeoffBookTemplates(true)
+    setError(null)
+    try {
+      const { data: entries, error: fetchErr } = await supabase
+        .from('takeoff_book_entries')
+        .select('fixture_name, template_id, stage')
+        .eq('version_id', selectedTakeoffBookVersionId)
+      if (fetchErr) {
+        setError(`Failed to load takeoff book entries: ${fetchErr.message}`)
+        setApplyingTakeoffBookTemplates(false)
+        return
+      }
+      const entriesList = (entries as TakeoffBookEntry[]) ?? []
+      const existingKeys = new Set(
+        takeoffMappings
+          .filter((m) => m.templateId && m.stage)
+          .map((m) => `${m.countRowId}:${m.templateId}:${m.stage}`)
+      )
+      const toAdd: TakeoffMapping[] = []
+      for (const row of takeoffCountRows) {
+        const fixtureLower = row.fixture.toLowerCase()
+        for (const entry of entriesList) {
+          if (entry.fixture_name.toLowerCase() !== fixtureLower) continue
+          const key = `${row.id}:${entry.template_id}:${entry.stage}`
+          if (existingKeys.has(key)) continue
+          existingKeys.add(key)
+          toAdd.push({
+            id: crypto.randomUUID(),
+            countRowId: row.id,
+            templateId: entry.template_id,
+            stage: entry.stage as TakeoffStage,
+            quantity: Number(row.count),
+          })
+        }
+      }
+      if (toAdd.length > 0) setTakeoffMappings((prev) => [...prev, ...toAdd])
+      setTakeoffBookApplyMessage(toAdd.length === 0 ? 'No new templates to add.' : `Applied ${toAdd.length} template(s).`)
+      setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
+    } finally {
+      setApplyingTakeoffBookTemplates(false)
+    }
+  }
+
+  async function handlePricingVersionChange(bidId: string, versionId: string) {
+    setSelectedPricingVersionId(versionId)
+    await loadPriceBookEntries(versionId)
+    await saveBidSelectedPriceBookVersion(bidId, versionId)
   }
 
   async function saveCostEstimate() {
@@ -562,6 +1370,63 @@ export default function Bids() {
     setSavingCostEstimate(false)
   }
 
+  async function applyLaborBookHoursToEstimate() {
+    if (!costEstimate?.id || !selectedLaborBookVersionId || costEstimateLaborRows.length === 0) return
+    setLaborBookApplyMessage(null)
+    setApplyingLaborBookHours(true)
+    setError(null)
+    try {
+      const { data: entries, error: fetchErr } = await supabase
+        .from('labor_book_entries')
+        .select('fixture_name, rough_in_hrs, top_out_hrs, trim_set_hrs')
+        .eq('version_id', selectedLaborBookVersionId)
+      if (fetchErr) {
+        setError(`Failed to load labor book entries: ${fetchErr.message}`)
+        setApplyingLaborBookHours(false)
+        return
+      }
+      const entriesByFixture = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
+      for (const e of (entries as LaborBookEntry[]) ?? []) {
+        entriesByFixture.set(e.fixture_name.toLowerCase(), {
+          rough_in_hrs: Number(e.rough_in_hrs),
+          top_out_hrs: Number(e.top_out_hrs),
+          trim_set_hrs: Number(e.trim_set_hrs),
+        })
+      }
+      for (const row of costEstimateLaborRows) {
+        const entry = entriesByFixture.get(row.fixture.toLowerCase())
+        if (!entry) continue
+        const { error: updateErr } = await supabase
+          .from('cost_estimate_labor_rows')
+          .update({
+            rough_in_hrs_per_unit: entry.rough_in_hrs,
+            top_out_hrs_per_unit: entry.top_out_hrs,
+            trim_set_hrs_per_unit: entry.trim_set_hrs,
+          })
+          .eq('id', row.id)
+        if (updateErr) {
+          setError(`Failed to update labor row: ${updateErr.message}`)
+          setApplyingLaborBookHours(false)
+          return
+        }
+      }
+      const { data: refetched, error: refetchErr } = await supabase
+        .from('cost_estimate_labor_rows')
+        .select('*')
+        .eq('cost_estimate_id', costEstimate.id)
+        .order('sequence_order', { ascending: true })
+      if (refetchErr) {
+        setError(`Failed to refresh labor rows: ${refetchErr.message}`)
+      } else {
+        setCostEstimateLaborRows((refetched as CostEstimateLaborRow[]) ?? [])
+        setLaborBookApplyMessage('Labor book hours applied.')
+        setTimeout(() => setLaborBookApplyMessage(null), 3000)
+      }
+    } finally {
+      setApplyingLaborBookHours(false)
+    }
+  }
+
   function setCostEstimatePO(stage: 'rough_in' | 'top_out' | 'trim_set', poId: string) {
     if (!costEstimate) return
     const key = stage === 'rough_in' ? 'purchase_order_id_rough_in' : stage === 'top_out' ? 'purchase_order_id_top_out' : 'purchase_order_id_trim_set'
@@ -580,24 +1445,99 @@ export default function Bids() {
     }
   }
 
+  type CostEstimatePOModalItem = { part_name: string; quantity: number; price_at_time: number; template_name: string | null }
+
+  function printCostEstimatePOForReview(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(poName)
+    const grandTotal = items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
+    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
+    const tableRows = items.map((item) => {
+      const partName = escapeHtml(item.part_name)
+      const qty = item.quantity
+      const template = escapeHtml(item.template_name ?? '—')
+      const price = item.price_at_time.toFixed(2)
+      const total = (item.price_at_time * item.quantity).toFixed(2)
+      return `<tr><td>${partName}</td><td>${qty}</td><td>${template}</td><td>$${price}</td><td>$${total}</td></tr>`
+    }).join('')
+    const thead = '<tr><th>Part</th><th>Qty</th><th>Template</th><th>Cost</th><th>Total</th></tr>'
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+      th { background: #f5f5f5; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>${title}</h1>
+      <table>
+        <thead>${thead}</thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr><td colspan="4" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="4" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printCostEstimatePOForSupplyHouse(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(poName)
+    const grandTotal = items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
+    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
+    const tableRows = items.map((item) => {
+      const partName = escapeHtml(item.part_name)
+      const qty = item.quantity
+      const price = item.price_at_time.toFixed(2)
+      const total = (item.price_at_time * item.quantity).toFixed(2)
+      return `<tr><td>${partName}</td><td>${qty}</td><td>$${price}</td><td>$${total}</td></tr>`
+    }).join('')
+    const thead = '<tr><th>Part</th><th>Qty</th><th>Price</th><th>Total</th></tr>'
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+      th { background: #f5f5f5; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>${title}</h1>
+      <table>
+        <thead>${thead}</thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
+      </table>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>>) {
     setCostEstimateLaborRows((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
     )
   }
 
-  function setTakeoffMapping(mappingId: string, updates: { templateId?: string; quantity?: number }) {
+  function setTakeoffMapping(mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) {
     setTakeoffMappings((prev) =>
       prev.map((m) =>
         m.id === mappingId
-          ? { ...m, ...(updates.templateId !== undefined && { templateId: updates.templateId }), ...(updates.quantity !== undefined && { quantity: updates.quantity }) }
+          ? { ...m, ...(updates.templateId !== undefined && { templateId: updates.templateId }), ...(updates.stage !== undefined && { stage: updates.stage }), ...(updates.quantity !== undefined && { quantity: updates.quantity }) }
           : m
       )
     )
   }
 
   function addTakeoffTemplate(countRowId: string) {
-    setTakeoffMappings((prev) => [...prev, { id: crypto.randomUUID(), countRowId, templateId: '', quantity: 1 }])
+    setTakeoffMappings((prev) => [...prev, { id: crypto.randomUUID(), countRowId, templateId: '', stage: 'rough_in', quantity: 1 }])
   }
 
   function removeTakeoffMapping(mappingId: string) {
@@ -616,36 +1556,52 @@ export default function Bids() {
     setTakeoffSuccessMessage(null)
     const projectName = selectedBidForTakeoff.project_name?.trim() || 'Project'
     const dateStr = new Date().toLocaleDateString()
-    const { data: poData, error: poError } = await supabase
-      .from('purchase_orders')
-      .insert({
-        name: `${projectName} – Takeoff ${dateStr}`,
-        status: 'draft',
-        created_by: authUser.id,
-        notes: null,
-      })
-      .select('id')
-      .single()
-    if (poError) {
-      setError(`Failed to create PO: ${poError.message}`)
-      setTakeoffCreatingPO(false)
-      return
-    }
-    const allParts: Array<{ part_id: string; quantity: number }> = []
-    for (const m of mapped) {
-      const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
-      const parts = await expandTemplate(supabase, m.templateId, qty)
-      allParts.push(...parts)
-    }
-    const addErr = await addExpandedPartsToPO(supabase, poData.id, allParts)
-    if (addErr) {
-      setError(addErr)
-      setTakeoffCreatingPO(false)
-      return
+    const stages: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
+    const createdIds: string[] = []
+    const createdLabels: string[] = []
+    for (const stage of stages) {
+      const mappingsForStage = mapped.filter((m) => m.stage === stage)
+      if (mappingsForStage.length === 0) continue
+      const stageLabel = STAGE_LABELS[stage]
+      const poName = `${projectName} – Takeoff ${dateStr} – ${stageLabel}`
+      const { data: poData, error: poError } = await supabase
+        .from('purchase_orders')
+        .insert({
+          name: poName,
+          status: 'draft',
+          created_by: authUser.id,
+          notes: null,
+          stage,
+        })
+        .select('id')
+        .single()
+      if (poError) {
+        setError(`Failed to create PO: ${poError.message}`)
+        setTakeoffCreatingPO(false)
+        return
+      }
+      const allParts: Array<{ part_id: string; quantity: number }> = []
+      for (const m of mappingsForStage) {
+        const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
+        const parts = await expandTemplate(supabase, m.templateId, qty)
+        allParts.push(...parts)
+      }
+      const addErr = await addExpandedPartsToPO(supabase, poData.id, allParts)
+      if (addErr) {
+        setError(addErr)
+        setTakeoffCreatingPO(false)
+        return
+      }
+      createdIds.push(poData.id)
+      createdLabels.push(stageLabel)
     }
     setTakeoffCreatingPO(false)
-    setTakeoffSuccessMessage(`Purchase order "${projectName} – Takeoff ${dateStr}" created. Open Materials → Purchase Orders to edit.`)
-    setTakeoffCreatedPOId(poData.id)
+    setTakeoffSuccessMessage(
+      createdLabels.length === 1
+        ? `Purchase order "${projectName} – Takeoff ${dateStr} – ${createdLabels[0]}" created. Open Materials → Purchase Orders to edit.`
+        : `Purchase orders created for ${createdLabels.join(', ')}. Open Materials → Purchase Orders to edit.`
+    )
+    setTakeoffCreatedPOId(createdIds[0] ?? null)
     loadDraftPOs()
   }
 
@@ -659,23 +1615,40 @@ export default function Bids() {
     setTakeoffAddingToPO(true)
     setError(null)
     setTakeoffSuccessMessage(null)
-    const allParts: Array<{ part_id: string; quantity: number }> = []
     for (const m of mapped) {
       const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
       const parts = await expandTemplate(supabase, m.templateId, qty)
-      allParts.push(...parts)
-    }
-    const addErr = await addExpandedPartsToPO(supabase, takeoffExistingPOId, allParts)
-    if (addErr) {
-      setError(addErr)
-      setTakeoffAddingToPO(false)
-      return
+      const addErr = await addExpandedPartsToPO(supabase, takeoffExistingPOId, parts, m.templateId)
+      if (addErr) {
+        setError(addErr)
+        setTakeoffAddingToPO(false)
+        return
+      }
     }
     setTakeoffAddingToPO(false)
     const po = draftPOs.find((p) => p.id === takeoffExistingPOId)
     setTakeoffSuccessMessage(`Items added to "${po?.name ?? 'purchase order'}". Open Materials → Purchase Orders to view.`)
     setTakeoffCreatedPOId(takeoffExistingPOId)
     loadDraftPOs()
+    setTakeoffExistingPOItems('loading')
+    const { data, error } = await supabase
+      .from('purchase_order_items')
+      .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
+      .eq('purchase_order_id', takeoffExistingPOId)
+      .order('sequence_order', { ascending: true })
+    if (!error && data) {
+      const rows = data as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
+      setTakeoffExistingPOItems(
+        rows.map((row) => ({
+          part_name: row.material_parts?.name ?? '—',
+          quantity: row.quantity,
+          price_at_time: row.price_at_time,
+          template_name: row.source_template?.name ?? null,
+        }))
+      )
+    } else {
+      setTakeoffExistingPOItems(null)
+    }
   }
 
   useEffect(() => {
@@ -706,6 +1679,52 @@ export default function Bids() {
   }, [selectedBidForSubmission?.id])
 
   useEffect(() => {
+    const bidId = selectedBidForSubmission?.id
+    if (!bidId) {
+      setSubmissionBidHasCostEstimate(null)
+      setSubmissionBidCostEstimateAmount(null)
+      return
+    }
+    setSubmissionBidHasCostEstimate('loading')
+    setSubmissionBidCostEstimateAmount(null)
+    let cancelled = false
+    ;(async () => {
+      const { data: est, error: e } = await supabase
+        .from('cost_estimates')
+        .select('id, labor_rate, purchase_order_id_rough_in, purchase_order_id_top_out, purchase_order_id_trim_set')
+        .eq('bid_id', bidId)
+        .maybeSingle()
+      if (e || cancelled) {
+        if (!cancelled) setSubmissionBidHasCostEstimate(null)
+        return
+      }
+      if (!est) {
+        setSubmissionBidHasCostEstimate(false)
+        return
+      }
+      const [laborRes, roughTotal, topTotal, trimTotal] = await Promise.all([
+        supabase.from('cost_estimate_labor_rows').select('count, rough_in_hrs_per_unit, top_out_hrs_per_unit, trim_set_hrs_per_unit').eq('cost_estimate_id', est.id),
+        est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
+        est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
+        est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+      ])
+      if (cancelled) return
+      const laborRows = (laborRes.data as { count: number; rough_in_hrs_per_unit: number; top_out_hrs_per_unit: number; trim_set_hrs_per_unit: number }[]) ?? []
+      const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
+      const totalHours = laborRows.reduce(
+        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        0
+      )
+      const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
+      const laborCost = totalHours * rate
+      const grandTotal = totalMaterials + laborCost
+      setSubmissionBidHasCostEstimate(true)
+      setSubmissionBidCostEstimateAmount(grandTotal)
+    })()
+    return () => { cancelled = true }
+  }, [selectedBidForSubmission?.id])
+
+  useEffect(() => {
     if (selectedBidForTakeoff?.id) loadTakeoffCountRows(selectedBidForTakeoff.id)
     else {
       setTakeoffCountRows([])
@@ -714,27 +1733,182 @@ export default function Bids() {
   }, [selectedBidForTakeoff?.id, activeTab])
 
   useEffect(() => {
+    const idsToLoad = Array.from(
+      new Set(takeoffMappings.map((m) => m.templateId).filter(Boolean))
+    ).filter((id) => takeoffTemplatePreviewCache[id] === undefined)
+    if (idsToLoad.length === 0) return
+    setTakeoffTemplatePreviewCache((prev) => {
+      const next = { ...prev }
+      for (const id of idsToLoad) next[id] = 'loading'
+      return next
+    })
+    for (const tid of idsToLoad) {
+      getTemplatePartsPreview(supabase, tid)
+        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: res })))
+        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: null })))
+    }
+  }, [takeoffMappings, takeoffTemplatePreviewCache])
+
+  useEffect(() => {
+    if (!takeoffExistingPOId.trim()) {
+      setTakeoffExistingPOItems(null)
+      return
+    }
+    setTakeoffExistingPOItems('loading')
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase
+        .from('purchase_order_items')
+        .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
+        .eq('purchase_order_id', takeoffExistingPOId)
+        .order('sequence_order', { ascending: true })
+      if (cancelled) return
+      if (error) {
+        setTakeoffExistingPOItems(null)
+        return
+      }
+      const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
+      setTakeoffExistingPOItems(
+        rows.map((row) => ({
+          part_name: row.material_parts?.name ?? '—',
+          quantity: row.quantity,
+          price_at_time: row.price_at_time,
+          template_name: row.source_template?.name ?? null,
+        }))
+      )
+    })()
+    return () => { cancelled = true }
+  }, [takeoffExistingPOId])
+
+  useEffect(() => {
     if (activeTab === 'takeoffs') {
       loadMaterialTemplates()
       loadDraftPOs()
+      loadTakeoffBookVersions()
+    }
+    if (activeTab === 'pricing') {
+      loadPriceBookVersions()
     }
   }, [activeTab])
+
+  useEffect(() => {
+    if (selectedBidForTakeoff?.selected_takeoff_book_version_id != null) {
+      setSelectedTakeoffBookVersionId(selectedBidForTakeoff.selected_takeoff_book_version_id)
+    } else {
+      setSelectedTakeoffBookVersionId(null)
+    }
+  }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.selected_takeoff_book_version_id])
+
+  useEffect(() => {
+    if (!takeoffBookEntriesVersionId) {
+      setTakeoffBookEntries([])
+      return
+    }
+    loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+  }, [takeoffBookEntriesVersionId])
 
   useEffect(() => {
     if (activeTab === 'cost-estimate') {
       loadPurchaseOrdersForCostEstimate()
+      loadLaborBookVersions()
     }
   }, [activeTab])
 
   useEffect(() => {
-    if (!selectedBidForCostEstimate?.id) {
-      setCostEstimate(null)
-      setCostEstimateLaborRows([])
-      setCostEstimateCountRows([])
+    if (!laborBookEntriesVersionId) {
+      setLaborBookEntries([])
       return
     }
-    loadCostEstimateData(selectedBidForCostEstimate.id)
-  }, [selectedBidForCostEstimate?.id, activeTab])
+    loadLaborBookEntries(laborBookEntriesVersionId)
+  }, [laborBookEntriesVersionId])
+
+  useEffect(() => {
+    if (!costEstimatePOModalPoId?.trim()) {
+      setCostEstimatePOModalData(null)
+      return
+    }
+    setCostEstimatePOModalData('loading')
+    const poName = purchaseOrdersForCostEstimate.find((p) => p.id === costEstimatePOModalPoId)?.name ?? 'Purchase order'
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase
+        .from('purchase_order_items')
+        .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
+        .eq('purchase_order_id', costEstimatePOModalPoId)
+        .order('sequence_order', { ascending: true })
+      if (cancelled) return
+      if (error) {
+        setCostEstimatePOModalData(null)
+        return
+      }
+      const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
+      setCostEstimatePOModalData({
+        name: poName,
+        items: rows.map((row) => ({
+          part_name: row.material_parts?.name ?? '—',
+          quantity: row.quantity,
+          price_at_time: row.price_at_time,
+          template_name: row.source_template?.name ?? null,
+        })),
+      })
+    })()
+    return () => { cancelled = true }
+  }, [costEstimatePOModalPoId, purchaseOrdersForCostEstimate])
+
+  useEffect(() => {
+    if (activeTab !== 'cost-estimate' || !selectedBidForCostEstimate?.id) {
+      if (!selectedBidForCostEstimate?.id) {
+        costEstimateBidIdRef.current = null
+        setCostEstimate(null)
+        setCostEstimateLaborRows([])
+        setCostEstimateCountRows([])
+        setSelectedLaborBookVersionId(null)
+      }
+      return
+    }
+    const bidId = selectedBidForCostEstimate.id
+    const bidJustChanged = costEstimateBidIdRef.current !== bidId
+    if (bidJustChanged) {
+      costEstimateBidIdRef.current = bidId
+      setSelectedLaborBookVersionId(selectedBidForCostEstimate.selected_labor_book_version_id ?? null)
+    }
+    const laborBookVersionId = bidJustChanged
+      ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? null)
+      : selectedLaborBookVersionId
+    loadCostEstimateData(bidId, laborBookVersionId)
+  }, [activeTab, selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.selected_labor_book_version_id, selectedLaborBookVersionId])
+
+  useEffect(() => {
+    if (activeTab !== 'pricing' || !selectedBidForPricing?.id) {
+      pricingBidIdRef.current = null
+      setBidPricingAssignments([])
+      setPricingCountRows([])
+      setPricingCostEstimate(null)
+      setPricingLaborRows([])
+      setPricingMaterialTotalRoughIn(null)
+      setPricingMaterialTotalTopOut(null)
+      setPricingMaterialTotalTrimSet(null)
+      setPricingLaborRate(null)
+      return
+    }
+    const bidId = selectedBidForPricing.id
+    const bidJustChanged = pricingBidIdRef.current !== bidId
+    if (bidJustChanged) {
+      pricingBidIdRef.current = bidId
+      setSelectedPricingVersionId(selectedBidForPricing.selected_price_book_version_id ?? null)
+    }
+    const versionId = bidJustChanged ? (selectedBidForPricing.selected_price_book_version_id ?? null) : selectedPricingVersionId
+    loadBidPricingAssignments(bidId, versionId)
+    loadPricingDataForBid(bidId)
+  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId])
+
+  useEffect(() => {
+    if (!selectedPricingVersionId) {
+      setPriceBookEntries([])
+      return
+    }
+    loadPriceBookEntries(selectedPricingVersionId)
+  }, [selectedPricingVersionId])
 
   function openNewBid() {
     setEditingBid(null)
@@ -912,7 +2086,7 @@ export default function Bids() {
     setSavingBid(false)
     setActiveTab('counts')
     const bid = rows.find((b) => b.id === bidId)
-    if (bid) setSelectedBidForCounts(bid)
+    if (bid) setSharedBid(bid)
   }
 
   async function deleteBid() {
@@ -1013,6 +2187,16 @@ export default function Bids() {
     : bidsTyped
   const costEstimateBidList: BidWithBuilder[] = Array.from(filteredBidsForCostEstimate, (row) => row as BidWithBuilder)
 
+  const filteredBidsForPricing: BidWithBuilder[] = pricingSearchQuery.trim()
+    ? bidsTyped.filter(
+        (b) =>
+          (b.project_name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.address?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.customers?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false)
+      )
+    : bidsTyped
+
   const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
 
   const takeoffTemplateFilterLower = takeoffTemplateSearch.trim().toLowerCase()
@@ -1073,6 +2257,9 @@ export default function Bids() {
         </button>
         <button type="button" onClick={() => setActiveTab('cost-estimate')} style={tabStyle(activeTab === 'cost-estimate')}>
           Cost Estimate
+        </button>
+        <button type="button" onClick={() => setActiveTab('pricing')} style={tabStyle(activeTab === 'pricing')}>
+          Pricing
         </button>
         <button type="button" onClick={() => setActiveTab('cover-letter')} style={tabStyle(activeTab === 'cover-letter')}>
           Cover Letter
@@ -1240,7 +2427,7 @@ export default function Bids() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedBidForCounts(null)}
+                    onClick={() => setSharedBid(null)}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -1283,70 +2470,100 @@ export default function Bids() {
               )}
             </div>
           )}
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={countsSearchQuery}
-            onChange={(e) => setCountsSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
-                <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBidsForCounts.map((bid) => (
-                  <tr
-                    key={bid.id}
-                    onClick={() => setSelectedBidForCounts(bid)}
-                    style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      background: selectedBidForCounts?.id === bid.id ? '#eff6ff' : undefined,
-                    }}
-                  >
-                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+          {!selectedBidForCounts && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={countsSearchQuery}
+              onChange={(e) => setCountsSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {!selectedBidForCounts && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredBidsForCounts.map((bid) => (
+                    <tr
+                      key={bid.id}
+                      onClick={() => setSharedBid(bid)}
+                      style={{
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                      <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* Takeoffs Tab */}
       {activeTab === 'takeoffs' && (
         <div>
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={takeoffSearchQuery}
-            onChange={(e) => setTakeoffSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
+          {!selectedBidForTakeoff && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={takeoffSearchQuery}
+              onChange={(e) => setTakeoffSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
           {selectedBidForTakeoff && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForTakeoff) || 'Bid'}</h2>
-                <button
-                  type="button"
-                  onClick={() => { setSelectedBidForTakeoff(null); setTakeoffCreatedPOId(null) }}
-                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Close
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => applyTakeoffBookTemplates()}
+                        disabled={applyingTakeoffBookTemplates}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: applyingTakeoffBookTemplates ? '#9ca3af' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: applyingTakeoffBookTemplates ? 'wait' : 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply matching Fixture Templates'}
+                      </button>
+                      {takeoffBookApplyMessage && (
+                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
+                      )}
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => { setSharedBid(null); setTakeoffCreatedPOId(null) }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
               {takeoffCountRows.length === 0 ? (
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
                 <>
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Select a template for each fixture you want to include in a purchase order.
+                    Select a Template for each Fixture or Tie-in you want to include in a PO (Purchase Order).
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                     <span style={{ fontWeight: 500 }}>dropdown filter:</span>
@@ -1365,6 +2582,8 @@ export default function Bids() {
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                         </tr>
@@ -1377,7 +2596,7 @@ export default function Bids() {
                               <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                 <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
-                                <td colSpan={3} style={{ padding: '0.75rem' }}>
+                                <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
                                     type="button"
                                     onClick={() => addTakeoffTemplate(row.id)}
@@ -1389,48 +2608,104 @@ export default function Bids() {
                               </tr>
                             )
                           }
+                          const PREVIEW_MAX_PARTS = 5
                           return (
                             <Fragment key={row.id}>
-                              {mappingsForRow.map((mapping) => (
-                                <tr key={mapping.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                  <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
-                                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
-                                  <td style={{ padding: '0.75rem' }}>
-                                    <select
-                                      value={mapping.templateId}
-                                      onChange={(e) => setTakeoffMapping(mapping.id, { templateId: e.target.value })}
-                                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                    >
-                                      <option value="">—</option>
-                                      {takeoffTemplateOptionsForMapping(mapping).map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      value={mapping.quantity}
-                                      onChange={(e) => setTakeoffMapping(mapping.id, { quantity: e.target.value === '' ? 1 : Number(e.target.value) })}
-                                      style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeTakeoffMapping(mapping.id)}
-                                      style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                                    >
-                                      Remove
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
+                              {mappingsForRow.map((mapping) => {
+                                const preview = mapping.templateId ? takeoffTemplatePreviewCache[mapping.templateId] : undefined
+                                const templateName = mapping.templateId ? materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? null : null
+                                let partsCell: React.ReactNode = '—'
+                                if (mapping.templateId) {
+                                  if (preview === undefined || preview === 'loading') partsCell = 'Loading…'
+                                  else if (preview === null) partsCell = 'Error loading parts'
+                                  else if (!Array.isArray(preview) || preview.length === 0) partsCell = 'No parts'
+                                  else {
+                                    const short = preview.slice(0, PREVIEW_MAX_PARTS).map((p) => `${p.part_name} (${p.quantity})`).join(', ')
+                                    const rest = preview.length > PREVIEW_MAX_PARTS ? preview.length - PREVIEW_MAX_PARTS : 0
+                                    partsCell = (
+                                      <span style={{ fontSize: '0.875rem' }}>
+                                        {short}
+                                        {rest > 0 && (
+                                          <>
+                                            {' '}
+                                            <button
+                                              type="button"
+                                              onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
+                                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                            >
+                                              and {rest} more
+                                            </button>
+                                          </>
+                                        )}
+                                        {rest === 0 && preview.length > 2 && (
+                                          <>
+                                            {' '}
+                                            <button
+                                              type="button"
+                                              onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
+                                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                            >
+                                              View all
+                                            </button>
+                                          </>
+                                        )}
+                                      </span>
+                                    )
+                                  }
+                                }
+                                return (
+                                  <tr key={mapping.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
+                                    <td style={{ padding: '0.75rem' }}>
+                                      <select
+                                        value={mapping.templateId}
+                                        onChange={(e) => setTakeoffMapping(mapping.id, { templateId: e.target.value })}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                      >
+                                        <option value="">—</option>
+                                        {takeoffTemplateOptionsForMapping(mapping).map((t) => (
+                                          <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '0.75rem', fontSize: '0.875rem', maxWidth: 280 }}>{partsCell}</td>
+                                    <td style={{ padding: '0.75rem' }}>
+                                      <select
+                                        value={mapping.stage}
+                                        onChange={(e) => setTakeoffMapping(mapping.id, { stage: e.target.value as TakeoffStage })}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                      >
+                                        {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
+                                          <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        value={mapping.quantity}
+                                        onChange={(e) => setTakeoffMapping(mapping.id, { quantity: e.target.value === '' ? 1 : Number(e.target.value) })}
+                                        style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeTakeoffMapping(mapping.id)}
+                                        style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
                               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                 <td style={{ padding: '0.75rem' }} />
                                 <td style={{ padding: '0.75rem' }} />
-                                <td colSpan={3} style={{ padding: '0.75rem' }}>
+                                <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
                                     type="button"
                                     onClick={() => addTakeoffTemplate(row.id)}
@@ -1453,14 +2728,14 @@ export default function Bids() {
                       disabled={takeoffCreatingPO || takeoffMappedCount === 0}
                       style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: takeoffCreatingPO || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
                     >
-                      {takeoffCreatingPO ? 'Creating…' : 'Create purchase order'}
+                      {takeoffCreatingPO ? 'Creating…' : 'Create purchase orders for Stages'}
                     </button>
                     <select
                       value={takeoffExistingPOId}
                       onChange={(e) => setTakeoffExistingPOId(e.target.value)}
                       style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 200 }}
                     >
-                      <option value="">Add to existing PO…</option>
+                      <option value="">OR add to existing PO…</option>
                       {draftPOs.map((po) => (
                         <option key={po.id} value={po.id}>{po.name}</option>
                       ))}
@@ -1474,6 +2749,54 @@ export default function Bids() {
                       {takeoffAddingToPO ? 'Adding…' : 'Add to selected PO'}
                     </button>
                   </div>
+                  {takeoffExistingPOId.trim() && (
+                    <div style={{ marginTop: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
+                      <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontWeight: 600, fontSize: '0.875rem' }}>
+                        Current items in this PO
+                      </div>
+                      {takeoffExistingPOItems === 'loading' && (
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading current items…</p>
+                      )}
+                      {takeoffExistingPOItems === null && (
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Could not load items.</p>
+                      )}
+                      {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length === 0 && (
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>This PO has no items yet.</p>
+                      )}
+                      {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length > 0 && (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead style={{ background: '#f9fafb' }}>
+                            <tr>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {takeoffExistingPOItems.map((item, i) => (
+                              <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
+                                <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${item.price_at_time.toFixed(2)}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${(item.quantity * item.price_at_time).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot style={{ background: '#f9fafb' }}>
+                            <tr>
+                              <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
+                                ${takeoffExistingPOItems.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      )}
+                    </div>
+                  )}
                   {takeoffSuccessMessage && (
                     <p style={{ margin: '1rem 0 0', color: '#059669', fontSize: '0.875rem' }}>{takeoffSuccessMessage}</p>
                   )}
@@ -1492,52 +2815,342 @@ export default function Bids() {
               )}
             </div>
           )}
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
-                <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBidsForTakeoff.map((bid) => (
-                  <tr
-                    key={bid.id}
-                    onClick={() => setSelectedBidForTakeoff(bid)}
+          {takeoffPreviewModalTemplateId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: '1.5rem',
+                  maxWidth: 420,
+                  maxHeight: '80vh',
+                  overflow: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{takeoffPreviewModalTemplateName ?? 'Template parts'}</h3>
+                  <button
+                    type="button"
+                    onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
+                    style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+                {(() => {
+                  const preview = takeoffTemplatePreviewCache[takeoffPreviewModalTemplateId]
+                  if (preview === 'loading') return <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+                  if (preview === null) return <p style={{ margin: 0, color: '#b91c1c' }}>Error loading parts.</p>
+                  if (!preview || preview.length === 0) return <p style={{ margin: 0, color: '#6b7280' }}>No parts in this template.</p>
+                  return (
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                      {preview.map((p, i) => (
+                        <li key={i} style={{ marginBottom: '0.25rem' }}>{p.part_name} ({p.quantity})</li>
+                      ))}
+                    </ul>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
+          {!selectedBidForTakeoff && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBidsForTakeoff.map((bid) => (
+                    <tr
+                      key={bid.id}
+                      onClick={() => setSharedBid(bid)}
+                      style={{
+                        borderBottom: '1px solid #e5e7eb',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                      <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
+            <div>
+              <button
+                type="button"
+                onClick={() => setTakeoffBookSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  marginBottom: takeoffBookSectionOpen ? '0.75rem' : 0,
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }}>{takeoffBookSectionOpen ? '▼' : '▶'}</span>
+                Takeoff book
+              </button>
+              {takeoffBookSectionOpen && (
+              <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+                {takeoffBookVersions.map((v) => (
+                  <span
+                    key={v.id}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
-                      cursor: 'pointer',
-                      background: selectedBidForTakeoff?.id === bid.id ? '#eff6ff' : undefined,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.35rem 0.5rem',
+                      background: takeoffBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                      border: takeoffBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      borderRadius: 4,
                     }}
                   >
-                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                  </tr>
+                    <button
+                      type="button"
+                      onClick={() => { setTakeoffBookEntriesVersionId(v.id); loadTakeoffBookEntries(v.id) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: takeoffBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditTakeoffBookVersion(v)}
+                      style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      title="Edit version name"
+                    >
+                      ✎
+                    </button>
+                    {v.name !== 'Default' && (
+                      <button
+                        type="button"
+                        onClick={() => deleteTakeoffBookVersion(v)}
+                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
+                        title="Delete version"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
                 ))}
-              </tbody>
-            </table>
+                <button
+                  type="button"
+                  onClick={openNewTakeoffBookVersion}
+                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Add version
+                </button>
+              </div>
+              {takeoffBookEntriesVersionId && (
+                <>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
+                          <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {takeoffBookEntries.map((entry) => (
+                          <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
+                            <td style={{ padding: '0.5rem' }}>{materialTemplates.find((t) => t.id === entry.template_id)?.name ?? '—'}</td>
+                            <td style={{ padding: '0.5rem' }}>{STAGE_LABELS[entry.stage as TakeoffStage] ?? entry.stage}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <button type="button" onClick={() => openEditTakeoffBookEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                              <button type="button" onClick={() => deleteTakeoffBookEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openNewTakeoffBookEntry}
+                    style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Add entry
+                  </button>
+                </>
+              )}
+              {selectedBidForTakeoff && (
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book version</label>
+                  <select
+                    value={selectedTakeoffBookVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) {
+                        setSelectedTakeoffBookVersionId(v)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
+                      } else {
+                        setSelectedTakeoffBookVersionId(null)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
+                      }
+                    }}
+                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                  >
+                    <option value="">— Select version —</option>
+                    {takeoffBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => { setSharedBid(null); setTakeoffCreatedPOId(null) }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+              </>
+              )}
+            </div>
           </div>
+          {takeoffBookVersionFormOpen && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closeTakeoffBookVersionForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookVersion ? 'Edit version' : 'New version'}</h3>
+                <form onSubmit={saveTakeoffBookVersion}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+                  <input
+                    type="text"
+                    value={takeoffBookVersionNameInput}
+                    onChange={(e) => setTakeoffBookVersionNameInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. 2025 Standard"
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeTakeoffBookVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingTakeoffBookVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookVersion ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {takeoffBookEntryFormOpen && takeoffBookEntriesVersionId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closeTakeoffBookEntryForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookEntry ? 'Edit entry' : 'New entry'}</h3>
+                <form onSubmit={saveTakeoffBookEntry}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in</label>
+                  <input
+                    type="text"
+                    value={takeoffBookEntryFixtureName}
+                    onChange={(e) => setTakeoffBookEntryFixtureName(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. Toilet"
+                  />
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template</label>
+                  <select
+                    value={takeoffBookEntryTemplateId}
+                    onChange={(e) => setTakeoffBookEntryTemplateId(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                  >
+                    <option value="">— Select template —</option>
+                    {materialTemplates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Stage</label>
+                  <select
+                    value={takeoffBookEntryStage}
+                    onChange={(e) => setTakeoffBookEntryStage(e.target.value as TakeoffStage)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                  >
+                    {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
+                      <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                    ))}
+                  </select>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryTemplateId} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Cost Estimate Tab */}
       {activeTab === 'cost-estimate' && (
         <div>
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={costEstimateSearchQuery}
-            onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
+          {!selectedBidForCostEstimate && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={costEstimateSearchQuery}
+              onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
           {selectedBidForCostEstimate && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCostEstimate) || 'Bid'}</h2>
                 <button
                   type="button"
-                  onClick={() => setSelectedBidForCostEstimate(null)}
+                  onClick={() => setSharedBid(null)}
                   style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Close
@@ -1549,7 +3162,7 @@ export default function Bids() {
                 <>
                   {/* Material section: three POs */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Materials by stage</h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Rough In)</label>
@@ -1559,13 +3172,22 @@ export default function Bids() {
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                         >
                           <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.map((po) => (
+                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'rough_in' || po.stage === null).map((po) => (
                             <option key={po.id} value={po.id}>{po.name}</option>
                           ))}
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${Number(costEstimateMaterialTotalRoughIn).toFixed(2)}` : '—'}
+                          Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${formatCurrency(Number(costEstimateMaterialTotalRoughIn))}` : '—'}
                         </p>
+                        {costEstimate?.purchase_order_id_rough_in && (
+                          <button
+                            type="button"
+                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_rough_in)}
+                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                          >
+                            View
+                          </button>
+                        )}
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Top Out)</label>
@@ -1575,13 +3197,22 @@ export default function Bids() {
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                         >
                           <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.map((po) => (
+                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'top_out' || po.stage === null).map((po) => (
                             <option key={po.id} value={po.id}>{po.name}</option>
                           ))}
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${Number(costEstimateMaterialTotalTopOut).toFixed(2)}` : '—'}
+                          Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTopOut))}` : '—'}
                         </p>
+                        {costEstimate?.purchase_order_id_top_out && (
+                          <button
+                            type="button"
+                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_top_out)}
+                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                          >
+                            View
+                          </button>
+                        )}
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Trim Set)</label>
@@ -1591,27 +3222,36 @@ export default function Bids() {
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                         >
                           <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.map((po) => (
+                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'trim_set' || po.stage === null).map((po) => (
                             <option key={po.id} value={po.id}>{po.name}</option>
                           ))}
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${Number(costEstimateMaterialTotalTrimSet).toFixed(2)}` : '—'}
+                          Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTrimSet))}` : '—'}
                         </p>
+                        {costEstimate?.purchase_order_id_trim_set && (
+                          <button
+                            type="button"
+                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_trim_set)}
+                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                          >
+                            View
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <p style={{ margin: '0.5rem 0 0', fontWeight: 600 }}>
-                      Total materials: $
-                      {(
+                    <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
+                      Materials Total: $
+                      {formatCurrency(
                         (costEstimateMaterialTotalRoughIn ?? 0) +
                         (costEstimateMaterialTotalTopOut ?? 0) +
                         (costEstimateMaterialTotalTrimSet ?? 0)
-                      ).toFixed(2)}
+                      )}
                     </p>
                   </div>
                   {/* Labor section */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Labor</h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>LABOR</h3>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
                       <input
@@ -1623,6 +3263,33 @@ export default function Bids() {
                         style={{ width: '8rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                       />
                     </div>
+                    {selectedLaborBookVersionId && costEstimateLaborRows.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm('Overwrite all fixture hours with values from the selected labor book? Current values will be replaced.')) {
+                              applyLaborBookHoursToEstimate()
+                            }
+                          }}
+                          disabled={applyingLaborBookHours}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: applyingLaborBookHours ? 'wait' : 'pointer',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {applyingLaborBookHours ? 'Applying…' : 'Apply labor book hours'}
+                        </button>
+                        {laborBookApplyMessage && (
+                          <span style={{ marginLeft: '0.5rem', color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                        )}
+                      </div>
+                    )}
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: '#f9fafb' }}>
@@ -1703,15 +3370,15 @@ export default function Bids() {
                       const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
                       const laborCost = totalHours * rate
                       return (
-                        <p style={{ margin: '0.75rem 0 0', fontWeight: 600 }}>
-                          Labor total: {totalHours.toFixed(2)} hrs × ${rate.toFixed(2)}/hr = ${laborCost.toFixed(2)}
+                        <p style={{ margin: '0.75rem 0 0', fontWeight: 600, textAlign: 'right' }}>
+                          Labor total: {totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × ${formatCurrency(rate)}/hr = ${formatCurrency(laborCost)}
                         </p>
                       )
                     })()}
                   </div>
                   {/* Summary */}
                   <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>Summary</h3>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', textAlign: 'center' }}>Summary</h3>
                     {(() => {
                       const totalMaterials =
                         (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)
@@ -1724,9 +3391,9 @@ export default function Bids() {
                       const grandTotal = totalMaterials + laborCost
                       return (
                         <>
-                          <p style={{ margin: '0.25rem 0' }}>Total materials: ${totalMaterials.toFixed(2)}</p>
-                          <p style={{ margin: '0.25rem 0' }}>Labor total: ${laborCost.toFixed(2)}</p>
-                          <p style={{ margin: '0.5rem 0 0', fontWeight: 700, fontSize: '1.125rem' }}>Grand total: ${grandTotal.toFixed(2)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Materials Total: ${formatCurrency(totalMaterials)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Labor total: ${formatCurrency(laborCost)}</p>
+                          <p style={{ margin: '0.5rem 0 0', fontWeight: 700, fontSize: '1.125rem', textAlign: 'right' }}>Grand total: ${formatCurrency(grandTotal)}</p>
                         </>
                       )
                     })()}
@@ -1752,13 +3419,157 @@ export default function Bids() {
               )}
             </div>
           )}
+          {costEstimatePOModalPoId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={() => setCostEstimatePOModalPoId(null)}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: '1.5rem',
+                  maxWidth: 560,
+                  maxHeight: '90vh',
+                  overflow: 'auto',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{costEstimatePOModalData && costEstimatePOModalData !== 'loading' ? costEstimatePOModalData.name : 'Purchase order'}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setCostEstimatePOModalPoId(null)}
+                    style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+                {costEstimatePOModalData === 'loading' && (
+                  <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+                )}
+                {costEstimatePOModalData === null && (
+                  <p style={{ margin: 0, color: '#6b7280' }}>Could not load items.</p>
+                )}
+                {costEstimatePOModalData && costEstimatePOModalData !== 'loading' && (
+                  <>
+                    {costEstimatePOModalData.items.length === 0 ? (
+                      <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No items in this PO.</p>
+                    ) : null}
+                    {costEstimatePOModalData.items.length > 0 ? (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {costEstimatePOModalData.items.map((item, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${item.price_at_time.toFixed(2)}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${(item.quantity * item.price_at_time).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
+                              ${costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                              With Tax{' '}
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={costEstimatePOModalTaxPercent}
+                                onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                                style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                              />
+                              %:
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                              ${(costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0) * (1 + (parseFloat(costEstimatePOModalTaxPercent) || 0) / 100)).toFixed(2)}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    ) : (
+                      <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
+                        <p style={{ margin: 0 }}><strong>Grand Total:</strong> $0.00</p>
+                        <p style={{ margin: '0.25rem 0 0' }}>
+                          <strong>With Tax</strong>{' '}
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={costEstimatePOModalTaxPercent}
+                            onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                            style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                          />
+                          %: $0.00
+                        </p>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const data = costEstimatePOModalData
+                          if (data && typeof data === 'object' && 'items' in data) {
+                            printCostEstimatePOForReview(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
+                          }
+                        }}
+                        disabled={false}
+                        style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Print for Review
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const data = costEstimatePOModalData
+                          if (data && typeof data === 'object' && 'items' in data) {
+                            printCostEstimatePOForSupplyHouse(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
+                          }
+                        }}
+                        disabled={false}
+                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Print for Supply House
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           {!selectedBidForCostEstimate && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1768,20 +3579,656 @@ export default function Bids() {
                     return (
                       <tr
                         key={bid.id}
-                        onClick={() => setSelectedBidForCostEstimate(bid)}
+                        onClick={() => setSharedBid(bid)}
                         style={{
                           cursor: 'pointer',
                           borderBottom: '1px solid #e5e7eb',
                           background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bid.project_name ?? '—'}</td>
-                        <td style={{ padding: '0.75rem' }}>{bid.address ?? '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
+            <div>
+              <button
+                type="button"
+                onClick={() => setLaborBookSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  marginBottom: laborBookSectionOpen ? '0.75rem' : 0,
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }}>{laborBookSectionOpen ? '▼' : '▶'}</span>
+                Labor book
+              </button>
+              {laborBookSectionOpen && (
+              <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {laborBookVersions.map((v) => (
+                  <span
+                    key={v.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.35rem 0.5rem',
+                      background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                      border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      borderRadius: 4,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { setLaborBookEntriesVersionId(v.id); loadLaborBookEntries(v.id) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: laborBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditLaborVersion(v)}
+                      style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      title="Edit version name"
+                    >
+                      ✎
+                    </button>
+                    {v.name !== 'Default' && (
+                      <button
+                        type="button"
+                        onClick={() => deleteLaborVersion(v)}
+                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
+                        title="Delete version"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  onClick={openNewLaborVersion}
+                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Add version
+                </button>
+              </div>
+              {laborBookEntriesVersionId && (
+                <>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
+                          <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {laborBookEntries.map((entry) => (
+                          <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                              <button type="button" onClick={() => deleteLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openNewLaborEntry}
+                    style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Add entry
+                  </button>
+                </>
+              )}
+              {selectedBidForCostEstimate && (
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book version</label>
+                  <select
+                    value={selectedLaborBookVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
+                      else {
+                        saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
+                        setSelectedLaborBookVersionId(null)
+                        loadCostEstimateData(selectedBidForCostEstimate.id, null)
+                      }
+                    }}
+                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                  >
+                    <option value="">— Use defaults —</option>
+                    {laborBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    Used to prefill hours when adding new fixtures to the labor matrix. Existing rows are not changed.
+                  </p>
+                </div>
+              )}
+              </>
+              )}
+            </div>
+          </div>
+          {laborVersionFormOpen && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closeLaborVersionForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
+                <form onSubmit={saveLaborVersion}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+                  <input
+                    type="text"
+                    value={laborVersionNameInput}
+                    onChange={(e) => setLaborVersionNameInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. Default"
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {laborEntryFormOpen && laborBookEntriesVersionId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closeLaborEntryForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
+                <form onSubmit={saveLaborEntry}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in</label>
+                  <input
+                    type="text"
+                    value={laborEntryFixtureName}
+                    onChange={(e) => setLaborEntryFixtureName(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. Toilet"
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>
+                      <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out (hrs)</label>
+                      <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set (hrs)</label>
+                      <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pricing Tab */}
+      {activeTab === 'pricing' && (
+        <div>
+          {!selectedBidForPricing && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={pricingSearchQuery}
+              onChange={(e) => setPricingSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {selectedBidForPricing && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForPricing) || 'Bid'}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Price book</label>
+                  <select
+                    value={selectedPricingVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
+                    }}
+                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                  >
+                    <option value="">— Select version —</option>
+                    {priceBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setSharedBid(null)}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+              {!pricingCostEstimate && pricingCountRows.length > 0 && (
+                <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Add fixtures in Counts and create a Cost Estimate first to see margin comparison.{' '}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('cost-estimate')}
+                    style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Go to Cost Estimate
+                  </button>
+                </p>
+              )}
+              {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (() => {
+                const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+                const rate = pricingLaborRate ?? 0
+                const totalLaborHours = pricingLaborRows.reduce(
+                  (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                  0
+                )
+                const totalCost = totalMaterials + totalLaborHours * rate
+                const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+                let totalRevenue = 0
+                const rows = pricingCountRows.map((countRow) => {
+                  const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
+                  const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
+                  const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === countRow.fixture.toLowerCase())
+                  const count = Number(countRow.count)
+                  const laborHrs = laborRow
+                    ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
+                    : 0
+                  const laborCost = laborHrs * rate
+                  const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
+                  const cost = laborCost + allocatedMaterials
+                  const unitPrice = entry ? Number(entry.total_price) : 0
+                  const revenue = count * unitPrice
+                  totalRevenue += revenue
+                  const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
+                  const flag = marginFlag(margin)
+                  return { countRow, entry, laborRow, count, cost, revenue, margin, flag }
+                })
+                return (
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price book entry</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Our cost</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin %</th>
+                          <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(({ countRow, entry, count, cost, revenue, margin, flag }) => (
+                          <tr key={countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.75rem' }}>{countRow.fixture}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{count}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <select
+                                value={entry?.id ?? ''}
+                                onChange={(e) => {
+                                  const id = e.target.value
+                                  if (id) savePricingAssignment(countRow.id, id)
+                                  else removePricingAssignment(countRow.id)
+                                }}
+                                disabled={savingPricingAssignment === countRow.id}
+                                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '10rem' }}
+                              >
+                                <option value="">— Assign —</option>
+                                {priceBookEntries.map((e) => (
+                                  <option key={e.id} value={e.id}>{e.fixture_name}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(revenue)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                              {margin != null ? `${margin.toFixed(1)}%` : '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {flag && (
+                                <span
+                                  title={flag === 'red' ? '< 20%' : flag === 'yellow' ? '< 40%' : '≥ 40%'}
+                                  style={{
+                                    display: 'inline-block',
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: '50%',
+                                    background: flag === 'red' ? '#dc2626' : flag === 'yellow' ? '#ca8a04' : '#16a34a',
+                                  }}
+                                  aria-hidden
+                                />
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                          <td style={{ padding: '0.75rem' }}>Total</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }} />
+                          <td style={{ padding: '0.75rem' }} />
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalCost)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            {totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'}
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {totalRevenue > 0 && (() => {
+                              const m = ((totalRevenue - totalCost) / totalRevenue) * 100
+                              const f = marginFlag(m)
+                              return f ? (
+                                <span
+                                  title={f === 'red' ? '< 20%' : f === 'yellow' ? '< 40%' : '≥ 40%'}
+                                  style={{
+                                    display: 'inline-block',
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: '50%',
+                                    background: f === 'red' ? '#dc2626' : f === 'yellow' ? '#ca8a04' : '#16a34a',
+                                  }}
+                                  aria-hidden
+                                />
+                              ) : null
+                            })()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+          {!selectedBidForPricing && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredBidsForPricing.map((bid) => (
+                    <tr
+                      key={bid.id}
+                      onClick={() => setSharedBid(bid)}
+                      style={{
+                        cursor: 'pointer',
+                        borderBottom: '1px solid #e5e7eb',
+                      }}
+                    >
+                      <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                      <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
+            <div>
+              <button
+                type="button"
+                onClick={() => setPriceBookSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  marginBottom: priceBookSectionOpen ? '0.75rem' : 0,
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }}>{priceBookSectionOpen ? '▼' : '▶'}</span>
+                Price book
+              </button>
+              {priceBookSectionOpen && (
+              <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {priceBookVersions.map((v) => (
+                  <span
+                    key={v.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.35rem 0.5rem',
+                      background: selectedPricingVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                      border: selectedPricingVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      borderRadius: 4,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedPricingVersionId(v.id); loadPriceBookEntries(v.id) }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: selectedPricingVersionId === v.id ? 600 : 400, padding: 0 }}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditPricingVersion(v)}
+                      style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      title="Edit version name"
+                    >
+                      ✎
+                    </button>
+                    {v.name !== 'Default' && (
+                      <button
+                        type="button"
+                        onClick={() => deletePricingVersion(v)}
+                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
+                        title="Delete version"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  onClick={openNewPricingVersion}
+                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Add version
+                </button>
+              </div>
+              {selectedPricingVersionId && (
+                <>
+                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: '#f9fafb' }}>
+                        <tr>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture / Tie-in</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                          <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {priceBookEntries.map((entry) => (
+                          <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.top_out_price))}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.trim_set_price))}</td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.total_price))}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                              <button type="button" onClick={() => deletePricingEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openNewPricingEntry}
+                    style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Add entry
+                  </button>
+                </>
+              )}
+              </>
+              )}
+            </div>
+          </div>
+          {pricingVersionFormOpen && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closePricingVersionForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingPricingVersion ? 'Edit version' : 'New version'}</h3>
+                <form onSubmit={savePricingVersion}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+                  <input
+                    type="text"
+                    value={pricingVersionNameInput}
+                    onChange={(e) => setPricingVersionNameInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. 2025 Standard"
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {pricingEntryFormOpen && selectedPricingVersionId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={closePricingEntryForm}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem' }}>{editingPricingEntry ? 'Edit entry' : 'New entry'}</h3>
+                <form onSubmit={savePricingEntry}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture / Tie-in</label>
+                  <input
+                    type="text"
+                    value={pricingEntryFixtureName}
+                    onChange={(e) => setPricingEntryFixtureName(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. Toilet"
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
+                      <input type="number" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out</label>
+                      <input type="number" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set</label>
+                      <input type="number" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total</label>
+                      <input type="number" min={0} step={0.01} value={pricingEntryTotal} onChange={(e) => setPricingEntryTotal(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
         </div>
@@ -1841,6 +4288,24 @@ export default function Bids() {
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Phone</strong> {selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Email</strong> {selectedBidForSubmission.gc_contact_email ?? '—'}</p>
               </div>
+              {submissionBidHasCostEstimate === 'loading' && (
+                <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
+              )}
+              {submissionBidHasCostEstimate !== 'loading' && submissionBidHasCostEstimate !== null && (
+                <div style={{ marginBottom: '1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span><strong>Cost estimate:</strong> {submissionBidHasCostEstimate ? (submissionBidCostEstimateAmount != null ? `$${formatCurrency(Number(submissionBidCostEstimateAmount))}` : '—') : 'Not yet created'}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSharedBid(selectedBidForSubmission)
+                      setActiveTab('cost-estimate')
+                    }}
+                    style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    {submissionBidHasCostEstimate ? 'View cost estimate' : 'Create cost estimate'}
+                  </button>
+                </div>
+              )}
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
@@ -2357,7 +4822,7 @@ export default function Bids() {
                   disabled={savingBid}
                   style={{ marginRight: 'auto', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Save and start Counts
+                  Save and Open Counts
                 </button>
                 {editingBid && (
                   <button

@@ -34,6 +34,43 @@ export async function expandTemplate(
   return result
 }
 
+export type TemplatePartPreview = { part_name: string; quantity: number }
+
+/**
+ * Expand a template to parts and resolve part names for preview (e.g. Bids Takeoff).
+ * Returns merged list by part_id with part_name and total quantity.
+ */
+export async function getTemplatePartsPreview(
+  supabase: SupabaseClient<Database>,
+  templateId: string
+): Promise<TemplatePartPreview[]> {
+  const expanded = await expandTemplate(supabase, templateId, 1)
+  if (expanded.length === 0) return []
+
+  const merged = new Map<string, number>()
+  for (const { part_id, quantity } of expanded) {
+    merged.set(part_id, (merged.get(part_id) ?? 0) + quantity)
+  }
+
+  const partIds = Array.from(merged.keys())
+  const { data: parts } = await supabase
+    .from('material_parts')
+    .select('id, name')
+    .in('id', partIds)
+
+  const nameById = new Map<string, string>()
+  for (const p of parts ?? []) {
+    if (p?.id) nameById.set(p.id, p.name ?? '')
+  }
+
+  const result: TemplatePartPreview[] = []
+  for (const [part_id, quantity] of merged) {
+    result.push({ part_name: nameById.get(part_id) ?? part_id.slice(0, 8), quantity })
+  }
+  result.sort((a, b) => a.part_name.localeCompare(b.part_name))
+  return result
+}
+
 /**
  * Merge expanded parts by part_id (sum quantities), resolve best price per part,
  * then insert purchase_order_items. Returns error message or null on success.

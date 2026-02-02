@@ -123,6 +123,7 @@ export default function Settings() {
   const [convertSummary, setConvertSummary] = useState<string | null>(null)
   const [exportProjectsLoading, setExportProjectsLoading] = useState(false)
   const [exportMaterialsLoading, setExportMaterialsLoading] = useState(false)
+  const [exportBidsLoading, setExportBidsLoading] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
 
   function downloadJson(filename: string, data: unknown) {
@@ -208,6 +209,64 @@ export default function Settings() {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
       setExportMaterialsLoading(false)
+    }
+  }
+
+  async function exportBidsBackup() {
+    setExportError(null)
+    setExportBidsLoading(true)
+    try {
+      const [
+        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16,
+      ] = await Promise.all([
+        supabase.from('bids').select('*'),
+        supabase.from('bids_gc_builders').select('*'),
+        supabase.from('bids_count_rows').select('*'),
+        supabase.from('bids_submission_entries').select('*'),
+        supabase.from('cost_estimates').select('*'),
+        supabase.from('cost_estimate_labor_rows').select('*'),
+        supabase.from('fixture_labor_defaults').select('*'),
+        supabase.from('bid_pricing_assignments').select('*'),
+        supabase.from('price_book_versions').select('*'),
+        supabase.from('price_book_entries').select('*'),
+        supabase.from('labor_book_versions').select('*'),
+        supabase.from('labor_book_entries').select('*'),
+        supabase.from('takeoff_book_versions').select('*'),
+        supabase.from('takeoff_book_entries').select('*'),
+        supabase.from('purchase_orders').select('*'),
+        supabase.from('purchase_order_items').select('*'),
+      ])
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error
+      if (err) {
+        setExportError(err.message)
+        return
+      }
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        tables: {
+          bids: r1.data ?? [],
+          bids_gc_builders: r2.data ?? [],
+          bids_count_rows: r3.data ?? [],
+          bids_submission_entries: r4.data ?? [],
+          cost_estimates: r5.data ?? [],
+          cost_estimate_labor_rows: r6.data ?? [],
+          fixture_labor_defaults: r7.data ?? [],
+          bid_pricing_assignments: r8.data ?? [],
+          price_book_versions: r9.data ?? [],
+          price_book_entries: r10.data ?? [],
+          labor_book_versions: r11.data ?? [],
+          labor_book_entries: r12.data ?? [],
+          takeoff_book_versions: r13.data ?? [],
+          takeoff_book_entries: r14.data ?? [],
+          purchase_orders: r15.data ?? [],
+          purchase_order_items: r16.data ?? [],
+        },
+      }
+      downloadJson(`bids-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExportBidsLoading(false)
     }
   }
 
@@ -1804,14 +1863,14 @@ export default function Settings() {
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Data backup (dev)</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Export projects (customers, projects, workflows, steps, line items, projections) or materials (supply houses, parts, prices, templates, template items) as JSON for backup. Files respect RLS.
+            Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, templates, template items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS.
           </p>
           {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={exportProjectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
               style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
             >
               {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
@@ -1819,10 +1878,18 @@ export default function Settings() {
             <button
               type="button"
               onClick={exportMaterialsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
               style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
             >
               {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportBidsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
             </button>
           </div>
         </>
