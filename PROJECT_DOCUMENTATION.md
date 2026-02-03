@@ -1155,6 +1155,7 @@ user_id = auth.uid()
   - Delete users (with confirmation)
   - Send magic link to user
   - Impersonate users ("imitate" button)
+  - Set a user's password ("Set password" button next to Send email to sign in / imitate)
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
@@ -1444,6 +1445,7 @@ pipetooling.github.io/
 └── supabase/
     ├── functions/
     │   ├── delete-user/        # Delete user Edge Function
+    │   ├── set-user-password/  # Set user password (dev only) Edge Function
     │   ├── login-as-user/      # Impersonation Edge Function
     │   ├── send-workflow-notification/ # Workflow email notifications
     │   └── test-email/         # Email template testing
@@ -1683,6 +1685,7 @@ Edge Functions are deployed via Supabase CLI or Dashboard:
 - `invite-user` - Sends invitation emails (✅ Implemented)
 - `create-user` - Manually creates users (✅ Implemented). **Role** in request body must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`.
 - `delete-user` - Deletes users (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
+- `set-user-password` - Set another user's password (dev only; ✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
 - `login-as-user` - Generates magic link for impersonation (✅ Implemented - requires `SUPABASE_SERVICE_ROLE_KEY`)
 - `test-email` - Sends test emails using Resend service (✅ Implemented - requires `RESEND_API_KEY`)
 - `send-workflow-notification` - Sends workflow stage notifications via email (✅ Implemented - requires `RESEND_API_KEY`)
@@ -1692,7 +1695,7 @@ Edge Functions are deployed via Supabase CLI or Dashboard:
 - Implement internal JWT validation
 - Handle CORS explicitly
 - Return structured error responses
-- **Note**: Functions requiring service role key (`delete-user`, `login-as-user`) must have `SUPABASE_SERVICE_ROLE_KEY` secret set
+- **Note**: Functions requiring service role key (`delete-user`, `set-user-password`, `login-as-user`) must have `SUPABASE_SERVICE_ROLE_KEY` secret set
 
 **Deployment**:
 - Deploy via CLI: `supabase functions deploy <function-name> --no-verify-jwt`
@@ -1702,7 +1705,7 @@ Edge Functions are deployed via Supabase CLI or Dashboard:
 **Secrets Required**:
 - `RESEND_API_KEY` - Required for `test-email` and `send-workflow-notification` functions
   - Set via: `supabase secrets set RESEND_API_KEY=your_key`
-- `SUPABASE_SERVICE_ROLE_KEY` - Required for `delete-user` and `login-as-user` functions
+- `SUPABASE_SERVICE_ROLE_KEY` - Required for `delete-user`, `set-user-password`, and `login-as-user` functions
   - Set via: `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_key`
   - **⚠️ WARNING**: Service role key has full admin access. Never expose in client-side code!
   - Get from: Supabase Dashboard → Settings → API → Service Role Key
@@ -2248,6 +2251,7 @@ async function myFunction() {
 - `invite-user` - Send invitation email
 - `create-user` - Manually create user; **role** must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`
 - `delete-user` - Delete user
+- `set-user-password` - Set another user's password (dev only)
 - `login-as-user` - Generate impersonation magic link
 - `test-email` - Send test emails using Resend service (for email template testing)
 - `send-workflow-notification` - Send workflow stage notifications via email (automatically called when steps change status)

@@ -99,6 +99,11 @@ export default function Settings() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
   const [sendingSignInEmailId, setSendingSignInEmailId] = useState<string | null>(null)
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
+  const [setPasswordUser, setSetPasswordUser] = useState<UserRow | null>(null)
+  const [setPasswordValue, setSetPasswordValue] = useState('')
+  const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
+  const [setPasswordSubmitting, setSetPasswordSubmitting] = useState(false)
+  const [setPasswordError, setSetPasswordError] = useState<string | null>(null)
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -902,6 +907,49 @@ export default function Settings() {
     setDeleteOpen(false)
   }
 
+  function closeSetPassword() {
+    setSetPasswordUser(null)
+    setSetPasswordValue('')
+    setSetPasswordConfirm('')
+    setSetPasswordError(null)
+  }
+
+  async function handleSetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!setPasswordUser) return
+    setSetPasswordError(null)
+    if (setPasswordValue !== setPasswordConfirm) {
+      setSetPasswordError('Passwords do not match.')
+      return
+    }
+    if (setPasswordValue.length < 6) {
+      setSetPasswordError('Password must be at least 6 characters.')
+      return
+    }
+    setSetPasswordSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('set-user-password', {
+      body: { user_id: setPasswordUser.id, password: setPasswordValue },
+    })
+    setSetPasswordSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch { /* ignore */ }
+      }
+      setSetPasswordError(msg)
+      return
+    }
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setSetPasswordError(err)
+      return
+    }
+    closeSetPassword()
+  }
+
   function openPasswordChange() {
     setPasswordChangeOpen(true)
     setCurrentPassword('')
@@ -1310,6 +1358,19 @@ export default function Settings() {
                           style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
                         >
                           {loggingInAsId === u.id ? 'Redirecting…' : 'imitate'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSetPasswordUser(u)
+                            setSetPasswordValue('')
+                            setSetPasswordConfirm('')
+                            setSetPasswordError(null)
+                          }}
+                          disabled={setPasswordSubmitting}
+                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                        >
+                          Set password
                         </button>
                       </div>
                     </td>
@@ -1833,6 +1894,51 @@ export default function Settings() {
                   {deleteSubmitting ? 'Deleting…' : 'Delete user'}
                 </button>
                 <button type="button" onClick={closeDelete} disabled={deleteSubmitting}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {setPasswordUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>Set password for {setPasswordUser.email}</h2>
+            <form onSubmit={handleSetPassword}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="set-password-new" style={{ display: 'block', marginBottom: 4 }}>New password *</label>
+                <input
+                  id="set-password-new"
+                  type="password"
+                  value={setPasswordValue}
+                  onChange={(e) => { setSetPasswordValue(e.target.value); setSetPasswordError(null) }}
+                  required
+                  minLength={6}
+                  disabled={setPasswordSubmitting}
+                  autoComplete="new-password"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="set-password-confirm" style={{ display: 'block', marginBottom: 4 }}>Confirm password *</label>
+                <input
+                  id="set-password-confirm"
+                  type="password"
+                  value={setPasswordConfirm}
+                  onChange={(e) => { setSetPasswordConfirm(e.target.value); setSetPasswordError(null) }}
+                  required
+                  minLength={6}
+                  disabled={setPasswordSubmitting}
+                  autoComplete="new-password"
+                  style={{ width: '100%', padding: '0.5rem' }}
+                />
+              </div>
+              {setPasswordError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{setPasswordError}</p>}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" disabled={setPasswordSubmitting}>
+                  {setPasswordSubmitting ? 'Setting…' : 'Set password'}
+                </button>
+                <button type="button" onClick={closeSetPassword} disabled={setPasswordSubmitting}>Cancel</button>
               </div>
             </form>
           </div>
