@@ -2340,7 +2340,7 @@ export default function Materials() {
                   {filteredTemplates.map(template => {
                     const partItems = allTemplateItemsForStats.filter(i => i.template_id === template.id && i.item_type === 'part' && i.part_id != null)
                     const partCount = partItems.length
-                    const unpricedCount = partItems.filter(i => partIdsWithNoPrice.has(i.part_id)).length
+                    const unpricedCount = partItems.filter(i => i.part_id !== null && partIdsWithNoPrice.has(i.part_id)).length
                     const partsButtonBackground = partCount === 0 ? '#dc2626' : unpricedCount > 0 ? '#ca8a04' : '#3b82f6'
                     const partsButtonColor = partsButtonBackground === '#ca8a04' ? '#1f2937' : 'white'
                     return (
