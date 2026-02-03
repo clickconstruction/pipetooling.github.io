@@ -2337,7 +2337,13 @@ export default function Materials() {
                 </div>
               ) : (
                 <div>
-                  {filteredTemplates.map(template => (
+                  {filteredTemplates.map(template => {
+                    const partItems = allTemplateItemsForStats.filter(i => i.template_id === template.id && i.item_type === 'part' && i.part_id != null)
+                    const partCount = partItems.length
+                    const unpricedCount = partItems.filter(i => partIdsWithNoPrice.has(i.part_id)).length
+                    const partsButtonBackground = partCount === 0 ? '#dc2626' : unpricedCount > 0 ? '#ca8a04' : '#3b82f6'
+                    const partsButtonColor = partsButtonBackground === '#ca8a04' ? '#1f2937' : 'white'
+                    return (
                     <div
                       key={template.id}
                       style={{
@@ -2363,7 +2369,7 @@ export default function Materials() {
                               setSelectedTemplate(template)
                               setTimeout(() => templateItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
                             }}
-                            style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.5rem', background: partsButtonBackground, color: partsButtonColor, border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Parts
                           </button>
@@ -2380,7 +2386,8 @@ export default function Materials() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
