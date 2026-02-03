@@ -127,6 +127,7 @@ export default function Materials() {
 
   const templatePartPickerRef = useRef<HTMLDivElement>(null)
   const poPartPickerRef = useRef<HTMLDivElement>(null)
+  const templateItemsSectionRef = useRef<HTMLDivElement>(null)
 
   // Purchase Orders state
   const [allPOs, setAllPOs] = useState<PurchaseOrderWithItems[]>([])
@@ -2359,6 +2360,17 @@ export default function Materials() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
+                              setSelectedTemplate(template)
+                              setTimeout(() => templateItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+                            }}
+                            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Parts
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
                               openEditTemplate(template)
                             }}
                             style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
@@ -2375,7 +2387,7 @@ export default function Materials() {
 
             {/* Template Items View */}
             {selectedTemplate && (
-              <div style={{ marginTop: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem' }}>
+              <div ref={templateItemsSectionRef} style={{ marginTop: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Items in {selectedTemplate.name}</h3>
                 
                 <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>

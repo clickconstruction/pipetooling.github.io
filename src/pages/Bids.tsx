@@ -14,6 +14,7 @@ type Bid = Database['public']['Tables']['bids']['Row']
 type BidCountRow = Database['public']['Tables']['bids_count_rows']['Row']
 type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
+type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type CostEstimate = Database['public']['Tables']['cost_estimates']['Row']
 type CostEstimateLaborRow = Database['public']['Tables']['cost_estimate_labor_rows']['Row']
 type FixtureLaborDefault = Database['public']['Tables']['fixture_labor_defaults']['Row']
@@ -466,7 +467,8 @@ export default function Bids() {
   const [takeoffCreatingPO, setTakeoffCreatingPO] = useState(false)
   const [takeoffAddingToPO, setTakeoffAddingToPO] = useState(false)
   const [takeoffSuccessMessage, setTakeoffSuccessMessage] = useState<string | null>(null)
-  const [takeoffTemplateSearch, setTakeoffTemplateSearch] = useState('')
+  const [takeoffTemplatePickerOpenMappingId, setTakeoffTemplatePickerOpenMappingId] = useState<string | null>(null)
+  const [takeoffTemplatePickerQuery, setTakeoffTemplatePickerQuery] = useState('')
   const [takeoffCreatedPOId, setTakeoffCreatedPOId] = useState<string | null>(null)
   const [takeoffTemplatePreviewCache, setTakeoffTemplatePreviewCache] = useState<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>({})
   const [takeoffPreviewModalTemplateId, setTakeoffPreviewModalTemplateId] = useState<string | null>(null)
@@ -489,6 +491,21 @@ export default function Bids() {
   const [savingTakeoffBookEntry, setSavingTakeoffBookEntry] = useState(false)
   const [applyingTakeoffBookTemplates, setApplyingTakeoffBookTemplates] = useState(false)
   const [takeoffBookApplyMessage, setTakeoffBookApplyMessage] = useState<string | null>(null)
+  const [takeoffAddTemplateModalOpen, setTakeoffAddTemplateModalOpen] = useState(false)
+  const [takeoffAddTemplateForMappingId, setTakeoffAddTemplateForMappingId] = useState<string | null>(null)
+  const [takeoffNewTemplateName, setTakeoffNewTemplateName] = useState('')
+  const [takeoffNewTemplateDescription, setTakeoffNewTemplateDescription] = useState('')
+  const [takeoffNewTemplateItems, setTakeoffNewTemplateItems] = useState<Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
+  const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPart[]>([])
+  const [takeoffNewItemType, setTakeoffNewItemType] = useState<'part' | 'template'>('part')
+  const [takeoffNewItemPartId, setTakeoffNewItemPartId] = useState('')
+  const [takeoffNewItemTemplateId, setTakeoffNewItemTemplateId] = useState('')
+  const [takeoffNewItemQuantity, setTakeoffNewItemQuantity] = useState('1')
+  const [takeoffNewItemPartSearchQuery, setTakeoffNewItemPartSearchQuery] = useState('')
+  const [takeoffNewItemPartDropdownOpen, setTakeoffNewItemPartDropdownOpen] = useState(false)
+  const [takeoffNewItemTemplateSearchQuery, setTakeoffNewItemTemplateSearchQuery] = useState('')
+  const [takeoffNewItemTemplateDropdownOpen, setTakeoffNewItemTemplateDropdownOpen] = useState(false)
+  const [savingTakeoffNewTemplate, setSavingTakeoffNewTemplate] = useState(false)
 
   // Cost Estimate tab
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
@@ -735,6 +752,89 @@ export default function Bids() {
       return
     }
     setMaterialTemplates((data as MaterialTemplate[]) ?? [])
+  }
+
+  function closeTakeoffAddTemplateModal() {
+    setTakeoffAddTemplateModalOpen(false)
+    setTakeoffAddTemplateForMappingId(null)
+    setTakeoffNewTemplateName('')
+    setTakeoffNewTemplateDescription('')
+    setTakeoffNewTemplateItems([])
+    setTakeoffNewItemType('part')
+    setTakeoffNewItemPartId('')
+    setTakeoffNewItemTemplateId('')
+    setTakeoffNewItemQuantity('1')
+    setTakeoffNewItemPartSearchQuery('')
+    setTakeoffNewItemTemplateSearchQuery('')
+  }
+
+  async function saveTakeoffNewTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    const name = takeoffNewTemplateName.trim()
+    if (!name) {
+      setError('Template name is required')
+      return
+    }
+    setSavingTakeoffNewTemplate(true)
+    setError(null)
+    const { data: templateData, error: templateError } = await supabase
+      .from('material_templates')
+      .insert({ name, description: takeoffNewTemplateDescription.trim() || null })
+      .select('id')
+      .single()
+    if (templateError) {
+      setError(templateError.message)
+      setSavingTakeoffNewTemplate(false)
+      return
+    }
+    const templateId = (templateData as { id: string }).id
+    for (let i = 0; i < takeoffNewTemplateItems.length; i++) {
+      const item = takeoffNewTemplateItems[i]
+      const { error: itemError } = await supabase.from('material_template_items').insert({
+        template_id: templateId,
+        item_type: item.item_type,
+        part_id: item.item_type === 'part' ? item.part_id : null,
+        nested_template_id: item.item_type === 'template' ? item.nested_template_id : null,
+        quantity: item.quantity,
+        sequence_order: i + 1,
+        notes: null,
+      })
+      if (itemError) {
+        setError(itemError.message)
+        setSavingTakeoffNewTemplate(false)
+        return
+      }
+    }
+    await loadMaterialTemplates()
+    if (takeoffAddTemplateForMappingId) {
+      setTakeoffMapping(takeoffAddTemplateForMappingId, { templateId })
+    }
+    closeTakeoffAddTemplateModal()
+    setSavingTakeoffNewTemplate(false)
+  }
+
+  function addTakeoffNewTemplateItem() {
+    if (takeoffNewItemType === 'part' && !takeoffNewItemPartId) return
+    if (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId) return
+    const qty = Math.max(1, parseInt(takeoffNewItemQuantity, 10) || 1)
+    setTakeoffNewTemplateItems((prev) => [
+      ...prev,
+      {
+        item_type: takeoffNewItemType,
+        part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
+        nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
+        quantity: qty,
+      },
+    ])
+    setTakeoffNewItemPartId('')
+    setTakeoffNewItemTemplateId('')
+    setTakeoffNewItemQuantity('1')
+    setTakeoffNewItemPartSearchQuery('')
+    setTakeoffNewItemTemplateSearchQuery('')
+  }
+
+  function removeTakeoffNewTemplateItem(index: number) {
+    setTakeoffNewTemplateItems((prev) => prev.filter((_, i) => i !== index))
   }
 
   async function loadDraftPOs() {
@@ -2505,8 +2605,9 @@ export default function Bids() {
     )
   }
 
-  function addTakeoffTemplate(countRowId: string) {
-    setTakeoffMappings((prev) => [...prev, { id: crypto.randomUUID(), countRowId, templateId: '', stage: 'rough_in', quantity: 1 }])
+  function addTakeoffTemplate(countRowId: string, count?: number) {
+    const quantity = count != null && !Number.isNaN(Number(count)) ? Math.max(1, Number(count)) : 1
+    setTakeoffMappings((prev) => [...prev, { id: crypto.randomUUID(), countRowId, templateId: '', stage: 'rough_in', quantity }])
   }
 
   function removeTakeoffMapping(mappingId: string) {
@@ -2528,6 +2629,7 @@ export default function Bids() {
     const stages: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
     const createdIds: string[] = []
     const createdLabels: string[] = []
+    const createdByStage: Partial<Record<'rough_in' | 'top_out' | 'trim_set', string>> = {}
     for (const stage of stages) {
       const mappingsForStage = mapped.filter((m) => m.stage === stage)
       if (mappingsForStage.length === 0) continue
@@ -2563,6 +2665,7 @@ export default function Bids() {
       }
       createdIds.push(poData.id)
       createdLabels.push(stageLabel)
+      createdByStage[stage] = poData.id
     }
     setTakeoffCreatingPO(false)
     setTakeoffSuccessMessage(
@@ -2572,6 +2675,23 @@ export default function Bids() {
     )
     setTakeoffCreatedPOId(createdIds[0] ?? null)
     loadDraftPOs()
+    if (selectedBidForTakeoff?.id && Object.keys(createdByStage).length > 0) {
+      const est = await ensureCostEstimateForBid(selectedBidForTakeoff.id)
+      if (est) {
+        await supabase
+          .from('cost_estimates')
+          .update({
+            purchase_order_id_rough_in: createdByStage.rough_in ?? est.purchase_order_id_rough_in ?? null,
+            purchase_order_id_top_out: createdByStage.top_out ?? est.purchase_order_id_top_out ?? null,
+            purchase_order_id_trim_set: createdByStage.trim_set ?? est.purchase_order_id_trim_set ?? null,
+          })
+          .eq('id', est.id)
+        await loadPurchaseOrdersForCostEstimate()
+        if (activeTab === 'cost-estimate' && selectedBidForCostEstimate?.id === selectedBidForTakeoff.id) {
+          await loadCostEstimate(selectedBidForTakeoff.id)
+        }
+      }
+    }
   }
 
   async function addTakeoffToExistingPO() {
@@ -2796,6 +2916,20 @@ export default function Bids() {
     })()
     return () => { cancelled = true }
   }, [takeoffExistingPOId])
+
+  useEffect(() => {
+    if (!takeoffAddTemplateModalOpen) return
+    let cancelled = false
+    supabase.from('material_parts').select('*').order('name', { ascending: true }).then(({ data, error }) => {
+      if (cancelled) return
+      if (error) {
+        setTakeoffAddTemplateParts([])
+        return
+      }
+      setTakeoffAddTemplateParts((data as MaterialPart[]) ?? [])
+    })
+    return () => { cancelled = true }
+  }, [takeoffAddTemplateModalOpen])
 
   useEffect(() => {
     if (activeTab === 'takeoffs') {
@@ -3266,16 +3400,28 @@ export default function Bids() {
 
   const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
 
-  const takeoffTemplateFilterLower = takeoffTemplateSearch.trim().toLowerCase()
-  const filteredTemplatesForTakeoff = takeoffTemplateFilterLower
-    ? materialTemplates.filter((t) => t.name.toLowerCase().includes(takeoffTemplateFilterLower))
-    : materialTemplates
+  function filterTemplatesByQuery(templates: MaterialTemplate[], query: string, limit = 50): MaterialTemplate[] {
+    const q = (query || '').trim().toLowerCase()
+    if (!q) return templates.slice(0, limit)
+    return templates
+      .filter((t) => [t.name, t.description].some((f) => (f || '').toLowerCase().includes(q)))
+      .slice(0, limit)
+  }
 
-  function takeoffTemplateOptionsForMapping(mapping: TakeoffMapping): MaterialTemplate[] {
+  function takeoffTemplatePickerOptions(mapping: TakeoffMapping): MaterialTemplate[] {
+    const filtered = filterTemplatesByQuery(materialTemplates, takeoffTemplatePickerQuery, 50)
     const selected = mapping.templateId ? materialTemplates.find((t) => t.id === mapping.templateId) : null
-    if (!selected) return filteredTemplatesForTakeoff
-    if (filteredTemplatesForTakeoff.some((t) => t.id === selected.id)) return filteredTemplatesForTakeoff
-    return [selected, ...filteredTemplatesForTakeoff]
+    if (!selected) return filtered
+    if (filtered.some((t) => t.id === selected.id)) return filtered
+    return [selected, ...filtered]
+  }
+
+  function filterPartsByQuery(parts: MaterialPart[], query: string, limit = 50): MaterialPart[] {
+    const q = (query || '').trim().toLowerCase()
+    if (!q) return parts.slice(0, limit)
+    return parts
+      .filter((p) => [p.name, p.manufacturer, p.fixture_type, p.notes].some((f) => (f || '').toLowerCase().includes(q)))
+      .slice(0, limit)
   }
 
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost')
@@ -3387,7 +3533,7 @@ export default function Bids() {
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance to Office<br />(miles)</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
@@ -3514,8 +3660,8 @@ export default function Bids() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in*</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count*</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in*</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
                       <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
                     </tr>
@@ -3641,16 +3787,6 @@ export default function Bids() {
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
                     Select a Template for each Fixture or Tie-in you want to include in a PO (Purchase Order).
                   </p>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <span style={{ fontWeight: 500 }}>dropdown filter:</span>
-                    <input
-                      type="text"
-                      placeholder="Filter template list"
-                      value={takeoffTemplateSearch}
-                      onChange={(e) => setTakeoffTemplateSearch(e.target.value)}
-                      style={{ width: 250, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                    />
-                  </div>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
@@ -3675,7 +3811,7 @@ export default function Bids() {
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
                                     type="button"
-                                    onClick={() => addTakeoffTemplate(row.id)}
+                                    onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
                                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
                                     Add template
@@ -3734,16 +3870,83 @@ export default function Bids() {
                                     <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
                                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
                                     <td style={{ padding: '0.75rem' }}>
-                                      <select
-                                        value={mapping.templateId}
-                                        onChange={(e) => setTakeoffMapping(mapping.id, { templateId: e.target.value })}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                      >
-                                        <option value="">—</option>
-                                        {takeoffTemplateOptionsForMapping(mapping).map((t) => (
-                                          <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                      </select>
+                                      <div style={{ position: 'relative' }}>
+                                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                                          <input
+                                            type="text"
+                                            value={takeoffTemplatePickerOpenMappingId === mapping.id ? takeoffTemplatePickerQuery : (mapping.templateId ? (materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? '') : '')}
+                                            onChange={(e) => setTakeoffTemplatePickerQuery(e.target.value)}
+                                            onFocus={() => { setTakeoffTemplatePickerOpenMappingId(mapping.id); setTakeoffTemplatePickerQuery('') }}
+                                            onBlur={() => setTimeout(() => setTakeoffTemplatePickerOpenMappingId(null), 150)}
+                                            onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffTemplatePickerOpenMappingId(null) }}
+                                            readOnly={takeoffTemplatePickerOpenMappingId !== mapping.id && !!mapping.templateId}
+                                            placeholder="Search templates by name or description…"
+                                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffTemplatePickerOpenMappingId !== mapping.id && mapping.templateId ? '#f3f4f6' : undefined }}
+                                          />
+                                          {mapping.templateId && takeoffTemplatePickerOpenMappingId !== mapping.id && (
+                                            <button
+                                              type="button"
+                                              onClick={() => { setTakeoffMapping(mapping.id, { templateId: '' }); setTakeoffTemplatePickerOpenMappingId(mapping.id); setTakeoffTemplatePickerQuery('') }}
+                                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                            >
+                                              Clear
+                                            </button>
+                                          )}
+                                        </div>
+                                        {takeoffTemplatePickerOpenMappingId === mapping.id && (
+                                          <ul
+                                            style={{
+                                              position: 'absolute',
+                                              left: 0,
+                                              right: 0,
+                                              top: '100%',
+                                              margin: 0,
+                                              marginTop: 2,
+                                              padding: 0,
+                                              listStyle: 'none',
+                                              maxHeight: 240,
+                                              overflowY: 'auto',
+                                              border: '1px solid #d1d5db',
+                                              borderRadius: 4,
+                                              background: '#fff',
+                                              zIndex: 50,
+                                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                            }}
+                                          >
+                                            {takeoffTemplatePickerOptions(mapping).length === 0 ? (
+                                              <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                                                No templates match.{' '}
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setTakeoffAddTemplateModalOpen(true)
+                                                    setTakeoffAddTemplateForMappingId(mapping.id)
+                                                    setTakeoffTemplatePickerOpenMappingId(null)
+                                                  }}
+                                                  style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                                >
+                                                  Add template
+                                                </button>
+                                              </li>
+                                            ) : (
+                                              takeoffTemplatePickerOptions(mapping).map((t) => (
+                                                <li
+                                                  key={t.id}
+                                                  onClick={() => {
+                                                    setTakeoffMapping(mapping.id, { templateId: t.id })
+                                                    setTakeoffTemplatePickerQuery('')
+                                                    setTakeoffTemplatePickerOpenMappingId(null)
+                                                  }}
+                                                  style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                                                >
+                                                  <div style={{ fontWeight: 500 }}>{t.name}</div>
+                                                  {t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}
+                                                </li>
+                                              ))
+                                            )}
+                                          </ul>
+                                        )}
+                                      </div>
                                     </td>
                                     <td style={{ padding: '0.75rem', fontSize: '0.875rem', maxWidth: 280 }}>{partsCell}</td>
                                     <td style={{ padding: '0.75rem' }}>
@@ -3784,7 +3987,7 @@ export default function Bids() {
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
                                     type="button"
-                                    onClick={() => addTakeoffTemplate(row.id)}
+                                    onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
                                     style={{ padding: '0.5rem 1rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
                                     Add template
@@ -3891,6 +4094,93 @@ export default function Bids() {
               )}
             </div>
           )}
+
+          {/* Add Template modal (from Takeoffs when no templates match) */}
+          {takeoffAddTemplateModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h2 style={{ margin: 0 }}>Add Template</h2>
+                  <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
+                </div>
+                <form onSubmit={saveTakeoffNewTemplate}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>
+                    <input type="text" value={takeoffNewTemplateName} onChange={(e) => setTakeoffNewTemplateName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Description</label>
+                    <textarea value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Items (parts or nested templates)</div>
+                    <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4 }}>
+                      <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}>
+                        <option value="part">Part</option>
+                        <option value="template">Nested Template</option>
+                      </select>
+                      {takeoffNewItemType === 'part' ? (
+                        <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                            <input type="text" value={takeoffNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === takeoffNewItemPartId)?.name ?? '') : takeoffNewItemPartSearchQuery} onChange={(e) => setTakeoffNewItemPartSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemPartDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemPartDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemPartDropdownOpen(false) }} readOnly={!!takeoffNewItemPartId} placeholder="Search parts by name, manufacturer, type, or notes…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemPartId ? '#f3f4f6' : undefined }} />
+                            {takeoffNewItemPartId && <button type="button" onClick={() => { setTakeoffNewItemPartId(''); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
+                          </div>
+                          {takeoffNewItemPartDropdownOpen && (
+                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.fixture_type) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}</div>}</li>))}
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                            <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search templates by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemTemplateId ? '#f3f4f6' : undefined }} />
+                            {takeoffNewItemTemplateId && <button type="button" onClick={() => { setTakeoffNewItemTemplateId(''); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
+                          </div>
+                          {takeoffNewItemTemplateDropdownOpen && (
+                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No templates match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input type="number" min={1} value={takeoffNewItemQuantity} onChange={(e) => setTakeoffNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                        <button type="button" onClick={addTakeoffNewTemplateItem} disabled={(takeoffNewItemType === 'part' && !takeoffNewItemPartId) || (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add item</button>
+                      </div>
+                    </div>
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead style={{ background: '#f9fafb' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th></tr></thead>
+                        <tbody>
+                          {takeoffNewTemplateItems.length === 0 ? (
+                            <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates above.</td></tr>
+                          ) : (
+                            takeoffNewTemplateItems.map((item, idx) => {
+                              const name = item.item_type === 'part' && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : item.item_type === 'template' && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
+                              return (
+                                <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Template'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingTakeoffNewTemplate} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffNewTemplate ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
           {takeoffPreviewModalTemplateId && (
             <div
               style={{
@@ -6268,7 +6558,7 @@ export default function Bids() {
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office (miles)</label>
                 <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -6549,17 +6839,18 @@ export default function Bids() {
                 ×
               </button>
             </div>
-            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
-This is [Master] from Click Plumbing and Electrical
-We just sent you our bid for [project name] [time since sent]
-from my email [your email]
-
-I wanted to make sure you received our email for your proposed work
-
-Is there else you need from me?
-
-If not I wanted to make myself available if you have any questions and if you know if there is a price point that we’re above or below you would like to meet for your project
-            </pre>
+            <div style={{ fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: 1.6, margin: 0 }}>
+              {[
+                'This is [Master] from Click Plumbing and Electrical',
+                'We just sent you our bid for [project name] [time since sent] from my email [your email]',
+                'I wanted to make sure you received our email for your proposed work',
+                'Is there else you need from me?',
+                'If not I wanted to make myself available if you have any questions',
+                "and if you know if there is a price point that we're above or below you would like to meet for your project",
+              ].map((line, i) => (
+                <div key={i} style={{ marginBottom: '0.5rem' }}>{i + 1}) {line}</div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -6616,10 +6907,10 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
     return (
       <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
         <td style={{ padding: '0.75rem' }}>
-          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+          <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
-          <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
           <input type="text" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -6633,8 +6924,8 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
   }
   return (
     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-      <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
       <td style={{ padding: '0.75rem' }}>{row.count}</td>
+      <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
         <button type="button" onClick={() => setEditing(true)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
@@ -6685,8 +6976,8 @@ function NewCountRow({ bidId, onSaved, onCancel, onSavedAndAddAnother }: { bidId
       <td colSpan={3} style={{ padding: '0.75rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ flex: 1, minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
             <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ flex: 1, minWidth: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ flex: 1, minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
             <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ flex: 1, minWidth: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
