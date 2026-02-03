@@ -105,6 +105,26 @@ function formatDateYYMMDD(dateStr: string | null): string {
   return `${y}/${m}/${day}`
 }
 
+function formatDesignDrawingPlanDate(dateStr: string | null): string {
+  if (!dateStr || !dateStr.trim()) return ''
+  const d = new Date(dateStr.trim() + 'T12:00:00')
+  if (isNaN(d.getTime())) return ''
+  const y = d.getFullYear() % 100
+  const m = d.getMonth() + 1
+  const day = d.getDate()
+  return `${m}-${day}-${String(y).padStart(2, '0')}`
+}
+
+function formatDesignDrawingPlanDateLabel(dateStr: string | null): string {
+  if (!dateStr || !dateStr.trim()) return ''
+  const d = new Date(dateStr.trim() + 'T12:00:00')
+  if (isNaN(d.getTime())) return ''
+  const y = d.getFullYear() % 100
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${day}/${m}/${String(y).padStart(2, '0')}`
+}
+
 function formatCompactCurrency(n: number | null): string {
   if (n == null) return '—'
   const k = n / 1000
@@ -162,6 +182,92 @@ This proposal excludes any electrical, fire protection, fire alarm, drywall, fra
 
 const DEFAULT_INCLUSIONS = 'Permits'
 
+/** Split address on first comma into [street, city/state/zip] for combined document. */
+function addressLines(addr: string): string[] {
+  const trimmed = (addr ?? '').trim()
+  if (!trimmed) return ['']
+  const commaIdx = trimmed.indexOf(',')
+  if (commaIdx < 0) return [trimmed]
+  return [trimmed.slice(0, commaIdx).trim(), trimmed.slice(commaIdx + 1).trim()]
+}
+
+function escapeHtml(s: string): string {
+  return (s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function buildCoverLetterHtml(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  revenueWords: string,
+  revenueNumber: string,
+  fixtureRows: { fixture: string; count: number }[],
+  inclusions: string,
+  exclusions: string,
+  terms: string,
+  designDrawingPlanDateFormatted: string | null
+): string {
+  const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
+  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
+  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
+  const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const fixtureBlock =
+    fixtureRows.length > 0
+      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
+      : ''
+  const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
+  const amountBold = `${revenueWords} (${revenueNumber})`
+  const revenueLinePrefix = 'As per plumbing plans and specifications, we propose to do the plumbing in the amount of: '
+  const br = '<br/>'
+  const pStyle = 'margin: 0 0 0.5em 0'
+  const paragraphs: string[] = []
+  // Customer + blank line + Project + blank line + revenue (one paragraph: soft return, empty line, soft return between each block)
+  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
+  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
+  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(amountBold) + '</strong>')
+  paragraphs.push(customerBlock + br + br + projectBlock)
+  if (designDrawingPlanDateFormatted) {
+    paragraphs.push('<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>')
+  }
+  // Inclusions heading (one paragraph)
+  paragraphs.push('<strong>Inclusions:</strong>')
+  // Inclusions content (one paragraph, newlines → br)
+  paragraphs.push(escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br))
+  // Exclusions heading (one paragraph)
+  paragraphs.push('<strong>Exclusions and Scope:</strong>')
+  // Exclusions content (one paragraph, newlines → br)
+  const exclusionsContent = exclusions.trim()
+    ? exclusionLines.join('\n')
+    : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
+  paragraphs.push(escapeHtml(exclusionsContent).replace(/\n/g, br))
+  // Terms content (one paragraph, newlines → br; heading hidden in Combined Document)
+  const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
+  paragraphs.push(escapeHtml(termsContent).replace(/\n/g, br))
+  // Remaining blocks (one paragraph each)
+  paragraphs.push(escapeHtml('No work shall commence until Click Plumbing has received acceptance of the estimate.'))
+  paragraphs.push(escapeHtml('Respectfully submitted by Click Plumbing'))
+  paragraphs.push('')
+  paragraphs.push(escapeHtml('_______________________________'))
+  paragraphs.push(escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'))
+  paragraphs.push('')
+  paragraphs.push('<strong>' + escapeHtml('Acceptance of estimate') + '</strong>')
+  paragraphs.push(escapeHtml('General Contractor / Builder Signature:'))
+  paragraphs.push('')
+  paragraphs.push(escapeHtml('____________________________________'))
+  paragraphs.push('')
+  paragraphs.push(escapeHtml('Date: ____________________________________'))
+  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
+}
+
 function buildCoverLetterText(
   customerName: string,
   customerAddress: string,
@@ -169,36 +275,39 @@ function buildCoverLetterText(
   projectAddress: string,
   revenueWords: string,
   revenueNumber: string,
-  fixtureNames: string[],
+  fixtureRows: { fixture: string; count: number }[],
   inclusions: string,
   exclusions: string,
-  terms: string
+  terms: string,
+  designDrawingPlanDateFormatted: string | null
 ): string {
-  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
-  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
-  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
+  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
+  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
   const fixtureBlock =
-    fixtureNames.length > 0
-      ? '• Fixtures provided and installed by us per plan:\n     ' + fixtureNames.map((f) => '• ' + f).join('\n     ')
+    fixtureRows.length > 0
+      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const lines: string[] = [
     customerName,
-    customerAddress,
+    ...addressLines(customerAddress),
     '',
     projectName,
-    projectAddress,
+    ...addressLines(projectAddress),
     '',
     `As per plumbing plans and specifications, we propose to do the plumbing in the amount of: ${revenueWords} (${revenueNumber})`,
     '',
+    ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
     'Inclusions:',
     inclusionsBlock || '(none)',
     '',
     'Exclusions and Scope:',
-    exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim()).join('\n'),
+    exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n'),
     '',
-    'Terms and Warranty:',
     terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
     '',
     'No work shall commence until Click Plumbing has received acceptance of the estimate.',
@@ -206,6 +315,7 @@ function buildCoverLetterText(
     '',
     '_______________________________',
     'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
+    '',
     'Acceptance of estimate',
     'General Contractor / Builder Signature:',
     '',
@@ -245,6 +355,7 @@ export default function Bids() {
 
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
+  const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
   const [address, setAddress] = useState('')
   const [gcContactName, setGcContactName] = useState('')
@@ -254,6 +365,7 @@ export default function Bids() {
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
   const [bidDueDate, setBidDueDate] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
+  const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
   const [outcome, setOutcome] = useState<'won' | 'lost' | ''>('')
   const [bidValue, setBidValue] = useState('')
@@ -386,16 +498,20 @@ export default function Bids() {
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
   const [coverLetterExclusionsByBid, setCoverLetterExclusionsByBid] = useState<Record<string, string>>({})
   const [coverLetterTermsByBid, setCoverLetterTermsByBid] = useState<Record<string, string>>({})
+  const [coverLetterIncludeDesignDrawingPlanDateByBid, setCoverLetterIncludeDesignDrawingPlanDateByBid] = useState<Record<string, boolean>>({})
   const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
+  const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
+  const [coverLetterBidSubmissionQuickAddValue, setCoverLetterBidSubmissionQuickAddValue] = useState('')
 
-  /** Set selected bid for Counts, Takeoffs, Cost Estimate, and Pricing so selection stays in sync across tabs. */
+  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, and Submission so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
     setSelectedBidForCounts(bid)
     setSelectedBidForTakeoff(bid)
     setSelectedBidForCostEstimate(bid)
     setSelectedBidForPricing(bid)
+    setSelectedBidForSubmission(bid)
   }
 
   function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'lost') {
@@ -407,6 +523,13 @@ export default function Bids() {
     const id = setInterval(() => setTick((t) => t + 1), 60_000)
     return () => clearInterval(id)
   }, [activeTab])
+
+  useEffect(() => {
+    if (coverLetterBidSubmissionQuickAddBidId != null && selectedBidForPricing?.id !== coverLetterBidSubmissionQuickAddBidId) {
+      setCoverLetterBidSubmissionQuickAddBidId(null)
+      setCoverLetterBidSubmissionQuickAddValue('')
+    }
+  }, [selectedBidForPricing?.id, coverLetterBidSubmissionQuickAddBidId])
 
   async function loadRole() {
     if (!authUser?.id) {
@@ -1617,6 +1740,86 @@ export default function Bids() {
     win.onafterprint = () => win.close()
   }
 
+  function printCostEstimatePage() {
+    if (!selectedBidForCostEstimate) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Cost Estimate'
+    const poRoughName = escapeHtml(purchaseOrdersForCostEstimate.find((p) => p.id === costEstimate?.purchase_order_id_rough_in)?.name ?? '—')
+    const poTopName = escapeHtml(purchaseOrdersForCostEstimate.find((p) => p.id === costEstimate?.purchase_order_id_top_out)?.name ?? '—')
+    const poTrimName = escapeHtml(purchaseOrdersForCostEstimate.find((p) => p.id === costEstimate?.purchase_order_id_trim_set)?.name ?? '—')
+    const matRough = costEstimateMaterialTotalRoughIn ?? 0
+    const matTop = costEstimateMaterialTotalTopOut ?? 0
+    const matTrim = costEstimateMaterialTotalTrimSet ?? 0
+    const totalMaterials = matRough + matTop + matTrim
+    const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
+    const totalHours = costEstimateLaborRows.reduce(
+      (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+      0
+    )
+    const laborCost = totalHours * rate
+    const grandTotal = totalMaterials + laborCost
+
+    const laborRowsHtml =
+      costEstimateLaborRows.length === 0
+        ? '<tr><td colspan="6" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : costEstimateLaborRows
+            .map((row) => {
+              const rough = Number(row.rough_in_hrs_per_unit)
+              const top = Number(row.top_out_hrs_per_unit)
+              const trim = Number(row.trim_set_hrs_per_unit)
+              const totalHrs = Number(row.count) * (rough + top + trim)
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:center">${rough.toFixed(2)}</td><td style="text-align:center">${top.toFixed(2)}</td><td style="text-align:center">${trim.toFixed(2)}</td><td style="text-align:center; font-weight:600">${totalHrs.toFixed(2)}</td></tr>`
+            })
+            .join('')
+
+    let totalsRowHtml = ''
+    if (costEstimateLaborRows.length > 0) {
+      const totalRough = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.rough_in_hrs_per_unit), 0)
+      const totalTop = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.top_out_hrs_per_unit), 0)
+      const totalTrim = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.trim_set_hrs_per_unit), 0)
+      totalsRowHtml = `<tr style="background:#f9fafb; font-weight:600"><td>Totals</td><td style="text-align:center"></td><td style="text-align:center">${totalRough.toFixed(2)} hrs</td><td style="text-align:center">${totalTop.toFixed(2)} hrs</td><td style="text-align:center">${totalTrim.toFixed(2)} hrs</td><td style="text-align:center">${totalHours.toFixed(2)} hrs</td></tr>`
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  .summary { margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; }
+  .summary p { margin: 0.25rem 0; text-align: right; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <h2>Materials</h2>
+  <p><strong>PO (Rough In)</strong> ${poRoughName} — $${formatCurrency(matRough)}</p>
+  <p><strong>PO (Top Out)</strong> ${poTopName} — $${formatCurrency(matTop)}</p>
+  <p><strong>PO (Trim Set)</strong> ${poTrimName} — $${formatCurrency(matTrim)}</p>
+  <p style="font-weight:600; text-align:right;">Materials Total: $${formatCurrency(totalMaterials)}</p>
+  <h2>Labor</h2>
+  <p>Labor rate: $${formatCurrency(rate)}/hr</p>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:center">Rough In (hrs/unit)</th><th style="text-align:center">Top Out (hrs/unit)</th><th style="text-align:center">Trim Set (hrs/unit)</th><th style="text-align:center">Total hrs</th></tr></thead>
+    <tbody>${laborRowsHtml}${totalsRowHtml}</tbody>
+  </table>
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: ${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr = $${formatCurrency(laborCost)}</p>
+  <h2>Summary</h2>
+  <div class="summary">
+    <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
+    <p>Labor total: $${formatCurrency(laborCost)}</p>
+    <p style="font-weight:700; font-size:1.125rem;">Grand total: $${formatCurrency(grandTotal)}</p>
+  </div>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>>) {
     setCostEstimateLaborRows((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
@@ -2011,6 +2214,8 @@ export default function Bids() {
     setEditingBid(null)
     setDriveLink('')
     setPlansLink('')
+    setBidSubmissionLink('')
+    setDesignDrawingPlanDate('')
     setGcCustomerId('')
     setGcCustomerSearch('')
     setProjectName('')
@@ -2037,6 +2242,7 @@ export default function Bids() {
     setEditingBid(bid)
     setDriveLink(bid.drive_link ?? '')
     setPlansLink(bid.plans_link ?? '')
+    setBidSubmissionLink(bid.bid_submission_link ?? '')
     if (bid.customer_id && bid.customers) {
       setGcCustomerId(bid.customer_id)
       setGcCustomerSearch(getCustomerDisplay(bid.customers))
@@ -2055,6 +2261,7 @@ export default function Bids() {
     setEstimatorId(bid.estimator_id ?? '')
     setBidDueDate(bid.bid_due_date ?? '')
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
+    setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
     setOutcome(bid.outcome ?? '')
     setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
@@ -2088,6 +2295,8 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
+      bid_submission_link: bidSubmissionLink.trim() || null,
+      design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
       project_name: projectName.trim() || null,
@@ -2123,7 +2332,17 @@ export default function Bids() {
         return
       }
     }
-    await loadBids()
+    const rows = await loadBids()
+    if (editingBid) {
+      const fresh = rows.find((b) => b.id === editingBid.id)
+      if (fresh) {
+        if (selectedBidForCounts?.id === editingBid.id) setSelectedBidForCounts(fresh)
+        if (selectedBidForSubmission?.id === editingBid.id) setSelectedBidForSubmission(fresh)
+        if (selectedBidForTakeoff?.id === editingBid.id) setSelectedBidForTakeoff(fresh)
+        if (selectedBidForCostEstimate?.id === editingBid.id) setSelectedBidForCostEstimate(fresh)
+        if (selectedBidForPricing?.id === editingBid.id) setSelectedBidForPricing(fresh)
+      }
+    }
     closeBidForm()
     setSavingBid(false)
   }
@@ -2140,6 +2359,8 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
+      bid_submission_link: bidSubmissionLink.trim() || null,
+      design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
       project_name: projectName.trim() || null,
@@ -2179,11 +2400,43 @@ export default function Bids() {
       bidId = (inserted as { id: string }).id
     }
     const rows = await loadBids()
+    if (editingBid) {
+      const fresh = rows.find((b) => b.id === editingBid.id)
+      if (fresh) {
+        if (selectedBidForCounts?.id === editingBid.id) setSelectedBidForCounts(fresh)
+        if (selectedBidForSubmission?.id === editingBid.id) setSelectedBidForSubmission(fresh)
+        if (selectedBidForTakeoff?.id === editingBid.id) setSelectedBidForTakeoff(fresh)
+        if (selectedBidForCostEstimate?.id === editingBid.id) setSelectedBidForCostEstimate(fresh)
+        if (selectedBidForPricing?.id === editingBid.id) setSelectedBidForPricing(fresh)
+      }
+    }
     closeBidForm()
     setSavingBid(false)
     setActiveTab('counts')
     const bid = rows.find((b) => b.id === bidId)
     if (bid) setSharedBid(bid)
+  }
+
+  async function saveBidSubmissionQuickAdd(bidId: string, value: string) {
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ bid_submission_link: value.trim() || null })
+      .eq('id', bidId)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    const rows = await loadBids()
+    const fresh = rows.find((b) => b.id === bidId)
+    if (fresh) {
+      if (selectedBidForCounts?.id === bidId) setSelectedBidForCounts(fresh)
+      if (selectedBidForSubmission?.id === bidId) setSelectedBidForSubmission(fresh)
+      if (selectedBidForTakeoff?.id === bidId) setSelectedBidForTakeoff(fresh)
+      if (selectedBidForCostEstimate?.id === bidId) setSelectedBidForCostEstimate(fresh)
+      if (selectedBidForPricing?.id === bidId) setSelectedBidForPricing(fresh)
+    }
+    setCoverLetterBidSubmissionQuickAddBidId(null)
+    setCoverLetterBidSubmissionQuickAddValue('')
   }
 
   async function deleteBid() {
@@ -3506,7 +3759,7 @@ export default function Bids() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => window.print()}
+                      onClick={() => printCostEstimatePage()}
                       style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Print
@@ -4410,16 +4663,50 @@ export default function Bids() {
               const unitPrice = entry ? Number(entry.total_price) : 0
               coverLetterRevenue += count * unitPrice
             })
-            const revenueWords = numberToWords(coverLetterRevenue)
+            const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
-            const fixtureNames = pricingCountRows.map((r) => r.fixture)
+            const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture, count: Number(r.count) }))
             const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
             const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
             const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
             const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
             const terms = coverLetterTermsByBid[bid.id] ?? ''
             const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
-            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureNames, inclusions, exclusions, terms)
+            const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
+            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
+            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
+            const now = new Date()
+            const yy = now.getFullYear() % 100
+            const mm = String(now.getMonth() + 1).padStart(2, '0')
+            const dd = String(now.getDate()).padStart(2, '0')
+            const datePart = `${yy}${mm}${dd}`
+            const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
+            const templateCopyTarget = `ClickProposal_${datePart}_${sanitizedProjectName}`
+            const googleDocsCopyUrl = 'https://docs.google.com/document/d/1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8/copy?title=' + encodeURIComponent(templateCopyTarget)
+            const copyToClipboard = () => {
+              if (navigator.clipboard && navigator.clipboard.write) {
+                const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })
+                const textBlob = new Blob([combinedText], { type: 'text/plain' })
+                const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+                navigator.clipboard.write([item]).then(
+                  () => {
+                    setCoverLetterCopySuccess(true)
+                    setTimeout(() => setCoverLetterCopySuccess(false), 2000)
+                  },
+                  () => {
+                    navigator.clipboard.writeText(combinedText).then(() => {
+                      setCoverLetterCopySuccess(true)
+                      setTimeout(() => setCoverLetterCopySuccess(false), 2000)
+                    })
+                  }
+                )
+              } else {
+                navigator.clipboard.writeText(combinedText).then(() => {
+                  setCoverLetterCopySuccess(true)
+                  setTimeout(() => setCoverLetterCopySuccess(false), 2000)
+                })
+              }
+            }
             return (
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -4445,19 +4732,36 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
                   <div>{customerName}</div>
-                  <div style={{ color: '#6b7280' }}>{customerAddress}</div>
+                  {addressLines(customerAddress).map((line, i) => (
+                    <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                  ))}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
                   <div>{projectNameVal}</div>
-                  <div style={{ color: '#6b7280' }}>{projectAddressVal}</div>
+                  {addressLines(projectAddressVal).map((line, i) => (
+                    <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                  ))}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Proposed amount (from Pricing)</div>
                   <div>{revenueWords} ({revenueNumber})</div>
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Inclusions (one per line, shown as bullets)</label>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>Include in combined document</div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!coverLetterIncludeDesignDrawingPlanDateByBid[bid.id]}
+                      onChange={() => setCoverLetterIncludeDesignDrawingPlanDateByBid((prev) => ({ ...prev, [bid.id]: !prev[bid.id] }))}
+                    />
+                    {bid.design_drawing_plan_date
+                      ? `Design Drawings Plan Date [${formatDesignDrawingPlanDateLabel(bid.design_drawing_plan_date)}]`
+                      : 'Design Drawings Plan Date: [not set]'}
+                  </label>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Additional Inclusions (one per line, shown as bullets)</label>
                   <textarea
                     value={inclusionsDisplay}
                     onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
@@ -4496,24 +4800,56 @@ export default function Bids() {
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
-                  <textarea
-                    readOnly
-                    value={combinedText}
-                    rows={24}
-                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                  <div
+                    key={`combined-preview-${bid.id}-${!!coverLetterIncludeDesignDrawingPlanDateByBid[bid.id]}`}
+                    style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                    dangerouslySetInnerHTML={{ __html: combinedHtml }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(combinedText).then(() => {
-                        setCoverLetterCopySuccess(true)
-                        setTimeout(() => setCoverLetterCopySuccess(false), 2000)
-                      })
-                    }}
-                    style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    {coverLetterCopySuccess ? 'Copied!' : 'Copy to clipboard'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={copyToClipboard}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      {coverLetterCopySuccess ? 'Copied!' : 'Copy to clipboard'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        copyToClipboard()
+                        window.open(googleDocsCopyUrl, templateCopyTarget)
+                        setCoverLetterBidSubmissionQuickAddBidId(bid.id)
+                        setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
+                    >
+                      Open in Google Docs
+                    </button>
+                    {coverLetterBidSubmissionQuickAddBidId === bid.id && (
+                      <>
+                        <input
+                          type="url"
+                          value={coverLetterBidSubmissionQuickAddValue}
+                          onChange={(e) => setCoverLetterBidSubmissionQuickAddValue(e.target.value)}
+                          placeholder="Set the sharing permissions and paste the Proposal link here to quick add: https://docs.google.com/…"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              void saveBidSubmissionQuickAdd(bid.id, coverLetterBidSubmissionQuickAddValue)
+                            }
+                          }}
+                          style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void saveBidSubmissionQuickAdd(bid.id, coverLetterBidSubmissionQuickAddValue)}
+                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Add
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -4557,15 +4893,37 @@ export default function Bids() {
               </div>
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
                 <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
+                <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Name</strong> {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Address</strong> {selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Phone Number</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone || '—' : (selectedBidForSubmission.bids_gc_builders?.contact_number ?? '—')}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Email</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email || '—' : (selectedBidForSubmission.bids_gc_builders?.email ?? '—')}</p>
+                <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Name</strong> {selectedBidForSubmission.project_name ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Address</strong> {selectedBidForSubmission.address ?? '—'}</p>
+                <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Name</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Phone</strong> {selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Email</strong> {selectedBidForSubmission.gc_contact_email ?? '—'}</p>
+                <p style={{ margin: '1.5rem 0' }} />
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Project Folder</strong>{' '}
+                  {selectedBidForSubmission.drive_link?.trim() ? (
+                    <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
+                  ) : '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Job Plans</strong>{' '}
+                  {selectedBidForSubmission.plans_link?.trim() ? (
+                    <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
+                  ) : '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Bid Submission</strong>{' '}
+                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
+                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
+                  ) : '—'}
+                </p>
               </div>
               {submissionBidHasCostEstimate === 'loading' && (
                 <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
@@ -4896,8 +5254,8 @@ export default function Bids() {
                 <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address</label>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address [street, town, state zip]</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -4915,11 +5273,19 @@ export default function Bids() {
                     [HVAC]
                   </a>
                 </label>
-                <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
-                <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
+                <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
+                <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem', position: 'relative' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
