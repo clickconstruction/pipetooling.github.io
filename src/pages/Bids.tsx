@@ -391,7 +391,9 @@ export default function Bids() {
   const [submissionEntries, setSubmissionEntries] = useState<BidSubmissionEntry[]>([])
   const [addingSubmissionEntry, setAddingSubmissionEntry] = useState(false)
   const [submissionBidHasCostEstimate, setSubmissionBidHasCostEstimate] = useState<boolean | 'loading' | null>(null)
+  const [submissionReviewGroupCollapsed, setSubmissionReviewGroupCollapsed] = useState(true)
   const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
+  const [submissionPricingByVersion, setSubmissionPricingByVersion] = useState<Array<{ versionId: string; versionName: string; revenue: number | null; margin: number | null; complete: boolean }>>([])
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, lost: false })
   const [, setTick] = useState(0)
 
@@ -2002,6 +2004,20 @@ export default function Bids() {
     win.onafterprint = () => win.close()
   }
 
+  function printCoverLetterDocument(combinedHtml: string) {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cover Letter</title><style>
+  body { font-family: sans-serif; margin: 1in; font-size: 12pt; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>${combinedHtml}</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   function downloadSubmissionSummaryPdf() {
     if (!selectedBidForSubmission) return
     const b = selectedBidForSubmission
@@ -2047,11 +2063,340 @@ export default function Bids() {
     push(`Project Contact Phone: ${b.gc_contact_phone ?? '—'}`)
     push(`Project Contact Email: ${b.gc_contact_email ?? '—'}`)
     y += lineHeight
-    pushLink('Project Folder:', b.drive_link?.trim() || null)
-    pushLink('Job Plans:', b.plans_link?.trim() || null)
     pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
+    y += lineHeight
+    pushLink('Project Folder:', b.drive_link?.trim() || null)
+    y += lineHeight
+    pushLink('Job Plans:', b.plans_link?.trim() || null)
 
     const filename = `Bid_Summary_${(bidDisplayName(b) || 'Bid').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40)}.pdf`
+    doc.save(filename)
+  }
+
+  async function downloadApprovalPdf() {
+    const b = selectedBidForSubmission
+    if (!b) return
+    const bidId = b.id
+    const margin = 20
+    const lineHeight = 6
+    const pageH = 297
+    const pageW = 210
+    const maxW = pageW - 2 * margin
+
+    let y = margin
+    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const push = (text: string, bold = false) => {
+      if (bold) doc.setFont('helvetica', 'bold')
+      const lines = doc.splitTextToSize(text, maxW)
+      for (const line of lines) {
+        if (y > pageH - margin) { doc.addPage(); y = margin }
+        doc.text(line, margin, y)
+        y += lineHeight
+      }
+      if (bold) doc.setFont('helvetica', 'normal')
+    }
+    const pushLink = (label: string, url: string | null) => {
+      doc.setFont('helvetica', 'bold')
+      doc.text(label + ' ', margin, y)
+      const labelW = doc.getTextWidth(label + ' ')
+      doc.setFont('helvetica', 'normal')
+      if (url?.trim()) {
+        doc.setTextColor(0, 0, 255)
+        const displayUrl = url.length > 70 ? url.slice(0, 67) + '...' : url
+        doc.textWithLink(displayUrl, margin + labelW, y, { url })
+        doc.setTextColor(0, 0, 0)
+      } else {
+        doc.text('—', margin + labelW, y)
+      }
+      y += lineHeight
+    }
+
+    const tableLineHeight = 6
+    const drawTable = (
+      startY: number,
+      colWidths: number[],
+      headers: string[],
+      rows: string[][],
+      headerBold = true
+    ): number => {
+      let cy = startY
+      const left = margin
+      const totalW = colWidths.reduce((a, w) => a + w, 0)
+      const clip = (str: string, w: number) => {
+        const pad = 2
+        if (doc.getTextWidth(str) <= w - pad) return str
+        let s = str
+        while (s.length && doc.getTextWidth(s + '…') > w - pad) s = s.slice(0, -1)
+        return s + '…'
+      }
+      doc.setDrawColor(0.4, 0.4, 0.4)
+      doc.setLineWidth(0.2)
+      doc.line(left, startY, left + totalW, startY)
+      for (let r = -1; r < rows.length; r++) {
+        if (cy > pageH - margin) { doc.addPage(); cy = margin }
+        const cells = r === -1 ? headers : rows[r]
+        let cellY = cy + 4
+        let rowH = tableLineHeight
+        for (let c = 0; c < colWidths.length; c++) {
+          const x = left + colWidths.slice(0, c).reduce((a, w) => a + w, 0)
+          const w = colWidths[c]
+          const text = (cells[c] ?? '').toString()
+          const clipped = clip(text, w)
+          if (headerBold && r === -1) doc.setFont('helvetica', 'bold')
+          doc.text(clipped, x + 1, cellY)
+          if (headerBold && r === -1) doc.setFont('helvetica', 'normal')
+        }
+        cy += rowH
+        doc.line(left, cy, left + totalW, cy)
+      }
+      doc.line(left, startY, left, cy)
+      let x = left
+      for (const w of colWidths) {
+        x += w
+        doc.line(x, startY, x, cy)
+      }
+      return cy
+    }
+
+    // Fetch Review Group data (cost estimate + pricing by version) for page 1
+    let reviewGroupCostEstimateAmount: number | null = null
+    let reviewGroupHasCostEstimate = false
+    const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
+    const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
+    const estForReviewData = estForReview as CostEstimate | null
+    if (estForReviewData) {
+      reviewGroupHasCostEstimate = true
+      const [laborResR, roughR, topR, trimR] = await Promise.all([
+        supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estForReviewData.id).order('sequence_order', { ascending: true }),
+        estForReviewData.purchase_order_id_rough_in ? loadPOTotal(estForReviewData.purchase_order_id_rough_in) : Promise.resolve(0),
+        estForReviewData.purchase_order_id_top_out ? loadPOTotal(estForReviewData.purchase_order_id_top_out) : Promise.resolve(0),
+        estForReviewData.purchase_order_id_trim_set ? loadPOTotal(estForReviewData.purchase_order_id_trim_set) : Promise.resolve(0),
+      ])
+      const laborRowsR = (laborResR.data as CostEstimateLaborRow[]) ?? []
+      const totalMaterialsR = (roughR ?? 0) + (topR ?? 0) + (trimR ?? 0)
+      const rateR = estForReviewData.labor_rate != null ? Number(estForReviewData.labor_rate) : 0
+      const totalHoursR = laborRowsR.reduce(
+        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        0
+      )
+      reviewGroupCostEstimateAmount = totalMaterialsR + totalHoursR * rateR
+    }
+    const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+    const countRowsReview = (countDataReview as BidCountRow[]) ?? []
+    for (const v of priceBookVersions) {
+      const [entriesResR, assignResR] = await Promise.all([
+        supabase.from('price_book_entries').select('*').eq('version_id', v.id).order('sequence_order', { ascending: true }),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
+      ])
+      const entriesR = (entriesResR.data as PriceBookEntry[]) ?? []
+      const assignmentsR = (assignResR.data as BidPricingAssignment[]) ?? []
+      const entriesByIdR = new Map(entriesR.map((e) => [e.id, e]))
+      let totalRevenueR = 0
+      let completeR = true
+      for (const row of countRowsReview) {
+        const assignment = assignmentsR.find((a) => a.count_row_id === row.id)
+        const entry = assignment ? entriesByIdR.get(assignment.price_book_entry_id) : entriesR.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+        if (!entry) completeR = false
+        totalRevenueR += Number(row.count) * (entry ? Number(entry.total_price) : 0)
+      }
+      const marginR = completeR && totalRevenueR > 0 && reviewGroupCostEstimateAmount != null
+        ? (totalRevenueR - reviewGroupCostEstimateAmount) / totalRevenueR * 100
+        : null
+      reviewGroupPricingByVersion.push({ versionName: v.name, revenue: totalRevenueR, margin: marginR, complete: completeR })
+    }
+
+    // Page 1: Submission and followup (same as downloadSubmissionSummaryPdf)
+    doc.setFontSize(16)
+    push(`${bidDisplayName(b) || 'Bid'} — Submission and Followup`, true)
+    y += lineHeight * 2
+    doc.setFontSize(11)
+    push(`Bid Size: ${formatCompactCurrency(b.bid_value != null ? Number(b.bid_value) : null)}`)
+    push(`Builder Name: ${b.customers?.name ?? b.bids_gc_builders?.name ?? '—'}`)
+    push(`Builder Address: ${b.customers?.address ?? b.bids_gc_builders?.address ?? '—'}`)
+    push(`Builder Phone Number: ${b.customers ? extractContactInfo(b.customers.contact_info ?? null).phone || '—' : (b.bids_gc_builders?.contact_number ?? '—')}`)
+    push(`Builder Email: ${b.customers ? extractContactInfo(b.customers.contact_info ?? null).email || '—' : (b.bids_gc_builders?.email ?? '—')}`)
+    y += lineHeight
+    push(`Project Name: ${b.project_name ?? '—'}`)
+    push(`Project Address: ${b.address ?? '—'}`)
+    y += lineHeight
+    push(`Project Contact Name: ${b.gc_contact_name ?? '—'}`)
+    push(`Project Contact Phone: ${b.gc_contact_phone ?? '—'}`)
+    push(`Project Contact Email: ${b.gc_contact_email ?? '—'}`)
+    y += lineHeight
+    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
+    y += lineHeight
+    pushLink('Project Folder:', b.drive_link?.trim() || null)
+    y += lineHeight
+    pushLink('Job Plans:', b.plans_link?.trim() || null)
+
+    // Review Group / Approval Packet (same as UI section)
+    y += lineHeight
+    push('Review Group / Approval Packet', true)
+    y += lineHeight
+    push(`Cost estimate: ${reviewGroupHasCostEstimate ? (reviewGroupCostEstimateAmount != null ? `$${formatCurrency(reviewGroupCostEstimateAmount)}` : '—') : 'Not yet created'}`)
+    for (const row of reviewGroupPricingByVersion) {
+      push(`Price Book: ${row.versionName} | Revenue: ${row.complete ? `$${formatCurrency(row.revenue)}` : 'Incomplete'} | Margin: ${row.complete && row.margin != null ? `${row.margin.toFixed(1)}%` : 'Incomplete'}`)
+    }
+
+    // Page 2: Pricing
+    doc.addPage()
+    y = margin
+    doc.setFontSize(16)
+    push(`${bidDisplayName(b) || 'Bid'} — Pricing`, true)
+    y += lineHeight * 2
+    doc.setFontSize(11)
+
+    const versionId = b.selected_price_book_version_id ?? null
+    const { data: countData } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+    const countRows = (countData as BidCountRow[]) ?? []
+    let pricingContent = 'No price book selected or no count rows.'
+    if (versionId && countRows.length > 0) {
+      const [entriesRes, assignRes] = await Promise.all([
+        supabase.from('price_book_entries').select('*').eq('version_id', versionId).order('sequence_order', { ascending: true }),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
+      ])
+      const entries = (entriesRes.data as PriceBookEntry[]) ?? []
+      const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
+      const entriesById = new Map(entries.map((e) => [e.id, e]))
+      let totalRevenue = 0
+      const versionName = priceBookVersions.find((v) => v.id === versionId)?.name ?? '—'
+      push(`Price book: ${versionName}`)
+      y += lineHeight
+      const pricingColWidths = [52, 18, 52, 48]
+      const pricingRows: string[][] = []
+      for (const row of countRows) {
+        const assignment = assignments.find((a) => a.count_row_id === row.id)
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+        const unitPrice = entry ? Number(entry.total_price) : 0
+        const revenue = Number(row.count) * unitPrice
+        totalRevenue += revenue
+        pricingRows.push([
+          row.fixture ?? '',
+          String(row.count),
+          entry?.fixture_name ?? '—',
+          `$${formatCurrency(revenue)}`,
+        ])
+      }
+      y = drawTable(y, pricingColWidths, ['Fixture', 'Count', 'Entry', 'Revenue'], pricingRows)
+      y += lineHeight
+      push(`Total Revenue: $${formatCurrency(totalRevenue)}`, true)
+    } else {
+      push(pricingContent)
+    }
+
+    // Page 3: Cost Estimate
+    doc.addPage()
+    y = margin
+    doc.setFontSize(16)
+    push(`${bidDisplayName(b) || 'Bid'} — Cost Estimate`, true)
+    y += lineHeight * 2
+    doc.setFontSize(11)
+
+    const { data: estData } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
+    const est = estData as CostEstimate | null
+    if (!est) {
+      push('No cost estimate created.')
+    } else {
+      const [laborRes, roughTotal, topTotal, trimTotal] = await Promise.all([
+        supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
+        est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
+        est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+      ])
+      const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
+      const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
+      const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
+      const totalHours = laborRows.reduce(
+        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        0
+      )
+      const laborCost = totalHours * rate
+      const grandTotal = totalMaterials + laborCost
+
+      push('Materials')
+      y += lineHeight
+      const materialsColWidths = [100, 70]
+      y = drawTable(y, materialsColWidths, ['Item', 'Amount'], [
+        ['PO (Rough In)', `$${formatCurrency(roughTotal ?? 0)}`],
+        ['PO (Top Out)', `$${formatCurrency(topTotal ?? 0)}`],
+        ['PO (Trim Set)', `$${formatCurrency(trimTotal ?? 0)}`],
+        ['Materials Total', `$${formatCurrency(totalMaterials)}`],
+      ])
+      y += lineHeight
+      push(`Labor — Rate: $${formatCurrency(rate)}/hr`)
+      y += lineHeight
+      const laborColWidths = [38, 14, 22, 22, 22, 24]
+      const laborTableRows: string[][] = laborRows.map((row) => {
+        const rough = Number(row.rough_in_hrs_per_unit)
+        const top = Number(row.top_out_hrs_per_unit)
+        const trim = Number(row.trim_set_hrs_per_unit)
+        const totalHrs = Number(row.count) * (rough + top + trim)
+        return [
+          row.fixture ?? '',
+          String(row.count),
+          rough.toFixed(2),
+          top.toFixed(2),
+          trim.toFixed(2),
+          totalHrs.toFixed(2),
+        ]
+      })
+      y = drawTable(y, laborColWidths, ['Fixture', 'Count', 'Rough In', 'Top Out', 'Trim Set', 'Total hrs'], laborTableRows)
+      y += lineHeight
+      push(`Labor total: ${totalHours.toFixed(2)} hrs × $${formatCurrency(rate)}/hr = $${formatCurrency(laborCost)}`)
+      y += lineHeight
+      push('Summary', true)
+      const summaryColWidths = [100, 70]
+      y = drawTable(y, summaryColWidths, ['Item', 'Amount'], [
+        ['Materials Total', `$${formatCurrency(totalMaterials)}`],
+        ['Labor total', `$${formatCurrency(laborCost)}`],
+        ['Grand total', `$${formatCurrency(grandTotal)}`],
+      ])
+    }
+
+    // Page 4: Cover Letter
+    doc.addPage()
+    y = margin
+    doc.setFontSize(16)
+    push(`${bidDisplayName(b) || 'Bid'} — Cover Letter`, true)
+    y += lineHeight * 2
+    doc.setFontSize(11)
+
+    const customerName = b.customers?.name ?? b.bids_gc_builders?.name ?? '—'
+    const customerAddress = b.customers?.address ?? b.bids_gc_builders?.address ?? '—'
+    const projectNameVal = b.project_name ?? '—'
+    const projectAddressVal = b.address ?? '—'
+    let coverLetterRevenue = 0
+    const fixtureRows: { fixture: string; count: number }[] = []
+    if (versionId && countRows.length > 0) {
+      const entries = (await supabase.from('price_book_entries').select('*').eq('version_id', versionId)).data as PriceBookEntry[] ?? []
+      const assignments = (await supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidPricingAssignment[] ?? []
+      const entriesById = new Map(entries.map((e) => [e.id, e]))
+      countRows.forEach((countRow) => {
+        const assignment = assignments.find((a) => a.count_row_id === countRow.id)
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const unitPrice = entry ? Number(entry.total_price) : 0
+        coverLetterRevenue += Number(countRow.count) * unitPrice
+        fixtureRows.push({ fixture: countRow.fixture ?? '', count: Number(countRow.count) })
+      })
+    }
+    const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
+    const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
+    const inclusions = coverLetterInclusionsByBid[b.id] ?? DEFAULT_INCLUSIONS
+    const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
+    const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
+    const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
+    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
+    const coverLines = coverLetterText.split('\n')
+    for (const line of coverLines) {
+      if (y > pageH - margin) { doc.addPage(); y = margin }
+      const wrapped = doc.splitTextToSize(line, maxW)
+      for (const w of wrapped) {
+        doc.text(w, margin, y)
+        y += lineHeight
+      }
+    }
+
+    const filename = `Approval_${(bidDisplayName(b) || 'Bid').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40)}.pdf`
     doc.save(filename)
   }
 
@@ -2218,6 +2563,7 @@ export default function Bids() {
     if (!bidId) {
       setSubmissionBidHasCostEstimate(null)
       setSubmissionBidCostEstimateAmount(null)
+      setSubmissionPricingByVersion([])
       return
     }
     setSubmissionBidHasCostEstimate('loading')
@@ -2258,6 +2604,53 @@ export default function Bids() {
     })()
     return () => { cancelled = true }
   }, [selectedBidForSubmission?.id])
+
+  useEffect(() => {
+    const bidId = selectedBidForSubmission?.id
+    const cost = submissionBidCostEstimateAmount
+    const versions = priceBookVersions
+    if (!bidId || versions.length === 0) {
+      setSubmissionPricingByVersion([])
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const { data: countData, error: countErr } = await supabase
+        .from('bids_count_rows')
+        .select('*')
+        .eq('bid_id', bidId)
+        .order('sequence_order', { ascending: true })
+      if (countErr || cancelled) {
+        if (!cancelled) setSubmissionPricingByVersion([])
+        return
+      }
+      const countRows = (countData as BidCountRow[]) ?? []
+      const results = await Promise.all(
+        versions.map(async (v) => {
+          const [entriesRes, assignRes] = await Promise.all([
+            supabase.from('price_book_entries').select('*').eq('version_id', v.id).order('sequence_order', { ascending: true }).order('fixture_name', { ascending: true }),
+            supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
+          ])
+          const entries = (entriesRes.data as PriceBookEntry[]) ?? []
+          const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
+          const entriesById = new Map(entries.map((e) => [e.id, e]))
+          let totalRevenue = 0
+          let complete = true
+          for (const row of countRows) {
+            const assignment = assignments.find((a) => a.count_row_id === row.id)
+            const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+            if (!entry) complete = false
+            const unitPrice = entry ? Number(entry.total_price) : 0
+            totalRevenue += Number(row.count) * unitPrice
+          }
+          const margin = complete && totalRevenue > 0 && cost != null ? (totalRevenue - cost) / totalRevenue * 100 : null
+          return { versionId: v.id, versionName: v.name, revenue: totalRevenue, margin, complete }
+        })
+      )
+      if (!cancelled) setSubmissionPricingByVersion(results)
+    })()
+    return () => { cancelled = true }
+  }, [selectedBidForSubmission?.id, priceBookVersions, submissionBidCostEstimateAmount])
 
   useEffect(() => {
     if (selectedBidForTakeoff?.id) loadTakeoffCountRows(selectedBidForTakeoff.id)
@@ -2321,7 +2714,7 @@ export default function Bids() {
       loadDraftPOs()
       loadTakeoffBookVersions()
     }
-    if (activeTab === 'pricing' || activeTab === 'cover-letter') {
+    if (activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submission-followup') {
       loadPriceBookVersions()
     }
   }, [activeTab])
@@ -3733,13 +4126,22 @@ export default function Bids() {
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCostEstimate) || 'Bid'}</h2>
-                <button
-                  type="button"
-                  onClick={() => setSharedBid(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Close
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => printCostEstimatePage()}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSharedBid(null)}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
               {costEstimateCountRows.length === 0 ? (
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
@@ -3984,21 +4386,14 @@ export default function Bids() {
                     })()}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      onClick={saveCostEstimate}
-                      disabled={savingCostEstimate || !costEstimate}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer' }}
-                    >
-                      {savingCostEstimate ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printCostEstimatePage()}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Print
-                    </button>
+<button
+                    type="button"
+                    onClick={saveCostEstimate}
+                    disabled={savingCostEstimate || !costEstimate}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer' }}
+                  >
+                    {savingCostEstimate ? 'Saving…' : 'Save'}
+                  </button>
                   </div>
                 </>
               )}
@@ -4971,6 +5366,14 @@ export default function Bids() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => printCoverLetterDocument(combinedHtml)}
+                      title="Print combined document"
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Print
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setSharedBid(null)}
                       style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                     >
@@ -5163,42 +5566,88 @@ export default function Bids() {
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Email</strong> {selectedBidForSubmission.gc_contact_email ?? '—'}</p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Bid Submission</strong>{' '}
+                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
+                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
+                  ) : '—'}
+                </p>
+                <p style={{ margin: '1.5rem 0' }} />
+                <p style={{ margin: '0.25rem 0' }}>
                   <strong>Project Folder</strong>{' '}
                   {selectedBidForSubmission.drive_link?.trim() ? (
                     <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
                   ) : '—'}
                 </p>
+                <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Job Plans</strong>{' '}
                   {selectedBidForSubmission.plans_link?.trim() ? (
                     <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
                   ) : '—'}
                 </p>
-                <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Bid Submission</strong>{' '}
-                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
-                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
-                  ) : '—'}
-                </p>
               </div>
-              {submissionBidHasCostEstimate === 'loading' && (
-                <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
-              )}
-              {submissionBidHasCostEstimate !== 'loading' && submissionBidHasCostEstimate !== null && (
-                <div style={{ marginBottom: '1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <span><strong>Cost estimate:</strong> {submissionBidHasCostEstimate ? (submissionBidCostEstimateAmount != null ? `$${formatCurrency(Number(submissionBidCostEstimateAmount))}` : '—') : 'Not yet created'}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSharedBid(selectedBidForSubmission)
-                      setActiveTab('cost-estimate')
-                    }}
-                    style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                  >
-                    {submissionBidHasCostEstimate ? 'View cost estimate' : 'Create cost estimate'}
-                  </button>
-                </div>
-              )}
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSubmissionReviewGroupCollapsed((c) => !c)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
+                >
+                  {submissionReviewGroupCollapsed ? '\u25B6' : '\u25BC'} Review Group / Approval Packet
+                </button>
+                {!submissionReviewGroupCollapsed && (
+                  <>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => void downloadApprovalPdf()}
+                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        Approval PDF
+                      </button>
+                    </div>
+                    {submissionBidHasCostEstimate === 'loading' && (
+                      <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
+                    )}
+                    {submissionBidHasCostEstimate !== 'loading' && submissionBidHasCostEstimate !== null && (
+                      <>
+                        <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <span><strong>Cost estimate:</strong> {submissionBidHasCostEstimate ? (submissionBidCostEstimateAmount != null ? `$${formatCurrency(Number(submissionBidCostEstimateAmount))}` : '—') : 'Not yet created'}{' '}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSharedBid(selectedBidForSubmission)
+                              setActiveTab('cost-estimate')
+                            }}
+                            style={{ padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}
+                          >
+                            [cost estimate]
+                          </button>
+                          </span>
+                        </div>
+                        {submissionPricingByVersion.map((row) => (
+                          <div key={row.versionId} style={{ marginBottom: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <span><strong>Price Book:</strong> {row.versionName}</span>
+                            <span><strong>Revenue:</strong> {row.complete ? `$${formatCurrency(row.revenue ?? 0)}` : 'Incomplete'}</span>
+                            <span><strong>Margin:</strong> {row.complete && row.margin != null ? `${row.margin.toFixed(1)}%` : 'Incomplete'}</span>
+                          </div>
+                        ))}
+                        <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSharedBid(selectedBidForSubmission)
+                              setActiveTab('pricing')
+                            }}
+                            style={{ padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}
+                          >
+                            [pricing]
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
@@ -5268,7 +5717,7 @@ export default function Bids() {
                     submissionUnsent.map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSelectedBidForSubmission(bid)}
+                        onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -5338,7 +5787,7 @@ export default function Bids() {
                     submissionPending.map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSelectedBidForSubmission(bid)}
+                        onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -5405,7 +5854,7 @@ export default function Bids() {
                     submissionWon.map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSelectedBidForSubmission(bid)}
+                        onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
                           cursor: 'pointer',
@@ -5461,7 +5910,7 @@ export default function Bids() {
                   submissionLost.map((bid) => (
                     <tr
                       key={bid.id}
-                      onClick={() => setSelectedBidForSubmission(bid)}
+                      onClick={() => setSharedBid(bid)}
                       style={{
                         borderBottom: '1px solid #e5e7eb',
                         cursor: 'pointer',

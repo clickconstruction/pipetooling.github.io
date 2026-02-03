@@ -1322,7 +1322,7 @@ user_id = auth.uid()
 - **Display formatting**: Bid Due Date and Bid Date Sent use **YY/MM/DD** (e.g. 26/02/12). Last Contact uses **short date with day of week** (e.g. "Sun 2/1"). Bid Value uses **compact currency** (e.g. $121k). Distance from Office shows value + **mi** (e.g. 66.6mi). Column label is "Distance from Office" (not "Distance from Office (Miles)").
 - **Notes**: Clicking the Notes cell opens a **quick-edit modal** (Notes – [project name]) with a textarea; Save updates the bid's notes and refreshes the table; Cancel closes without saving. Notes cell is clickable with cursor pointer and tooltip "Click to add notes" / "(click to edit)".
 - **Edit**: Edit column shows only a **gear/settings icon** (no visible button box; header text hidden, `title`/`aria-label` for accessibility). Opens the full New/Edit Bid modal.
-- "New" button opens modal to create/edit bids. **Project Name \*** and **Project Address** are the **first two fields** at the top of the form (Project Name required; label "Project Address" was formerly "Address"). **"Save and start Counts"** (bottom left) saves the bid and opens it in the Counts tab. Then: Project Folder (label includes inline links: "bid folders: [plumbing] [electrical] [HVAC]"), Job Plans, GC/Builder (customer) picker, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per-bid; not shown on Bid Board), Estimator, Bid Due Date, Bid Date Sent, Win/Loss, etc. When outcome is **Won**, an **Estimated Job Start Date** date input is shown and saved. Distance to Office is a number input (min 0, step 0.1). Profit label is "Maximum Profit".
+- "New" button opens modal to create/edit bids. **Project Name \*** and **Project Address** are the **first two fields** at the top of the form (Project Name required; label "Project Address" was formerly "Address"). **"Save and start Counts"** (bottom left) saves the bid and opens it in the Counts tab. Then: Project Folder (label includes inline links: "bid folders: [plumbing] [electrical] [HVAC]"), Job Plans, **Bid Submission** link (`bid_submission_link`), **Design Drawings Plan Date** (`design_drawing_plan_date`), GC/Builder (customer) picker, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per-bid; not shown on Bid Board), Estimator, Bid Due Date, Bid Date Sent, Win/Loss, etc. When outcome is **Won**, an **Estimated Job Start Date** date input is shown and saved. Distance to Office is a number input (min 0, step 0.1). Profit label is "Maximum Profit".
 - **Edit Bid modal**: **Cancel** button is at **top right** next to the title. **Delete**: "Delete bid" opens a separate confirmation modal; user must type the project name (or leave empty) to enable Delete.
 - **GC/Builder**: Uses `customers` table as data source with searchable combobox (same pattern as customer picker in ProjectForm). **"+ Add new customer"** option at the top of the dropdown (for dev, master_technician, assistant, and estimator) opens an **Add Customer** modal with the same form as `/customers/new` but without Quick Fill; on save, the new customer is created, list is refetched, and the new customer is selected as the bid's GC/Builder. Legacy `bids_gc_builders` retained for backward compatibility.
 - Clicking a GC/Builder name opens a modal: customer details (name, address, phone/email from contact_info, won/lost bids) or legacy GC/Builder details (name, address, contact number, won/lost bids) depending on whether bid has `customer_id` or `gc_builder_id`.
@@ -1339,12 +1339,24 @@ user_id = auth.uid()
 **Cost Estimate Tab**: Combine material and labor by bid; link up to three POs (Rough In, Top Out, Trim Set) per stage; editable labor hours per fixture and labor rate; fixture labor matrix synced with Counts. **Totals** (Total materials, Labor total, Grand total) and material-by-stage amounts use **comma formatting** for numbers over 999 (e.g. $12,345.67) via `formatCurrency()`.
 
 **Cover Letter Tab**: Select a bid; top section shows **Customer** (name, address) and **Project** (Project Name, Project Address). Editable sections: **Inclusions** (one per line, bullets; default "Permits"), **Exclusions and Scope** (one per line, shown as bullets; default four exclusions), **Terms and Warranty** (collapsible; default full paragraph). Combined document (copy to send) builds from those plus proposed amount and fixtures; **Edit bid** button in header opens Edit Bid modal for the selected bid.
+- **Design Drawings Plan Date**: A bid-level date-only field (`design_drawing_plan_date`) used for proposal/cover-letter wording (shown in the combined document output where applicable).
 
-**Pricing Tab**: Placeholder "Pricing – coming soon" (between Cost Estimate and Cover Letter).
+**Pricing Tab**:
+- Pricing is managed by **Price Book Versions** (named sets of `price_book_entries`).
+- Each bid can store a selected version (`selected_price_book_version_id`), which is restored when reopening Pricing.
+- Each count row (fixture) is assigned a price book entry via `bid_pricing_assignments` (unique per `(bid_id, count_row_id)`).
+- Pricing view compares **estimated cost** (labor + allocated materials) vs **revenue** (price book entry) to compute **margin %**, and flags margin (red < 20%, yellow < 40%, green ≥ 40%) with totals.
 
 **Submission & Followup Tab**:
 - **Four tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost), **Won**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all four. Clicking a row selects the bid and shows its submission entries in a panel above.
-- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). Below that: **Cost estimate:** shows the cost estimate grand total (materials + labor) with comma formatting (e.g. $12,345.67) when one exists, or "Not yet created"; **View cost estimate** / **Create cost estimate** button switches to the Cost Estimate tab with that bid preselected. Then: submission entries table (Contact method, Notes, Time and date), "Add row", **Edit icon** (gear) next to Close (opens that bid's full edit modal), and Close.
+- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). Below that: **Review Group / Approval Packet** section includes:
+  - **Approval PDF** download button (multi-page packet)
+  - **Bid links**: Bid Submission, Project Folder, Job Plans (rendered as clickable links in the PDF with spacing between them)
+  - **Cost estimate** status/amount (if available)
+  - **Pricing by version** list (Price Book Version → Revenue and Margin)
+  - "Our Cost" is **not shown** (redundant with cost estimate amount)
+  - **View cost estimate** / **Create cost estimate** button switches to the Cost Estimate tab with that bid preselected
+  - Then: submission entries table (Contact method, Notes, Time and date), "Add row", **Edit icon** (gear) next to Close (opens that bid's full edit modal), and Close.
 - **Not yet won or lost** and **Unsent bids** tables: Columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit**. **Time since last contact** uses the more recent of `bid.last_contact` or the latest submission entry's `occurred_at`; a 60-second re-render (when tab is active) keeps relative times updated. Adding or editing a submission entry updates the bid's `last_contact` to that entry's date and refetches bids. **Time to/from bid due date** shows e.g. "X days since deadline", "Due today", "X days until due". **Edit** column: gear icon button when that row is the selected bid; opens full edit modal (click uses stopPropagation).
 - **Won** and **Lost** tables: Columns Project/GC, **Estimated Job Start Date** (Won only; YY/MM/DD), **Edit**. Lost table shows Project/GC and Edit.
 - **Submission entry rows**: Edit and Delete are **icon buttons** (gear for Edit, trash for Delete) with tooltips; same behavior as before (inline edit for Edit, confirm then delete for Delete).
@@ -1353,13 +1365,13 @@ user_id = auth.uid()
 
 **Tables**:
 - `bids_gc_builders` – Legacy GC/Builder entities (name, address, contact_number, email, notes, created_by)
-- `bids` – Main bids (drive_link, plans_link, gc_builder_id, customer_id, project_name, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id)
+- `bids` – Main bids (drive_link, plans_link, **bid_submission_link**, **design_drawing_plan_date**, gc_builder_id, customer_id, project_name, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id, selected_*_book_version_id fields)
 - `bids_count_rows` – Fixture/count per bid (bid_id, fixture, count, page, sequence_order)
 - `bids_submission_entries` – Submission/follow-up entries per bid (bid_id, contact_method, notes, occurred_at)
 
-**Migrations**: `create_bids_gc_builders.sql`, `create_bids.sql`, `create_bids_count_rows.sql`, `create_bids_submission_entries.sql`, `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`, `allow_estimators_select_customers.sql` (customers SELECT/INSERT for estimators).
+**Migrations**: `create_bids_gc_builders.sql`, `create_bids.sql`, `create_bids_count_rows.sql`, `create_bids_submission_entries.sql`, `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_bid_submission_link.sql`, `add_bids_design_drawing_plan_date.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`, `allow_estimators_select_customers.sql` (customers SELECT/INSERT for estimators), `allow_masters_see_all_bids.sql`.
 
-**RLS**: Bids tables allow devs, masters, assistants, and estimators full access (assistants via `allow_assistants_access_bids.sql`, estimators via `allow_estimators_access_bids.sql`). Child tables (bids_count_rows, bids_submission_entries) follow parent bid access. Customers table: estimators can SELECT all and INSERT when master is assigned (see `allow_estimators_select_customers.sql`).
+**RLS**: Bids tables allow devs, masters, assistants, and estimators full access (assistants via `allow_assistants_access_bids.sql`, estimators via `allow_estimators_access_bids.sql`; masters see all bids via `allow_masters_see_all_bids.sql`). Child tables (bids_count_rows, bids_submission_entries) follow parent bid access. Customers table: estimators can SELECT all and INSERT when master is assigned (see `allow_estimators_select_customers.sql`).
 
 ### 13. Integration Features
 - **Google Maps Integration**: 
@@ -2277,8 +2289,39 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-01-31
-**Documentation Version**: 2.10
+**Last Updated**: 2026-02-02
+**Documentation Version**: 2.15
+
+## Recent Updates (v2.12–v2.15)
+
+### v2.15 – Cover Letter and Edit Bid modal
+- **Cover Letter tab**: Default Inclusions ("Permits"), default Exclusions (four lines), default Terms and Warranty (full paragraph); labels updated ("Terms and Warranty", "Exclusions and Scope (one per line, shown as bullets)"); Project section shows Project Name + Project Address at top; "Edit bid" button in header (next to Close).
+- **Edit Bid modal**: Project Name* and Project Address at top (label "Address" → "Project Address"); remaining fields follow (Project Folder, Job Plans, GC/Builder, etc.).
+
+### v2.14 – Cost Estimate: Labor book
+- **Labor book**: Create/edit/delete labor book versions and entries (hours per stage: Rough In, Top Out, Trim Set); bid-level "Labor book version" dropdown ("— Use defaults —" or select version); when syncing cost estimate labor rows from count rows, **new** labor rows get hours from selected version (match by fixture name); existing labor rows not overwritten when version changes.
+- **Database**: `labor_book_versions`, `labor_book_entries`, `bids.selected_labor_book_version_id`; migrations `create_labor_book_versions_and_entries.sql`, `add_bids_selected_labor_book_version.sql`. Settings bids backup includes labor book (and price book, takeoff book, POs).
+
+### v2.13 – Pricing tab (full implementation)
+- **Price book**: Create/edit/delete price book versions and entries (prices per stage: Rough In, Top Out, Trim Set, Total); bid margin comparison: select bid and price book version, assign price book entry per count row (dropdown); compare cost (labor + allocated materials) vs revenue; margin % with flags: red (&lt; 20%), yellow (&lt; 40%), green (≥ 40%); cost allocation (labor from cost estimate, materials by labor hours); selected version stored on bid (`selected_price_book_version_id`); "Go to Cost Estimate" prompt when bid has no cost estimate.
+- **Database**: `price_book_versions`, `price_book_entries`, `bid_pricing_assignments`, `bids.selected_price_book_version_id`; migrations `create_price_book_versions_and_entries.sql`, `create_bid_pricing_assignments.sql`, `add_bids_selected_price_book_version.sql`.
+
+### v2.12 – Submission cost estimate, currency, Pricing placeholder
+- **Submission & Followup**: When a bid is selected, panel shows cost estimate indicator (grand total with comma formatting, or "Not yet created"); View cost estimate / Create cost estimate button switches to Cost Estimate tab with that bid preselected.
+- **Currency formatting**: `formatCurrency(n)` in Bids.tsx; numbers over 999 display with commas (e.g. $12,345.67) in Cost Estimate tab and Submission preview.
+- **Pricing tab**: New tab between Cost Estimate and Cover Letter; placeholder "Pricing – coming soon." (full implementation in v2.13).
+- **Revert migration**: `revert_price_book_and_bids_job_type.sql` drops price book tables and `bids.job_type` if rolling back schema.
+
+## Recent Updates (v2.11)
+
+### Bids – Approval PDF (Submission & Followup)
+- Approval PDF pages are clearly titled: Submission and Followup, Pricing, Cost Estimate, Cover Letter
+- "Review Group / Approval Packet" content is included on the PDF (cost estimate + pricing-by-version summary)
+- Bid Submission / Project Folder / Job Plans links are separated with line breaks for readability
+- Pricing and Cost Estimate sections render as tables for cleaner layout
+- Removed redundant "Our Cost" line from the approval packet display
+- Added bid fields for **Bid Submission link** (`bid_submission_link`) and **Design Drawings Plan Date** (`design_drawing_plan_date`)
+- Masters can see all bids under RLS (`allow_masters_see_all_bids.sql`)
 
 ## Recent Updates (v2.10)
 
