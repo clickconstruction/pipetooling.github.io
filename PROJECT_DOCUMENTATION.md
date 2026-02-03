@@ -1342,14 +1342,18 @@ user_id = auth.uid()
 - **Design Drawings Plan Date**: A bid-level date-only field (`design_drawing_plan_date`) used for proposal/cover-letter wording (shown in the combined document output where applicable).
 
 **Pricing Tab**:
-- Pricing is managed by **Price Book Versions** (named sets of `price_book_entries`).
+- Pricing is managed by **Price Book Versions** (named sets of `price_book_entries`) and a per-bid version selection (`bids.selected_price_book_version_id`).
 - Each bid can store a selected version (`selected_price_book_version_id`), which is restored when reopening Pricing.
-- Each count row (fixture) is assigned a price book entry via `bid_pricing_assignments` (unique per `(bid_id, count_row_id)`).
-- Pricing view compares **estimated cost** (labor + allocated materials) vs **revenue** (price book entry) to compute **margin %**, and flags margin (red < 20%, yellow < 40%, green ≥ 40%) with totals.
+- Each count row (fixture) on a bid is assigned a price book entry via `bid_pricing_assignments` (unique per `(bid_id, count_row_id)`).
+- Pricing view compares **estimated cost** (labor + allocated materials) vs **revenue** (price book entry) to compute **margin %**, and flags margin: red (< 20%), yellow (< 40%), green (≥ 40%), including totals.
+- **Prerequisites**: Pricing expects the bid to have Counts and a Cost Estimate. If a bid has count rows but no cost estimate yet, Pricing prompts you to create one first.
+- **Cost allocation (high level)**:
+  - **Labor cost** comes from Cost Estimate labor rows (per fixture / tie-in).
+  - **Materials** are allocated to fixtures proportionally by labor hours, so margin reflects both labor and an allocated share of materials.
 
 **Submission & Followup Tab**:
 - **Four tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost), **Won**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all four. Clicking a row selects the bid and shows its submission entries in a panel above.
-- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). Below that: **Review Group / Approval Packet** section includes:
+- **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). Below that: **Margins** section includes:
   - **Approval PDF** download button (multi-page packet)
   - **Bid links**: Bid Submission, Project Folder, Job Plans (rendered as clickable links in the PDF with spacing between them)
   - **Cost estimate** status/amount (if available)
@@ -1368,6 +1372,9 @@ user_id = auth.uid()
 - `bids` – Main bids (drive_link, plans_link, **bid_submission_link**, **design_drawing_plan_date**, gc_builder_id, customer_id, project_name, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id, selected_*_book_version_id fields)
 - `bids_count_rows` – Fixture/count per bid (bid_id, fixture, count, page, sequence_order)
 - `bids_submission_entries` – Submission/follow-up entries per bid (bid_id, contact_method, notes, occurred_at)
+- `price_book_versions` – Price book versions (named sets of entries)
+- `price_book_entries` – Price book entries per version (fixture_name with per-stage prices and total)
+- `bid_pricing_assignments` – Assignments linking bid count rows to price book entries (used by Pricing tab)
 
 **Migrations**: `create_bids_gc_builders.sql`, `create_bids.sql`, `create_bids_count_rows.sql`, `create_bids_submission_entries.sql`, `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_bid_submission_link.sql`, `add_bids_design_drawing_plan_date.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`, `allow_estimators_select_customers.sql` (customers SELECT/INSERT for estimators), `allow_masters_see_all_bids.sql`.
 
@@ -2316,7 +2323,7 @@ For questions or issues:
 
 ### Bids – Approval PDF (Submission & Followup)
 - Approval PDF pages are clearly titled: Submission and Followup, Pricing, Cost Estimate, Cover Letter
-- "Review Group / Approval Packet" content is included on the PDF (cost estimate + pricing-by-version summary)
+- "Margins" content is included on the PDF (cost estimate + pricing-by-version summary)
 - Bid Submission / Project Folder / Job Plans links are separated with line breaks for readability
 - Pricing and Cost Estimate sections render as tables for cleaner layout
 - Removed redundant "Our Cost" line from the approval packet display

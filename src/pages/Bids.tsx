@@ -269,6 +269,60 @@ function buildCoverLetterHtml(
   return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
 }
 
+type EvaluateChecklistItem = {
+  id: string
+  title: string
+  body: string[]
+}
+
+const evaluateChecklist: EvaluateChecklistItem[] = [
+  {
+    id: 'location',
+    title: 'LOCATION',
+    body: [
+      'Is the bid date feasible to produce a thorough and complete proposal?',
+      'If not, is the potential reward for taking on the risk objectively worth it when our project expects or start? Will present signed from providing our best work on projects we associate with?',
+      '(costs associated with traveling and supervision)',
+    ],
+  },
+  {
+    id: 'payment_terms',
+    title: 'PAYMENT TERMS',
+    body: [
+      "Are we comfortable with the payment terms? Is this a client we've worked with before?",
+      'If not, are the payment terms outlined clearly in the front end docs?',
+      "Do we know we're getting paid?",
+    ],
+  },
+  {
+    id: 'bid_documents',
+    title: 'BID DOCUMENTS',
+    body: [
+      'Are the available bid documents adequate to have a clear understanding of scope?',
+      'Is there a clear procedure for submitting and answering questions?',
+      'Is there a substantial amount of information missing where we would be forced to assume / qualify the bid?',
+    ],
+  },
+  {
+    id: 'competition',
+    title: 'COMPETITION',
+    body: [
+      'Do we know the other bidders on this project?',
+      'Are they familiar competitors? Are any bidders we know from previous projects where bidding against them could be difficult?',
+      'Are they likely to self-perform some or all of the labor that we may be sub-contracting?',
+    ],
+  },
+  {
+    id: 'strengths',
+    title: 'STRENGTHS',
+    body: [
+      'Does this project play to our strengths?',
+      'Are we able to self-perform the work to give ourselves an advantage?',
+      'Do we have specific subcontractors that we know will bid to us, with better pricing on significant scope items?',
+    ],
+  },
+]
+
 function buildCoverLetterText(
   customerName: string,
   customerAddress: string,
@@ -353,6 +407,10 @@ export default function Bids() {
   const [gcCustomerSearch, setGcCustomerSearch] = useState('')
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
   const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false)
+  const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
+  const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
+  const [showSentBidScript, setShowSentBidScript] = useState(false)
+  const [showBidQuestionScript, setShowBidQuestionScript] = useState(false)
 
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
@@ -2079,14 +2137,13 @@ export default function Bids() {
     const bidId = b.id
     const margin = 20
     const lineHeight = 6
-    const pageH = 297
-    const pageW = 210
-    const maxW = pageW - 2 * margin
-
-    let y = margin
     const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    let pageW = doc.internal.pageSize.getWidth()
+    let pageH = doc.internal.pageSize.getHeight()
+    let y = margin
     const push = (text: string, bold = false) => {
       if (bold) doc.setFont('helvetica', 'bold')
+      const maxW = pageW - 2 * margin
       const lines = doc.splitTextToSize(text, maxW)
       for (const line of lines) {
         if (y > pageH - margin) { doc.addPage(); y = margin }
@@ -2117,7 +2174,8 @@ export default function Bids() {
       colWidths: number[],
       headers: string[],
       rows: string[][],
-      headerBold = true
+      headerBold = true,
+      orientation: 'portrait' | 'landscape' = 'portrait'
     ): number => {
       let cy = startY
       const left = margin
@@ -2133,13 +2191,19 @@ export default function Bids() {
       doc.setLineWidth(0.2)
       doc.line(left, startY, left + totalW, startY)
       for (let r = -1; r < rows.length; r++) {
-        if (cy > pageH - margin) { doc.addPage(); cy = margin }
-        const cells = r === -1 ? headers : rows[r]
+        if (cy > pageH - margin) {
+          doc.addPage('a4', orientation)
+          const size = doc.internal.pageSize
+          pageW = size.getWidth()
+          pageH = size.getHeight()
+          cy = margin
+        }
+        const cells: string[] = r === -1 ? headers : rows[r] ?? []
         let cellY = cy + 4
         let rowH = tableLineHeight
         for (let c = 0; c < colWidths.length; c++) {
           const x = left + colWidths.slice(0, c).reduce((a, w) => a + w, 0)
-          const w = colWidths[c]
+          const w = colWidths[c] ?? 0
           const text = (cells[c] ?? '').toString()
           const clipped = clip(text, w)
           if (headerBold && r === -1) doc.setFont('helvetica', 'bold')
@@ -2158,7 +2222,7 @@ export default function Bids() {
       return cy
     }
 
-    // Fetch Review Group data (cost estimate + pricing by version) for page 1
+    // Fetch Margins data (cost estimate + pricing by version) for page 1
     let reviewGroupCostEstimateAmount: number | null = null
     let reviewGroupHasCostEstimate = false
     const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
@@ -2229,17 +2293,22 @@ export default function Bids() {
     y += lineHeight
     pushLink('Job Plans:', b.plans_link?.trim() || null)
 
-    // Review Group / Approval Packet (same as UI section)
+    // Margins (same as UI section)
     y += lineHeight
-    push('Review Group / Approval Packet', true)
+    push('Margins', true)
     y += lineHeight
     push(`Cost estimate: ${reviewGroupHasCostEstimate ? (reviewGroupCostEstimateAmount != null ? `$${formatCurrency(reviewGroupCostEstimateAmount)}` : '—') : 'Not yet created'}`)
     for (const row of reviewGroupPricingByVersion) {
       push(`Price Book: ${row.versionName} | Revenue: ${row.complete ? `$${formatCurrency(row.revenue)}` : 'Incomplete'} | Margin: ${row.complete && row.margin != null ? `${row.margin.toFixed(1)}%` : 'Incomplete'}`)
     }
 
-    // Page 2: Pricing
-    doc.addPage()
+    // Page 2: Pricing (landscape)
+    doc.addPage('a4', 'landscape')
+    {
+      const size = doc.internal.pageSize
+      pageW = size.getWidth()
+      pageH = size.getHeight()
+    }
     y = margin
     doc.setFontSize(16)
     push(`${bidDisplayName(b) || 'Bid'} — Pricing`, true)
@@ -2262,7 +2331,7 @@ export default function Bids() {
       const versionName = priceBookVersions.find((v) => v.id === versionId)?.name ?? '—'
       push(`Price book: ${versionName}`)
       y += lineHeight
-      const pricingColWidths = [52, 18, 52, 48]
+      const pricingColWidths = [48, 18, 48, 40, 48]
       const pricingRows: string[][] = []
       for (const row of countRows) {
         const assignment = assignments.find((a) => a.count_row_id === row.id)
@@ -2274,18 +2343,24 @@ export default function Bids() {
           row.fixture ?? '',
           String(row.count),
           entry?.fixture_name ?? '—',
-          `$${formatCurrency(revenue)}`,
+          `$${Math.round(unitPrice).toLocaleString('en-US')}`,
+          `$${Math.round(revenue).toLocaleString('en-US')}`,
         ])
       }
-      y = drawTable(y, pricingColWidths, ['Fixture', 'Count', 'Entry', 'Revenue'], pricingRows)
+      y = drawTable(y, pricingColWidths, ['Fixture', 'Count', 'Entry', 'Per Unit', 'Revenue'], pricingRows, true, 'landscape')
       y += lineHeight
       push(`Total Revenue: $${formatCurrency(totalRevenue)}`, true)
     } else {
       push(pricingContent)
     }
 
-    // Page 3: Cost Estimate
-    doc.addPage()
+    // Page 3: Cost Estimate (back to portrait)
+    doc.addPage('a4', 'portrait')
+    {
+      const size = doc.internal.pageSize
+      pageW = size.getWidth()
+      pageH = size.getHeight()
+    }
     y = margin
     doc.setFontSize(16)
     push(`${bidDisplayName(b) || 'Bid'} — Cost Estimate`, true)
@@ -2389,10 +2464,24 @@ export default function Bids() {
     const coverLines = coverLetterText.split('\n')
     for (const line of coverLines) {
       if (y > pageH - margin) { doc.addPage(); y = margin }
+
+      const isInclusionsHeading = line === 'Inclusions:'
+      const isExclusionsHeading = line === 'Exclusions and Scope:'
+      const makeBold = isInclusionsHeading || isExclusionsHeading
+
+      if (makeBold) {
+        doc.setFont('helvetica', 'bold')
+      }
+
+      const maxW = pageW - 2 * margin
       const wrapped = doc.splitTextToSize(line, maxW)
       for (const w of wrapped) {
         doc.text(w, margin, y)
         y += lineHeight
+      }
+
+      if (makeBold) {
+        doc.setFont('helvetica', 'normal')
       }
     }
 
@@ -3258,13 +3347,22 @@ export default function Bids() {
               onChange={(e) => setBidBoardSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            <button
-              type="button"
-              onClick={openNewBid}
-              style={{ flexShrink: 0, padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              New
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Evaluate
+              </button>
+              <button
+                type="button"
+                onClick={openNewBid}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                New
+              </button>
+            </div>
           </div>
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
@@ -5586,25 +5684,25 @@ export default function Bids() {
                   ) : '—'}
                 </p>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
                 <button
                   type="button"
                   onClick={() => setSubmissionReviewGroupCollapsed((c) => !c)}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
                 >
-                  {submissionReviewGroupCollapsed ? '\u25B6' : '\u25BC'} Review Group / Approval Packet
+                  {submissionReviewGroupCollapsed ? '\u25B6' : '\u25BC'} Margins
                 </button>
+                <button
+                  type="button"
+                  onClick={() => void downloadApprovalPdf()}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  Approval PDF
+                </button>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
                 {!submissionReviewGroupCollapsed && (
                   <>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => void downloadApprovalPdf()}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                      >
-                        Approval PDF
-                      </button>
-                    </div>
                     {submissionBidHasCostEstimate === 'loading' && (
                       <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
                     )}
@@ -5647,6 +5745,22 @@ export default function Bids() {
                     )}
                   </>
                 )}
+              </div>
+              <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSentBidScript(true)}
+                  style={{ padding: '0.375rem 0.75rem', background: '#16a34a', color: 'white', border: '1px solid #15803d', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Sent Bid Script
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBidQuestionScript(true)}
+                  style={{ padding: '0.375rem 0.75rem', background: '#16a34a', color: 'white', border: '1px solid #15803d', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Bid Question Script
+                </button>
               </div>
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -6351,6 +6465,122 @@ export default function Bids() {
             <button type="button" onClick={() => setViewingGcBuilder(null)} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Evaluate checklist modal */}
+      {evaluateModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              maxWidth: 700,
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Evaluate Bid</h2>
+              <button
+                type="button"
+                onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {evaluateChecklist.map((item) => (
+                <div key={item.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem 1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!evaluateChecked[item.id]}
+                      onChange={(e) =>
+                        setEvaluateChecked((prev) => ({ ...prev, [item.id]: e.target.checked }))
+                      }
+                    />
+                    <span>{item.title}</span>
+                  </label>
+                  {item.body.map((line, idx) => (
+                    <p key={idx} style={{ margin: '0.125rem 0', fontSize: '0.9rem' }}>{line}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+              <button
+                type="button"
+                onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sent Bid Script modal */}
+      {showSentBidScript && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Sent Bid Script</h3>
+              <button
+                type="button"
+                onClick={() => setShowSentBidScript(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+This is [Master] from Click Plumbing and Electrical
+We just sent you our bid for [project name] [time since sent]
+from my email [your email]
+
+I wanted to make sure you received our email for your proposed work
+
+Is there else you need from me?
+
+If not I wanted to make myself available if you have any questions and if you know if there is a price point that we’re above or below you would like to meet for your project
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Bid Question Script modal */}
+      {showBidQuestionScript && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Bid Question Script</h3>
+              <button
+                type="button"
+                onClick={() => setShowBidQuestionScript(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+We saw some structural issues with your plans and I wanted to get clarity...
+            </pre>
           </div>
         </div>
       )}
