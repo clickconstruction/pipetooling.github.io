@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
@@ -1818,6 +1819,240 @@ export default function Bids() {
     win.focus()
     win.print()
     win.onafterprint = () => win.close()
+  }
+
+  function printPricingPage() {
+    if (!selectedBidForPricing) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForPricing) || 'Bid') + ' — Pricing'
+    const versionName = escapeHtml(priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? '—')
+
+    let bodyContent: string
+    if (selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate) {
+      const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+      const rate = pricingLaborRate ?? 0
+      const totalLaborHours = pricingLaborRows.reduce(
+        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        0
+      )
+      const totalCost = totalMaterials + totalLaborHours * rate
+      const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+      let totalRevenue = 0
+      const rows = pricingCountRows.map((countRow) => {
+        const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
+        const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === countRow.fixture.toLowerCase())
+        const count = Number(countRow.count)
+        const laborHrs = laborRow
+          ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
+          : 0
+        const laborCost = laborHrs * rate
+        const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
+        const cost = laborCost + allocatedMaterials
+        const unitPrice = entry ? Number(entry.total_price) : 0
+        const revenue = count * unitPrice
+        totalRevenue += revenue
+        const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
+        return { countRow, entry, count, cost, revenue, margin }
+      })
+      const tableRows = rows
+        .map(
+          ({ countRow, entry, count, cost, revenue, margin }) =>
+            `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+        )
+        .join('')
+      const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
+      bodyContent = `<h2>Price book</h2>
+  <p>${versionName}</p>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
+    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
+  </table>`
+    } else {
+      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  ${bodyContent}
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  async function printAllPricingPages() {
+    if (!selectedBidForPricing) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForPricing) || 'Bid') + ' — Pricing (All price books)'
+
+    let bodyContent: string
+    if (priceBookVersions.length === 0) {
+      bodyContent = '<p style="color:#6b7280">No price book versions.</p>'
+    } else if (!pricingCostEstimate || pricingCountRows.length === 0) {
+      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
+    } else {
+      const versionIds = priceBookVersions.map((v) => v.id)
+      const [entriesResult, assignmentsResult] = await Promise.all([
+        supabase.from('price_book_entries').select('*').in('version_id', versionIds),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', selectedBidForPricing.id),
+      ])
+      const { data: allEntries, error: entriesErr } = entriesResult
+      if (entriesErr) {
+        setError(`Failed to load price book entries: ${entriesErr.message}`)
+        return
+      }
+      const allAssignments = (assignmentsResult.data as BidPricingAssignment[]) ?? []
+      const entriesByVersion = new Map<string, PriceBookEntry[]>()
+      for (const e of (allEntries as PriceBookEntry[]) ?? []) {
+        const list = entriesByVersion.get(e.version_id) ?? []
+        list.push(e)
+        entriesByVersion.set(e.version_id, list)
+      }
+      const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+      const rate = pricingLaborRate ?? 0
+      const totalLaborHours = pricingLaborRows.reduce(
+        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        0
+      )
+      const totalCost = totalMaterials + totalLaborHours * rate
+      const sections: string[] = []
+      for (let i = 0; i < priceBookVersions.length; i++) {
+        const version = priceBookVersions[i]!
+        const entries = entriesByVersion.get(version.id) ?? []
+        const entriesById = new Map(entries.map((e) => [e.id, e]))
+        const assignmentForVersion = (countRowId: string) =>
+          allAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === version.id)
+        let totalRevenue = 0
+        const rows = pricingCountRows.map((countRow) => {
+          const assignment = assignmentForVersion(countRow.id)
+          const entry = assignment
+            ? entriesById.get(assignment.price_book_entry_id)
+            : entries.find(
+                (e) =>
+                  (e.fixture_name ?? '').trim().toLowerCase() === (countRow.fixture ?? '').trim().toLowerCase()
+              )
+          const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+          const count = Number(countRow.count)
+          const laborHrs = laborRow
+            ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
+            : 0
+          const laborCost = laborHrs * rate
+          const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
+          const cost = laborCost + allocatedMaterials
+          const unitPrice = entry ? Number(entry.total_price) : 0
+          const revenue = count * unitPrice
+          totalRevenue += revenue
+          const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
+          return { countRow, entry, count, cost, revenue, margin }
+        })
+        const tableRows = rows
+          .map(
+            ({ countRow, entry, count, cost, revenue, margin }) =>
+              `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+          )
+          .join('')
+        const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
+        const pageBreak = i === priceBookVersions.length - 1 ? 'auto' : 'always'
+        const versionName = version.name
+        sections.push(
+          `<section class="price-book-page" style="page-break-after: ${pageBreak}">
+  <h2>${escapeHtml(versionName)}</h2>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
+    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
+  </table>
+</section>`
+        )
+      }
+      bodyContent = sections.join('\n')
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  .price-book-page { margin-top: 1rem; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  ${bodyContent}
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function downloadSubmissionSummaryPdf() {
+    if (!selectedBidForSubmission) return
+    const b = selectedBidForSubmission
+    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const margin = 20
+    const lineHeight = 7
+    let y = margin
+    const push = (text: string) => {
+      doc.text(text, margin, y)
+      y += lineHeight
+    }
+    const pushLink = (label: string, url: string | null) => {
+      doc.setFont('helvetica', 'bold')
+      doc.text(label + ' ', margin, y)
+      const labelW = doc.getTextWidth(label + ' ')
+      doc.setFont('helvetica', 'normal')
+      if (url?.trim()) {
+        doc.setTextColor(0, 0, 255)
+        const displayUrl = url.length > 70 ? url.slice(0, 67) + '...' : url
+        doc.textWithLink(displayUrl, margin + labelW, y, { url })
+        doc.setTextColor(0, 0, 0)
+      } else {
+        doc.text('—', margin + labelW, y)
+      }
+      y += lineHeight
+    }
+
+    doc.setFontSize(14)
+    push(bidDisplayName(b) || 'Bid')
+    y += lineHeight
+    doc.setFontSize(11)
+    push(`Bid Size: ${formatCompactCurrency(b.bid_value != null ? Number(b.bid_value) : null)}`)
+    y += lineHeight
+    push(`Builder Name: ${b.customers?.name ?? b.bids_gc_builders?.name ?? '—'}`)
+    push(`Builder Address: ${b.customers?.address ?? b.bids_gc_builders?.address ?? '—'}`)
+    push(`Builder Phone Number: ${b.customers ? extractContactInfo(b.customers.contact_info ?? null).phone || '—' : (b.bids_gc_builders?.contact_number ?? '—')}`)
+    push(`Builder Email: ${b.customers ? extractContactInfo(b.customers.contact_info ?? null).email || '—' : (b.bids_gc_builders?.email ?? '—')}`)
+    y += lineHeight
+    push(`Project Name: ${b.project_name ?? '—'}`)
+    push(`Project Address: ${b.address ?? '—'}`)
+    y += lineHeight
+    push(`Project Contact Name: ${b.gc_contact_name ?? '—'}`)
+    push(`Project Contact Phone: ${b.gc_contact_phone ?? '—'}`)
+    push(`Project Contact Email: ${b.gc_contact_email ?? '—'}`)
+    y += lineHeight
+    pushLink('Project Folder:', b.drive_link?.trim() || null)
+    pushLink('Job Plans:', b.plans_link?.trim() || null)
+    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
+
+    const filename = `Bid_Summary_${(bidDisplayName(b) || 'Bid').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40)}.pdf`
+    doc.save(filename)
   }
 
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>>) {
@@ -4207,6 +4442,20 @@ export default function Bids() {
                   </select>
                   <button
                     type="button"
+                    onClick={() => printPricingPage()}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void printAllPricingPages()}
+                    style={{ padding: '0.5rem 1rem', background: '#f97316', color: 'black', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    Review
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setSharedBid(null)}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
@@ -4881,6 +5130,13 @@ export default function Bids() {
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
                       <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
                     </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadSubmissionSummaryPdf()}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    PDF
                   </button>
                   <button
                     type="button"
