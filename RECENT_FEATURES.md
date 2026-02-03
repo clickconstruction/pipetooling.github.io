@@ -3,21 +3,47 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.14)](#latest-updates-v214)
-2. [Latest Updates (v2.13)](#latest-updates-v213)
-3. [Latest Updates (v2.12)](#latest-updates-v212)
-4. [Latest Updates (v2.11)](#latest-updates-v211)
-5. [Latest Updates (v2.10)](#latest-updates-v210)
-6. [Latest Updates (v2.9)](#latest-updates-v29)
-7. [Latest Updates (v2.8)](#latest-updates-v28)
-8. [Latest Updates (v2.7)](#latest-updates-v27)
-9. [Latest Updates (v2.6)](#latest-updates-v26)
-10. [Workflow Features](#workflow-features)
-11. [Calendar Updates](#calendar-updates)
-12. [Access Control](#access-control)
-13. [Email Templates](#email-templates)
-14. [Financial Tracking](#financial-tracking)
-15. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.15)](#latest-updates-v215)
+2. [Latest Updates (v2.14)](#latest-updates-v214)
+3. [Latest Updates (v2.13)](#latest-updates-v213)
+4. [Latest Updates (v2.12)](#latest-updates-v212)
+5. [Latest Updates (v2.11)](#latest-updates-v211)
+6. [Latest Updates (v2.10)](#latest-updates-v210)
+7. [Latest Updates (v2.9)](#latest-updates-v29)
+8. [Latest Updates (v2.8)](#latest-updates-v28)
+9. [Latest Updates (v2.7)](#latest-updates-v27)
+10. [Latest Updates (v2.6)](#latest-updates-v26)
+11. [Workflow Features](#workflow-features)
+12. [Calendar Updates](#calendar-updates)
+13. [Access Control](#access-control)
+14. [Email Templates](#email-templates)
+15. [Financial Tracking](#financial-tracking)
+16. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.15)
+
+### Cover Letter and Edit Bid Modal
+
+**Date**: 2026-02-02
+
+**Changes**:
+
+- **Cover Letter tab**
+  - **Default Inclusions**: Textarea and combined document are pre-filled with **"Permits"** when the user has not entered custom inclusions. Constant `DEFAULT_INCLUSIONS`.
+  - **Default Exclusions**: Textarea and combined document are pre-filled with four lines when empty: concrete cutting/removal/pour back excluded; impact fees excluded; work not specifically described excluded; electrical, fire protection, fire alarm, drywall, framing, architectural finishes excluded. Constant `DEFAULT_EXCLUSIONS`.
+  - **Default Terms and Warranty**: Textarea and combined document are pre-filled with the full default paragraph (workmanlike manner, one-year workmanship warranty, material warranty, no warranty on customer materials, contingencies, 30-day acceptance, Click Plumbing void option, extra charges for alterations/rock/debris). Constant `DEFAULT_TERMS_AND_WARRANTY`. When the user clears the field, the combined document still shows this default.
+  - **Labels**: "Terms and Warranty (collapsible)" → **"Terms and Warranty"**; "Exclusions and Scope (one per line)" → **"Exclusions and Scope (one per line, shown as bullets)"**.
+  - **Project section**: At the top of the Cover Letter (and in the combined document), **Project** shows **Project Name** then **Project Address** (two lines only). Data from `bid.project_name` and `bid.address`.
+  - **Edit bid button**: When a bid is selected in the Cover Letter tab, the header now has an **"Edit bid"** button (next to Close) that opens the Edit Bid modal for that bid.
+
+- **Edit Bid modal**
+  - **Field order**: **Project Name \*** is the first field at the top of the form. **Project Address** (renamed from "Address") is the second field, directly below Project Name.
+  - Remaining fields follow: Project Folder, Job Plans, GC/Builder, Project Contact Name/Phone/Email, Estimator, Bid Due Date, etc.
+
+**Files modified**:
+- `src/pages/Bids.tsx` – Cover Letter: `DEFAULT_INCLUSIONS`, `DEFAULT_EXCLUSIONS`, `DEFAULT_TERMS_AND_WARRANTY`; pre-filled textareas and combined document logic; Project section (name + address); Edit bid button. Edit Bid modal: Project Name and Project Address at top; label "Address" → "Project Address".
 
 ---
 
