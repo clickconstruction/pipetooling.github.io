@@ -1158,9 +1158,10 @@ user_id = auth.uid()
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
-  - **Data backup (dev)**: Export projects or materials as JSON for backup
+  - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
     - "Export materials backup" downloads supply houses, material parts, part prices, material templates, template items
+    - "Export bids backup" downloads bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items
     - Filenames include date (e.g. `projects-backup-2026-01-26.json`). Exports respect RLS.
 
 ### 9. Notifications
@@ -2305,9 +2306,10 @@ For questions or issues:
 - **Material Templates list**: Search input above the template list filters by name or description (case-insensitive). Empty search shows all templates; "No templates match" when the filter returns no results.
 
 ### Settings – Data Backup (Dev Only)
-- **Data backup (dev)** section: Two export buttons for devs only.
+- **Data backup (dev)** section: Three export buttons for devs only.
   - **Export projects backup**: Downloads JSON with customers, projects, project_workflows, project_workflow_steps, project_workflow_step_actions, step_subscriptions, workflow_step_line_items, workflow_projections. Filename: `projects-backup-YYYY-MM-DD.json`.
   - **Export materials backup**: Downloads JSON with supply_houses, material_parts, material_part_prices, material_templates, material_template_items. Filename: `materials-backup-YYYY-MM-DD.json`.
+  - **Export bids backup**: Downloads JSON with bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items (all POs and PO items visible under RLS, including Takeoffs-created POs). Filename: `bids-backup-YYYY-MM-DD.json`.
 - Exports respect RLS (user only receives data they can read). Each file includes an `exportedAt` timestamp.
 
 ## Recent Updates (v2.8)

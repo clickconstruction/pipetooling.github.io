@@ -127,6 +127,95 @@ function marginFlag(marginPercent: number | null): 'red' | 'yellow' | 'green' | 
   return 'green'
 }
 
+/** Convert amount (e.g. 31420.50) to "Thirty One Thousand Four Hundred Twenty 50/100 Dollars" */
+function numberToWords(amount: number): string {
+  const whole = Math.floor(Math.abs(amount))
+  const cents = Math.round((Math.abs(amount) - whole) * 100)
+  const centsStr = String(cents).padStart(2, '0')
+  const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+  const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+  function toHundreds(n: number): string {
+    if (n === 0) return ''
+    if (n < 20) return ONES[n] ?? ''
+    if (n < 100) return (TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + (ONES[n % 10] ?? '') : '')).trim()
+    return ((ONES[Math.floor(n / 100)] ?? '') + ' Hundred' + (n % 100 ? ' ' + toHundreds(n % 100) : '')).trim()
+  }
+  function toWords(n: number): string {
+    if (n === 0) return 'Zero'
+    const thousands = Math.floor(n / 1000)
+    const rest = n % 1000
+    const th = thousands ? toHundreds(thousands) + ' Thousand' : ''
+    const r = rest ? toHundreds(rest) : ''
+    return (th + (th && r ? ' ' : '') + r).trim()
+  }
+  const words = toWords(whole)
+  return `${words} ${centsStr}/100 Dollars`
+}
+
+const DEFAULT_TERMS_AND_WARRANTY =
+  'All work to be completed in a workmanlike manner in accordance with uniform code and/or specifications; workmanship warranty of one year for new construction projects considering substantial completion date. All material is guaranteed to be as specified; warranty by manufacturer, labor not included. No liability, no warranty on customer provided materials. All agreements contingent upon strikes, accidents or delays beyond our control. This estimate is subject to acceptance within thirty (30) days and is void thereafter at the option of Click Plumbing. Any alteration or deviation from above specifications involving extra cost, including rock excavation and removal or haul-off of spoils or debris will become an extra charge over and above the estimate.'
+
+const DEFAULT_EXCLUSIONS = `Concrete cutting, removal, and/or pour back is excluded from this proposal.
+This proposal excludes all impact fees.
+This proposal excludes any work not specifically described within.
+This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
+
+const DEFAULT_INCLUSIONS = 'Permits'
+
+function buildCoverLetterText(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  revenueWords: string,
+  revenueNumber: string,
+  fixtureNames: string[],
+  inclusions: string,
+  exclusions: string,
+  terms: string
+): string {
+  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const fixtureBlock =
+    fixtureNames.length > 0
+      ? '• Fixtures provided and installed by us per plan:\n     ' + fixtureNames.map((f) => '• ' + f).join('\n     ')
+      : ''
+  const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
+  const lines: string[] = [
+    customerName,
+    customerAddress,
+    '',
+    projectName,
+    projectAddress,
+    '',
+    `As per plumbing plans and specifications, we propose to do the plumbing in the amount of: ${revenueWords} (${revenueNumber})`,
+    '',
+    'Inclusions:',
+    inclusionsBlock || '(none)',
+    '',
+    'Exclusions and Scope:',
+    exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim()).join('\n'),
+    '',
+    'Terms and Warranty:',
+    terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
+    '',
+    'No work shall commence until Click Plumbing has received acceptance of the estimate.',
+    'Respectfully submitted by Click Plumbing',
+    '',
+    '_______________________________',
+    'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
+    'Acceptance of estimate',
+    'General Contractor / Builder Signature:',
+    '',
+    '____________________________________',
+    '',
+    'Date: ____________________________________',
+  ]
+  return lines.join('\n')
+}
+
 export default function Bids() {
   const { user: authUser } = useAuth()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
@@ -292,6 +381,14 @@ export default function Bids() {
   const [pricingEntryTotal, setPricingEntryTotal] = useState('')
   const [savingPricingEntry, setSavingPricingEntry] = useState(false)
   const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
+
+  // Cover Letter tab
+  const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
+  const [coverLetterExclusionsByBid, setCoverLetterExclusionsByBid] = useState<Record<string, string>>({})
+  const [coverLetterTermsByBid, setCoverLetterTermsByBid] = useState<Record<string, string>>({})
+  const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
+  const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
+  const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
 
   /** Set selected bid for Counts, Takeoffs, Cost Estimate, and Pricing so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
@@ -1786,7 +1883,7 @@ export default function Bids() {
       loadDraftPOs()
       loadTakeoffBookVersions()
     }
-    if (activeTab === 'pricing') {
+    if (activeTab === 'pricing' || activeTab === 'cover-letter') {
       loadPriceBookVersions()
     }
   }, [activeTab])
@@ -1879,7 +1976,7 @@ export default function Bids() {
   }, [activeTab, selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.selected_labor_book_version_id, selectedLaborBookVersionId])
 
   useEffect(() => {
-    if (activeTab !== 'pricing' || !selectedBidForPricing?.id) {
+    if ((activeTab !== 'pricing' && activeTab !== 'cover-letter') || !selectedBidForPricing?.id) {
       pricingBidIdRef.current = null
       setBidPricingAssignments([])
       setPricingCountRows([])
@@ -4236,9 +4333,191 @@ export default function Bids() {
 
       {/* Cover Letter Tab */}
       {activeTab === 'cover-letter' && (
-        <div style={{ padding: '2rem', color: '#6b7280', textAlign: 'center' }}>
-          <p style={{ margin: 0 }}>Cover Letter – coming soon</p>
-          <p style={{ margin: '0.5rem 0 0' }}>Until then, please use <a href="https://BidTooling.com" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>BidTooling.com</a></p>
+        <div>
+          {!selectedBidForPricing && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={coverLetterSearchQuery}
+              onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {!selectedBidForPricing ? (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bids
+                    .filter((b) => {
+                      const q = coverLetterSearchQuery.toLowerCase()
+                      if (!q) return true
+                      const name = bidDisplayName(b).toLowerCase()
+                      const cust = (b.customers?.name ?? '').toLowerCase()
+                      const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                      return name.includes(q) || cust.includes(q) || gc.includes(q)
+                    })
+                    .map((bid) => (
+                      <tr
+                        key={bid.id}
+                        onClick={() => setSharedBid(bid)}
+                        style={{
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                      </tr>
+                    ))}
+                  {bids.filter((b) => {
+                    const q = coverLetterSearchQuery.toLowerCase()
+                    if (!q) return true
+                    const name = bidDisplayName(b).toLowerCase()
+                    const cust = (b.customers?.name ?? '').toLowerCase()
+                    const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                    return name.includes(q) || cust.includes(q) || gc.includes(q)
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                        {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (() => {
+            const bid = selectedBidForPricing
+            const customer = bid.customers
+            const customerName = customer?.name ?? '—'
+            const customerAddress = customer?.address ?? '—'
+            const projectNameVal = bid.project_name ?? '—'
+            const projectAddressVal = bid.address ?? '—'
+            const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+            let coverLetterRevenue = 0
+            pricingCountRows.forEach((countRow) => {
+              const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
+              const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
+              const count = Number(countRow.count)
+              const unitPrice = entry ? Number(entry.total_price) : 0
+              coverLetterRevenue += count * unitPrice
+            })
+            const revenueWords = numberToWords(coverLetterRevenue)
+            const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
+            const fixtureNames = pricingCountRows.map((r) => r.fixture)
+            const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
+            const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
+            const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
+            const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
+            const terms = coverLetterTermsByBid[bid.id] ?? ''
+            const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
+            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureNames, inclusions, exclusions, terms)
+            return (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBid(bid)}
+                      title="Edit bid"
+                      style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}
+                    >
+                      Edit bid
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSharedBid(null)}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
+                  <div>{customerName}</div>
+                  <div style={{ color: '#6b7280' }}>{customerAddress}</div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
+                  <div>{projectNameVal}</div>
+                  <div style={{ color: '#6b7280' }}>{projectAddressVal}</div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Proposed amount (from Pricing)</div>
+                  <div>{revenueWords} ({revenueNumber})</div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Inclusions (one per line, shown as bullets)</label>
+                  <textarea
+                    value={inclusionsDisplay}
+                    onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                    rows={4}
+                    placeholder="e.g. Labor and materials for rough-in, top-out, trim"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Exclusions and Scope (one per line, shown as bullets)</label>
+                  <textarea
+                    value={exclusionsDisplay}
+                    onChange={(e) => setCoverLetterExclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                    rows={4}
+                    placeholder="e.g. Owner-supplied fixtures"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCoverLetterTermsCollapsed((c) => !c)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
+                  >
+                    {coverLetterTermsCollapsed ? '\u25B6' : '\u25BC'} Terms and Warranty
+                  </button>
+                  {!coverLetterTermsCollapsed && (
+                    <textarea
+                      value={termsDisplay}
+                      onChange={(e) => setCoverLetterTermsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                      rows={4}
+                      placeholder="e.g. 1-year warranty on labor"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginTop: '0.5rem' }}
+                    />
+                  )}
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
+                  <textarea
+                    readOnly
+                    value={combinedText}
+                    rows={24}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(combinedText).then(() => {
+                        setCoverLetterCopySuccess(true)
+                        setTimeout(() => setCoverLetterCopySuccess(false), 2000)
+                      })
+                    }}
+                    style={{ marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    {coverLetterCopySuccess ? 'Copied!' : 'Copy to clipboard'}
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -4613,6 +4892,14 @@ export default function Bids() {
             </div>
             <form onSubmit={saveBid}>
               <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
+                <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address</label>
+                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                   Project Folder{'\u00A0'.repeat(10)}
                   bid folders:{' '}
@@ -4747,14 +5034,6 @@ export default function Bids() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Contact Email</label>
                 <input type="email" value={gcContactEmail} onChange={(e) => setGcContactEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
-                <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Address</label>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
