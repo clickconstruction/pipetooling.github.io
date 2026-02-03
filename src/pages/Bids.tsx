@@ -791,6 +791,7 @@ export default function Bids() {
     const templateId = (templateData as { id: string }).id
     for (let i = 0; i < takeoffNewTemplateItems.length; i++) {
       const item = takeoffNewTemplateItems[i]
+      if (!item) continue
       const { error: itemError } = await supabase.from('material_template_items').insert({
         template_id: templateId,
         item_type: item.item_type,
