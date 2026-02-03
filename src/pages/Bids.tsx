@@ -534,6 +534,7 @@ export default function Bids() {
   const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
   const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntry | null>(null)
   const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
+  const [laborEntryAliasNames, setLaborEntryAliasNames] = useState('')
   const [laborEntryRoughIn, setLaborEntryRoughIn] = useState('')
   const [laborEntryTopOut, setLaborEntryTopOut] = useState('')
   const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
@@ -1057,12 +1058,17 @@ export default function Bids() {
       if (error || !entries?.length) {
         defaults = await loadFixtureLaborDefaults()
       } else {
-        defaults = (entries as LaborBookEntry[]).map((e) => ({
-          fixture: e.fixture_name,
-          rough_in_hrs: Number(e.rough_in_hrs),
-          top_out_hrs: Number(e.top_out_hrs),
-          trim_set_hrs: Number(e.trim_set_hrs),
-        }))
+        const map = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
+        for (const e of entries as LaborBookEntry[]) {
+          const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
+          const primary = e.fixture_name.trim().toLowerCase()
+          if (primary && !map.has(primary)) map.set(primary, hours)
+          for (const name of e.alias_names ?? []) {
+            const key = name.trim().toLowerCase()
+            if (key && !map.has(key)) map.set(key, hours)
+          }
+        }
+        defaults = Array.from(map.entries()).map(([fixture, hrs]) => ({ fixture, ...hrs }))
       }
     } else {
       defaults = await loadFixtureLaborDefaults()
@@ -1465,6 +1471,7 @@ export default function Bids() {
   function openNewLaborEntry() {
     setEditingLaborEntry(null)
     setLaborEntryFixtureName('')
+    setLaborEntryAliasNames('')
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
@@ -1474,6 +1481,7 @@ export default function Bids() {
   function openEditLaborEntry(entry: LaborBookEntry) {
     setEditingLaborEntry(entry)
     setLaborEntryFixtureName(entry.fixture_name)
+    setLaborEntryAliasNames((entry.alias_names ?? []).join(', '))
     setLaborEntryRoughIn(String(entry.rough_in_hrs))
     setLaborEntryTopOut(String(entry.top_out_hrs))
     setLaborEntryTrimSet(String(entry.trim_set_hrs))
@@ -1484,6 +1492,7 @@ export default function Bids() {
     setLaborEntryFormOpen(false)
     setEditingLaborEntry(null)
     setLaborEntryFixtureName('')
+    setLaborEntryAliasNames('')
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
@@ -1494,6 +1503,10 @@ export default function Bids() {
     if (!laborBookEntriesVersionId) return
     const fixtureName = laborEntryFixtureName.trim()
     if (!fixtureName) return
+    const aliasNames = laborEntryAliasNames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
     const rough = parseFloat(laborEntryRoughIn) || 0
     const top = parseFloat(laborEntryTopOut) || 0
     const trim = parseFloat(laborEntryTrimSet) || 0
@@ -1502,7 +1515,7 @@ export default function Bids() {
     if (editingLaborEntry) {
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .update({ fixture_name: fixtureName, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
+        .update({ fixture_name: fixtureName, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
         .eq('id', editingLaborEntry.id)
       if (err) setError(err.message)
       else {
@@ -1513,7 +1526,7 @@ export default function Bids() {
       const maxSeq = laborBookEntries.length === 0 ? 0 : Math.max(...laborBookEntries.map((e) => e.sequence_order))
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .insert({ version_id: laborBookEntriesVersionId, fixture_name: fixtureName, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
+        .insert({ version_id: laborBookEntriesVersionId, fixture_name: fixtureName, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
       if (err) setError(err.message)
       else {
         await loadLaborBookEntries(laborBookEntriesVersionId)
@@ -1759,8 +1772,9 @@ export default function Bids() {
     try {
       const { data: entries, error: fetchErr } = await supabase
         .from('labor_book_entries')
-        .select('fixture_name, rough_in_hrs, top_out_hrs, trim_set_hrs')
+        .select('fixture_name, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs')
         .eq('version_id', selectedLaborBookVersionId)
+        .order('sequence_order', { ascending: true })
       if (fetchErr) {
         setError(`Failed to load labor book entries: ${fetchErr.message}`)
         setApplyingLaborBookHours(false)
@@ -1768,11 +1782,13 @@ export default function Bids() {
       }
       const entriesByFixture = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
       for (const e of (entries as LaborBookEntry[]) ?? []) {
-        entriesByFixture.set(e.fixture_name.toLowerCase(), {
-          rough_in_hrs: Number(e.rough_in_hrs),
-          top_out_hrs: Number(e.top_out_hrs),
-          trim_set_hrs: Number(e.trim_set_hrs),
-        })
+        const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
+        const primary = e.fixture_name.trim().toLowerCase()
+        if (primary && !entriesByFixture.has(primary)) entriesByFixture.set(primary, hours)
+        for (const name of e.alias_names ?? []) {
+          const key = name.trim().toLowerCase()
+          if (key && !entriesByFixture.has(key)) entriesByFixture.set(key, hours)
+        }
       }
       for (const row of costEstimateLaborRows) {
         const entry = entriesByFixture.get(row.fixture.toLowerCase())
@@ -5053,7 +5069,12 @@ export default function Bids() {
                       <tbody>
                         {laborBookEntries.map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              {entry.fixture_name}
+                              {entry.alias_names?.length ? (
+                                <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                              ) : null}
+                            </td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
@@ -5167,6 +5188,15 @@ export default function Bids() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
                     placeholder="e.g. Toilet"
                   />
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
+                  <input
+                    type="text"
+                    value={laborEntryAliasNames}
+                    onChange={(e) => setLaborEntryAliasNames(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. WC, Commode"
+                  />
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, this labor rate is applied.</p>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>

@@ -268,9 +268,9 @@ export type Database = {
         Relationships: []
       }
       labor_book_entries: {
-        Row: { id: string; version_id: string; fixture_name: string; rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number; sequence_order: number; created_at: string | null }
-        Insert: { id?: string; version_id: string; fixture_name: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
-        Update: { id?: string; version_id?: string; fixture_name?: string; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
+        Row: { id: string; version_id: string; fixture_name: string; alias_names: string[] | null; rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number; sequence_order: number; created_at: string | null }
+        Insert: { id?: string; version_id: string; fixture_name: string; alias_names?: string[] | null; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
+        Update: { id?: string; version_id?: string; fixture_name?: string; alias_names?: string[] | null; rough_in_hrs?: number; top_out_hrs?: number; trim_set_hrs?: number; sequence_order?: number; created_at?: string | null }
         Relationships: []
       }
       takeoff_book_versions: {

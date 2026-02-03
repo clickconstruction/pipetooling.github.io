@@ -2298,9 +2298,13 @@ For questions or issues:
 ---
 
 **Last Updated**: 2026-02-03
-**Documentation Version**: 2.16
+**Documentation Version**: 2.17
 
-## Recent Updates (v2.12–v2.16)
+## Recent Updates (v2.12–v2.17)
+
+### v2.17 – Labor book: multiple names per entry
+- **Labor book entries** can have one primary **Fixture or Tie-in** name and optional **additional names** (aliases). If a count row's Fixture or Tie-in matches the primary name or any alias (case-insensitive), that entry's labor rate is applied. First match wins by entry order. Entry form has "Additional names (optional)" (comma-separated, e.g. WC, Commode); table shows "also: …" when aliases exist.
+- **Database**: `labor_book_entries.alias_names` (TEXT[], default `'{}'`); migration `add_labor_book_entries_alias_names.sql`.
 
 ### v2.16 – Approval PDF, call scripts, Evaluate checklist
 - **Approval PDF (Submission & Followup)**: Pricing table now has a **Per Unit** column (after Entry, before Revenue). Per Unit and Revenue display as **whole numbers** (e.g. $1,234). **Alignment**: Count column centered; Per Unit and Revenue right-aligned. **Pricing page (page 2)** of the Approval PDF is rendered in **landscape**; other pages (Submission & Followup, Cost Estimate, Cover Letter) remain portrait. **Cover Letter**: "Inclusions:" and "Exclusions and Scope:" headings are **bold**.
