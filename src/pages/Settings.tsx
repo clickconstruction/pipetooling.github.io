@@ -253,7 +253,7 @@ export default function Settings() {
         return
       }
       const rows = (data as any[]) ?? []
-      const classified: OrphanedPriceRow[] = rows
+      const classified = rows
         .map((row) => {
           const part = (row.material_parts ?? null) as { id: string; name: string | null } | null
           const sh = (row.supply_houses ?? null) as { id: string; name: string | null } | null
@@ -268,16 +268,16 @@ export default function Settings() {
               : 'missing_supply_house'
           return {
             id: row.id as string,
-            partId: (row.part_id as string) ?? null,
+            partId: (row.part_id as string | null) ?? null,
             partName: part?.name ?? `Unknown part (${row.part_id ?? 'no id'})`,
-            supplyHouseId: (row.supply_house_id as string) ?? null,
+            supplyHouseId: (row.supply_house_id as string | null) ?? null,
             supplyHouseName: sh?.name ?? `Unknown supply house (${row.supply_house_id ?? 'no id'})`,
             price: Number(row.price ?? 0),
             effectiveDate: (row.effective_date as string | null) ?? null,
             reason,
-          }
+          } as OrphanedPriceRow
         })
-        .filter((r): r is OrphanedPriceRow => r != null)
+        .filter((r): r is OrphanedPriceRow => r !== null)
 
       setOrphanPrices(classified)
     } catch (e) {
