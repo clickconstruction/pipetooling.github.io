@@ -235,7 +235,10 @@ export async function executeDeleteChain(
   }>
 ): Promise<void> {
   for (let i = 0; i < operations.length; i++) {
-    const { operation, description } = operations[i]
+    const item = operations[i]
+    if (!item) continue
+    
+    const { operation, description } = item
     const result = await operation()
     
     if (result.error) {
