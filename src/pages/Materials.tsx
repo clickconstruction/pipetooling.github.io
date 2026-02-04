@@ -2024,7 +2024,7 @@ export default function Materials() {
                 {sortedParts.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      {searchQuery || filterFixtureType || filterManufacturer ? 'No parts match your filters' : 'No parts yet. Add your first part!'}
+                      {searchQuery || filterFixtureType || filterManufacturer ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
                     </td>
                   </tr>
                 ) : (

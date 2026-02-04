@@ -38,10 +38,15 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)** - Email templates database setup
 - **[EMAIL_TESTING.md](./EMAIL_TESTING.md)** - Email testing and integration status
 
+🔧 **Database & Technical Documentation**:
+- **[DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md)** - Database layer improvements (triggers, constraints, transactions)
+- **[DATABASE_FIXES_TEST_PLAN.md](./DATABASE_FIXES_TEST_PLAN.md)** - Comprehensive testing plan for database improvements
+
 The main documentation includes:
 - Project overview and architecture
 - Database schema and relationships
-- **TypeScript types** (`src/types/database.ts`) and how to keep them in sync with the schema
+- **Database layer improvements** (automatic timestamps, cascading updates, integrity constraints, atomic transactions)
+- **TypeScript types** (`src/types/database.ts`, `src/types/database-functions.ts`) and how to keep them in sync with the schema
 - Authentication and authorization patterns
 - Development workflow
 - Deployment instructions

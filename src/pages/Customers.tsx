@@ -8,6 +8,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
   master_user: { id: string; name: string | null; email: string | null } | null
 }
+type BidRow = Database['public']['Tables']['bids']['Row']
 
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   if (ci == null) return { phone: '', email: '' }
@@ -25,6 +26,9 @@ export default function Customers() {
   const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [viewingBidsForCustomer, setViewingBidsForCustomer] = useState<string | null>(null)
+  const [bidsForCustomer, setBidsForCustomer] = useState<BidRow[]>([])
+  const [loadingBids, setLoadingBids] = useState(false)
 
   async function fetchCustomers() {
     const { data, error: err } = await supabase
@@ -58,6 +62,28 @@ export default function Customers() {
     
     setCustomers(customersWithMasters)
     setLoading(false)
+  }
+
+  async function loadBidsForCustomer(customerId: string) {
+    setLoadingBids(true)
+    const { data, error } = await supabase
+      .from('bids')
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+    
+    if (!error && data) {
+      setBidsForCustomer(data as BidRow[])
+    }
+    setLoadingBids(false)
+  }
+
+  function getBidStatus(bid: BidRow): string {
+    if (!bid.bid_date_sent) return 'Unsent'
+    if (bid.outcome === 'won') return 'Won'
+    if (bid.outcome === 'lost') return 'Lost'
+    if (bid.outcome === 'started_or_complete') return 'Started or Complete'
+    return 'Pending'
   }
 
   useEffect(() => {
@@ -181,10 +207,133 @@ export default function Customers() {
               </div>
               <span style={{ display: 'flex', gap: '0.5rem' }}>
                 <Link to={`/projects?customer=${c.id}`}>Projects</Link>
+                <button
+                  onClick={() => {
+                    setViewingBidsForCustomer(c.id)
+                    loadBidsForCustomer(c.id)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    padding: 0,
+                    font: 'inherit',
+                  }}
+                >
+                  Bids
+                </button>
               </span>
             </li>
           ))}
         </ul>
+      )}
+      {viewingBidsForCustomer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => setViewingBidsForCustomer(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: '800px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>
+                Bids for {customers.find(c => c.id === viewingBidsForCustomer)?.name}
+              </h2>
+              <button
+                onClick={() => setViewingBidsForCustomer(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  padding: '0.25rem',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {loadingBids ? (
+              <p>Loading bids...</p>
+            ) : bidsForCustomer.length === 0 ? (
+              <p>No bids found for this customer.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>Project Name</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem' }}>Bid Due Date</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem' }}>Bid Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bidsForCustomer.map((bid) => (
+                    <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.5rem' }}>{bid.project_name || '—'}</td>
+                      <td style={{ padding: '0.5rem' }}>
+                        <span
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: 4,
+                            fontSize: '0.875rem',
+                            background:
+                              bid.outcome === 'won'
+                                ? '#dcfce7'
+                                : bid.outcome === 'lost'
+                                ? '#fee2e2'
+                                : bid.outcome === 'started_or_complete'
+                                ? '#dbeafe'
+                                : '#f3f4f6',
+                            color:
+                              bid.outcome === 'won'
+                                ? '#166534'
+                                : bid.outcome === 'lost'
+                                ? '#991b1b'
+                                : bid.outcome === 'started_or_complete'
+                                ? '#1e40af'
+                                : '#374151',
+                          }}
+                        >
+                          {getBidStatus(bid)}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.5rem' }}>
+                        {bid.bid_due_date ? new Date(bid.bid_due_date).toLocaleDateString() : '—'}
+                      </td>
+                      <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                        {bid.bid_value != null
+                          ? new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: 'USD',
+                            }).format(bid.bid_value)
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

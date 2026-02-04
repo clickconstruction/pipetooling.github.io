@@ -217,26 +217,92 @@ export default function ProjectForm() {
     if (!id || deleteConfirm.trim() !== name.trim()) return
     setDeleting(true)
     setError(null)
-    const { data: wfs } = await supabase.from('project_workflows').select('id').eq('project_id', id)
-    const wfIds = (wfs as { id: string }[] || []).map((w) => w.id)
-    if (wfIds.length > 0) {
-      const { data: steps } = await supabase.from('project_workflow_steps').select('id').in('workflow_id', wfIds)
-      const stepIds = (steps as { id: string }[] || []).map((s) => s.id)
-      for (const sid of stepIds) {
-        await supabase.from('workflow_step_dependencies').delete().eq('step_id', sid)
-        await supabase.from('workflow_step_dependencies').delete().eq('depends_on_step_id', sid)
+    
+    try {
+      // Get all workflows for this project
+      const { data: wfs, error: wfsError } = await supabase
+        .from('project_workflows')
+        .select('id')
+        .eq('project_id', id)
+      
+      if (wfsError) {
+        throw new Error(`Failed to load workflows: ${wfsError.message}`)
       }
-      await supabase.from('project_workflow_steps').delete().in('workflow_id', wfIds)
+      
+      const wfIds = (wfs as { id: string }[] || []).map((w) => w.id)
+      
+      if (wfIds.length > 0) {
+        // Get all steps for these workflows
+        const { data: steps, error: stepsError } = await supabase
+          .from('project_workflow_steps')
+          .select('id')
+          .in('workflow_id', wfIds)
+        
+        if (stepsError) {
+          throw new Error(`Failed to load workflow steps: ${stepsError.message}`)
+        }
+        
+        const stepIds = (steps as { id: string }[] || []).map((s) => s.id)
+        
+        // Delete dependencies for each step
+        for (const sid of stepIds) {
+          const { error: depError1 } = await supabase
+            .from('workflow_step_dependencies')
+            .delete()
+            .eq('step_id', sid)
+          
+          if (depError1) {
+            throw new Error(`Failed to delete step dependencies: ${depError1.message}`)
+          }
+          
+          const { error: depError2 } = await supabase
+            .from('workflow_step_dependencies')
+            .delete()
+            .eq('depends_on_step_id', sid)
+          
+          if (depError2) {
+            throw new Error(`Failed to delete reverse dependencies: ${depError2.message}`)
+          }
+        }
+        
+        // Delete all steps
+        const { error: stepsDelError } = await supabase
+          .from('project_workflow_steps')
+          .delete()
+          .in('workflow_id', wfIds)
+        
+        if (stepsDelError) {
+          throw new Error(`Failed to delete workflow steps: ${stepsDelError.message}`)
+        }
+      }
+      
+      // Delete all workflows
+      const { error: wfsDelError } = await supabase
+        .from('project_workflows')
+        .delete()
+        .eq('project_id', id)
+      
+      if (wfsDelError) {
+        throw new Error(`Failed to delete workflows: ${wfsDelError.message}`)
+      }
+      
+      // Finally, delete the project
+      const { error: delErr } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id)
+      
+      if (delErr) {
+        throw new Error(`Failed to delete project: ${delErr.message}`)
+      }
+      
+      closeDelete()
+      navigate('/projects', { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete project')
+    } finally {
+      setDeleting(false)
     }
-    await supabase.from('project_workflows').delete().eq('project_id', id)
-    const { error: delErr } = await supabase.from('projects').delete().eq('id', id)
-    setDeleting(false)
-    if (delErr) {
-      setError(delErr.message)
-      return
-    }
-    closeDelete()
-    navigate('/projects', { replace: true })
   }
 
   if (customersLoading) return <p>Loading…</p>

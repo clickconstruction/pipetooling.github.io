@@ -3,27 +3,295 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.20)](#latest-updates-v220)
-2. [Latest Updates (v2.19)](#latest-updates-v219)
-3. [Latest Updates (v2.18)](#latest-updates-v218)
-4. [Latest Updates (v2.17)](#latest-updates-v217)
-5. [Latest Updates (v2.16)](#latest-updates-v216)
-6. [Latest Updates (v2.15)](#latest-updates-v215)
-7. [Latest Updates (v2.14)](#latest-updates-v214)
-8. [Latest Updates (v2.13)](#latest-updates-v213)
-9. [Latest Updates (v2.12)](#latest-updates-v212)
-10. [Latest Updates (v2.11)](#latest-updates-v211)
-11. [Latest Updates (v2.10)](#latest-updates-v210)
-12. [Latest Updates (v2.9)](#latest-updates-v29)
-13. [Latest Updates (v2.8)](#latest-updates-v28)
-14. [Latest Updates (v2.7)](#latest-updates-v27)
-15. [Latest Updates (v2.6)](#latest-updates-v26)
-16. [Workflow Features](#workflow-features)
-17. [Calendar Updates](#calendar-updates)
-18. [Access Control](#access-control)
-19. [Email Templates](#email-templates)
-20. [Financial Tracking](#financial-tracking)
-21. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.22)](#latest-updates-v222)
+2. [Latest Updates (v2.21)](#latest-updates-v221)
+3. [Latest Updates (v2.20)](#latest-updates-v220)
+3. [Latest Updates (v2.19)](#latest-updates-v219)
+4. [Latest Updates (v2.18)](#latest-updates-v218)
+5. [Latest Updates (v2.17)](#latest-updates-v217)
+6. [Latest Updates (v2.16)](#latest-updates-v216)
+7. [Latest Updates (v2.15)](#latest-updates-v215)
+8. [Latest Updates (v2.14)](#latest-updates-v214)
+9. [Latest Updates (v2.13)](#latest-updates-v213)
+10. [Latest Updates (v2.12)](#latest-updates-v212)
+11. [Latest Updates (v2.11)](#latest-updates-v211)
+12. [Latest Updates (v2.10)](#latest-updates-v210)
+13. [Latest Updates (v2.9)](#latest-updates-v29)
+14. [Latest Updates (v2.8)](#latest-updates-v28)
+15. [Latest Updates (v2.7)](#latest-updates-v27)
+16. [Latest Updates (v2.6)](#latest-updates-v26)
+17. [Workflow Features](#workflow-features)
+18. [Calendar Updates](#calendar-updates)
+19. [Access Control](#access-control)
+20. [Email Templates](#email-templates)
+21. [Financial Tracking](#financial-tracking)
+22. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.22)
+
+### Comprehensive Database Layer Improvements
+
+**Date**: 2026-02-04
+
+**Overview**:
+Major systematic improvements to the database layer addressing timestamp management, data integrity, transaction handling, and error recovery. These changes make the application more robust, maintainable, and prevent data corruption.
+
+#### 1. Automatic `updated_at` Timestamp Management
+
+**What Changed**:
+- Added database triggers to automatically set `updated_at` on all UPDATE operations
+- Covers 20 tables: bids, customers, projects, material_parts, purchase_orders, workflow_steps, and 14 others
+- Removed 9 manual timestamp sets from frontend code (Settings, Bids, People pages)
+
+**Benefits**:
+- Eliminates developer errors and forgotten timestamps
+- Ensures consistency across all updates
+- Cleaner, more maintainable code
+- Automatic and transparent to application code
+
+**Technical Details**:
+- Created reusable trigger function `update_updated_at_column()`
+- Applied BEFORE UPDATE triggers to all tables with `updated_at` columns
+- Migration: `add_updated_at_triggers.sql`
+
+---
+
+#### 2. Cascading Update Triggers
+
+**What Changed**:
+- Customer master ownership changes now automatically cascade to all their projects
+- Maintains data consistency between customers and projects
+
+**Benefits**:
+- No orphaned projects with wrong master assignment
+- Automatic synchronization eliminates manual updates
+- Prevents data integrity issues
+
+**Technical Details**:
+- Trigger function: `cascade_customer_master_to_projects()`
+- Automatically updates `project.master_user_id` when `customer.master_user_id` changes
+- Migration: `add_cascading_customer_master_to_projects.sql`
+
+---
+
+#### 3. Data Integrity Constraints
+
+**What Changed**:
+Added database-level constraints to prevent invalid data:
+- **Positive quantities**: Purchase order items must have `quantity > 0`
+- **Non-negative counts**: Bid count rows must have `count >= 0`
+- **Non-negative prices**: Material prices and PO prices must be `>= 0`
+- **Unique parts per template**: Same part cannot be added twice to a template
+- **Improved cascading**: Project master user FKs now use `ON DELETE SET NULL`
+
+**Benefits**:
+- Prevents data corruption at database level
+- Clear error messages for validation failures
+- Enforces business rules consistently
+- Catches errors before they propagate
+
+**Technical Details**:
+- 4 CHECK constraints for validation
+- 1 partial unique index on `material_template_items(template_id, part_id)`
+- Cleaned up 1 duplicate data entry during migration
+- Migration: `add_data_integrity_constraints.sql`
+
+---
+
+#### 4. Atomic Transaction Functions
+
+**What Changed**:
+Created 4 database functions for complex multi-step operations with automatic rollback:
+
+**4a. `create_project_with_template`**
+- Atomically creates project, workflow, and all steps from template
+- All-or-nothing operation - if any step fails, entire operation rolls back
+- Parameters: name, customer_id, address, master_user_id, template_id, notes
+- Returns: `{project_id, workflow_id, success}`
+
+**4b. `duplicate_purchase_order`**
+- Atomically duplicates PO with all items as a draft
+- Guaranteed no orphaned PO if item copying fails
+- Parameters: source_po_id, created_by
+- Returns: `{new_po_id, items_copied, success}`
+
+**4c. `copy_workflow_step`**
+- Atomically copies step and updates sequence order
+- No gaps or inconsistencies in sequence numbers
+- Parameters: step_id, insert_after_sequence
+- Returns: `{new_step_id, new_sequence, success}`
+
+**4d. `create_takeoff_entry_with_items`**
+- Atomically creates takeoff entry with multiple items
+- Parameters: bid_id, page, entry_data, items
+- Returns: `{entry_id, items_created, success}`
+
+**Benefits**:
+- Guaranteed all-or-nothing operations (no partial data on failures)
+- Automatic rollback eliminates cleanup code
+- Reduced network round-trips
+- Better performance for multi-step operations
+
+**Technical Details**:
+- All functions use PL/pgSQL with EXCEPTION handlers
+- SECURITY DEFINER to run with proper permissions
+- Migration: `create_transaction_functions.sql`
+
+**Usage Example**:
+```typescript
+// Call from frontend using Supabase RPC
+const { data, error } = await supabase.rpc('create_project_with_template', {
+  p_name: 'New Project',
+  p_customer_id: customerId,
+  p_address: '123 Main St',
+  p_master_user_id: userId,
+  p_template_id: templateId,
+  p_notes: 'Project notes'
+})
+```
+
+---
+
+#### 5. Frontend Error Handling Improvements
+
+**What Changed**:
+- Created comprehensive error handling utilities (`src/utils/errorHandling.ts`)
+- Improved error handling in ProjectForm and Workflow delete operations
+- Added retry logic for transient network/database failures
+
+**New Utilities**:
+- `withRetry()`: Automatic retry with exponential backoff
+- `withSupabaseRetry()`: Type-safe Supabase operations with retry
+- `checkSupabaseError()`: Consistent error checking
+- `executeDeleteChain()`: Multi-step delete with proper error handling
+- `DatabaseError`: Structured error handling class
+
+**Benefits**:
+- Resilient to transient failures
+- Clear error messages for users
+- Proper error propagation and logging
+- Consistent error handling patterns
+
+**Updated Files**:
+- `src/pages/ProjectForm.tsx`: Improved delete operation with comprehensive error checking
+- `src/pages/Workflow.tsx`: Added proper error handling to step deletion
+
+**Usage Example**:
+```typescript
+import { withSupabaseRetry } from '@/utils/errorHandling'
+
+// Automatically retries on transient failures
+const users = await withSupabaseRetry(
+  () => supabase.from('users').select('*'),
+  'fetch users',
+  { maxRetries: 3, initialDelay: 1000 }
+)
+```
+
+---
+
+#### 6. TypeScript Type Safety
+
+**What Changed**:
+- Created TypeScript interfaces for all database functions
+- Added type-safe parameter and return types
+- Created helper interface for RPC calls
+
+**New File**: `src/types/database-functions.ts`
+
+**Benefits**:
+- Type safety for database function calls
+- IntelliSense support in IDE
+- Compile-time error detection
+- Self-documenting code
+
+**Usage Example**:
+```typescript
+import type { CreateProjectWithTemplateParams } from '@/types/database-functions'
+
+const params: CreateProjectWithTemplateParams = {
+  p_name: 'Project',
+  p_customer_id: customerId,
+  p_address: '123 Main St',
+  p_master_user_id: userId
+}
+```
+
+---
+
+#### Summary of Changes
+
+**Migrations Created (4)**:
+1. `add_updated_at_triggers.sql` - 20 automatic timestamp triggers
+2. `add_cascading_customer_master_to_projects.sql` - Cascading customer updates
+3. `add_data_integrity_constraints.sql` - 4 constraints + 1 unique index
+4. `create_transaction_functions.sql` - 4 atomic transaction functions
+
+**Code Files Created (2)**:
+1. `src/utils/errorHandling.ts` - Error handling utilities
+2. `src/types/database-functions.ts` - TypeScript types
+
+**Code Files Modified (5)**:
+1. `src/pages/ProjectForm.tsx` - Improved error handling
+2. `src/pages/Workflow.tsx` - Improved error handling
+3. `src/pages/Settings.tsx` - Removed manual timestamps
+4. `src/pages/Bids.tsx` - Removed manual timestamps
+5. `src/pages/People.tsx` - Removed manual timestamps
+
+**Documentation Created (2)**:
+1. `DATABASE_FIXES_TEST_PLAN.md` - Comprehensive test plan
+2. `DATABASE_IMPROVEMENTS_SUMMARY.md` - Complete implementation summary
+
+**Impact**:
+- ✅ 20 tables with automatic timestamp management
+- ✅ 4 new check constraints preventing invalid data
+- ✅ 1 unique constraint preventing duplicates
+- ✅ 1 cascading trigger maintaining consistency
+- ✅ 4 atomic database functions eliminating partial failures
+- ✅ Improved error handling preventing silent failures
+- ✅ Removed 9 manual timestamp sets
+- ✅ Added comprehensive retry logic
+
+**Backward Compatibility**:
+All changes are backward compatible. Existing code continues to work unchanged. The new database functions are optional enhancements available for gradual adoption.
+
+---
+
+## Latest Updates (v2.21)
+
+### Materials Price Book: Fixed Missing Prices in Expanded Row
+
+**Date**: 2026-02-04
+
+**Issue**:
+- Prices added or updated via the "Edit prices" modal were not appearing in the expanded row details
+- Prices would briefly appear after closing the modal, then disappear
+- The "Edit prices" modal showed all prices correctly
+- Problem affected parts with prices beyond the cheapest 1,000 prices across the entire database
+
+**Root Cause**:
+- The `loadParts()` function was loading ALL prices for ALL parts in a single query
+- Supabase has a default 1,000-row limit per query
+- With 1,241+ total prices in the database, prices beyond row 1,000 were being truncated
+- The "Edit prices" modal worked correctly because it filtered by `part_id` first, loading only that specific part's prices
+
+**Solution**:
+- Changed `loadParts()` to load prices per-part instead of loading all prices at once
+- Uses `Promise.all()` to load prices for each part in parallel
+- Each part's query filters by `part_id` first: `.eq('part_id', part.id)`
+- Matches the same query pattern used by the working "Edit prices" modal
+
+**Benefits**:
+- No row limit issues (each part's prices are loaded separately)
+- Consistent behavior between expanded row and modal
+- Scales to any number of total prices in the database
+- Better performance with parallel loading
+
+**Files modified**:
+- `src/pages/Materials.tsx` (lines 194-217) - Changed `loadParts()` from single bulk query to per-part parallel queries
+- `src/pages/Settings.tsx` (lines 256, 280) - Fixed TypeScript errors in orphaned prices feature
 
 ---
 

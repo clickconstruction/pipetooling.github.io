@@ -845,7 +845,6 @@ export default function Settings() {
         .update({
           subject: templateSubject.trim(),
           body: templateBody.trim(),
-          updated_at: new Date().toISOString(),
         })
         .eq('id', editingTemplate.id)
       

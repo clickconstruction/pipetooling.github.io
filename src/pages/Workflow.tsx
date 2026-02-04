@@ -1594,14 +1594,42 @@ export default function Workflow() {
   async function deleteStep(step: Step) {
     if (!confirm('Delete this step?')) return
     setError(null)
-    await supabase.from('workflow_step_dependencies').delete().eq('step_id', step.id)
-    await supabase.from('workflow_step_dependencies').delete().eq('depends_on_step_id', step.id)
-    const { error: delErr } = await supabase.from('project_workflow_steps').delete().eq('id', step.id)
-    if (delErr) {
-      setError(delErr.message)
-      return
+    
+    try {
+      // Delete dependencies where this step is the source
+      const { error: depErr1 } = await supabase
+        .from('workflow_step_dependencies')
+        .delete()
+        .eq('step_id', step.id)
+      
+      if (depErr1) {
+        throw new Error(`Failed to delete step dependencies: ${depErr1.message}`)
+      }
+      
+      // Delete dependencies where this step is the target
+      const { error: depErr2 } = await supabase
+        .from('workflow_step_dependencies')
+        .delete()
+        .eq('depends_on_step_id', step.id)
+      
+      if (depErr2) {
+        throw new Error(`Failed to delete reverse dependencies: ${depErr2.message}`)
+      }
+      
+      // Delete the step itself
+      const { error: delErr } = await supabase
+        .from('project_workflow_steps')
+        .delete()
+        .eq('id', step.id)
+      
+      if (delErr) {
+        throw new Error(`Failed to delete step: ${delErr.message}`)
+      }
+      
+      await refreshSteps()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete step')
     }
-    await refreshSteps()
   }
 
   async function assignPerson(step: Step, name: string | null) {

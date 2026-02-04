@@ -4,15 +4,16 @@
 1. [Project Overview](#project-overview)
 2. [Tech Stack](#tech-stack)
 3. [Architecture](#architecture)
-4. [Database Schema](#database-schema)
-5. [Authentication & Authorization](#authentication--authorization)
-6. [Key Features](#key-features)
-7. [File Structure](#file-structure)
-8. [Development Workflow](#development-workflow)
-9. [Deployment](#deployment)
-10. [Common Patterns](#common-patterns)
-11. [Known Issues & Gotchas](#known-issues--gotchas)
-12. [Future Development Notes](#future-development-notes)
+4. [Database Layer Improvements](#database-layer-improvements)
+5. [Database Schema](#database-schema)
+6. [Authentication & Authorization](#authentication--authorization)
+7. [Key Features](#key-features)
+8. [File Structure](#file-structure)
+9. [Development Workflow](#development-workflow)
+10. [Deployment](#deployment)
+11. [Common Patterns](#common-patterns)
+12. [Known Issues & Gotchas](#known-issues--gotchas)
+13. [Future Development Notes](#future-development-notes)
 
 ---
 
@@ -107,6 +108,338 @@ A Master Plumber can:
 - `/sign-up` - Sign up page
 - `/reset-password` - Request password reset
 - `/reset-password-confirm` - Confirm password reset (from email link)
+
+---
+
+## Database Layer Improvements
+
+**Last Updated**: 2026-02-04
+
+The application underwent comprehensive database layer improvements to address systematic issues with data integrity, transaction handling, and maintainability. These enhancements make the system more robust and reliable.
+
+### Automatic Timestamp Management
+
+**Problem**: Manual `updated_at` sets throughout the codebase were error-prone and inconsistent.
+
+**Solution**: Database triggers automatically set `updated_at` on all UPDATE operations.
+
+**Implementation**:
+- Created trigger function: `update_updated_at_column()`
+- Applied BEFORE UPDATE triggers to 20 tables
+- Removed 9 manual timestamp sets from frontend code
+
+**Tables with automatic timestamps**:
+- bids, customers, projects, material_parts, purchase_orders
+- workflow_steps, material_templates, supply_houses, users
+- And 11 more tables
+
+**Usage**: No code changes needed - timestamps are set automatically:
+```typescript
+// This automatically sets updated_at
+await supabase.from('customers').update({ name: 'New Name' }).eq('id', id)
+```
+
+---
+
+### Cascading Updates
+
+**Problem**: Changing a customer's master user didn't update their projects, causing data inconsistency.
+
+**Solution**: Trigger automatically cascades master user changes to all related projects.
+
+**Implementation**:
+- Trigger: `cascade_customer_master_update` on customers table
+- Function: `cascade_customer_master_to_projects()`
+- Automatically updates `projects.master_user_id` when `customers.master_user_id` changes
+
+**Example**:
+```sql
+-- Update customer master
+UPDATE customers SET master_user_id = '<new_user>' WHERE id = '<customer_id>';
+-- All projects for this customer automatically update their master_user_id
+```
+
+---
+
+### Data Integrity Constraints
+
+**Problem**: Invalid data could be inserted (negative prices, duplicate parts in templates, etc.).
+
+**Solution**: Database-level constraints prevent invalid data at the source.
+
+**Constraints Added**:
+
+1. **Positive Quantities**
+   ```sql
+   ALTER TABLE purchase_order_items
+   ADD CONSTRAINT purchase_order_items_quantity_positive
+   CHECK (quantity > 0);
+   ```
+
+2. **Non-Negative Counts**
+   ```sql
+   ALTER TABLE bids_count_rows
+   ADD CONSTRAINT bids_count_rows_count_non_negative
+   CHECK (count >= 0);
+   ```
+
+3. **Non-Negative Prices**
+   ```sql
+   ALTER TABLE material_part_prices
+   ADD CONSTRAINT material_part_prices_price_non_negative
+   CHECK (price >= 0);
+   ```
+
+4. **Unique Parts per Template**
+   ```sql
+   CREATE UNIQUE INDEX material_template_items_unique_part_per_template
+   ON material_template_items (template_id, part_id)
+   WHERE item_type = 'part';
+   ```
+
+**Benefits**:
+- Database rejects invalid data before it can corrupt the system
+- Clear error messages guide developers
+- Business rules enforced consistently
+
+---
+
+### Atomic Transaction Functions
+
+**Problem**: Multi-step operations could fail partway through, leaving partial/corrupted data.
+
+**Solution**: Database functions with automatic transaction rollback.
+
+#### Available Functions
+
+**1. `create_project_with_template`**
+
+Creates a project with workflow and steps atomically.
+
+```typescript
+const { data, error } = await supabase.rpc('create_project_with_template', {
+  p_name: 'New Project',
+  p_customer_id: customerId,
+  p_address: '123 Main St',
+  p_master_user_id: userId,
+  p_template_id: templateId,
+  p_notes: 'Optional notes'
+})
+// Returns: { project_id, workflow_id, success }
+```
+
+**Benefits**:
+- All-or-nothing: if template steps fail, project isn't created
+- No orphaned projects or workflows
+- Single network round-trip
+
+---
+
+**2. `duplicate_purchase_order`**
+
+Duplicates a PO with all items as a draft atomically.
+
+```typescript
+const { data, error } = await supabase.rpc('duplicate_purchase_order', {
+  p_source_po_id: sourcePoId,
+  p_created_by: userId
+})
+// Returns: { new_po_id, items_copied, success }
+```
+
+**Benefits**:
+- Guaranteed complete copy or nothing
+- No partial duplicates if item copying fails
+- Resets price confirmation status
+
+---
+
+**3. `copy_workflow_step`**
+
+Copies a step and updates sequence numbers atomically.
+
+```typescript
+const { data, error } = await supabase.rpc('copy_workflow_step', {
+  p_step_id: stepId,
+  p_insert_after_sequence: 2  // Insert after position 2
+})
+// Returns: { new_step_id, new_sequence, success }
+```
+
+**Benefits**:
+- No gaps in sequence order
+- Atomic sequence number updates
+- Consistent workflow state
+
+---
+
+**4. `create_takeoff_entry_with_items`**
+
+Creates takeoff entry with multiple items atomically.
+
+```typescript
+const { data, error } = await supabase.rpc('create_takeoff_entry_with_items', {
+  p_bid_id: bidId,
+  p_page: 'A',
+  p_entry_data: { item_type: 'pipe', item_size: '2"' },
+  p_items: [
+    { quantity: 10, location: 'Floor 1', notes: 'Main line' },
+    { quantity: 5, location: 'Floor 2', notes: 'Branch' }
+  ]
+})
+// Returns: { entry_id, items_created, success }
+```
+
+**Benefits**:
+- Complete entry or nothing
+- No orphaned entries without items
+
+---
+
+### Error Handling Utilities
+
+**Location**: `src/utils/errorHandling.ts`
+
+Provides utilities for resilient database operations:
+
+**1. Retry Logic**
+```typescript
+import { withRetry, withSupabaseRetry } from '@/utils/errorHandling'
+
+// Automatically retries on transient failures
+const data = await withSupabaseRetry(
+  () => supabase.from('users').select('*'),
+  'fetch users',
+  { maxRetries: 3, initialDelay: 1000 }
+)
+```
+
+**2. Error Checking**
+```typescript
+import { checkSupabaseError } from '@/utils/errorHandling'
+
+const result = await supabase.from('users').select('*')
+checkSupabaseError(result, 'fetch users')  // Throws on error
+// Safe to use result.data here
+```
+
+**3. Delete Chains**
+```typescript
+import { executeDeleteChain } from '@/utils/errorHandling'
+
+await executeDeleteChain([
+  {
+    operation: () => supabase.from('items').delete().eq('parent_id', id),
+    description: 'delete child items'
+  },
+  {
+    operation: () => supabase.from('parent').delete().eq('id', id),
+    description: 'delete parent'
+  }
+])
+// All operations succeed or all fail with detailed error
+```
+
+**Features**:
+- Exponential backoff retry strategy
+- Detects transient vs. permanent errors
+- Comprehensive error messages
+- Custom `DatabaseError` class
+
+---
+
+### TypeScript Type Safety
+
+**Location**: `src/types/database-functions.ts`
+
+Type-safe interfaces for all database functions:
+
+```typescript
+import type { 
+  CreateProjectWithTemplateParams,
+  CreateProjectWithTemplateResult 
+} from '@/types/database-functions'
+
+// Full type safety and IntelliSense
+const params: CreateProjectWithTemplateParams = {
+  p_name: 'Project',
+  p_customer_id: customerId,
+  // ... TypeScript ensures all required fields
+}
+
+const result = await supabase.rpc<CreateProjectWithTemplateResult>(
+  'create_project_with_template',
+  params
+)
+// result.data is typed: { project_id, workflow_id, success }
+```
+
+---
+
+### Migration Files
+
+All improvements are captured in versioned migration files:
+
+1. **`add_updated_at_triggers.sql`** (157 lines)
+   - 20 automatic timestamp triggers
+   - Reusable trigger function
+
+2. **`add_cascading_customer_master_to_projects.sql`** (40 lines)
+   - Customer-to-project master cascade
+   - Automatic relationship maintenance
+
+3. **`add_data_integrity_constraints.sql`** (77 lines)
+   - 4 check constraints
+   - 1 unique index
+   - Data cleanup for duplicates
+
+4. **`create_transaction_functions.sql`** (373 lines)
+   - 4 atomic transaction functions
+   - Full rollback support
+
+---
+
+### Testing
+
+**Test Plan**: See `DATABASE_FIXES_TEST_PLAN.md` for comprehensive test scenarios.
+
+**Verification Queries**:
+```sql
+-- Verify triggers exist
+SELECT tgname, tgrelid::regclass 
+FROM pg_trigger 
+WHERE tgname LIKE 'update_%_updated_at';
+
+-- Verify constraints exist
+SELECT conname, conrelid::regclass, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conname LIKE '%_positive' OR conname LIKE '%_non_negative';
+
+-- Verify functions exist
+SELECT proname, pg_get_function_arguments(oid)
+FROM pg_proc
+WHERE proname IN (
+  'create_project_with_template',
+  'duplicate_purchase_order',
+  'copy_workflow_step',
+  'create_takeoff_entry_with_items'
+);
+```
+
+---
+
+### Backward Compatibility
+
+**All changes are backward compatible**:
+- Existing frontend code continues to work unchanged
+- Database functions are optional enhancements
+- Triggers and constraints are transparent to application code
+- No breaking changes to APIs or behavior
+
+**Gradual Adoption**:
+- Continue using existing patterns
+- Adopt database functions when refactoring
+- Error handling utilities available for new code
 
 ---
 
@@ -2108,7 +2441,43 @@ async function myFunction() {
 - **Migration**: `supabase/migrations/optimize_rls_for_master_sharing.sql` (updated UPDATE policy)
 - **Future**: Consider Supabase CLI type generation
 
-### 10. GitHub Pages MIME Types
+### 11. Materials Price Book - Missing Prices in Expanded Row (FIXED 2026-02-04)
+- **Issue**: Prices added via "Edit prices" modal were not appearing in the expanded row details after closing the modal, even though they were visible in the modal itself and stored correctly in the database
+- **Root Cause**: The `loadParts()` function was loading all prices across all parts in a single query with Supabase's default 1,000-row limit. With 1,241+ total prices in the database, prices beyond the cheapest 1,000 were being cut off. The "Edit prices" modal worked correctly because it filtered prices by `part_id` first, loading only that part's prices.
+- **Symptoms**:
+  - Prices visible in "Edit prices" modal
+  - After closing modal, prices briefly appear (from `onPricesUpdated` callback)
+  - Then disappear when `loadParts()` overwrites state with incomplete data
+  - More expensive prices missing from expanded rows
+- **Solution**: Changed `loadParts()` to load prices per-part using `Promise.all()` instead of loading all prices at once:
+  ```typescript
+  // Before (problematic):
+  const { data } = await supabase
+    .from('material_part_prices')
+    .select('*, supply_houses(*)')
+    .order('price', { ascending: true })
+    .limit(10000)  // Still hits limits with large datasets
+  
+  // After (fixed):
+  const partsWithPrices = await Promise.all(
+    partsList.map(async (part) => {
+      const { data } = await supabase
+        .from('material_part_prices')
+        .select('*, supply_houses(*)')
+        .eq('part_id', part.id)  // Filter per-part like the modal does
+        .order('price', { ascending: true })
+      // ...
+    })
+  )
+  ```
+- **Benefits**:
+  - No row limit issues (each part's prices loaded separately)
+  - Consistent behavior between expanded row and modal
+  - Better performance with parallel loading
+  - Scales to any number of total prices
+- **Files Modified**: `src/pages/Materials.tsx` (lines 194-217)
+
+### 12. GitHub Pages MIME Types
 - **Issue**: Module scripts fail with wrong MIME type
 - **Solution**: `public/.nojekyll` prevents Jekyll from interfering
 - **Note**: GitHub Pages must be configured to use "GitHub Actions" as source, not a branch

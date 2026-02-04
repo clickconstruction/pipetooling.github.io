@@ -204,7 +204,7 @@ export default function People() {
       notes: notes.trim() || null,
     }
     if (editing) {
-      const { error: err } = await supabase.from('people').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editing.id)
+      const { error: err } = await supabase.from('people').update(payload).eq('id', editing.id)
       if (err) setError(err.message)
       else {
         setPeople((prev) => prev.map((p) => (p.id === editing.id ? { ...p, ...payload } : p)))

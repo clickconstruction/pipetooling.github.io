@@ -918,7 +918,7 @@ export default function Bids() {
   async function saveBidSelectedTakeoffBookVersion(bidId: string, versionId: string | null) {
     const { error: err } = await supabase
       .from('bids')
-      .update({ selected_takeoff_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .update({ selected_takeoff_book_version_id: versionId })
       .eq('id', bidId)
     if (err) {
       setError(`Failed to save takeoff book version: ${err.message}`)
@@ -1143,7 +1143,7 @@ export default function Bids() {
   async function saveBidSelectedLaborBookVersion(bidId: string, versionId: string | null) {
     const { error: err } = await supabase
       .from('bids')
-      .update({ selected_labor_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .update({ selected_labor_book_version_id: versionId })
       .eq('id', bidId)
     if (err) {
       setError(`Failed to save labor book version: ${err.message}`)
@@ -1265,7 +1265,7 @@ export default function Bids() {
   async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
     const { error: err } = await supabase
       .from('bids')
-      .update({ selected_price_book_version_id: versionId, updated_at: new Date().toISOString() })
+      .update({ selected_price_book_version_id: versionId })
       .eq('id', bidId)
     if (err) {
       setError(`Failed to save version: ${err.message}`)
@@ -3311,7 +3311,6 @@ export default function Bids() {
       distance_from_office: distanceFromOffice.trim() || null,
       last_contact: lastContact ? new Date(lastContact).toISOString() : null,
       notes: notes.trim() || null,
-      updated_at: new Date().toISOString(),
     }
     if (editingBid) {
       const { error: err } = await supabase.from('bids').update(payload).eq('id', editingBid.id)
@@ -3376,7 +3375,6 @@ export default function Bids() {
       distance_from_office: distanceFromOffice.trim() || null,
       last_contact: lastContact ? new Date(lastContact).toISOString() : null,
       notes: notes.trim() || null,
-      updated_at: new Date().toISOString(),
     }
     let bidId: string
     if (editingBid) {
@@ -3457,7 +3455,7 @@ export default function Bids() {
     setError(null)
     const { error: err } = await supabase
       .from('bids')
-      .update({ notes: notesModalText.trim() || null, updated_at: new Date().toISOString() })
+      .update({ notes: notesModalText.trim() || null })
       .eq('id', notesModalBid.id)
     setSavingNotes(false)
     if (err) {
