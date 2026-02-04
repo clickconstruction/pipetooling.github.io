@@ -57,6 +57,18 @@ This document summarizes all recent features and improvements added to Pipetooli
 - `supabase/migrations/add_takeoff_book_entries_alias_names.sql`
 - `supabase/migrations/add_takeoff_book_entry_items.sql`
 
+### Materials Price Book improvements
+
+- Price details are now visible inline when you expand a part: you see notes (SKU, etc.), a `$price SupplyHouse` list for all prices, and an **Edit prices** button directly beneath the list.
+- The Best Price column hides the “No prices” label when a part has no prices (the cell is blank), making the table easier to scan.
+- You can click the `#` column header to sort parts by how many prices they have (fewest first), with a small arrow indicator showing when that sort is active.
+- A new **Supply house price coverage** summary at the bottom shows each supply house name and how many prices are defined for it.
+
+### Settings cleanup
+
+- The **Sign out** and **Change password** actions have been moved into the Settings header as buttons, instead of separate boxes.
+- The dev-only **Force Check Prices** maintenance button has been removed; Materials now refreshes prices automatically after you add, edit, or delete prices in the Part Prices Manager.
+
 ---
 
 ## Latest Updates (v2.19)

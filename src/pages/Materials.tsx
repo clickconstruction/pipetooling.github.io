@@ -48,6 +48,7 @@ export default function Materials() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterFixtureType, setFilterFixtureType] = useState<string>('')
   const [filterManufacturer, setFilterManufacturer] = useState<string>('')
+  const [sortByPriceCountAsc, setSortByPriceCountAsc] = useState(false)
   const [editingPart, setEditingPart] = useState<MaterialPart | null>(null)
   const [partFormOpen, setPartFormOpen] = useState(false)
   const [partName, setPartName] = useState('')
@@ -182,29 +183,37 @@ export default function Materials() {
       return
     }
 
-    const { data: pricesData, error: pricesError } = await supabase
-      .from('material_part_prices')
-      .select('*, supply_houses(*)')
-      .order('price', { ascending: true })
-    
-    if (pricesError) {
-      setError(`Failed to load prices: ${pricesError.message}`)
+    const partsList = (partsData as MaterialPart[]) ?? []
+
+    // If there are no parts yet, skip price lookup entirely
+    if (partsList.length === 0) {
+      setParts([])
       return
     }
 
-    const partsList = (partsData as MaterialPart[]) ?? []
-    const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    // Load prices for each part individually to avoid limit issues
+    const partsWithPrices: PartWithPrices[] = await Promise.all(
+      partsList.map(async (part) => {
+        const { data: pricesData, error: pricesError } = await supabase
+          .from('material_part_prices')
+          .select('*, supply_houses(*)')
+          .eq('part_id', part.id)
+          .order('price', { ascending: true })
+        
+        if (pricesError) {
+          console.error(`Failed to load prices for part ${part.id}:`, pricesError)
+          return { ...part, prices: [] }
+        }
 
-    const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
-      ...part,
-      prices: pricesList
-        .filter(p => p.part_id === part.id)
-        .map(p => ({
+        const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+        const prices = pricesList.map(p => ({
           ...p,
           supply_house: p.supply_houses,
         }))
-        .sort((a, b) => a.price - b.price)
-    }))
+
+        return { ...part, prices }
+      })
+    )
 
     setParts(partsWithPrices)
   }
@@ -341,6 +350,12 @@ export default function Materials() {
       loadInitial()
     }
   }, [myRole])
+
+  useEffect(() => {
+    const state = location.state as { refreshPrices?: boolean } | null
+    if (!state?.refreshPrices) return
+    loadParts()
+  }, [location.state])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -484,6 +499,14 @@ export default function Materials() {
     return matchesSearch && matchesFixtureType && matchesManufacturer
   })
 
+  // Apply sorting for Price Book (default by name, optional by # of prices)
+  const sortedParts = [...filteredParts].sort((a, b) => {
+    if (sortByPriceCountAsc) {
+      return a.prices.length - b.prices.length || a.name.localeCompare(b.name)
+    }
+    return a.name.localeCompare(b.name)
+  })
+
   // Get unique fixture types and manufacturers for filters
   const fixtureTypes = [...new Set(parts.map(p => p.fixture_type).filter(Boolean))].sort()
   const manufacturers = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort()
@@ -494,6 +517,28 @@ export default function Materials() {
   const priceBookWithMoreThanOne = parts.filter(p => p.prices.length > 1).length
   const priceBookPctWithPrices = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithPrices / priceBookTotalItems) * 100)
   const priceBookPctMoreThanOne = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithMoreThanOne / priceBookTotalItems) * 100)
+
+  // Supply house price coverage summary (full catalog)
+  const supplyHousePriceCounts = (() => {
+    const counts = new Map<string, number>()
+    for (const part of parts) {
+      for (const price of part.prices) {
+        const id = price.supply_house?.id
+        if (!id) continue
+        counts.set(id, (counts.get(id) ?? 0) + 1)
+      }
+    }
+    // Map to array with names and counts, using supplyHouses to resolve names
+    const result: { id: string; name: string; count: number }[] = []
+    for (const [id, count] of counts.entries()) {
+      const sh = supplyHouses.find(s => s.id === id)
+      const name = sh?.name || 'Unknown supply house'
+      result.push({ id, name, count })
+    }
+    // Sort alphabetically by name
+    result.sort((a, b) => a.name.localeCompare(b.name))
+    return result
+  })()
 
   // Filter purchase orders
   const filteredPOs = allPOs.filter(po => {
@@ -603,7 +648,11 @@ export default function Materials() {
     setError(null)
     const { error } = await supabase.from('material_parts').delete().eq('id', partId)
     if (error) {
-      setError(error.message)
+      const friendlyMessage =
+        (error as { code?: string }).code === '23503'
+          ? 'Cannot delete this part because it is referenced in templates, purchase orders, or prices. Remove those references first, then try again.'
+          : error.message
+      setError(friendlyMessage)
     } else {
       await loadParts()
     }
@@ -663,7 +712,10 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await loadSupplyHouses()
+        await Promise.all([
+          loadSupplyHouses(),
+          loadParts(),
+        ])
         closeSupplyHouseForm()
       }
     } else {
@@ -680,7 +732,10 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await loadSupplyHouses()
+        await Promise.all([
+          loadSupplyHouses(),
+          loadParts(),
+        ])
         closeSupplyHouseForm()
       }
     }
@@ -707,7 +762,10 @@ export default function Materials() {
     if (error) {
       setError(error.message)
     } else {
-      await loadSupplyHouses()
+      await Promise.all([
+        loadSupplyHouses(),
+        loadParts(),
+      ])
     }
   }
 
@@ -1843,8 +1901,6 @@ export default function Materials() {
 
   return (
     <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      <h1 style={{ marginBottom: '1.5rem' }}>Materials</h1>
-
       {error && (
         <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
           {error}
@@ -1947,22 +2003,35 @@ export default function Materials() {
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Manufacturer</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture Type</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Best Price</th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'left',
+                      borderBottom: '1px solid #e5e7eb',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}
+                    onClick={() => setSortByPriceCountAsc(prev => !prev)}
+                    title="Sort by number of prices (fewest first)"
+                  >
+                    #
+                    {sortByPriceCountAsc ? ' \u2191' : ''}
+                  </th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredParts.length === 0 ? (
+                {sortedParts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {searchQuery || filterFixtureType || filterManufacturer ? 'No parts match your filters' : 'No parts yet. Add your first part!'}
                     </td>
                   </tr>
                 ) : (
-                  filteredParts.map(part => {
+                  sortedParts.map(part => {
                     const bestPrice = part.prices.length > 0 ? part.prices[0] : null
                     const isExpanded = expandedPartId === part.id
                     const priceCount = part.prices.length
-                    const priceButtonColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
                     return (
                       <Fragment key={part.id}>
                         <tr
@@ -1988,16 +2057,10 @@ export default function Materials() {
                           <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>{part.fixture_type || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>
-                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : 'No prices'}
+                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : ''}
                           </td>
+                          <td style={{ padding: '0.75rem' }}>{priceCount}</td>
                           <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setViewingPartPrices(part) }}
-                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', color: priceButtonColor }}
-                            >
-                              Prices
-                            </button>
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); openEditPart(part) }}
@@ -2008,10 +2071,65 @@ export default function Materials() {
                           </td>
                         </tr>
                         {isExpanded && (
-                          <tr key={`${part.id}-notes`} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td colSpan={5} style={{ padding: '0.75rem 0.75rem 0.75rem 2.5rem', background: '#f9fafb', whiteSpace: 'pre-wrap' }}>
-                              <strong>Notes (SKU, etc.)</strong>
-                              <div style={{ marginTop: '0.25rem' }}>{part.notes?.trim() || 'No notes'}</div>
+                          <tr key={`${part.id}-details`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td
+                              colSpan={6}
+                              style={{
+                                padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                                background: '#f9fafb',
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: '2rem',
+                                  alignItems: 'flex-start',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                                  <strong>Notes (SKU, etc.)</strong>
+                                  <div style={{ marginTop: '0.25rem' }}>{part.notes?.trim() || 'No notes'}</div>
+                                </div>
+                                <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                                  <strong>Prices</strong>
+                                  <div style={{ marginTop: '0.25rem' }}>
+                                    {part.prices.length === 0 ? (
+                                      <span style={{ color: '#6b7280' }}>No prices yet</span>
+                                    ) : (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
+                                        {part.prices.map((price) => (
+                                          <div key={price.id}>
+                                            ${price.price.toFixed(2)} {price.supply_house.name}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ marginTop: '0.5rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setViewingPartPrices(part)
+                                      }}
+                                      style={{
+                                        padding: '0.25rem 0.75rem',
+                                        background: '#3b82f6',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: 4,
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                      }}
+                                    >
+                                      Edit prices
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -2022,9 +2140,25 @@ export default function Materials() {
               </tbody>
             </table>
           </div>
-          <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            {priceBookTotalItems} items | {priceBookPctWithPrices}% have prices | {priceBookPctMoreThanOne}% have more than 1 price
-          </p>
+          <div style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            <p style={{ margin: 0 }}>
+              {priceBookTotalItems} items | {priceBookPctWithPrices}% have prices | {priceBookPctMoreThanOne}% have more than 1 price
+            </p>
+            <div style={{ marginTop: '0.5rem' }}>
+              <strong>Supply house price coverage</strong>
+              {supplyHousePriceCounts.length === 0 ? (
+                <div>No prices recorded yet for any supply house.</div>
+              ) : (
+                <ul style={{ marginTop: '0.25rem', paddingLeft: '1.25rem' }}>
+                  {supplyHousePriceCounts.map(({ id, name, count }) => (
+                    <li key={id}>
+                      {name} – {count} {count === 1 ? 'price' : 'prices'}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -2130,7 +2264,26 @@ export default function Materials() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>Prices for {viewingPartPrices.name}</h2>
-            <PartPricesManager part={viewingPartPrices} supplyHouses={supplyHouses} onClose={() => { setViewingPartPrices(null); loadParts() }} />
+            <PartPricesManager
+              part={viewingPartPrices}
+              supplyHouses={supplyHouses}
+              onClose={() => {
+                setViewingPartPrices(null)
+                loadParts()
+              }}
+              onPricesUpdated={(updatedPrices) => {
+                setParts(prev =>
+                  prev.map(p =>
+                    p.id === viewingPartPrices.id
+                      ? {
+                          ...p,
+                          prices: updatedPrices,
+                        }
+                      : p
+                  )
+                )
+              }}
+            />
           </div>
         </div>
       )}
@@ -3808,7 +3961,17 @@ type PriceHistory = Database['public']['Tables']['material_part_price_history'][
 }
 
 // Component for managing part prices
-function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart; supplyHouses: SupplyHouse[]; onClose: () => void }) {
+function PartPricesManager({
+  part,
+  supplyHouses,
+  onClose,
+  onPricesUpdated,
+}: {
+  part: MaterialPart
+  supplyHouses: SupplyHouse[]
+  onClose: () => void
+  onPricesUpdated: (prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]) => void
+}) {
   const [prices, setPrices] = useState<(MaterialPartPrice & { supply_house: SupplyHouse })[]>([])
   const [loading, setLoading] = useState(true)
   const [editingPrice, setEditingPrice] = useState<MaterialPartPrice | null>(null)
@@ -3836,7 +3999,9 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
       console.error('Error loading prices:', error)
     } else {
       const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-      setPrices(pricesList.map(p => ({ ...p, supply_house: p.supply_houses })))
+      const normalized = pricesList.map(p => ({ ...p, supply_house: p.supply_houses }))
+      setPrices(normalized)
+      onPricesUpdated(normalized)
     }
     setLoading(false)
   }
@@ -3874,6 +4039,7 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
       } else {
         await loadPrices()
         setEditingPrice(null)
+        onClose()
       }
     } else {
       const { error } = await supabase
@@ -3891,6 +4057,7 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
         setSelectedSupplyHouse('')
         setPrice('')
         setEffectiveDate('')
+        onClose()
       }
     }
     setSaving(false)
@@ -3903,6 +4070,7 @@ function PartPricesManager({ part, supplyHouses, onClose }: { part: MaterialPart
       alert(`Failed to delete price: ${error.message}`)
     } else {
       await loadPrices()
+      onClose()
     }
   }
 

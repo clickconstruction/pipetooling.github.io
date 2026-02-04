@@ -122,6 +122,22 @@ export default function Settings() {
   const [sharingSaving, setSharingSaving] = useState(false)
   const [sharingError, setSharingError] = useState<string | null>(null)
 
+  type OrphanedPriceRow = {
+    id: string
+    partId: string | null
+    partName: string
+    supplyHouseId: string | null
+    supplyHouseName: string
+    price: number
+    effectiveDate: string | null
+    reason: 'missing_part' | 'missing_supply_house' | 'both'
+  }
+
+  const [viewingOrphanPrices, setViewingOrphanPrices] = useState(false)
+  const [orphanPrices, setOrphanPrices] = useState<OrphanedPriceRow[]>([])
+  const [loadingOrphanPrices, setLoadingOrphanPrices] = useState(false)
+  const [orphanError, setOrphanError] = useState<string | null>(null)
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     navigate('/sign-in', { replace: true })
@@ -222,6 +238,76 @@ export default function Settings() {
     } finally {
       setExportMaterialsLoading(false)
     }
+  }
+
+  async function loadOrphanMaterialPrices() {
+    setOrphanError(null)
+    setLoadingOrphanPrices(true)
+    try {
+      const { data, error } = await supabase
+        .from('material_part_prices')
+        .select('*, material_parts(*), supply_houses(*)')
+      if (error) {
+        setOrphanError(error.message)
+        setOrphanPrices([])
+        return
+      }
+      const rows = (data as any[]) ?? []
+      const classified: OrphanedPriceRow[] = rows
+        .map((row) => {
+          const part = (row.material_parts ?? null) as { id: string; name: string | null } | null
+          const sh = (row.supply_houses ?? null) as { id: string; name: string | null } | null
+          const missingPart = !part
+          const missingSupplyHouse = !sh
+          if (!missingPart && !missingSupplyHouse) return null
+          const reason: OrphanedPriceRow['reason'] =
+            missingPart && missingSupplyHouse
+              ? 'both'
+              : missingPart
+              ? 'missing_part'
+              : 'missing_supply_house'
+          return {
+            id: row.id as string,
+            partId: (row.part_id as string) ?? null,
+            partName: part?.name ?? `Unknown part (${row.part_id ?? 'no id'})`,
+            supplyHouseId: (row.supply_house_id as string) ?? null,
+            supplyHouseName: sh?.name ?? `Unknown supply house (${row.supply_house_id ?? 'no id'})`,
+            price: Number(row.price ?? 0),
+            effectiveDate: (row.effective_date as string | null) ?? null,
+            reason,
+          }
+        })
+        .filter((r): r is OrphanedPriceRow => r != null)
+
+      setOrphanPrices(classified)
+    } catch (e) {
+      setOrphanError(e instanceof Error ? e.message : 'Failed to load orphaned prices')
+      setOrphanPrices([])
+    } finally {
+      setLoadingOrphanPrices(false)
+    }
+  }
+
+  async function deleteOrphanPrice(id: string) {
+    if (!id) return
+    const { error } = await supabase.from('material_part_prices').delete().eq('id', id)
+    if (error) {
+      setOrphanError(error.message)
+      return
+    }
+    setOrphanPrices((prev) => prev.filter((p) => p.id !== id))
+  }
+
+  async function deleteAllOrphanPrices() {
+    if (orphanPrices.length === 0) return
+    if (!confirm('Delete ALL orphaned material prices listed here? This cannot be undone.')) return
+    const ids = orphanPrices.map((p) => p.id)
+    const { error } = await supabase.from('material_part_prices').delete().in('id', ids)
+    if (error) {
+      setOrphanError(error.message)
+      return
+    }
+    setOrphanPrices([])
   }
 
   async function exportBidsBackup() {
@@ -1226,25 +1312,21 @@ export default function Settings() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: '1rem' }}>Settings</h1>
-
-      {/* Sign out */}
-      <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Sign out</h2>
-        <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
-          Sign out
-        </button>
-      </div>
-
-      {/* Password Change Section - Available to all users */}
-      <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Change Password</h2>
-        {!passwordChangeOpen ? (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0 }}>Settings</h1>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
             Change password
           </button>
-        ) : (
-          <form onSubmit={handlePasswordChange}>
+          <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {/* Inline Change Password form - toggled from header button */}
+      {passwordChangeOpen && (
+        <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
             <div style={{ marginBottom: '1rem' }}>
               <label htmlFor="current-password" style={{ display: 'block', marginBottom: 4 }}>Current password *</label>
               <input
@@ -1304,7 +1386,6 @@ export default function Settings() {
             </div>
           </form>
         )}
-      </div>
 
       {myRole !== 'dev' && <p style={{ marginBottom: '1.5rem' }}>Only devs can manage user roles.</p>}
 
@@ -1503,6 +1584,91 @@ export default function Settings() {
             </div>
           )}
         </>
+      )}
+
+      {viewingOrphanPrices && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingOrphanPrices(false)
+                  setOrphanError(null)
+                  setOrphanPrices([])
+                }}
+                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+              >
+                ×
+              </button>
+            </div>
+            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Price Book.
+            </p>
+            {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
+            {orphanError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{orphanError}</p>}
+            {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
+              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
+            )}
+            {!loadingOrphanPrices && orphanPrices.length > 0 && (
+              <>
+                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                  Found {orphanPrices.length} orphaned price{orphanPrices.length === 1 ? '' : 's'}.
+                </p>
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <button
+                    type="button"
+                    onClick={deleteAllOrphanPrices}
+                    style={{ padding: '0.35rem 0.75rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Delete all shown
+                  </button>
+                </div>
+                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply house</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Reason</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orphanPrices.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.effectiveDate || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {row.reason === 'both'
+                              ? 'Missing part & supply house'
+                              : row.reason === 'missing_part'
+                              ? 'Missing part'
+                              : 'Missing supply house'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => deleteOrphanPrice(row.id)}
+                              style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {(myRole === 'master_technician' || myRole === 'dev') && (
@@ -2013,6 +2179,21 @@ export default function Settings() {
               {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
             </button>
           </div>
+
+          <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>Maintenance: Materials prices</h3>
+          <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setViewingOrphanPrices(true)
+              loadOrphanMaterialPrices()
+            }}
+            style={{ padding: '0.5rem 1rem', background: '#92400e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+          >
+            Review orphaned material prices
+          </button>
         </>
       )}
 

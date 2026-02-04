@@ -1200,7 +1200,37 @@ user_id = auth.uid()
 #### Features
 
 **Price Book Tab**:
-- **Refresh on close**: When the user closes the "Prices" modal (Part Prices Manager) after editing or adding prices for a part, the Price Book table refetches parts so "Best Price" and part data update without a full page refresh.
+- **Best Price column**:
+  - Shows the lowest available price for each part in the form `$X.XX (Supply House)`.
+  - When a part has **no prices**, the Best Price cell is left **blank** instead of displaying "No prices" to keep the table cleaner.
+- **Row expansion**:
+  - Clicking a part row expands a details panel directly below that row.
+  - Expanded content includes:
+    - **Notes (SKU, etc.)** – free-text notes from the part record.
+    - **Prices list** – all known prices for the part, each on its own line in the form `$X.XX Supply House` (for example, `$3.59 Home Depot`).
+    - **Edit prices** button – opens the Part Prices Manager modal for that part.
+  - The previous per-row **"Prices"** button in the main table has been removed; all price edits now start from the expanded row.
+- **`#` column (price count) and sorting**:
+  - `#` shows the number of prices for each part (`part.prices.length`).
+  - The `#` column header is clickable:
+    - When active, parts are sorted by **fewest prices first** (ascending count), then by name.
+    - The header shows an up-arrow indicator when the price-count sort is active.
+    - Clicking again toggles back to the default name sort.
+- **Data refresh / sync behavior**:
+  - Part Prices Manager (`PartPricesManager`) reads and writes `material_part_prices` (with `supply_houses(*)`).
+  - After a **successful add, edit, or delete**:
+    - The manager reloads its own local prices.
+    - It calls the parent `onClose` callback, which clears the modal and re-runs `loadParts()` on the Materials page.
+    - `loadParts()` refetches `material_parts` and `material_part_prices` and rebuilds `partsWithPrices`, so Best Price, `#`, and the expanded Prices list all update immediately.
+  - A previous **Bad Request** issue when loading prices with no parts has been fixed; `loadParts()` now short-circuits when there are no parts and handles price loading more defensively.
+- **Supply house price coverage summary**:
+  - At the bottom of the Price Book tab, the UI shows a **Supply house price coverage** section.
+  - Implementation:
+    - Aggregates `parts[].prices[]` by `supply_house.id`.
+    - Maps IDs back to names using `supply_houses`, defaulting to "Unknown supply house" when unresolved.
+    - Renders a list like `Home Depot – 42 prices`, sorted alphabetically by supply house name and omitting supply houses with zero prices.
+- **Layout**:
+  - The page-level `Materials` heading has been removed so the Price Book/Template/PO tabs appear at the top of the content area.
 - **Parts Management**:
   - Create/edit/delete parts with name, manufacturer, fixture type, notes (SKU numbers)
   - Fixture type dropdown with predefined options (Fitting, Pipe, Drain, Sink, Faucet, Toilet, Shower, Bathtub, Valve, Water Heater, Vent, Trap, Elbow, Tee, Coupling, Other)
