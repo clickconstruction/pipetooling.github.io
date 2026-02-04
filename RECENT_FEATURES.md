@@ -3,22 +3,145 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.15)](#latest-updates-v215)
-2. [Latest Updates (v2.14)](#latest-updates-v214)
-3. [Latest Updates (v2.13)](#latest-updates-v213)
-4. [Latest Updates (v2.12)](#latest-updates-v212)
-5. [Latest Updates (v2.11)](#latest-updates-v211)
-6. [Latest Updates (v2.10)](#latest-updates-v210)
-7. [Latest Updates (v2.9)](#latest-updates-v29)
-8. [Latest Updates (v2.8)](#latest-updates-v28)
-9. [Latest Updates (v2.7)](#latest-updates-v27)
-10. [Latest Updates (v2.6)](#latest-updates-v26)
-11. [Workflow Features](#workflow-features)
-12. [Calendar Updates](#calendar-updates)
-13. [Access Control](#access-control)
-14. [Email Templates](#email-templates)
-15. [Financial Tracking](#financial-tracking)
-16. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.20)](#latest-updates-v220)
+2. [Latest Updates (v2.19)](#latest-updates-v219)
+3. [Latest Updates (v2.18)](#latest-updates-v218)
+4. [Latest Updates (v2.17)](#latest-updates-v217)
+5. [Latest Updates (v2.16)](#latest-updates-v216)
+6. [Latest Updates (v2.15)](#latest-updates-v215)
+7. [Latest Updates (v2.14)](#latest-updates-v214)
+8. [Latest Updates (v2.13)](#latest-updates-v213)
+9. [Latest Updates (v2.12)](#latest-updates-v212)
+10. [Latest Updates (v2.11)](#latest-updates-v211)
+11. [Latest Updates (v2.10)](#latest-updates-v210)
+12. [Latest Updates (v2.9)](#latest-updates-v29)
+13. [Latest Updates (v2.8)](#latest-updates-v28)
+14. [Latest Updates (v2.7)](#latest-updates-v27)
+15. [Latest Updates (v2.6)](#latest-updates-v26)
+16. [Workflow Features](#workflow-features)
+17. [Calendar Updates](#calendar-updates)
+18. [Access Control](#access-control)
+19. [Email Templates](#email-templates)
+20. [Financial Tracking](#financial-tracking)
+21. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.20)
+
+### Takeoff Book: Aliases, Multiple Templates/Stages per Entry, Default Version Selection
+
+**Date**: 2026-02-04
+
+**Changes**:
+
+- **Takeoff Book entries – additional names (aliases)**
+  - Takeoff Book entries can include optional **additional names** (comma-separated) that match count rows’ **Fixture or Tie-in** (case-insensitive).
+  - When applying the Takeoff Book, a count row matches if its Fixture or Tie-in equals the entry’s primary name or any alias.
+- **Takeoff Book entries – multiple Templates & Stages per entry**
+  - A single Takeoff Book entry (one Fixture or Tie-in + aliases) can now have **multiple (Template, Stage)** pairs.
+  - Entry form supports adding/removing multiple Template/Stage rows.
+  - Applying the Takeoff Book adds mappings for **each** Template/Stage pair on a matching entry.
+- **Takeoff book version default**
+  - When a bid has no takeoff book version selected, the Takeoffs tab will default to the version named **“Default”** (and persist that choice to the bid).
+
+**Database**:
+- Added `takeoff_book_entries.alias_names` (TEXT[], default `'{}'`).
+- Added `takeoff_book_entry_items` (Template/Stage pairs per entry) and migrated existing `takeoff_book_entries.template_id`/`stage` into items; `template_id` and `stage` are now stored on items instead of entries.
+
+**Files modified**:
+- `src/pages/Bids.tsx` – Takeoff Book entry form supports alias names and multiple Template/Stage rows; apply logic loads entries + items; default version selection to “Default” when unset.
+- `src/types/database.ts` – Updated `takeoff_book_entries`; added `takeoff_book_entry_items`.
+
+**Files added**:
+- `supabase/migrations/add_takeoff_book_entries_alias_names.sql`
+- `supabase/migrations/add_takeoff_book_entry_items.sql`
+
+---
+
+## Latest Updates (v2.19)
+
+### Submission & Followup: Clickable GC/Builder, All-bids Modal, Navigation Buttons
+
+**Date**: 2026-02-04
+
+**Changes**:
+
+- **Clickable GC/Builder (customer) in Submission & Followup tables**
+  - In **Not yet won or lost**, **Won**, and **Started or Complete**, the GC/Builder (customer) cell is clickable and opens the existing Customer / GC Builder modal.
+- **Customer / GC Builder modal: “All bids” list with status**
+  - The modal now includes an **All bids** section showing each bid and its computed status:
+    - Unsent
+    - Not yet won or lost
+    - Won
+    - Started or Complete
+    - Lost
+- **Submission & Followup navigation buttons**
+  - **Up-arrow** next to the row Edit/settings button scrolls back to the selected-bid summary at the top.
+  - **Down-arrow** near the Approval PDF area scrolls to the selected bid’s row in the correct table section and auto-expands that section if collapsed.
+- **Copy update (PO / templates)**
+  - Updated instruction text to mention staged billing: “Materials broken down by stage allows for staged billing.”
+
+**Files modified**:
+- `src/pages/Bids.tsx` – Clickable GC/Builder cells, “All bids” modal sections, status helper, up/down scroll buttons, and small copy update.
+
+---
+
+## Latest Updates (v2.18)
+
+### Bid outcome: Started or Complete
+
+**Date**: 2026-02-03
+
+**Changes**:
+
+- Added a new bid outcome **Started or Complete** and a dedicated collapsible section in Submission & Followup between Won and Lost.
+- Bid Board Win/Loss column shows “Started or Complete” when applicable.
+
+**Database**:
+- Updated `bids.outcome` constraint via `supabase/migrations/add_bids_outcome_started_or_complete.sql`.
+
+**Files modified**:
+- `src/pages/Bids.tsx`
+- `src/types/database.ts`
+
+---
+
+## Latest Updates (v2.17)
+
+### Labor Book: Multiple Fixture/Tie-in Names (Aliases)
+
+**Date**: 2026-02-03
+
+**Changes**:
+
+- Labor Book entries can include optional **additional names** (aliases) that match count rows’ Fixture or Tie-in (case-insensitive); first match wins by entry order.
+
+**Database**:
+- Added `labor_book_entries.alias_names` via `supabase/migrations/add_labor_book_entries_alias_names.sql`.
+
+**Files modified**:
+- `src/pages/Bids.tsx`
+- `src/types/database.ts`
+
+---
+
+## Latest Updates (v2.16)
+
+### Dev Feature: Set User Password
+
+**Date**: 2026-02-03
+
+**Changes**:
+
+- Devs can set another user’s password from Settings (modal + confirmation).
+- Added Edge Function `set-user-password` with dev-role enforcement and password validation.
+
+**Files modified**:
+- `src/pages/Settings.tsx`
+
+**Files added**:
+- `supabase/functions/set-user-password/index.ts`
 
 ---
 

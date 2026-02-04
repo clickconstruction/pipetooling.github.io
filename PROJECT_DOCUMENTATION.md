@@ -574,7 +574,7 @@ A Master Plumber can:
   - `gc_contact_email` (text, nullable) - Project contact email for this bid
   - `bid_due_date` (date, nullable)
   - `bid_date_sent` (date, nullable)
-  - `outcome` (text, nullable) - `'won' | 'lost'`
+  - `outcome` (text, nullable) - `'won' | 'lost' | 'started_or_complete'`
   - `bid_value` (numeric(14, 2), nullable)
   - `agreed_value` (numeric(14, 2), nullable)
   - `profit` (numeric(14, 2), nullable) - Projected maximum profit
@@ -1354,7 +1354,7 @@ user_id = auth.uid()
   - **Materials** are allocated to fixtures proportionally by labor hours, so margin reflects both labor and an allocated share of materials.
 
 **Submission & Followup Tab**:
-- **Four tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost), **Won**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all four. Clicking a row selects the bid and shows its submission entries in a panel above.
+- **Five tables** (in order): **Unsent bids** (bid_date_sent null), **Not yet won or lost** (sent, outcome not won/lost/started_or_complete), **Won**, **Started or Complete**, **Lost**. Each section has a **clickable header** with chevron (▼ expanded, ▶ collapsed) and item count (e.g. "Unsent bids (3)"); tables are shown/hidden by section state. "Lost" is collapsed by default. Search filters all five. Clicking a row selects the bid and shows its submission entries in a panel above.
 - **Selected bid panel**: When a bid is selected, an inline panel shows the bid title, then a **bid summary**: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size (project contact fields are stored per bid and are not shown on the Bid Board). **Call script buttons** above the contact table: **Sent Bid Script** and **Bid Question Script** open read-only modals with the respective script text. Below that: **Margins** section includes:
   - **Approval PDF** download button (multi-page packet: Submission and Followup, Pricing [landscape], Cost Estimate, Cover Letter; pricing table has Per Unit column; Per Unit and Revenue as whole numbers; Cover Letter "Inclusions:" and "Exclusions and Scope:" headings bold)
   - **Bid links**: Bid Submission, Project Folder, Job Plans (rendered as clickable links in the PDF with spacing between them)
@@ -1363,8 +1363,8 @@ user_id = auth.uid()
   - "Our Cost" is **not shown** (redundant with cost estimate amount)
   - **View cost estimate** / **Create cost estimate** button switches to the Cost Estimate tab with that bid preselected
   - Then: submission entries table (Contact method, Notes, Time and date), "Add row", **Edit icon** (gear) next to Close (opens that bid's full edit modal), and Close.
-- **Not yet won or lost** and **Unsent bids** tables: Columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit**. **Time since last contact** uses the more recent of `bid.last_contact` or the latest submission entry's `occurred_at`; a 60-second re-render (when tab is active) keeps relative times updated. Adding or editing a submission entry updates the bid's `last_contact` to that entry's date and refetches bids. **Time to/from bid due date** shows e.g. "X days since deadline", "Due today", "X days until due". **Edit** column: gear icon button when that row is the selected bid; opens full edit modal (click uses stopPropagation).
-- **Won** and **Lost** tables: Columns Project/GC, **Estimated Job Start Date** (Won only; YY/MM/DD), **Edit**. Lost table shows Project/GC and Edit.
+- **Not yet won or lost** table: Columns Project/GC, GC/Builder (customer), Time since last contact, Time to/from bid due date, **Edit**. **Unsent bids** table: Columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit**. **Time since last contact** uses the more recent of `bid.last_contact` or the latest submission entry's `occurred_at`; a 60-second re-render (when tab is active) keeps relative times updated. Adding or editing a submission entry updates the bid's `last_contact` to that entry's date and refetches bids. **Time to/from bid due date** shows e.g. "X days since deadline", "Due today", "X days until due". **Edit** column: gear icon button when that row is the selected bid; opens full edit modal (click uses stopPropagation).
+- **Won**, **Started or Complete**, and **Lost** tables: Won shows Project/GC, Estimated Job Start Date (YY/MM/DD), GC/Builder (customer), Edit. Started or Complete shows Project/GC, GC/Builder (customer), Edit. Lost shows Project/GC, Bid Due Date, Edit. Win/ Loss dropdown in New/Edit bid includes Won, Lost, and Started or Complete.
 - **Submission entry rows**: Edit and Delete are **icon buttons** (gear for Edit, trash for Delete) with tooltips; same behavior as before (inline edit for Edit, confirm then delete for Delete).
 
 #### Database Schema (Bids)
@@ -2301,10 +2301,30 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-02-03
-**Documentation Version**: 2.17
+**Last Updated**: 2026-02-04
+**Documentation Version**: 2.20
 
-## Recent Updates (v2.12–v2.17)
+## Recent Updates (v2.12–v2.20)
+
+### v2.20 – Takeoff book: aliases + multiple templates/stages per entry + default version
+- **Takeoff book entry aliases**: Takeoff Book entries can include optional **additional names** (aliases). If a count row’s Fixture or Tie-in matches the primary name or any alias (case-insensitive), the entry applies.
+- **Multiple templates/stages per entry**: Takeoff Book entries now support multiple **(Template, Stage)** pairs per fixture/alias entry. Applying the Takeoff Book adds mappings for each Template/Stage pair for matching fixtures.
+- **Default version selection**: In Takeoffs, when a bid has no takeoff book version selected, the UI defaults to the version named **“Default”** and persists it to the bid.
+- **Database**:
+  - `takeoff_book_entries.alias_names` (TEXT[], default `'{}'`); migration `add_takeoff_book_entries_alias_names.sql`.
+  - New table `takeoff_book_entry_items` (Template/Stage pairs per entry), with migration/backfill and moving `template_id`/`stage` from entries to items; migration `add_takeoff_book_entry_items.sql`.
+
+### v2.19 – Submission & Followup: clickable GC/Builder, all-bids modal, scroll buttons
+- **Clickable GC/Builder (customer)** in Submission & Followup tables (Not yet won or lost, Won, Started or Complete): clicking opens the customer/GC Builder modal.
+- **Customer / GC Builder modal** includes an **All bids** section listing every bid for that entity and its computed status (Unsent, Not yet won or lost, Won, Started or Complete, Lost).
+- **Navigation buttons**:
+  - **Up-arrow** next to the row Edit/settings button scrolls up to the selected-bid summary.
+  - **Down-arrow** near the Approval PDF area scrolls down to the selected bid’s row and auto-expands the correct section if collapsed.
+- **Copy update**: Template-selection instruction text now notes staged billing: “Materials broken down by stage allows for staged billing.”
+
+### v2.18 – Bid outcome: Started or Complete
+- **Bid outcome** can be **Won**, **Lost**, or **Started or Complete**. Win/ Loss dropdown in New/Edit bid includes the new option. **Submission & Followup** tab has a **Started or Complete** section between Won and Lost; bids with this outcome appear there (Project/GC, Bid Due Date, Edit). Unsent and "Not yet won or lost" exclude started_or_complete. Bid Board Win/ Loss column shows "Started or Complete" for that outcome.
+- **Database**: `bids.outcome` CHECK extended to allow `'started_or_complete'`; migration `add_bids_outcome_started_or_complete.sql`.
 
 ### v2.17 – Labor book: multiple names per entry
 - **Labor book entries** can have one primary **Fixture or Tie-in** name and optional **additional names** (aliases). If a count row's Fixture or Tie-in matches the primary name or any alias (case-insensitive), that entry's labor rate is applied. First match wins by entry order. Entry form has "Additional names (optional)" (comma-separated, e.g. WC, Commode); table shows "also: …" when aliases exist.
@@ -2348,7 +2368,7 @@ For questions or issues:
 
 ### Bids – Bid Board and Submission & Followup
 - **Bid Board**: **Search** input (full width) filters by project name, address, customer name, or GC/builder name. Columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, **Win/ Loss** (toggle button to hide/show lost bids; when hiding, label "(hiding lost)" and underlined), **Bid Value**, Estimator, Bid Due Date, Bid Date Sent, Distance to Office (miles), Last Contact, Notes, Edit. Agreed Value and Maximum Profit columns removed. All column headers and cells **centered**. **Plans Link Folder**. **Distance to Office (miles)** (value e.g. 66.6mi). **Last Contact** short date with day of week (e.g. "Sun 2/1"). **Bid Due Date** and **Bid Date Sent** **YY/MM/DD** (e.g. 26/02/12). **Bid Value** **compact currency** (e.g. $121k). **Edit** column **gear icon** (opens full edit modal). **Notes** cell **clickable** → quick-edit modal; Save updates notes and refreshes table. **New/Edit modal**: After GC/Builder picker, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per bid; not shown on Bid Board). When outcome is Won, **Estimated Job Start Date** date input is shown and saved. **Delete**: "Delete bid" button in Edit modal opens **separate confirmation modal**; type project name (or leave empty if none) to enable Delete; Cancel closes only delete modal.
-- **Submission & Followup**: **Four collapsible sections** with clickable headers (chevron ▼/▶ and item count). "Lost" collapsed by default. **Unsent bids**, **Not yet won or lost**, **Won**, **Lost**. **Selected-bid panel**: Bid title, then summary: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size; then submission entries table, Add row, Edit icon, Close. **Not yet won or lost** and **Unsent bids**: columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit** (gear when row is selected; opens full edit modal). **Time to/from bid due date**: e.g. "X days since deadline", "Due today", "X days until due". **Won** table: columns Project/GC, **Estimated Job Start Date** (YY/MM/DD), Edit. **Lost** table: Project/GC, Edit. **Edit icon** (gear) next to Close opens that bid's full edit modal. **Submission entry rows**: Edit and Delete **icon buttons** (gear, trash) with tooltips.
+- **Submission & Followup**: **Five collapsible sections** with clickable headers (chevron ▼/▶ and item count). "Lost" collapsed by default. **Unsent bids**, **Not yet won or lost**, **Won**, **Started or Complete**, **Lost**. **Selected-bid panel**: Bid title, then summary: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size; then submission entries table, Add row, Edit icon, Close. **Not yet won or lost**: columns Project/GC, GC/Builder (customer), Time since last contact, Time to/from bid due date, **Edit**. **Unsent bids**: columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit** (gear when row is selected; opens full edit modal). **Time to/from bid due date**: e.g. "X days since deadline", "Due today", "X days until due". **Won** table: columns Project/GC, **Estimated Job Start Date** (YY/MM/DD), GC/Builder (customer), Edit. **Started or Complete** table: Project/GC, GC/Builder (customer), Edit. **Lost** table: Project/GC, Bid Due Date, Edit. **Edit icon** (gear) next to Close opens that bid's full edit modal. **Submission entry rows**: Edit and Delete **icon buttons** (gear, trash) with tooltips.
 
 ## Recent Updates (v2.9)
 

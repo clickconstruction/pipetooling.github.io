@@ -25,7 +25,10 @@ type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions']['Row']
 type TakeoffBookEntry = Database['public']['Tables']['takeoff_book_entries']['Row']
+type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_items']['Row']
+type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
+type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
 type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number }
@@ -427,7 +430,7 @@ export default function Bids() {
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
-  const [outcome, setOutcome] = useState<'won' | 'lost' | ''>('')
+  const [outcome, setOutcome] = useState<OutcomeOption>('')
   const [bidValue, setBidValue] = useState('')
   const [agreedValue, setAgreedValue] = useState('')
   const [profit, setProfit] = useState('')
@@ -447,13 +450,14 @@ export default function Bids() {
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
+  const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const [submissionEntries, setSubmissionEntries] = useState<BidSubmissionEntry[]>([])
   const [addingSubmissionEntry, setAddingSubmissionEntry] = useState(false)
   const [submissionBidHasCostEstimate, setSubmissionBidHasCostEstimate] = useState<boolean | 'loading' | null>(null)
   const [submissionReviewGroupCollapsed, setSubmissionReviewGroupCollapsed] = useState(true)
   const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
   const [submissionPricingByVersion, setSubmissionPricingByVersion] = useState<Array<{ versionId: string; versionName: string; revenue: number | null; margin: number | null; complete: boolean }>>([])
-  const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, lost: false })
+  const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [, setTick] = useState(0)
 
   // Takeoffs tab
@@ -475,7 +479,7 @@ export default function Bids() {
   const [takeoffPreviewModalTemplateName, setTakeoffPreviewModalTemplateName] = useState<string | null>(null)
   const [takeoffExistingPOItems, setTakeoffExistingPOItems] = useState<Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> | 'loading' | null>(null)
   const [takeoffBookVersions, setTakeoffBookVersions] = useState<TakeoffBookVersion[]>([])
-  const [takeoffBookEntries, setTakeoffBookEntries] = useState<TakeoffBookEntry[]>([])
+  const [takeoffBookEntries, setTakeoffBookEntries] = useState<TakeoffBookEntryWithItems[]>([])
   const [selectedTakeoffBookVersionId, setSelectedTakeoffBookVersionId] = useState<string | null>(null)
   const [takeoffBookSectionOpen, setTakeoffBookSectionOpen] = useState(true)
   const [takeoffBookEntriesVersionId, setTakeoffBookEntriesVersionId] = useState<string | null>(null)
@@ -484,10 +488,10 @@ export default function Bids() {
   const [takeoffBookVersionNameInput, setTakeoffBookVersionNameInput] = useState('')
   const [savingTakeoffBookVersion, setSavingTakeoffBookVersion] = useState(false)
   const [takeoffBookEntryFormOpen, setTakeoffBookEntryFormOpen] = useState(false)
-  const [editingTakeoffBookEntry, setEditingTakeoffBookEntry] = useState<TakeoffBookEntry | null>(null)
+  const [editingTakeoffBookEntry, setEditingTakeoffBookEntry] = useState<TakeoffBookEntryWithItems | null>(null)
   const [takeoffBookEntryFixtureName, setTakeoffBookEntryFixtureName] = useState('')
-  const [takeoffBookEntryTemplateId, setTakeoffBookEntryTemplateId] = useState('')
-  const [takeoffBookEntryStage, setTakeoffBookEntryStage] = useState<TakeoffStage>('rough_in')
+  const [takeoffBookEntryAliasNames, setTakeoffBookEntryAliasNames] = useState('')
+  const [takeoffBookEntryItemRows, setTakeoffBookEntryItemRows] = useState<Array<{ templateId: string; stage: TakeoffStage }>>([{ templateId: '', stage: 'rough_in' }])
   const [savingTakeoffBookEntry, setSavingTakeoffBookEntry] = useState(false)
   const [applyingTakeoffBookTemplates, setApplyingTakeoffBookTemplates] = useState(false)
   const [takeoffBookApplyMessage, setTakeoffBookApplyMessage] = useState<string | null>(null)
@@ -593,7 +597,7 @@ export default function Bids() {
     setSelectedBidForSubmission(bid)
   }
 
-  function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'lost') {
+  function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
     setSubmissionSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
@@ -869,18 +873,45 @@ export default function Bids() {
       setTakeoffBookEntries([])
       return
     }
-    const { data, error } = await supabase
+    const { data: entriesData, error: entriesErr } = await supabase
       .from('takeoff_book_entries')
       .select('*')
       .eq('version_id', versionId)
       .order('sequence_order', { ascending: true })
       .order('fixture_name', { ascending: true })
-    if (error) {
-      setError(`Failed to load takeoff book entries: ${error.message}`)
+    if (entriesErr) {
+      setError(`Failed to load takeoff book entries: ${entriesErr.message}`)
       setTakeoffBookEntries([])
       return
     }
-    setTakeoffBookEntries((data as TakeoffBookEntry[]) ?? [])
+    const entries = (entriesData as TakeoffBookEntry[]) ?? []
+    if (entries.length === 0) {
+      setTakeoffBookEntries([])
+      return
+    }
+    const entryIds = entries.map((e) => e.id)
+    const { data: itemsData, error: itemsErr } = await supabase
+      .from('takeoff_book_entry_items')
+      .select('*')
+      .in('entry_id', entryIds)
+      .order('sequence_order', { ascending: true })
+    if (itemsErr) {
+      setError(`Failed to load takeoff book entry items: ${itemsErr.message}`)
+      setTakeoffBookEntries([])
+      return
+    }
+    const items = (itemsData as TakeoffBookEntryItem[]) ?? []
+    const itemsByEntryId = new Map<string, TakeoffBookEntryItem[]>()
+    for (const item of items) {
+      const list = itemsByEntryId.get(item.entry_id) ?? []
+      list.push(item)
+      itemsByEntryId.set(item.entry_id, list)
+    }
+    const entriesWithItems: TakeoffBookEntryWithItems[] = entries.map((e) => ({
+      ...e,
+      items: itemsByEntryId.get(e.id) ?? [],
+    }))
+    setTakeoffBookEntries(entriesWithItems)
   }
 
   async function saveBidSelectedTakeoffBookVersion(bidId: string, versionId: string | null) {
@@ -1609,16 +1640,20 @@ export default function Bids() {
   function openNewTakeoffBookEntry() {
     setEditingTakeoffBookEntry(null)
     setTakeoffBookEntryFixtureName('')
-    setTakeoffBookEntryTemplateId('')
-    setTakeoffBookEntryStage('rough_in')
+    setTakeoffBookEntryAliasNames('')
+    setTakeoffBookEntryItemRows([{ templateId: '', stage: 'rough_in' }])
     setTakeoffBookEntryFormOpen(true)
   }
 
-  function openEditTakeoffBookEntry(entry: TakeoffBookEntry) {
+  function openEditTakeoffBookEntry(entry: TakeoffBookEntryWithItems) {
     setEditingTakeoffBookEntry(entry)
     setTakeoffBookEntryFixtureName(entry.fixture_name)
-    setTakeoffBookEntryTemplateId(entry.template_id)
-    setTakeoffBookEntryStage(entry.stage as TakeoffStage)
+    setTakeoffBookEntryAliasNames((entry.alias_names ?? []).join(', '))
+    setTakeoffBookEntryItemRows(
+      entry.items.length > 0
+        ? entry.items.map((i) => ({ templateId: i.template_id, stage: i.stage as TakeoffStage }))
+        : [{ templateId: '', stage: 'rough_in' }]
+    )
     setTakeoffBookEntryFormOpen(true)
   }
 
@@ -1626,49 +1661,99 @@ export default function Bids() {
     setTakeoffBookEntryFormOpen(false)
     setEditingTakeoffBookEntry(null)
     setTakeoffBookEntryFixtureName('')
-    setTakeoffBookEntryTemplateId('')
-    setTakeoffBookEntryStage('rough_in')
+    setTakeoffBookEntryAliasNames('')
+    setTakeoffBookEntryItemRows([{ templateId: '', stage: 'rough_in' }])
   }
 
   async function saveTakeoffBookEntry(e: React.FormEvent) {
     e.preventDefault()
     const fixtureName = takeoffBookEntryFixtureName.trim()
-    if (!fixtureName || !takeoffBookEntryTemplateId || !takeoffBookEntriesVersionId) return
-    const stage = takeoffBookEntryStage
+    if (!fixtureName || !takeoffBookEntriesVersionId) return
+    const aliasNames = takeoffBookEntryAliasNames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const validRows = takeoffBookEntryItemRows.filter((r) => r.templateId.trim() !== '')
+    if (validRows.length === 0) return
     setSavingTakeoffBookEntry(true)
     setError(null)
     if (editingTakeoffBookEntry) {
-      const { error: err } = await supabase
+      const { error: updateErr } = await supabase
         .from('takeoff_book_entries')
-        .update({ fixture_name: fixtureName, template_id: takeoffBookEntryTemplateId, stage })
+        .update({ fixture_name: fixtureName, alias_names: aliasNames })
         .eq('id', editingTakeoffBookEntry.id)
-      if (err) setError(err.message)
-      else {
-        await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
-        closeTakeoffBookEntryForm()
+      if (updateErr) {
+        setError(updateErr.message)
+        setSavingTakeoffBookEntry(false)
+        return
       }
+      const { error: deleteErr } = await supabase
+        .from('takeoff_book_entry_items')
+        .delete()
+        .eq('entry_id', editingTakeoffBookEntry.id)
+      if (deleteErr) {
+        setError(deleteErr.message)
+        setSavingTakeoffBookEntry(false)
+        return
+      }
+      for (let i = 0; i < validRows.length; i++) {
+        const row = validRows[i]
+        if (!row) continue
+        const { error: insertErr } = await supabase.from('takeoff_book_entry_items').insert({
+          entry_id: editingTakeoffBookEntry.id,
+          template_id: row.templateId,
+          stage: row.stage,
+          sequence_order: i,
+        })
+        if (insertErr) {
+          setError(insertErr.message)
+          setSavingTakeoffBookEntry(false)
+          return
+        }
+      }
+      await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+      closeTakeoffBookEntryForm()
     } else {
       const maxSeq = takeoffBookEntries.length === 0 ? 0 : Math.max(...takeoffBookEntries.map((e) => e.sequence_order), 0)
-      const { error: err } = await supabase
+      const { data: insertedEntry, error: insertEntryErr } = await supabase
         .from('takeoff_book_entries')
         .insert({
           version_id: takeoffBookEntriesVersionId,
           fixture_name: fixtureName,
-          template_id: takeoffBookEntryTemplateId,
-          stage,
+          alias_names: aliasNames,
           sequence_order: maxSeq + 1,
         })
-      if (err) setError(err.message)
-      else {
-        await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
-        closeTakeoffBookEntryForm()
+        .select('id')
+        .single()
+      if (insertEntryErr || !insertedEntry) {
+        setError(insertEntryErr?.message ?? 'Failed to create entry')
+        setSavingTakeoffBookEntry(false)
+        return
       }
+      for (let i = 0; i < validRows.length; i++) {
+        const row = validRows[i]
+        if (!row) continue
+        const { error: insertItemErr } = await supabase.from('takeoff_book_entry_items').insert({
+          entry_id: insertedEntry.id,
+          template_id: row.templateId,
+          stage: row.stage,
+          sequence_order: i,
+        })
+        if (insertItemErr) {
+          setError(insertItemErr.message)
+          setSavingTakeoffBookEntry(false)
+          return
+        }
+      }
+      await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
+      closeTakeoffBookEntryForm()
     }
     setSavingTakeoffBookEntry(false)
   }
 
-  async function deleteTakeoffBookEntry(entry: TakeoffBookEntry) {
-    if (!confirm(`Delete "${entry.fixture_name}" / ${materialTemplates.find((t) => t.id === entry.template_id)?.name ?? 'template'} from this takeoff book?`)) return
+  async function deleteTakeoffBookEntry(entry: TakeoffBookEntryWithItems) {
+    const n = entry.items.length
+    if (!confirm(`Delete "${entry.fixture_name}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
     const { error: err } = await supabase.from('takeoff_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (takeoffBookEntriesVersionId) await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
@@ -1680,16 +1765,41 @@ export default function Bids() {
     setApplyingTakeoffBookTemplates(true)
     setError(null)
     try {
-      const { data: entries, error: fetchErr } = await supabase
+      const { data: entriesData, error: entriesErr } = await supabase
         .from('takeoff_book_entries')
-        .select('fixture_name, template_id, stage')
+        .select('id, fixture_name, alias_names')
         .eq('version_id', selectedTakeoffBookVersionId)
-      if (fetchErr) {
-        setError(`Failed to load takeoff book entries: ${fetchErr.message}`)
+        .order('sequence_order', { ascending: true })
+      if (entriesErr) {
+        setError(`Failed to load takeoff book entries: ${entriesErr.message}`)
         setApplyingTakeoffBookTemplates(false)
         return
       }
-      const entriesList = (entries as TakeoffBookEntry[]) ?? []
+      const entriesList = (entriesData as Pick<TakeoffBookEntry, 'id' | 'fixture_name' | 'alias_names'>[]) ?? []
+      if (entriesList.length === 0) {
+        setTakeoffBookApplyMessage('No new templates to add.')
+        setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
+        setApplyingTakeoffBookTemplates(false)
+        return
+      }
+      const entryIds = entriesList.map((e) => e.id)
+      const { data: itemsData, error: itemsErr } = await supabase
+        .from('takeoff_book_entry_items')
+        .select('entry_id, template_id, stage')
+        .in('entry_id', entryIds)
+        .order('sequence_order', { ascending: true })
+      if (itemsErr) {
+        setError(`Failed to load takeoff book entry items: ${itemsErr.message}`)
+        setApplyingTakeoffBookTemplates(false)
+        return
+      }
+      const itemsList = (itemsData as { entry_id: string; template_id: string; stage: string }[]) ?? []
+      const itemsByEntryId = new Map<string, { template_id: string; stage: string }[]>()
+      for (const item of itemsList) {
+        const list = itemsByEntryId.get(item.entry_id) ?? []
+        list.push({ template_id: item.template_id, stage: item.stage })
+        itemsByEntryId.set(item.entry_id, list)
+      }
       const existingKeys = new Set(
         takeoffMappings
           .filter((m) => m.templateId && m.stage)
@@ -1699,17 +1809,22 @@ export default function Bids() {
       for (const row of takeoffCountRows) {
         const fixtureLower = row.fixture.toLowerCase()
         for (const entry of entriesList) {
-          if (entry.fixture_name.toLowerCase() !== fixtureLower) continue
-          const key = `${row.id}:${entry.template_id}:${entry.stage}`
-          if (existingKeys.has(key)) continue
-          existingKeys.add(key)
-          toAdd.push({
-            id: crypto.randomUUID(),
-            countRowId: row.id,
-            templateId: entry.template_id,
-            stage: entry.stage as TakeoffStage,
-            quantity: Number(row.count),
-          })
+          const matchesPrimary = entry.fixture_name.toLowerCase() === fixtureLower
+          const matchesAlias = (entry.alias_names ?? []).some((alias) => alias.trim().toLowerCase() === fixtureLower)
+          if (!matchesPrimary && !matchesAlias) continue
+          const items = itemsByEntryId.get(entry.id) ?? []
+          for (const item of items) {
+            const key = `${row.id}:${item.template_id}:${item.stage}`
+            if (existingKeys.has(key)) continue
+            existingKeys.add(key)
+            toAdd.push({
+              id: crypto.randomUUID(),
+              countRowId: row.id,
+              templateId: item.template_id,
+              stage: item.stage as TakeoffStage,
+              quantity: Number(row.count),
+            })
+          }
         }
       }
       if (toAdd.length > 0) setTakeoffMappings((prev) => [...prev, ...toAdd])
@@ -2968,6 +3083,16 @@ export default function Bids() {
   }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.selected_takeoff_book_version_id])
 
   useEffect(() => {
+    if (selectedBidForTakeoff && selectedBidForTakeoff.selected_takeoff_book_version_id == null && takeoffBookVersions.length > 0) {
+      const defaultVer = takeoffBookVersions.find((v) => v.name === 'Default')
+      if (defaultVer) {
+        setSelectedTakeoffBookVersionId(defaultVer.id)
+        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, defaultVer.id)
+      }
+    }
+  }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.selected_takeoff_book_version_id, takeoffBookVersions])
+
+  useEffect(() => {
     if (!takeoffBookEntriesVersionId) {
       setTakeoffBookEntries([])
       return
@@ -3176,7 +3301,7 @@ export default function Bids() {
       bid_due_date: bidDueDate || null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
-      outcome: outcome === 'won' || outcome === 'lost' ? outcome : null,
+      outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
@@ -3240,7 +3365,7 @@ export default function Bids() {
       bid_due_date: bidDueDate || null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
-      outcome: outcome === 'won' || outcome === 'lost' ? outcome : null,
+      outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
@@ -3441,15 +3566,47 @@ export default function Bids() {
       .slice(0, limit)
   }
 
-  const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost')
-  const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost')
+  const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+  const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionWon = filteredBidsForSubmission.filter((b) => b.outcome === 'won')
+  const submissionStartedOrComplete = filteredBidsForSubmission.filter((b) => b.outcome === 'started_or_complete')
   const submissionLost = filteredBidsForSubmission.filter((b) => b.outcome === 'lost')
+
+  function getSubmissionSectionKey(bid: BidWithBuilder): keyof typeof submissionSectionOpen | null {
+    if (bid.outcome === 'won') return 'won'
+    if (bid.outcome === 'started_or_complete') return 'startedOrComplete'
+    if (bid.outcome === 'lost') return 'lost'
+    if (!bid.bid_date_sent) return 'unsent'
+    return 'pending'
+  }
+
+  function handleScrollToSelectedBidRow() {
+    if (!selectedBidForSubmission) return
+    const sectionKey = getSubmissionSectionKey(selectedBidForSubmission)
+    if (!sectionKey) return
+
+    if (!submissionSectionOpen[sectionKey]) {
+      setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
+    }
+    setTimeout(() => {
+      document.getElementById(`submission-row-${selectedBidForSubmission.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 0)
+  }
 
   const wonBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'won') : []
   const lostBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'lost') : []
   const wonBidsForBuilder = viewingGcBuilder ? bids.filter((b) => b.gc_builder_id === viewingGcBuilder.id && b.outcome === 'won') : []
   const lostBidsForBuilder = viewingGcBuilder ? bids.filter((b) => b.gc_builder_id === viewingGcBuilder.id && b.outcome === 'lost') : []
+  const allBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id) : []
+  const allBidsForBuilder = viewingGcBuilder ? bids.filter((b) => b.gc_builder_id === viewingGcBuilder.id) : []
+
+  function getBidStatusLabel(bid: BidWithBuilder): string {
+    if (!bid.bid_date_sent) return 'Unsent'
+    if (bid.outcome === 'won') return 'Won'
+    if (bid.outcome === 'lost') return 'Lost'
+    if (bid.outcome === 'started_or_complete') return 'Started or Complete'
+    return 'Not yet won or lost'
+  }
 
   if (loading) {
     return (
@@ -3611,7 +3768,7 @@ export default function Bids() {
                           '-'
                         )}
                       </td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{bid.outcome ?? '-'}</td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{(() => { const est = Array.isArray(bid.estimator) ? bid.estimator[0] : bid.estimator; return est ? (est.name || est.email) : '—'; })()}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
@@ -3802,7 +3959,7 @@ export default function Bids() {
               ) : (
                 <>
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Select a Template for each Fixture or Tie-in you want to include in a PO (Purchase Order).
+                    Select a Template for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
                   </p>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -4365,9 +4522,11 @@ export default function Bids() {
                       <tbody>
                         {takeoffBookEntries.map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
-                            <td style={{ padding: '0.5rem' }}>{materialTemplates.find((t) => t.id === entry.template_id)?.name ?? '—'}</td>
-                            <td style={{ padding: '0.5rem' }}>{STAGE_LABELS[entry.stage as TakeoffStage] ?? entry.stage}</td>
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}{entry.alias_names?.length ? (
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                            ) : null}</td>
+                            <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => materialTemplates.find((t) => t.id === i.template_id)?.name ?? i.template_id).join(', ')}</td>
+                            <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => STAGE_LABELS[i.stage as TakeoffStage] ?? i.stage).join(', ')}</td>
                             <td style={{ padding: '0.5rem' }}>
                               <button type="button" onClick={() => openEditTakeoffBookEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
                               <button type="button" onClick={() => deleteTakeoffBookEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
@@ -4483,30 +4642,60 @@ export default function Bids() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
                     placeholder="e.g. Toilet"
                   />
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template</label>
-                  <select
-                    value={takeoffBookEntryTemplateId}
-                    onChange={(e) => setTakeoffBookEntryTemplateId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                  >
-                    <option value="">— Select template —</option>
-                    {materialTemplates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
+                  <input
+                    type="text"
+                    value={takeoffBookEntryAliasNames}
+                    onChange={(e) => setTakeoffBookEntryAliasNames(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
+                    placeholder="e.g. WC, Commode"
+                  />
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, these templates and stages are applied.</p>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template / Stage</label>
+                    {takeoffBookEntryItemRows.map((row, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                        <select
+                          value={row.templateId}
+                          onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, templateId: e.target.value } : r)))}
+                          style={{ flex: '1 1 140px', minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                        >
+                          <option value="">— Select template —</option>
+                          {materialTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={row.stage}
+                          onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, stage: e.target.value as TakeoffStage } : r)))}
+                          style={{ flex: '0 0 auto', minWidth: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                        >
+                          {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
+                            <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setTakeoffBookEntryItemRows((prev) => prev.filter((_, i) => i !== idx))}
+                          disabled={takeoffBookEntryItemRows.length <= 1}
+                          style={{ padding: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, cursor: takeoffBookEntryItemRows.length <= 1 ? 'not-allowed' : 'pointer', color: '#991b1b', opacity: takeoffBookEntryItemRows.length <= 1 ? 0.6 : 1 }}
+                          title="Remove"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     ))}
-                  </select>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Stage</label>
-                  <select
-                    value={takeoffBookEntryStage}
-                    onChange={(e) => setTakeoffBookEntryStage(e.target.value as TakeoffStage)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-                  >
-                    {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
-                      <option key={s} value={s}>{STAGE_LABELS[s]}</option>
-                    ))}
-                  </select>
+                    <button
+                      type="button"
+                      onClick={() => setTakeoffBookEntryItemRows((prev) => [...prev, { templateId: '', stage: 'rough_in' }])}
+                      style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Add template & stage
+                    </button>
+                  </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryTemplateId} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
+                    <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryItemRows.some((r) => r.templateId.trim() !== '')} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
                   </div>
                 </form>
               </div>
@@ -5939,7 +6128,7 @@ export default function Bids() {
             style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
           />
           {selectedBidForSubmission && (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+            <div ref={submissionSummaryCardRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForSubmission) || 'Bid'}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -6013,13 +6202,26 @@ export default function Bids() {
                 >
                   {submissionReviewGroupCollapsed ? '\u25B6' : '\u25BC'} Margins
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void downloadApprovalPdf()}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                >
-                  Approval PDF
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={handleScrollToSelectedBidRow}
+                    title="Go to bid in table"
+                    aria-label="Go to bid in table"
+                    style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                      <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void downloadApprovalPdf()}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  >
+                    Approval PDF
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 {!submissionReviewGroupCollapsed && (
@@ -6152,6 +6354,7 @@ export default function Bids() {
                     submissionUnsent.map((bid) => (
                       <tr
                         key={bid.id}
+                        id={`submission-row-${bid.id}`}
                         onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
@@ -6174,16 +6377,33 @@ export default function Bids() {
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceDueDate(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
-                            <button
-                              type="button"
-                              title="Edit bid"
-                              onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
-                              style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
-                                <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-                              </svg>
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                title="Go to summary"
+                                aria-label="Go to summary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSharedBid(bid)
+                                  setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+                                }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit bid"
+                                onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                                </svg>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -6208,8 +6428,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time since last contact</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time to/from bid due date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
@@ -6217,11 +6436,12 @@ export default function Bids() {
                 </thead>
                 <tbody>
                   {submissionPending.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionPending.map((bid) => (
                       <tr
                         key={bid.id}
+                        id={`submission-row-${bid.id}`}
                         onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
@@ -6230,8 +6450,15 @@ export default function Bids() {
                         }}
                       >
                         <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
-                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'left' }}>
+                          {(bid.customers || bid.bids_gc_builders) ? (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                              {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                            </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
                           (() => {
                             const a = bid.last_contact
@@ -6244,16 +6471,33 @@ export default function Bids() {
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceDueDate(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
-                            <button
-                              type="button"
-                              title="Edit bid"
-                              onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
-                              style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
-                                <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-                              </svg>
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                title="Go to summary"
+                                aria-label="Go to summary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSharedBid(bid)
+                                  setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+                                }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit bid"
+                                onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                                </svg>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -6279,16 +6523,18 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimated Job Start Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {submissionWon.length === 0 ? (
-                    <tr><td colSpan={3} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionWon.map((bid) => (
                       <tr
                         key={bid.id}
+                        id={`submission-row-${bid.id}`}
                         onClick={() => setSharedBid(bid)}
                         style={{
                           borderBottom: '1px solid #e5e7eb',
@@ -6298,18 +6544,126 @@ export default function Bids() {
                       >
                         <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'left' }}>
+                          {(bid.customers || bid.bids_gc_builders) ? (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                              {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
+                            </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
-                            <button
-                              type="button"
-                              title="Edit bid"
-                              onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
-                              style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
-                                <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-                              </svg>
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                title="Go to summary"
+                                aria-label="Go to summary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSharedBid(bid)
+                                  setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+                                }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit bid"
+                                onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => toggleSubmissionSection('startedOrComplete')}
+            aria-expanded={submissionSectionOpen.startedOrComplete}
+            style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+          >
+            <span aria-hidden>{submissionSectionOpen.startedOrComplete ? '\u25BC' : '\u25B6'}</span>
+            Started or Complete ({submissionStartedOrComplete.length})
+          </button>
+          {submissionSectionOpen.startedOrComplete && (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
+                    <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissionStartedOrComplete.length === 0 ? (
+                    <tr><td colSpan={3} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                  ) : (
+                    submissionStartedOrComplete.map((bid) => (
+                      <tr
+                        key={bid.id}
+                        id={`submission-row-${bid.id}`}
+                        onClick={() => setSharedBid(bid)}
+                        style={{
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
+                        }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'left' }}>
+                          {(bid.customers || bid.bids_gc_builders) ? (
+                            <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                              {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                             </button>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem', width: 80 }}>
+                          {selectedBidForSubmission?.id === bid.id && (
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                title="Go to summary"
+                                aria-label="Go to summary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSharedBid(bid)
+                                  setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+                                }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit bid"
+                                onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                                </svg>
+                              </button>
+                            </div>
                           )}
                         </td>
                       </tr>
@@ -6345,6 +6699,7 @@ export default function Bids() {
                   submissionLost.map((bid) => (
                     <tr
                       key={bid.id}
+                      id={`submission-row-${bid.id}`}
                       onClick={() => setSharedBid(bid)}
                       style={{
                         borderBottom: '1px solid #e5e7eb',
@@ -6356,16 +6711,33 @@ export default function Bids() {
                       <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       <td style={{ padding: '0.75rem', width: 44 }}>
                         {selectedBidForSubmission?.id === bid.id && (
-                          <button
-                            type="button"
-                            title="Edit bid"
-                            onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
-                              <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
-                            </svg>
-                          </button>
+                            <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                title="Go to summary"
+                                aria-label="Go to summary"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSharedBid(bid)
+                                  setTimeout(() => submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+                                }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                title="Edit bid"
+                                onClick={(e) => { e.stopPropagation(); openEditBid(bid) }}
+                                style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
+                                  <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
+                                </svg>
+                              </button>
+                            </div>
                         )}
                       </td>
                     </tr>
@@ -6562,10 +6934,11 @@ export default function Bids() {
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/ Loss</label>
-                <select value={outcome} onChange={(e) => setOutcome(e.target.value as 'won' | 'lost' | '')} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
                   <option value="">—</option>
                   <option value="won">Won</option>
                   <option value="lost">Lost</option>
+                  <option value="started_or_complete">Started or Complete</option>
                 </select>
               </div>
               {outcome === 'won' && (
@@ -6753,6 +7126,32 @@ export default function Bids() {
                 ))}
               </ul>
             )}
+            <p style={{ margin: '1rem 0 0.5rem', fontWeight: 600 }}>All bids</p>
+            <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid / Project</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...allBidsForCustomer]
+                    .sort((a, b) => {
+                      const order = (bid: BidWithBuilder) => (!bid.bid_date_sent ? 0 : bid.outcome === 'won' ? 1 : bid.outcome === 'started_or_complete' ? 2 : bid.outcome === 'lost' ? 3 : 4)
+                      const o = order(a) - order(b)
+                      if (o !== 0) return o
+                      return (a.bid_due_date ?? '').localeCompare(b.bid_due_date ?? '')
+                    })
+                    .map((b) => (
+                      <tr key={b.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{bidDisplayName(b) || b.id}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{getBidStatusLabel(b)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
             <button type="button" onClick={() => setViewingCustomer(null)} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
               Close
             </button>
@@ -6783,6 +7182,32 @@ export default function Bids() {
                 ))}
               </ul>
             )}
+            <p style={{ margin: '1rem 0 0.5rem', fontWeight: 600 }}>All bids</p>
+            <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid / Project</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...allBidsForBuilder]
+                    .sort((a, b) => {
+                      const order = (bid: BidWithBuilder) => (!bid.bid_date_sent ? 0 : bid.outcome === 'won' ? 1 : bid.outcome === 'started_or_complete' ? 2 : bid.outcome === 'lost' ? 3 : 4)
+                      const o = order(a) - order(b)
+                      if (o !== 0) return o
+                      return (a.bid_due_date ?? '').localeCompare(b.bid_due_date ?? '')
+                    })
+                    .map((b) => (
+                      <tr key={b.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{bidDisplayName(b) || b.id}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{getBidStatusLabel(b)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
             <button type="button" onClick={() => setViewingGcBuilder(null)} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
               Close
             </button>
