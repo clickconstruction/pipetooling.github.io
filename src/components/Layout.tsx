@@ -66,8 +66,8 @@ export default function Layout() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <nav
+        className="appNav"
         style={{
-          padding: '0.75rem 1.5rem',
           borderBottom: '1px solid #e5e7eb',
           display: 'flex',
           gap: '1rem',
@@ -121,7 +121,7 @@ export default function Layout() {
           </button>
         </span>
       </nav>
-      <main style={{ flex: 1, padding: '1.5rem' }}>
+      <main className="appMain" style={{ flex: 1 }}>
         <Outlet />
       </main>
     </div>

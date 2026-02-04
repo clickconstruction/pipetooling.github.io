@@ -3625,7 +3625,7 @@ export default function Bids() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {error && (
         <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
           {error}

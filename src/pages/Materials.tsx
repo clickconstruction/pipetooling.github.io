@@ -1842,7 +1842,7 @@ export default function Materials() {
   }
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
       <h1 style={{ marginBottom: '1.5rem' }}>Materials</h1>
 
       {error && (

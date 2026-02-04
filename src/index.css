@@ -35,3 +35,36 @@ input, select, textarea, button {
 button {
   cursor: pointer;
 }
+
+/* App layout spacing (desktop defaults) */
+:root {
+  --app-nav-pad-y: 0.75rem;
+  --app-nav-pad-x: 1.5rem;
+  --app-main-pad: 1.5rem;
+  --page-wrap-pad: 2rem;
+}
+
+.appNav {
+  padding: var(--app-nav-pad-y) var(--app-nav-pad-x);
+}
+
+.appMain {
+  padding: var(--app-main-pad);
+}
+
+.pageWrap {
+  padding: var(--page-wrap-pad);
+}
+
+/* Mobile: maximize usable width */
+@media (max-width: 640px) {
+  :root {
+    --app-nav-pad-x: 0.5rem;
+    --app-main-pad: 0.5rem;
+    --page-wrap-pad: 0.5rem;
+  }
+
+  .appNav {
+    flex-wrap: wrap;
+  }
+}
