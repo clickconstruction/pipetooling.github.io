@@ -431,6 +431,7 @@ export default function Bids() {
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
+  const [lossReason, setLossReason] = useState('')
   const [bidValue, setBidValue] = useState('')
   const [agreedValue, setAgreedValue] = useState('')
   const [profit, setProfit] = useState('')
@@ -3257,6 +3258,7 @@ export default function Bids() {
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
     setOutcome(bid.outcome ?? '')
+    setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
     setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
     setAgreedValue(bid.agreed_value != null ? String(bid.agreed_value) : '')
     setProfit(bid.profit != null ? String(bid.profit) : '')
@@ -3302,6 +3304,7 @@ export default function Bids() {
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
+      loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
@@ -3366,6 +3369,7 @@ export default function Bids() {
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
+      loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
@@ -6689,12 +6693,13 @@ export default function Bids() {
                 <tr>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Loss Reason</th>
                   <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                 </tr>
               </thead>
               <tbody>
                 {submissionLost.length === 0 ? (
-                  <tr><td colSpan={3} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                  <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                 ) : (
                   submissionLost.map((bid) => (
                     <tr
@@ -6709,6 +6714,7 @@ export default function Bids() {
                     >
                       <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
                       <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                      <td style={{ padding: '0.75rem' }}>{(bid as { loss_reason?: string | null }).loss_reason?.trim() || '—'}</td>
                       <td style={{ padding: '0.75rem', width: 44 }}>
                         {selectedBidForSubmission?.id === bid.id && (
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -6765,6 +6771,33 @@ export default function Bids() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
                 <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/ Loss</label>
+                <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                  <option value="">—</option>
+                  <option value="won">Won</option>
+                  <option value="lost">Lost</option>
+                  <option value="started_or_complete">Started or Complete</option>
+                </select>
+              </div>
+              {outcome === 'lost' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Why did we lose?</label>
+                  <input
+                    type="text"
+                    value={lossReason}
+                    onChange={(e) => setLossReason(e.target.value)}
+                    placeholder="e.g. Price, schedule, competitor, no response…"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+              )}
+              {outcome === 'won' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimated Job Start Date</label>
+                  <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address [street, town, state zip]</label>
                 <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -6932,21 +6965,6 @@ export default function Bids() {
                   <input type="date" value={bidDateSent} onChange={(e) => setBidDateSent(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/ Loss</label>
-                <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                  <option value="">—</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
-                  <option value="started_or_complete">Started or Complete</option>
-                </select>
-              </div>
-              {outcome === 'won' && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimated Job Start Date</label>
-                  <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                </div>
-              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Value</label>

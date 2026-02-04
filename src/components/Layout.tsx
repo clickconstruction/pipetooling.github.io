@@ -116,9 +116,11 @@ export default function Layout() {
               Back to my account
             </button>
           )}
-          <button type="button" onClick={handleSignOut}>
-            Sign out
-          </button>
+          {(role === 'subcontractor' || role === 'estimator') && (
+            <button type="button" onClick={handleSignOut}>
+              Sign out
+            </button>
+          )}
         </span>
       </nav>
       <main className="appMain" style={{ flex: 1 }}>

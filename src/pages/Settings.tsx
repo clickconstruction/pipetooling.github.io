@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -58,6 +59,7 @@ function timeSinceAgo(iso: string | null): string {
 }
 
 export default function Settings() {
+  const navigate = useNavigate()
   const { user: authUser } = useAuth()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -119,6 +121,11 @@ export default function Settings() {
   const [sharedMasterIds, setSharedMasterIds] = useState<Set<string>>(new Set())
   const [sharingSaving, setSharingSaving] = useState(false)
   const [sharingError, setSharingError] = useState<string | null>(null)
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    navigate('/sign-in', { replace: true })
+  }
   const [convertMasterId, setConvertMasterId] = useState<string>('')
   const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
   const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
@@ -1220,6 +1227,14 @@ export default function Settings() {
   return (
     <div>
       <h1 style={{ marginBottom: '1rem' }}>Settings</h1>
+
+      {/* Sign out */}
+      <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Sign out</h2>
+        <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
+          Sign out
+        </button>
+      </div>
 
       {/* Password Change Section - Available to all users */}
       <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
