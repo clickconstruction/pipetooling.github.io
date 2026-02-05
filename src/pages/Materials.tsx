@@ -1964,7 +1964,7 @@ export default function Materials() {
               Add Part
             </button>
             <button type="button" onClick={() => setViewingSupplyHouses(true)} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-              Manage Supply Houses
+              Supply Houses
             </button>
             <input
               type="text"
@@ -2293,7 +2293,7 @@ export default function Materials() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0 }}>Manage Supply Houses</h2>
+              <h2 style={{ margin: 0 }}>Supply Houses</h2>
               <button
                 type="button"
                 onClick={() => {

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
@@ -415,6 +415,8 @@ function buildCoverLetterText(
 
 export default function Bids() {
   const { user: authUser } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -2903,6 +2905,15 @@ export default function Bids() {
   useEffect(() => {
     loadRole()
   }, [authUser?.id])
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('new') === 'true') {
+      openNewBid()
+      // Remove the parameter from URL without causing a re-render
+      navigate('/bids', { replace: true })
+    }
+  }, [location.search])
 
   useEffect(() => {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
@@ -6793,8 +6804,26 @@ export default function Bids() {
 
       {/* New/Edit Bid Modal */}
       {bidFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+        <div className="bid-form-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <style>{`
+            @media (max-width: 640px) {
+              .bid-form-overlay {
+                align-items: stretch !important;
+                justify-content: stretch !important;
+              }
+              .bid-form-grid-2 { grid-template-columns: 1fr !important; }
+              .bid-form-grid-3 { grid-template-columns: 1fr !important; }
+              .bid-form-modal {
+                padding: 1rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+              }
+            }
+          `}</style>
+          <div className="bid-form-modal" style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0 }}>{editingBid ? 'Edit Bid' : 'New Bid'}</h2>
               <button type="button" onClick={closeBidForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
@@ -6990,7 +7019,7 @@ export default function Bids() {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
                   <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -7000,7 +7029,7 @@ export default function Bids() {
                   <input type="date" value={bidDateSent} onChange={(e) => setBidDateSent(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Value</label>
                   <input type="number" step="0.01" value={bidValue} onChange={(e) => setBidValue(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
