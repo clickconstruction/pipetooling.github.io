@@ -635,6 +635,10 @@ export default function Bids() {
   const [pricingEntryTotal, setPricingEntryTotal] = useState('')
   const [savingPricingEntry, setSavingPricingEntry] = useState(false)
   const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
+  const [deletePricingVersionModalOpen, setDeletePricingVersionModalOpen] = useState(false)
+  const [pricingVersionToDelete, setPricingVersionToDelete] = useState<PriceBookVersion | null>(null)
+  const [deletePricingVersionNameInput, setDeletePricingVersionNameInput] = useState('')
+  const [deletePricingVersionError, setDeletePricingVersionError] = useState<string | null>(null)
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
@@ -1415,21 +1419,48 @@ export default function Bids() {
     setSavingPricingVersion(false)
   }
 
-  async function deletePricingVersion(v: PriceBookVersion) {
-    if (!confirm(`Delete price book "${v.name}"? This will delete all entries in this version.`)) return
-    const { error: err } = await supabase.from('price_book_versions').delete().eq('id', v.id)
-    if (err) setError(err.message)
-    else {
-      await loadPriceBookVersions()
-      if (selectedPricingVersionId === v.id) {
-        setSelectedPricingVersionId(null)
-        setPriceBookEntries([])
-        if (selectedBidForPricing?.selected_price_book_version_id === v.id) {
-          saveBidSelectedPriceBookVersion(selectedBidForPricing.id, null)
-          await loadBids()
-        }
+  function openDeletePricingVersionModal(v: PriceBookVersion) {
+    setPricingVersionToDelete(v)
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
+    setDeletePricingVersionModalOpen(true)
+  }
+
+  async function confirmDeletePricingVersion() {
+    if (!pricingVersionToDelete) {
+      setDeletePricingVersionModalOpen(false)
+      return
+    }
+    const expected = pricingVersionToDelete.name.trim()
+    const typed = deletePricingVersionNameInput.trim()
+    if (typed !== expected) {
+      setDeletePricingVersionError('Name does not match. Type the version name exactly to confirm.')
+      return
+    }
+
+    const { error: err } = await supabase
+      .from('price_book_versions')
+      .delete()
+      .eq('id', pricingVersionToDelete.id)
+    if (err) {
+      setDeletePricingVersionError(err.message)
+      return
+    }
+
+    await loadPriceBookVersions()
+    if (selectedPricingVersionId === pricingVersionToDelete.id) {
+      setSelectedPricingVersionId(null)
+      setPriceBookEntries([])
+      if (selectedBidForPricing?.selected_price_book_version_id === pricingVersionToDelete.id) {
+        saveBidSelectedPriceBookVersion(selectedBidForPricing.id, null)
+        await loadBids()
       }
     }
+
+    setDeletePricingVersionModalOpen(false)
+    setPricingVersionToDelete(null)
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
   }
 
   function openNewPricingEntry() {
@@ -5818,16 +5849,6 @@ export default function Bids() {
                     >
                       ✎
                     </button>
-                    {v.name !== 'Default' && (
-                      <button
-                        type="button"
-                        onClick={() => deletePricingVersion(v)}
-                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
-                        title="Delete version"
-                      >
-                        ×
-                      </button>
-                    )}
                   </span>
                 ))}
                 <button
@@ -5910,11 +5931,114 @@ export default function Bids() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                     placeholder="e.g. 2025 Standard"
                   />
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {editingPricingVersion && editingPricingVersion.name !== 'Default' ? (
+                      <button
+                        type="button"
+                        onClick={() => openDeletePricingVersionModal(editingPricingVersion)}
+                        style={{ padding: '0.5rem 1rem', background: 'white', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Delete version
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
+                    </div>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+          {deletePricingVersionModalOpen && pricingVersionToDelete && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={() => {
+                setDeletePricingVersionModalOpen(false)
+                setPricingVersionToDelete(null)
+                setDeletePricingVersionNameInput('')
+                setDeletePricingVersionError(null)
+              }}
+            >
+              <div
+                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 0.75rem', color: '#b91c1c' }}>Delete price book version</h3>
+                <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.9rem' }}>
+                  This will permanently delete the price book version{' '}
+                  <strong>{pricingVersionToDelete.name}</strong> and all entries it contains.
+                </p>
+                <p style={{ margin: '0 0 0.5rem', color: '#4b5563', fontSize: '0.875rem' }}>
+                  Type the name of this price book version to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={deletePricingVersionNameInput}
+                  onChange={(e) => {
+                    setDeletePricingVersionNameInput(e.target.value)
+                    if (deletePricingVersionError) setDeletePricingVersionError(null)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    marginBottom: '0.5rem',
+                    boxSizing: 'border-box',
+                  }}
+                  placeholder={pricingVersionToDelete.name}
+                />
+                {deletePricingVersionError && (
+                  <p style={{ margin: '0 0 0.5rem', color: '#b91c1c', fontSize: '0.875rem' }}>
+                    {deletePricingVersionError}
+                  </p>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeletePricingVersionModalOpen(false)
+                      setPricingVersionToDelete(null)
+                      setDeletePricingVersionNameInput('')
+                      setDeletePricingVersionError(null)
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeletePricingVersion}
+                    disabled={!deletePricingVersionNameInput.trim()}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: deletePricingVersionNameInput.trim() ? '#b91c1c' : '#e5e7eb',
+                      color: deletePricingVersionNameInput.trim() ? 'white' : '#9ca3af',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: deletePricingVersionNameInput.trim() ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           )}
