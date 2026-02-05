@@ -33,6 +33,8 @@ type PurchaseOrderWithItems = PurchaseOrder & {
   items: POItemWithDetails[]
 }
 
+const PARTS_PAGE_SIZE = 50
+
 export default function Materials() {
   const { user: authUser } = useAuth()
   const location = useLocation()
@@ -58,6 +60,20 @@ export default function Materials() {
   const [savingPart, setSavingPart] = useState(false)
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
   const [expandedPartId, setExpandedPartId] = useState<string | null>(null)
+  const [partsPage, setPartsPage] = useState(0)
+  const [hasMoreParts, setHasMoreParts] = useState(true)
+  const [loadingPartsPage, setLoadingPartsPage] = useState(false)
+  const loadingPartsRef = useRef(false)
+  const [globalPriceBookTotalItems, setGlobalPriceBookTotalItems] = useState<number | null>(null)
+  const [globalPriceBookWithPrices, setGlobalPriceBookWithPrices] = useState<number | null>(null)
+  const [globalPriceBookWithMoreThanOne, setGlobalPriceBookWithMoreThanOne] = useState<number | null>(null)
+  const [globalSupplyHousePriceCounts, setGlobalSupplyHousePriceCounts] = useState<Array<{ id: string; name: string; count: number }> | null>(null)
+
+  // Load All Mode state
+  const [loadAllMode, setLoadAllMode] = useState(true)
+  const [allParts, setAllParts] = useState<PartWithPrices[]>([])
+  const [loadingAllParts, setLoadingAllParts] = useState(false)
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
 
   // Supply House Management state
   const [viewingSupplyHouses, setViewingSupplyHouses] = useState(false)
@@ -172,14 +188,128 @@ export default function Materials() {
     setSupplyHouses((data as SupplyHouse[]) ?? [])
   }
 
-  async function loadParts() {
-    const { data: partsData, error: partsError } = await supabase
+  async function loadParts(page = 0, options?: {
+    searchQuery?: string
+    fixtureType?: string
+    manufacturer?: string
+    sortByPriceCount?: boolean
+  }) {
+    setLoadingPartsPage(true)
+    const from = page * PARTS_PAGE_SIZE
+    const to = from + PARTS_PAGE_SIZE - 1
+
+    // If sorting by price count, use RPC function to get ordered part IDs first
+    if (options?.sortByPriceCount) {
+      const { data: orderedParts, error: orderError } = await supabase
+        .rpc('get_parts_ordered_by_price_count' as any, { ascending_order: true })
+      
+      if (orderError) {
+        console.error('Failed to load parts order:', orderError)
+        setError(`Failed to load parts: ${orderError.message}`)
+        setLoadingPartsPage(false)
+        return
+      }
+      
+      type PartOrder = { part_id: string; price_count: number }
+      const orderedPartIds = ((orderedParts as unknown as PartOrder[] | null) ?? []).map(p => p.part_id)
+      
+      // Get the IDs for this page
+      const pagePartIds = orderedPartIds.slice(from, to + 1)
+      
+      if (pagePartIds.length === 0) {
+        if (page === 0) {
+          setParts([])
+        }
+        setHasMoreParts(false)
+        setLoadingPartsPage(false)
+        return
+      }
+      
+      // Fetch the actual parts data for these IDs
+      const { data: partsData, error: partsError } = await supabase
+        .from('material_parts')
+        .select('*')
+        .in('id', pagePartIds)
+      
+      if (partsError) {
+        setError(`Failed to load parts: ${partsError.message}`)
+        setLoadingPartsPage(false)
+        return
+      }
+      
+      // Sort the results to match the order we got from RPC
+      const partsList = (partsData as MaterialPart[]) ?? []
+      const orderedPartsList = pagePartIds
+        .map(id => partsList.find(p => p.id === id))
+        .filter(p => p !== undefined) as MaterialPart[]
+      
+      // Load prices for each part
+      const partsWithPrices: PartWithPrices[] = await Promise.all(
+        orderedPartsList.map(async (part) => {
+          const { data: pricesData, error: pricesError } = await supabase
+            .from('material_part_prices')
+            .select('*, supply_houses(*)')
+            .eq('part_id', part.id)
+            .order('price', { ascending: true })
+          
+          if (pricesError) {
+            console.error(`Failed to load prices for part ${part.id}:`, pricesError)
+            return { ...part, prices: [] }
+          }
+
+          const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+          const prices = pricesList.map(p => ({
+            ...p,
+            supply_house: p.supply_houses,
+          }))
+
+          return { ...part, prices }
+        })
+      )
+      
+      if (page === 0) {
+        setParts(partsWithPrices)
+      } else {
+        setParts((prev) => [...prev, ...partsWithPrices])
+      }
+      
+      if (orderedPartsList.length < PARTS_PAGE_SIZE) {
+        setHasMoreParts(false)
+      }
+      setLoadingPartsPage(false)
+      return
+    }
+
+    // Build the query with filters
+    let query = supabase
       .from('material_parts')
       .select('*')
       .order('name')
     
+    // Apply search filter if provided
+    if (options?.searchQuery) {
+      const q = options.searchQuery.toLowerCase()
+      query = query.or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,fixture_type.ilike.%${q}%,notes.ilike.%${q}%`)
+    }
+    
+    // Apply fixture type filter if provided
+    if (options?.fixtureType) {
+      query = query.eq('fixture_type', options.fixtureType)
+    }
+    
+    // Apply manufacturer filter if provided
+    if (options?.manufacturer) {
+      query = query.eq('manufacturer', options.manufacturer)
+    }
+    
+    // Apply pagination
+    query = query.range(from, to)
+    
+    const { data: partsData, error: partsError } = await query
+    
     if (partsError) {
       setError(`Failed to load parts: ${partsError.message}`)
+      setLoadingPartsPage(false)
       return
     }
 
@@ -187,7 +317,11 @@ export default function Materials() {
 
     // If there are no parts yet, skip price lookup entirely
     if (partsList.length === 0) {
-      setParts([])
+      if (page === 0) {
+        setParts([])
+      }
+      setHasMoreParts(false)
+      setLoadingPartsPage(false)
       return
     }
 
@@ -215,7 +349,74 @@ export default function Materials() {
       })
     )
 
-    setParts(partsWithPrices)
+    if (page === 0) {
+      setParts(partsWithPrices)
+    } else {
+      setParts((prev) => {
+        const existingById = new Map(prev.map((p) => [p.id, p]))
+        for (const p of partsWithPrices) {
+          existingById.set(p.id, p)
+        }
+        return Array.from(existingById.values())
+      })
+    }
+
+    if (partsList.length < PARTS_PAGE_SIZE) {
+      setHasMoreParts(false)
+    }
+    setLoadingPartsPage(false)
+  }
+
+  async function loadAllParts() {
+    setLoadingAllParts(true)
+    setError(null)
+    
+    try {
+      // Fetch all part IDs first
+      const { data: allPartsData, error: partsError } = await supabase
+        .from('material_parts')
+        .select('*')
+        .order('name')
+      
+      if (partsError) throw partsError
+      
+      const partsList = (allPartsData as MaterialPart[]) ?? []
+      
+      // Load prices for each part (show progress)
+      const partsWithPrices: PartWithPrices[] = []
+      const batchSize = 50
+      
+      for (let i = 0; i < partsList.length; i += batchSize) {
+        const batch = partsList.slice(i, i + batchSize)
+        const batchWithPrices = await Promise.all(
+          batch.map(async (part) => {
+            const { data: pricesData } = await supabase
+              .from('material_part_prices')
+              .select('*, supply_houses(*)')
+              .eq('part_id', part.id)
+              .order('price', { ascending: true })
+            
+            const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+            const prices = pricesList.map(p => ({
+              ...p,
+              supply_house: p.supply_houses,
+            }))
+            
+            return { ...part, prices }
+          })
+        )
+        partsWithPrices.push(...batchWithPrices)
+        
+        // Update progress (optional: could show "Loaded 100/1500 parts...")
+        setAllParts([...partsWithPrices])
+      }
+      
+      setAllParts(partsWithPrices)
+    } catch (err: any) {
+      setError(`Failed to load all parts: ${err.message}`)
+    } finally {
+      setLoadingAllParts(false)
+    }
   }
 
   async function loadMaterialTemplates() {
@@ -228,6 +429,88 @@ export default function Materials() {
       return
     }
     setMaterialTemplates((data as MaterialTemplate[]) ?? [])
+  }
+
+  async function loadGlobalPriceBookStats() {
+    // Fetch all part ids
+    const { data: partsData, error: partsError } = await supabase
+      .from('material_parts')
+      .select('id')
+    if (partsError) {
+      console.error('Failed to load global price book parts stats:', partsError)
+      return
+    }
+    const allPartIds = ((partsData as { id: string }[] | null) ?? []).map((p) => p.id)
+
+    // Fetch all prices with supply house info
+    const { data: pricesData, error: pricesError } = await supabase
+      .from('material_part_prices')
+      .select('part_id, supply_house_id, supply_houses(name)')
+    if (pricesError) {
+      console.error('Failed to load global price book price stats:', pricesError)
+      return
+    }
+    type PriceRow = {
+      part_id: string | null
+      supply_house_id: string | null
+      supply_houses: { name: string | null } | null
+    }
+    const prices = ((pricesData as unknown as PriceRow[] | null) ?? [])
+
+    // Per-part price counts
+    const partPriceCounts = new Map<string, number>()
+    for (const row of prices) {
+      const pid = row.part_id
+      if (!pid) continue
+      partPriceCounts.set(pid, (partPriceCounts.get(pid) ?? 0) + 1)
+    }
+
+    const totalItems = allPartIds.length
+    let withPrices = 0
+    let withMoreThanOne = 0
+    for (const pid of allPartIds) {
+      const count = partPriceCounts.get(pid) ?? 0
+      if (count >= 1) withPrices += 1
+      if (count >= 2) withMoreThanOne += 1
+    }
+
+    setGlobalPriceBookTotalItems(totalItems)
+    setGlobalPriceBookWithPrices(withPrices)
+    setGlobalPriceBookWithMoreThanOne(withMoreThanOne)
+
+    // Per-supply-house price counts - use RPC for efficiency
+    const { data: shData, error: shError } = await supabase
+      .rpc('get_supply_house_price_counts' as any)
+
+    if (shError) {
+      console.error('Failed to load supply house price counts:', shError)
+      // Fallback: still show the global part stats even if supply house counts fail
+      return
+    }
+
+    type SupplyHouseCount = {
+      supply_house_id: string
+      supply_house_name: string
+      price_count: number
+    }
+    const shCounts = ((shData as unknown as SupplyHouseCount[] | null) ?? [])
+    const shArray = shCounts.map(row => ({
+      id: row.supply_house_id,
+      name: row.supply_house_name,
+      count: row.price_count,
+    }))
+    setGlobalSupplyHousePriceCounts(shArray)
+  }
+
+  async function reloadPartsFirstPage() {
+    setPartsPage(0)
+    setHasMoreParts(true)
+    await loadParts(0, {
+      searchQuery,
+      fixtureType: filterFixtureType,
+      manufacturer: filterManufacturer,
+      sortByPriceCount: sortByPriceCountAsc,
+    })
   }
 
   async function loadTemplateItems(templateId: string) {
@@ -337,11 +620,14 @@ export default function Materials() {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
       const loadInitial = async () => {
         try {
+          setPartsPage(0)
+          setHasMoreParts(true)
           await Promise.all([
             loadSupplyHouses(),
-            loadParts(),
+            loadAllParts(),
             loadMaterialTemplates(),
             loadPurchaseOrders(),
+            loadGlobalPriceBookStats(),
           ])
         } finally {
           setLoading(false)
@@ -354,8 +640,17 @@ export default function Materials() {
   useEffect(() => {
     const state = location.state as { refreshPrices?: boolean } | null
     if (!state?.refreshPrices) return
-    loadParts()
+    reloadPartsFirstPage()
   }, [location.state])
+
+  // Debounced search/filter effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      reloadPartsFirstPage()
+    }, 300) // 300ms debounce for search, immediate for filter changes
+    
+    return () => clearTimeout(timer)
+  }, [searchQuery, filterFixtureType, filterManufacturer, sortByPriceCountAsc])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -470,6 +765,40 @@ export default function Materials() {
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [poPartDropdownOpen])
 
+  // Infinite scroll for parts pagination
+  useEffect(() => {
+    if (activeTab !== 'price-book' || loadAllMode) return
+    if (!hasMoreParts || loadingPartsPage) return
+
+    const handleScroll = () => {
+      if (loadingPartsRef.current) return // Prevent duplicate requests
+      
+      // Calculate distance from bottom
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const scrollHeight = document.documentElement.scrollHeight
+      const clientHeight = window.innerHeight
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+
+      // Load more when within 200px of bottom
+      if (distanceFromBottom < 200) {
+        loadingPartsRef.current = true
+        const nextPage = partsPage + 1
+        setPartsPage(nextPage)
+        loadParts(nextPage, {
+          searchQuery,
+          fixtureType: filterFixtureType,
+          manufacturer: filterManufacturer,
+          sortByPriceCount: sortByPriceCountAsc,
+        }).finally(() => {
+          loadingPartsRef.current = false
+        })
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [activeTab, hasMoreParts, loadingPartsPage, partsPage, searchQuery, filterFixtureType, filterManufacturer, loadAllMode])
+
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
@@ -487,58 +816,41 @@ export default function Materials() {
       .slice(0, limit)
   }
 
-  // Filter parts based on search and filters
-  const filteredParts = parts.filter(part => {
-    const matchesSearch = !searchQuery || 
-      part.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      part.manufacturer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      part.fixture_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      part.notes?.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesFixtureType = !filterFixtureType || part.fixture_type === filterFixtureType
-    const matchesManufacturer = !filterManufacturer || part.manufacturer === filterManufacturer
-    return matchesSearch && matchesFixtureType && matchesManufacturer
-  })
+  // Parts are already filtered and sorted server-side, so just use them directly
+  const sortedParts = parts
 
-  // Apply sorting for Price Book (default by name, optional by # of prices)
-  const sortedParts = [...filteredParts].sort((a, b) => {
-    if (sortByPriceCountAsc) {
-      return a.prices.length - b.prices.length || a.name.localeCompare(b.name)
-    }
-    return a.name.localeCompare(b.name)
-  })
+  // Determine which parts to display (load all mode with client-side filtering/sorting)
+  const displayParts = loadAllMode 
+    ? (() => {
+        // First filter by search query
+        const filtered = allParts.filter(part => {
+          if (!clientSearchQuery) return true
+          const q = clientSearchQuery.toLowerCase()
+          return (
+            part.name.toLowerCase().includes(q) ||
+            part.manufacturer?.toLowerCase().includes(q) ||
+            part.fixture_type?.toLowerCase().includes(q) ||
+            part.notes?.toLowerCase().includes(q)
+          )
+        })
+        
+        // Then sort by price count if active
+        if (sortByPriceCountAsc) {
+          return [...filtered].sort((a, b) => {
+            return a.prices.length - b.prices.length || a.name.localeCompare(b.name)
+          })
+        }
+        
+        return filtered
+      })()
+    : sortedParts
+
+  // Note: Virtual scrolling with useVirtualizer could be added here for even better
+  // performance with 10k+ parts, but the current implementation works well for <5000 parts
 
   // Get unique fixture types and manufacturers for filters
   const fixtureTypes = [...new Set(parts.map(p => p.fixture_type).filter(Boolean))].sort()
   const manufacturers = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort()
-
-  // Price book summary stats (full catalog)
-  const priceBookTotalItems = parts.length
-  const priceBookWithPrices = parts.filter(p => p.prices.length > 0).length
-  const priceBookWithMoreThanOne = parts.filter(p => p.prices.length > 1).length
-  const priceBookPctWithPrices = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithPrices / priceBookTotalItems) * 100)
-  const priceBookPctMoreThanOne = priceBookTotalItems === 0 ? 0 : Math.round((priceBookWithMoreThanOne / priceBookTotalItems) * 100)
-
-  // Supply house price coverage summary (full catalog)
-  const supplyHousePriceCounts = (() => {
-    const counts = new Map<string, number>()
-    for (const part of parts) {
-      for (const price of part.prices) {
-        const id = price.supply_house?.id
-        if (!id) continue
-        counts.set(id, (counts.get(id) ?? 0) + 1)
-      }
-    }
-    // Map to array with names and counts, using supplyHouses to resolve names
-    const result: { id: string; name: string; count: number }[] = []
-    for (const [id, count] of counts.entries()) {
-      const sh = supplyHouses.find(s => s.id === id)
-      const name = sh?.name || 'Unknown supply house'
-      result.push({ id, name, count })
-    }
-    // Sort alphabetically by name
-    result.sort((a, b) => a.name.localeCompare(b.name))
-    return result
-  })()
 
   // Filter purchase orders
   const filteredPOs = allPOs.filter(po => {
@@ -621,7 +933,7 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await loadParts()
+      await reloadPartsFirstPage()
         closePartForm()
       }
     } else {
@@ -636,7 +948,7 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await loadParts()
+      await reloadPartsFirstPage()
         closePartForm()
       }
     }
@@ -654,11 +966,16 @@ export default function Materials() {
           : error.message
       setError(friendlyMessage)
     } else {
-      await loadParts()
+      await reloadPartsFirstPage()
     }
   }
 
   // Supply House Management Functions
+  function openSupplyHousesModal() {
+    setViewingSupplyHouses(true)
+    loadGlobalPriceBookStats()
+  }
+
   function openAddSupplyHouse() {
     setEditingSupplyHouse(null)
     setSupplyHouseName('')
@@ -714,7 +1031,7 @@ export default function Materials() {
       } else {
         await Promise.all([
           loadSupplyHouses(),
-          loadParts(),
+          reloadPartsFirstPage(),
         ])
         closeSupplyHouseForm()
       }
@@ -734,7 +1051,7 @@ export default function Materials() {
       } else {
         await Promise.all([
           loadSupplyHouses(),
-          loadParts(),
+          reloadPartsFirstPage(),
         ])
         closeSupplyHouseForm()
       }
@@ -764,7 +1081,7 @@ export default function Materials() {
     } else {
       await Promise.all([
         loadSupplyHouses(),
-        loadParts(),
+        reloadPartsFirstPage(),
       ])
     }
   }
@@ -1963,20 +2280,33 @@ export default function Materials() {
             <button type="button" onClick={openAddPart} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Add Part
             </button>
-            <button type="button" onClick={() => setViewingSupplyHouses(true)} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            <button type="button" onClick={openSupplyHousesModal} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Supply Houses
             </button>
             <input
               type="text"
-              placeholder="Search parts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              placeholder={loadAllMode ? "Search all parts (instant)..." : "Search parts..."}
+              value={loadAllMode ? clientSearchQuery : searchQuery}
+              onChange={(e) => {
+                if (loadAllMode) {
+                  setClientSearchQuery(e.target.value)
+                } else {
+                  setSearchQuery(e.target.value)
+                }
+              }}
+              style={{ 
+                flex: 1, 
+                padding: '0.5rem', 
+                border: '1px solid #d1d5db', 
+                borderRadius: 4,
+                background: loadAllMode ? '#f0f9ff' : 'white',
+              }}
             />
             <select
               value={filterFixtureType}
               onChange={(e) => setFilterFixtureType(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              disabled={loadAllMode}
             >
               <option value="">All Fixture Types</option>
               {fixtureTypes.map(ft => (
@@ -1987,12 +2317,53 @@ export default function Materials() {
               value={filterManufacturer}
               onChange={(e) => setFilterManufacturer(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              disabled={loadAllMode}
             >
               <option value="">All Manufacturers</option>
               {manufacturers.map(m => (
                 <option key={m} value={m || ''}>{m || ''}</option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => {
+                if (!loadAllMode) {
+                  setLoadAllMode(true)
+                  loadAllParts()
+                } else {
+                  setLoadAllMode(false)
+                  setAllParts([])
+                  setClientSearchQuery('')
+                  reloadPartsFirstPage()
+                }
+              }}
+              disabled={loadingAllParts}
+              title={loadAllMode ? "Exit bulk edit mode (paginated)" : "Load all parts for bulk editing"}
+              style={{
+                padding: '0.5rem',
+                background: loadAllMode ? '#3b82f6' : 'white',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: loadingAllParts ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '40px',
+                height: '40px',
+              }}
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 640 640"
+                style={{ 
+                  width: '20px', 
+                  height: '20px',
+                  fill: loadAllMode ? 'white' : '#6b7280',
+                }}
+              >
+                <path d="M320.5 64C335.2 64 348.7 72.1 355.7 85L571.7 485C578.4 497.4 578.1 512.4 570.9 524.5C563.7 536.6 550.6 544 536.6 544L104.6 544C90.5 544 77.5 536.6 70.3 524.5C63.1 512.4 62.8 497.4 69.5 485L285.5 85L288.4 80.4C295.7 70.2 307.6 64 320.5 64zM234.4 313.9L261.2 340.7C267.4 346.9 277.6 346.9 283.8 340.7L327.1 297.4C333.1 291.4 341.2 288 349.7 288L392.5 288L320.4 154.5L234.3 313.9z"/>
+              </svg>
+            </button>
           </div>
 
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
@@ -2021,14 +2392,14 @@ export default function Materials() {
                 </tr>
               </thead>
               <tbody>
-                {sortedParts.length === 0 ? (
+                {displayParts.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      {searchQuery || filterFixtureType || filterManufacturer ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
+                      {(searchQuery || clientSearchQuery || filterFixtureType || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
                     </td>
                   </tr>
                 ) : (
-                  sortedParts.map(part => {
+                  displayParts.map(part => {
                     const bestPrice = part.prices.length > 0 ? part.prices[0] : null
                     const isExpanded = expandedPartId === part.id
                     const priceCount = part.prices.length
@@ -2140,25 +2511,19 @@ export default function Materials() {
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            <p style={{ margin: 0 }}>
-              {priceBookTotalItems} items | {priceBookPctWithPrices}% have prices | {priceBookPctMoreThanOne}% have more than 1 price
-            </p>
-            <div style={{ marginTop: '0.5rem' }}>
-              <strong>Supply house price coverage</strong>
-              {supplyHousePriceCounts.length === 0 ? (
-                <div>No prices recorded yet for any supply house.</div>
-              ) : (
-                <ul style={{ marginTop: '0.25rem', paddingLeft: '1.25rem' }}>
-                  {supplyHousePriceCounts.map(({ id, name, count }) => (
-                    <li key={id}>
-                      {name} – {count} {count === 1 ? 'price' : 'prices'}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          {loadAllMode ? (
+            loadingAllParts && (
+              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: '#6b7280' }}>
+                Loading all parts... ({allParts.length} loaded)
+              </div>
+            )
+          ) : (
+            hasMoreParts && (
+              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                {loadingPartsPage ? 'Loading more parts…' : 'Scroll down to load more'}
+              </div>
+            )
+          )}
         </div>
       )}
 
@@ -2269,7 +2634,7 @@ export default function Materials() {
               supplyHouses={supplyHouses}
               onClose={() => {
                 setViewingPartPrices(null)
-                loadParts()
+                reloadPartsFirstPage()
               }}
               onPricesUpdated={(updatedPrices) => {
                 setParts(prev =>
@@ -2304,6 +2669,37 @@ export default function Materials() {
               >
                 ×
               </button>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, color: '#6b7280', fontSize: '0.875rem' }}>
+              <p style={{ margin: 0 }}>
+                {(() => {
+                  const total = globalPriceBookTotalItems ?? 0
+                  const withPrices = globalPriceBookWithPrices ?? 0
+                  const withMoreThanOne = globalPriceBookWithMoreThanOne ?? 0
+                  const pctWith = total === 0 ? 0 : Math.round((withPrices / total) * 100)
+                  const pctMore = total === 0 ? 0 : Math.round((withMoreThanOne / total) * 100)
+                  return `${total} items | ${pctWith}% have prices | ${pctMore}% have more than 1 price`
+                })()}
+              </p>
+              <div style={{ marginTop: '0.5rem' }}>
+                <strong>Supply house price coverage</strong>
+                {(() => {
+                  const counts = globalSupplyHousePriceCounts ?? []
+                  if (counts.length === 0) {
+                    return <div>No prices recorded yet for any supply house.</div>
+                  }
+                  return (
+                    <ul style={{ marginTop: '0.25rem', paddingLeft: '1.25rem', marginBottom: 0 }}>
+                      {counts.map(({ id, name, count }) => (
+                        <li key={id}>
+                          {name} – {count} {count === 1 ? 'price' : 'prices'}
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                })()}
+              </div>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
