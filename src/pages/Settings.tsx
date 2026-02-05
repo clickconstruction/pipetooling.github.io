@@ -121,6 +121,10 @@ export default function Settings() {
   const [sharedMasterIds, setSharedMasterIds] = useState<Set<string>>(new Set())
   const [sharingSaving, setSharingSaving] = useState(false)
   const [sharingError, setSharingError] = useState<string | null>(null)
+  const [editingUserId, setEditingUserId] = useState<string | null>(null)
+  const [editEmail, setEditEmail] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editError, setEditError] = useState<string | null>(null)
 
   type OrphanedPriceRow = {
     id: string
@@ -913,6 +917,65 @@ export default function Settings() {
     setUpdatingId(null)
   }
 
+  function startEditUser(u: UserRow) {
+    setEditingUserId(u.id)
+    setEditEmail(u.email)
+    setEditName(u.name)
+    setEditError(null)
+  }
+
+  function cancelEditUser() {
+    setEditingUserId(null)
+    setEditEmail('')
+    setEditName('')
+    setEditError(null)
+  }
+
+  async function updateUserProfile(id: string, updates: { name: string; email: string }) {
+    setUpdatingId(id)
+    setError(null)
+    setEditError(null)
+    const { error: e } = await supabase
+      .from('users')
+      .update({ name: updates.name, email: updates.email })
+      .eq('id', id)
+    if (e) {
+      setEditError(e.message)
+    } else {
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, name: updates.name, email: updates.email } : u)),
+      )
+    }
+    setUpdatingId(null)
+  }
+
+  async function saveUserEdits() {
+    if (!editingUserId) return
+    const trimmedEmail = editEmail.trim()
+    const trimmedName = editName.trim()
+
+    if (!trimmedEmail) {
+      setEditError('Email is required.')
+      return
+    }
+
+    if (trimmedName) {
+      const isDuplicate = await checkDuplicateName(trimmedName)
+      if (isDuplicate) {
+        setEditError(
+          `A person or user with the name "${trimmedName}" already exists. Names must be unique.`,
+        )
+        return
+      }
+    }
+
+    await updateUserProfile(editingUserId, { name: trimmedName, email: trimmedEmail })
+    setEditingUserId(null)
+    setEditEmail('')
+    setEditName('')
+    setEditError(null)
+  }
+
   async function sendSignInEmail(u: UserRow) {
     setSendingSignInEmailId(u.id)
     setError(null)
@@ -1419,8 +1482,30 @@ export default function Settings() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{u.email}</td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{u.name}</td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {editingUserId === u.id ? (
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
+                        />
+                      ) : (
+                        u.email
+                      )}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      {editingUserId === u.id ? (
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
+                        />
+                      ) : (
+                        u.name
+                      )}
+                    </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       <select
                         value={u.role}
@@ -1438,6 +1523,34 @@ export default function Settings() {
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {editingUserId === u.id ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={saveUserEdits}
+                              disabled={updatingId === u.id}
+                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditUser}
+                              disabled={updatingId === u.id}
+                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => startEditUser(u)}
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => sendSignInEmail(u)}
@@ -1474,6 +1587,11 @@ export default function Settings() {
               </tbody>
             </table>
           </div>
+          {editError && (
+            <p style={{ color: '#b91c1c', marginTop: '0.5rem' }}>
+              {editError}
+            </p>
+          )}
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
 
           {/* Convert Master to Assistant/Subcontractor */}

@@ -39,7 +39,12 @@ const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_o
 
 type EstimatorUser = { id: string; name: string | null; email: string }
 
-type BidWithBuilder = Bid & { customers: Customer | null; bids_gc_builders: GcBuilder | null; estimator?: EstimatorUser | EstimatorUser[] | null }
+type BidWithBuilder = Bid & {
+  customers: Customer | null
+  bids_gc_builders: GcBuilder | null
+  estimator?: EstimatorUser | EstimatorUser[] | null
+  account_manager?: EstimatorUser | EstimatorUser[] | null
+}
 
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   if (ci == null) return { phone: '', email: '' }
@@ -51,6 +56,26 @@ function extractContactInfo(ci: Json | null): { phone: string; email: string } {
     }
   }
   return { phone: '', email: '' }
+}
+
+function formatAddressWithoutZip(address: string | null): string {
+  if (!address) return ''
+  const parts = address.split(',')
+  if (parts.length === 0) return address
+
+  const lastIndex = parts.length - 1
+  const lastPart = parts[lastIndex].trim()
+  const tokens = lastPart.split(/\s+/)
+  const lastToken = tokens[tokens.length - 1]
+
+  // If the last token is mostly numeric (zip-like), drop it
+  if (/^\d{3,}$/.test(lastToken)) {
+    tokens.pop()
+    parts[lastIndex] = tokens.join(' ')
+    return parts.map((p) => p.trim()).filter(Boolean).join(', ')
+  }
+
+  return address
 }
 
 const tabStyle = (active: boolean) => ({
@@ -456,6 +481,7 @@ export default function Bids() {
   const [gcContactEmail, setGcContactEmail] = useState('')
   const [estimatorId, setEstimatorId] = useState('')
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
+  const [accountManagerId, setAccountManagerId] = useState('')
   const [bidDueDate, setBidDueDate] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
@@ -482,6 +508,8 @@ export default function Bids() {
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
+  const contactTableRef = useRef<HTMLDivElement | null>(null)
+  const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
   const [submissionEntries, setSubmissionEntries] = useState<BidSubmissionEntry[]>([])
   const [addingSubmissionEntry, setAddingSubmissionEntry] = useState(false)
   const [submissionBidHasCostEstimate, setSubmissionBidHasCostEstimate] = useState<boolean | 'loading' | null>(null)
@@ -692,22 +720,30 @@ export default function Bids() {
   async function loadBids(): Promise<BidWithBuilder[]> {
     const { data, error } = await supabase
       .from('bids')
-      .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email)')
+      .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email)')
       .order('bid_due_date', { ascending: false, nullsFirst: false })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
       return []
     }
-    type Raw = Bid & { customers: Customer | Customer[] | null; bids_gc_builders: GcBuilder | GcBuilder[] | null; estimator?: EstimatorUser | EstimatorUser[] | null }
+    type Raw = Bid & {
+      customers: Customer | Customer[] | null
+      bids_gc_builders: GcBuilder | GcBuilder[] | null
+      estimator?: EstimatorUser | EstimatorUser[] | null
+      account_manager?: EstimatorUser | EstimatorUser[] | null
+    }
     const raw = (data as unknown as Raw[]) ?? []
     const rows: BidWithBuilder[] = raw.map((b) => {
       const est = b.estimator
       const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
+      const am = b.account_manager
+      const accountManagerNorm = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
       return {
         ...b,
         customers: Array.isArray(b.customers) ? b.customers[0] ?? null : b.customers,
         bids_gc_builders: Array.isArray(b.bids_gc_builders) ? b.bids_gc_builders[0] ?? null : b.bids_gc_builders,
         estimator: estimatorNorm,
+        account_manager: accountManagerNorm,
       }
     })
     setBids(rows)
@@ -3114,6 +3150,17 @@ export default function Bids() {
   }, [activeTab])
 
   useEffect(() => {
+    if (
+      activeTab === 'submission-followup' &&
+      selectedBidForSubmission &&
+      scrollToContactFromBidBoard
+    ) {
+      contactTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setScrollToContactFromBidBoard(false)
+    }
+  }, [activeTab, selectedBidForSubmission?.id, scrollToContactFromBidBoard])
+
+  useEffect(() => {
     if (selectedBidForTakeoff?.selected_takeoff_book_version_id != null) {
       setSelectedTakeoffBookVersionId(selectedBidForTakeoff.selected_takeoff_book_version_id)
     } else {
@@ -3256,6 +3303,7 @@ export default function Bids() {
     setGcContactPhone('')
     setGcContactEmail('')
     setEstimatorId('')
+    setAccountManagerId(authUser?.id ?? '')
     setBidDueDate('')
     setEstimatedJobStartDate('')
     setBidDateSent('')
@@ -3291,6 +3339,7 @@ export default function Bids() {
     setGcContactPhone(bid.gc_contact_phone ?? '')
     setGcContactEmail(bid.gc_contact_email ?? '')
     setEstimatorId(bid.estimator_id ?? '')
+    setAccountManagerId((bid as any).account_manager_id ?? '')
     setBidDueDate(bid.bid_due_date ?? '')
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
@@ -3316,6 +3365,12 @@ export default function Bids() {
     setDeleteBidModalOpen(false)
   }
 
+  function handleLastContactClick(bid: BidWithBuilder) {
+    setSelectedBidForSubmission(bid)
+    setActiveTab('submission-followup')
+    setScrollToContactFromBidBoard(true)
+  }
+
   async function saveBid(e: React.FormEvent) {
     e.preventDefault()
     if (!authUser?.id) return
@@ -3338,6 +3393,7 @@ export default function Bids() {
       gc_contact_phone: gcContactPhone.trim() || null,
       gc_contact_email: gcContactEmail.trim() || null,
       estimator_id: estimatorId || null,
+      account_manager_id: accountManagerId || null,
       bid_due_date: bidDueDate || null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
@@ -3743,7 +3799,9 @@ export default function Bids() {
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>GC/Builder</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid</th>
+                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
                     <button
                       type="button"
                       onClick={() => setBidBoardHideLost((prev) => !prev)}
@@ -3753,8 +3811,6 @@ export default function Bids() {
                       W/L{bidBoardHideLost ? ' (hiding lost)' : ''}
                     </button>
                   </th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sent Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
@@ -3798,7 +3854,7 @@ export default function Bids() {
                           <button
                             type="button"
                             onClick={() => openGcBuilderOrCustomerModal(bid)}
-                            style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                            style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'none' }}
                           >
                             {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                           </button>
@@ -3811,20 +3867,52 @@ export default function Bids() {
                       </td>
                       <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }} title={bid.address ?? ''}>
                         {bid.address ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                            {bid.address}
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: '#3b82f6' }}
+                          >
+                            {formatAddressWithoutZip(bid.address)}
                           </a>
                         ) : (
                           '-'
                         )}
                       </td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+                        {(() => {
+                          const am = (bid as any).account_manager as EstimatorUser | EstimatorUser[] | null | undefined
+                          const amNorm = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+                          if (amNorm) return amNorm.name || amNorm.email
+                          const est = Array.isArray(bid.estimator) ? bid.estimator[0] : bid.estimator
+                          return est ? (est.name || est.email) : '—'
+                        })()}
+                      </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{(() => { const est = Array.isArray(bid.estimator) ? bid.estimator[0] : bid.estimator; return est ? (est.name || est.email) : '—'; })()}</td>
+                      <td style={{ padding: 0, textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{bid.distance_from_office != null && bid.distance_from_office !== '' ? `${bid.distance_from_office}mi` : '—'}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatShortDate(bid.last_contact)}</td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+                        {bid.distance_from_office != null && bid.distance_from_office !== ''
+                          ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
+                          : '—'}
+                      </td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleLastContactClick(bid)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#3b82f6',
+                            cursor: 'pointer',
+                            padding: 0,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          {bid.last_contact ? formatShortDate(bid.last_contact) : '+'}
+                        </button>
+                      </td>
                       <td
                         role="button"
                         tabIndex={0}
@@ -3880,7 +3968,7 @@ export default function Bids() {
                   </button>
                 </div>
               </div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <div ref={contactTableRef} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
@@ -7013,6 +7101,15 @@ export default function Bids() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
                 <select value={estimatorId} onChange={(e) => setEstimatorId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                  <option value="">—</option>
+                  {estimatorUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
+                <select value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
                   <option value="">—</option>
                   {estimatorUsers.map((u) => (
                     <option key={u.id} value={u.id}>{u.name || u.email}</option>
