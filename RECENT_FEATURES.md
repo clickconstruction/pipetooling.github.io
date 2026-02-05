@@ -3,30 +3,223 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.23)](#latest-updates-v223)
-2. [Latest Updates (v2.22)](#latest-updates-v222)
-3. [Latest Updates (v2.21)](#latest-updates-v221)
-4. [Latest Updates (v2.20)](#latest-updates-v220)
-5. [Latest Updates (v2.19)](#latest-updates-v219)
-6. [Latest Updates (v2.18)](#latest-updates-v218)
-7. [Latest Updates (v2.17)](#latest-updates-v217)
-8. [Latest Updates (v2.16)](#latest-updates-v216)
-9. [Latest Updates (v2.15)](#latest-updates-v215)
-10. [Latest Updates (v2.14)](#latest-updates-v214)
-11. [Latest Updates (v2.13)](#latest-updates-v213)
-12. [Latest Updates (v2.12)](#latest-updates-v212)
-13. [Latest Updates (v2.11)](#latest-updates-v211)
-14. [Latest Updates (v2.10)](#latest-updates-v210)
-15. [Latest Updates (v2.9)](#latest-updates-v29)
-16. [Latest Updates (v2.8)](#latest-updates-v28)
-17. [Latest Updates (v2.7)](#latest-updates-v27)
-18. [Latest Updates (v2.6)](#latest-updates-v26)
-19. [Workflow Features](#workflow-features)
-20. [Calendar Updates](#calendar-updates)
-21. [Access Control](#access-control)
-22. [Email Templates](#email-templates)
-23. [Financial Tracking](#financial-tracking)
-24. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.24)](#latest-updates-v224)
+2. [Latest Updates (v2.23)](#latest-updates-v223)
+3. [Latest Updates (v2.22)](#latest-updates-v222)
+4. [Latest Updates (v2.21)](#latest-updates-v221)
+5. [Latest Updates (v2.20)](#latest-updates-v220)
+6. [Latest Updates (v2.19)](#latest-updates-v219)
+7. [Latest Updates (v2.18)](#latest-updates-v218)
+8. [Latest Updates (v2.17)](#latest-updates-v217)
+9. [Latest Updates (v2.16)](#latest-updates-v216)
+10. [Latest Updates (v2.15)](#latest-updates-v215)
+11. [Latest Updates (v2.14)](#latest-updates-v214)
+12. [Latest Updates (v2.13)](#latest-updates-v213)
+13. [Latest Updates (v2.12)](#latest-updates-v212)
+14. [Latest Updates (v2.11)](#latest-updates-v211)
+15. [Latest Updates (v2.10)](#latest-updates-v210)
+16. [Latest Updates (v2.9)](#latest-updates-v29)
+17. [Latest Updates (v2.8)](#latest-updates-v28)
+18. [Latest Updates (v2.7)](#latest-updates-v27)
+19. [Latest Updates (v2.6)](#latest-updates-v26)
+20. [Workflow Features](#workflow-features)
+21. [Calendar Updates](#calendar-updates)
+22. [Access Control](#access-control)
+23. [Email Templates](#email-templates)
+24. [Financial Tracking](#financial-tracking)
+25. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.24)
+
+### Materials Price Book: Performance, Search, and Bulk Editing Enhancements
+
+**Date**: 2026-02-05
+
+**Overview**:
+Major performance improvements and workflow enhancements for the Materials Price Book, including server-side search across all parts, infinite scroll, "Load All" mode for bulk editing, and comprehensive supply house statistics.
+
+#### Supply House Statistics in Modal
+
+**Enhancement**: Global materials statistics now appear at the top of the Supply Houses modal.
+
+**Features**:
+- Total parts count across entire database
+- Percentage of parts with prices
+- Percentage of parts with multiple prices
+- Per-supply-house price coverage sorted by count (highest first)
+- Stats refresh automatically every time the modal is opened
+
+**Benefits**:
+- Quick visibility into pricing coverage across all supply houses
+- Identify which supply houses need more pricing data
+- See comprehensive stats without leaving supply house management
+
+**Database**:
+- New SQL function: `get_supply_house_price_counts()` 
+- Efficiently counts prices per supply house using LEFT JOIN
+- Returns all supply houses including those with 0 prices
+- Migration: `create_supply_house_stats_function.sql`
+
+---
+
+#### Server-Side Search Across All Parts
+
+**Enhancement**: Search box now queries the entire database, not just the current page.
+
+**How It Works**:
+- Search queries filter parts server-side using Supabase `.ilike` (case-insensitive)
+- 300ms debounce prevents excessive queries while typing
+- Searches across name, manufacturer, fixture type, and notes fields
+- Pagination continues to work with filtered results
+- Fixture type and manufacturer filters also work server-side
+
+**Benefits**:
+- Find any part in the database instantly
+- No need to paginate through pages to find a specific part
+- Efficient database queries instead of loading everything
+
+**Technical Details**:
+- Modified `loadParts()` to accept search/filter options
+- Applies filters before pagination with `.or()` query
+- Debounced `useEffect` triggers reload on search/filter changes
+
+---
+
+#### Infinite Scroll Pagination
+
+**Enhancement**: Parts automatically load as you scroll to the bottom of the page.
+
+**Features**:
+- Loads next 50 parts when within 200px of page bottom
+- Shows loading indicator: "Loading more parts…" or "Scroll down to load more"
+- Prevents duplicate requests when scrolling quickly
+- Only active on Price Book tab
+- Respects current search and filter state
+
+**Benefits**:
+- No manual button clicking needed
+- Seamless browsing experience
+- Faster navigation through large part lists
+
+**Technical Details**:
+- Window scroll event listener with distance calculation
+- `loadingPartsRef` prevents race conditions
+- Automatically disabled in "Load All" mode
+
+---
+
+#### Server-Side Sorting by Price Count
+
+**Enhancement**: Clicking the "#" column header now sorts all parts in the database by price count.
+
+**How It Works**:
+- Database function counts and sorts all parts by price count
+- Returns ordered part IDs to frontend
+- Frontend fetches only the needed page of parts in correct order
+- Maintains pagination while ensuring global sort order
+
+**Benefits**:
+- See which parts need pricing across entire database
+- Quickly identify parts with 0 prices
+- Efficient sorting without loading all data client-side
+
+**Database**:
+- New SQL function: `get_parts_ordered_by_price_count(ascending_order)`
+- Uses LEFT JOIN and COUNT aggregation
+- Migration: `create_parts_with_price_count_function.sql`
+
+**Technical Details**:
+- When sorting is active, uses RPC to get ordered part IDs
+- Fetches parts by ID for current page
+- Maintains sort order from database
+
+---
+
+#### "Load All" Mode for Bulk Editing
+
+**Enhancement**: New toggle mode that loads all parts at once with instant client-side search.
+
+**Features**:
+- **Toggle button**: Speed icon (triangle SVG) next to filter dropdowns
+- **Progressive loading**: Shows "Loading all parts... (X loaded)" with count
+- **Instant search**: Client-side filtering with no network delay
+- **Client-side sorting**: Click "#" to sort all loaded parts immediately
+- **Visual indicators**: 
+  - Button turns blue when active
+  - Search box background turns light blue
+  - Search placeholder changes to "Search all parts (instant)..."
+- **Default mode**: Load All mode is enabled by default for optimal bulk editing workflow
+
+**How It Works**:
+- Fetches all parts from database in batches of 50
+- Loads prices for each part progressively
+- Stores all parts in `allParts` state array
+- Search and sort happen client-side (instant)
+- Toggle button switches between Load All and paginated modes
+
+**Benefits**:
+- Perfect for assistants doing bulk price updates
+- Instant search across all parts (no waiting)
+- No pagination interruption when editing multiple parts
+- Fast sorting without server calls
+- Can still toggle to paginated mode if needed
+
+**Technical Details**:
+- `loadAllParts()` function with batched loading
+- Separate `clientSearchQuery` state for instant filtering
+- `displayParts` computed with client-side filtering and sorting
+- Fixture type/manufacturer filters disabled in Load All mode
+- Infinite scroll automatically disabled in Load All mode
+
+**Dependencies**:
+- Installed `@tanstack/react-virtual` (available for future virtual scrolling optimization)
+
+---
+
+#### Summary of Changes
+
+**Migrations Created (2)**:
+1. `create_supply_house_stats_function.sql` - Supply house price counting and sorting
+2. `create_parts_with_price_count_function.sql` - Parts sorting by price count
+
+**Code Files Modified (2)**:
+1. `src/pages/Materials.tsx` - All performance and UX enhancements
+2. `src/pages/Bids.tsx` - Fixed TypeScript null checks in `formatAddressWithoutZip()`
+
+**Key Functions Added/Modified**:
+1. `loadGlobalPriceBookStats()` - Uses RPC for accurate supply house counts
+2. `loadParts()` - Accepts search/filter/sort options, applies server-side
+3. `loadAllParts()` - Loads all parts in batches with progress indicator
+4. `openSupplyHousesModal()` - Refreshes stats when modal opens
+5. `displayParts` - Smart calculation for Load All vs paginated mode
+
+**State Variables Added**:
+- `loadAllMode` - Tracks bulk editing mode
+- `allParts` - Stores all parts when loaded
+- `loadingAllParts` - Loading state for bulk load
+- `clientSearchQuery` - Separate search for instant filtering
+- `loadingPartsRef` - Prevents duplicate pagination requests
+
+**Impact**:
+- ✅ Search works across all 1000+ parts in database
+- ✅ Infinite scroll eliminates manual "Load more" clicking
+- ✅ Sorting by "#" works globally, not just per page
+- ✅ Supply house stats show accurate counts for all supply houses
+- ✅ "Load All" mode enables rapid bulk editing workflows
+- ✅ Fixed bug where supply houses showed 0 prices due to row limits
+- ✅ Supply houses sorted by price count (most prices first)
+- ✅ All changes work seamlessly together
+
+**Performance Characteristics**:
+- Normal mode: Loads 50 parts at a time (fast initial load)
+- Load All mode: Loads all parts in 10-30 seconds (instant search after)
+- Server-side operations: Efficient database queries with proper indexing
+- Client-side operations: Fast filtering/sorting on loaded data
+
+**Backward Compatibility**:
+All changes are backward compatible. Users can toggle between paginated and Load All modes at any time.
 
 ---
 

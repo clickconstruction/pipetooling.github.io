@@ -87,7 +87,15 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Bids Submission & Followup**: When a bid is selected, shows **Cost estimate:** amount (or "Not yet created") and **View cost estimate** / **Create cost estimate** button that switches to the Cost Estimate tab with that bid preselected
 - **Bids Pricing**: **Pricing** tab (between Cost Estimate and Cover Letter): named price book versions with fixture/tie-in entries per stage (Rough In, Top Out, Trim Set, Total); assign bid count rows to price book entries; compare our cost (labor + allocated materials) to price book revenue; margin % and flags (red &lt; 20%, yellow &lt; 40%, green ≥ 40%)
 - **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId). PO items can have notes and a "From template" tag when added via a template
-- **Materials Price Book**: Per-part best price; expandable rows showing notes and a `$price SupplyHouse` list for all prices; inline **Edit prices** action in the expanded row; summary at bottom (item count, % with prices, % with more than one price) plus a **Supply house price coverage** list showing how many prices exist per supply house.
+- **Materials Price Book**: 
+  - Per-part best price with expandable rows showing notes and all prices
+  - **Search all parts**: Server-side search across entire database (name, manufacturer, fixture type, notes)
+  - **Infinite scroll**: Automatically loads more parts as you scroll
+  - **Server-side sorting**: Click "#" column to sort all parts by price count
+  - **"Load All" mode** (default): Loads all parts with instant client-side search and sorting - perfect for bulk price editing
+  - **Supply house statistics**: Global price coverage stats in Supply Houses modal (total items, % priced, per-supply-house counts sorted by coverage)
+  - Inline **Edit prices** action in expanded rows
+  - Auto-refreshing stats when modal opens
 - **Materials Templates & Purchase Orders**: Summary at bottom (# templates, % with unpriced parts, % with no missing prices). Template items use Remove / Edit / Price icon buttons; price icon colored by part price count (red / yellow / gray)
 
 ## Deployment
