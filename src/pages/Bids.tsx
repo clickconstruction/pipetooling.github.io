@@ -64,9 +64,12 @@ function formatAddressWithoutZip(address: string | null): string {
   if (parts.length === 0) return address
 
   const lastIndex = parts.length - 1
-  const lastPart = parts[lastIndex].trim()
+  const lastPart = parts[lastIndex]?.trim()
+  if (!lastPart) return address
+  
   const tokens = lastPart.split(/\s+/)
   const lastToken = tokens[tokens.length - 1]
+  if (!lastToken) return address
 
   // If the last token is mostly numeric (zip-like), drop it
   if (/^\d{3,}$/.test(lastToken)) {
