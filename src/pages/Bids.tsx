@@ -159,6 +159,12 @@ function formatCompactCurrency(n: number | null): string {
   return `$${k.toFixed(1)}k`
 }
 
+function formatBidValueShort(n: number | null): string {
+  if (n == null) return '—'
+  const valueInThousands = n / 1000
+  return valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
+}
+
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -664,7 +670,6 @@ export default function Bids() {
     const { data, error } = await supabase
       .from('users')
       .select('id, name, email')
-      .eq('role', 'estimator')
       .order('name', { ascending: true, nullsFirst: false })
     if (error) return
     setEstimatorUsers((data as EstimatorUser[]) ?? [])
@@ -3734,14 +3739,14 @@ export default function Bids() {
                       title={bidBoardHideLost ? 'Click to show lost bids' : 'Click to hide lost bids'}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 'inherit', color: 'inherit', textDecoration: bidBoardHideLost ? 'underline' : undefined }}
                     >
-                      Win/ Loss{bidBoardHideLost ? ' (hiding lost)' : ''}
+                      W/L{bidBoardHideLost ? ' (hiding lost)' : ''}
                     </button>
                   </th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Value</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance to Office<br />(miles)</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sent Date</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
@@ -3803,7 +3808,7 @@ export default function Bids() {
                         )}
                       </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{(() => { const est = Array.isArray(bid.estimator) ? bid.estimator[0] : bid.estimator; return est ? (est.name || est.email) : '—'; })()}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
@@ -5194,7 +5199,7 @@ export default function Bids() {
                           background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       </tr>
                     )

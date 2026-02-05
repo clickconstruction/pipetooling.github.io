@@ -5,12 +5,12 @@ import { useAuth } from '../hooks/useAuth'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
-type PersonKind = 'assistant' | 'master_technician' | 'sub'
+type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
 
-const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub']
-const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors' }
+const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator']
+const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
 
-const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor' }
+const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
 
 export default function People() {
   const { user: authUser } = useAuth()
@@ -39,7 +39,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').eq('master_user_id', authUser.id).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor']),
+      supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
