@@ -3,29 +3,142 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.22)](#latest-updates-v222)
-2. [Latest Updates (v2.21)](#latest-updates-v221)
-3. [Latest Updates (v2.20)](#latest-updates-v220)
-3. [Latest Updates (v2.19)](#latest-updates-v219)
-4. [Latest Updates (v2.18)](#latest-updates-v218)
-5. [Latest Updates (v2.17)](#latest-updates-v217)
-6. [Latest Updates (v2.16)](#latest-updates-v216)
-7. [Latest Updates (v2.15)](#latest-updates-v215)
-8. [Latest Updates (v2.14)](#latest-updates-v214)
-9. [Latest Updates (v2.13)](#latest-updates-v213)
-10. [Latest Updates (v2.12)](#latest-updates-v212)
-11. [Latest Updates (v2.11)](#latest-updates-v211)
-12. [Latest Updates (v2.10)](#latest-updates-v210)
-13. [Latest Updates (v2.9)](#latest-updates-v29)
-14. [Latest Updates (v2.8)](#latest-updates-v28)
-15. [Latest Updates (v2.7)](#latest-updates-v27)
-16. [Latest Updates (v2.6)](#latest-updates-v26)
-17. [Workflow Features](#workflow-features)
-18. [Calendar Updates](#calendar-updates)
-19. [Access Control](#access-control)
-20. [Email Templates](#email-templates)
-21. [Financial Tracking](#financial-tracking)
-22. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.23)](#latest-updates-v223)
+2. [Latest Updates (v2.22)](#latest-updates-v222)
+3. [Latest Updates (v2.21)](#latest-updates-v221)
+4. [Latest Updates (v2.20)](#latest-updates-v220)
+5. [Latest Updates (v2.19)](#latest-updates-v219)
+6. [Latest Updates (v2.18)](#latest-updates-v218)
+7. [Latest Updates (v2.17)](#latest-updates-v217)
+8. [Latest Updates (v2.16)](#latest-updates-v216)
+9. [Latest Updates (v2.15)](#latest-updates-v215)
+10. [Latest Updates (v2.14)](#latest-updates-v214)
+11. [Latest Updates (v2.13)](#latest-updates-v213)
+12. [Latest Updates (v2.12)](#latest-updates-v212)
+13. [Latest Updates (v2.11)](#latest-updates-v211)
+14. [Latest Updates (v2.10)](#latest-updates-v210)
+15. [Latest Updates (v2.9)](#latest-updates-v29)
+16. [Latest Updates (v2.8)](#latest-updates-v28)
+17. [Latest Updates (v2.7)](#latest-updates-v27)
+18. [Latest Updates (v2.6)](#latest-updates-v26)
+19. [Workflow Features](#workflow-features)
+20. [Calendar Updates](#calendar-updates)
+21. [Access Control](#access-control)
+22. [Email Templates](#email-templates)
+23. [Financial Tracking](#financial-tracking)
+24. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.23)
+
+### Bids Submissions and Followup UI Improvements
+
+**Date**: 2026-02-04
+
+**Overview**:
+Streamlined the Submissions and Followup section of the Bids page with more concise labels and enhanced data display for better readability and quick scanning.
+
+#### Label Updates
+
+**Simplified Column Headers**:
+- "Time to/from bid due date" → "Bid Date"
+- "Bid Due Date" → "Bid Date" (applied across all bid tables)
+- "Time since last contact" → "Last Contact"
+- "Estimated Job Start Date" → "Start Date"
+
+**Benefits**:
+- More concise headers save space
+- Easier to scan at a glance
+- Consistent naming across all tables
+
+---
+
+#### Compact Date Formats
+
+**Bid Date Time Display** (Unsent and Pending Follow-up tables):
+
+Changed from verbose text to concise +/- notation:
+- **Old format**: "1 day since deadline", "2 days until due", "Due today"
+- **New format**: "+1", "-2", "-0"
+
+**Logic**:
+- Negative numbers indicate days until deadline (e.g., "-15" means 15 days until bid is due)
+- Positive numbers indicate days past deadline (e.g., "+5" means 5 days overdue)
+- "-0" indicates due today
+
+**Start Date Display** (Won Bids table):
+
+Shows both the date and countdown/countup:
+- **Format**: "MM/DD [±X]"
+- **Examples**:
+  - "04/15 [-15]" = April 15, starting in 15 days
+  - "03/01 [+10]" = March 1, started 10 days ago
+  - "02/05 [-0]" = February 5, starting today
+
+**Benefits**:
+- Quick visual scanning for urgency
+- No mental math required to assess timelines
+- Consistent format across both date columns
+
+---
+
+#### Bid Values in Project Names
+
+**Enhancement**: Bid values now display in thousands next to project names across all Submissions and Followup tables.
+
+**Format**: "Project Name (X.X)" where the number represents bid value in thousands
+
+**Examples**:
+- Bid value $3,800: "Gibbs Residence Grinder Pump (3.8)"
+- Bid value $11,700: "Project Name (11)" ← No decimal for values ≥ $10k
+- Bid value $500: "Project Name (0.5)"
+- No bid value: "Project Name" (no suffix)
+
+**Smart Decimal Formatting**:
+- Values under $10k: Show 1 decimal (e.g., 3.8, 9.5)
+- Values $10k and above: No decimal (e.g., 11, 25, 150)
+
+**Benefits**:
+- Quickly assess bid size without opening each bid
+- Prioritize larger opportunities at a glance
+- Cleaner display for large values
+
+---
+
+#### Won Bids Sorting
+
+**Enhancement**: Won bids are now automatically sorted by start date in ascending order.
+
+**Behavior**:
+- Jobs starting soonest appear at the top
+- Jobs further out appear below
+- Jobs without start dates appear at the end
+
+**Benefits**:
+- Easy to identify which won projects need immediate attention
+- Better scheduling visibility
+- Logical ordering for project planning
+
+---
+
+#### Summary of Changes
+
+**Modified Files**:
+- `src/pages/Bids.tsx`
+
+**Functions Modified/Created**:
+1. `formatTimeSinceDueDate()` - Updated to return "+X" or "-X" format
+2. `formatDateYYMMDD()` - Enhanced to show "MM/DD [±X]" with countdown
+3. `formatBidNameWithValue()` - New function to append bid value in thousands
+
+**Impact**:
+- 9 label updates for consistency
+- 3 formatting functions improved
+- 5 submission tables enhanced with bid values
+- 1 table sorted by relevance
+
+All changes maintain backward compatibility and require no database modifications.
 
 ---
 

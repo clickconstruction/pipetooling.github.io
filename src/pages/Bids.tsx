@@ -90,9 +90,9 @@ function formatTimeSinceDueDate(dateStr: string | null): string {
   due.setHours(0, 0, 0, 0)
   const diffMs = due.getTime() - today.getTime()
   const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays < 0) return `${Math.abs(diffDays)} day${Math.abs(diffDays) !== 1 ? 's' : ''} since deadline`
-  if (diffDays === 0) return 'Due today'
-  return `${diffDays} day${diffDays !== 1 ? 's' : ''} until due`
+  if (diffDays < 0) return `+${Math.abs(diffDays)}`
+  if (diffDays === 0) return '-0'
+  return `-${diffDays}`
 }
 
 function formatShortDate(iso: string | null): string {
@@ -104,10 +104,32 @@ function formatShortDate(iso: string | null): string {
 function formatDateYYMMDD(dateStr: string | null): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr + 'T12:00:00')
-  const y = d.getFullYear() % 100
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
-  return `${y}/${m}/${day}`
+  
+  // Calculate days until/since
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  d.setHours(0, 0, 0, 0)
+  const diffMs = d.getTime() - today.getTime()
+  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
+  
+  // Format with brackets
+  const formattedDate = `${m}/${day}`
+  if (diffDays < 0) return `${formattedDate} [+${Math.abs(diffDays)}]`
+  return `${formattedDate} [-${diffDays}]`
+}
+
+function formatBidNameWithValue(bid: BidWithBuilder): string {
+  const baseName = bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)
+  
+  if (bid.bid_value != null && bid.bid_value !== 0) {
+    const valueInThousands = Number(bid.bid_value) / 1000
+    const formattedValue = valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
+    return `${baseName} (${formattedValue})`
+  }
+  
+  return baseName
 }
 
 function formatDesignDrawingPlanDate(dateStr: string | null): string {
@@ -3570,7 +3592,17 @@ export default function Bids() {
 
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
-  const submissionWon = filteredBidsForSubmission.filter((b) => b.outcome === 'won')
+  const submissionWon = filteredBidsForSubmission
+    .filter((b) => b.outcome === 'won')
+    .sort((a, b) => {
+      // Handle null dates - put them at the end
+      if (!a.estimated_job_start_date && !b.estimated_job_start_date) return 0
+      if (!a.estimated_job_start_date) return 1
+      if (!b.estimated_job_start_date) return -1
+      
+      // Sort by date ascending (earliest first)
+      return a.estimated_job_start_date.localeCompare(b.estimated_job_start_date)
+    })
   const submissionStartedOrComplete = filteredBidsForSubmission.filter((b) => b.outcome === 'started_or_complete')
   const submissionLost = filteredBidsForSubmission.filter((b) => b.outcome === 'lost')
 
@@ -3707,7 +3739,7 @@ export default function Bids() {
                   </th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Value</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance to Office<br />(miles)</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
@@ -3883,7 +3915,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4414,7 +4446,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -5145,7 +5177,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -5162,7 +5194,7 @@ export default function Bids() {
                           background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                       </tr>
                     )
@@ -5608,7 +5640,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -5856,7 +5888,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -6342,10 +6374,10 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time since last contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time to/from bid due date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -6364,7 +6396,7 @@ export default function Bids() {
                           background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
@@ -6431,8 +6463,8 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time since last contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time to/from bid due date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -6451,7 +6483,7 @@ export default function Bids() {
                           background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                           {(bid.customers || bid.bids_gc_builders) ? (
                             <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
@@ -6524,7 +6556,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimated Job Start Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Start Date</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
@@ -6544,7 +6576,7 @@ export default function Bids() {
                           background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                           {(bid.customers || bid.bids_gc_builders) ? (
@@ -6627,7 +6659,7 @@ export default function Bids() {
                           background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                           {(bid.customers || bid.bids_gc_builders) ? (
                             <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
@@ -6690,7 +6722,7 @@ export default function Bids() {
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Due Date</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Loss Reason</th>
                   <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                 </tr>
@@ -6792,7 +6824,7 @@ export default function Bids() {
               )}
               {outcome === 'won' && (
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimated Job Start Date</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Start Date</label>
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
@@ -6955,7 +6987,7 @@ export default function Bids() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date</label>
                   <input type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
