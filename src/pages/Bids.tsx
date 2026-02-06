@@ -3841,6 +3841,32 @@ export default function Bids() {
     return 'pending'
   }
 
+  function getGcBuilderPhone(): string {
+    if (gcCustomerId) {
+      const customer = customers.find((c) => c.id === gcCustomerId)
+      if (customer) {
+        return extractContactInfo(customer.contact_info ?? null).phone || '—'
+      }
+    }
+    if (editingBid?.bids_gc_builders) {
+      return editingBid.bids_gc_builders.contact_number ?? '—'
+    }
+    return '—'
+  }
+
+  function getGcBuilderEmail(): string {
+    if (gcCustomerId) {
+      const customer = customers.find((c) => c.id === gcCustomerId)
+      if (customer) {
+        return extractContactInfo(customer.contact_info ?? null).email || '—'
+      }
+    }
+    if (editingBid?.bids_gc_builders) {
+      return editingBid.bids_gc_builders.email ?? '—'
+    }
+    return '—'
+  }
+
   function handleScrollToSelectedBidRow() {
     if (!selectedBidForSubmission) return
     const sectionKey = getSubmissionSectionKey(selectedBidForSubmission)
@@ -7567,6 +7593,49 @@ export default function Bids() {
                   </div>
                 )}
               </div>
+              {/* Display GC/Builder contact info (read-only) */}
+              {(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders)) && (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#6b7280' }}>
+                      GC/Builder (customer) Contact Phone
+                    </label>
+                    <input
+                      type="text"
+                      value={getGcBuilderPhone()}
+                      disabled
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: '#f9fafb',
+                        color: '#6b7280',
+                        cursor: 'not-allowed'
+                      }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#6b7280' }}>
+                      GC/Builder (customer) Contact Email
+                    </label>
+                    <input
+                      type="text"
+                      value={getGcBuilderEmail()}
+                      disabled
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: '#f9fafb',
+                        color: '#6b7280',
+                        cursor: 'not-allowed'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Contact Name</label>
                 <input type="text" value={gcContactName} onChange={(e) => setGcContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />

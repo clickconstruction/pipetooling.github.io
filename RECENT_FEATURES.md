@@ -100,6 +100,74 @@ When creating new labor rows:
 - Safer - preserves non-matching fixture hours
 - Better discoverability - prominent header placement
 
+#### Pricing Tab: Searchable Price Book Features
+
+**Enhancement**: Added search functionality to price book entries and assignments for faster navigation and entry creation.
+
+**Features Added**:
+
+##### 1. Price Book Entries Search
+
+**Location**: Pricing tab, price book management section (below price book dropdown)
+
+**Features**:
+- Search input field filters price book entries in real-time by fixture/tie-in name
+- Case-insensitive matching
+- Table updates instantly as you type
+- When no matches found, displays "No entries match '{search term}'" message
+- "Add to Price Book" button appears when no matches exist
+- Clicking the button opens the entry form modal with fixture name pre-filled
+
+**Usage Example**:
+1. Select a price book
+2. Type "toilet" in search - only "Toilet", "Toilet ADA", etc. appear
+3. Type "bidet" (if not in price book) - "Add 'bidet' to Price Book" button appears
+4. Click button - form opens with "bidet" already filled in
+
+##### 2. Searchable Assignment Dropdowns
+
+**Location**: Pricing tab, fixture assignment table (when comparing costs to price book)
+
+**Old Behavior**: Standard dropdown requiring scrolling through all entries
+
+**New Behavior**: Searchable input field with dropdown results
+
+**Features**:
+- Click input field to open dropdown showing all price book entries
+- Type to filter entries in real-time
+- Matching entries appear in dropdown below input
+- Click entry to assign it to the fixture
+- When assigned, entry name displays in input field
+- Clear button (×) appears to remove assignment
+- Dropdown closes when clicking outside
+
+**No Matches Flow**:
+- Type fixture name that doesn't exist in price book
+- Shows "No matches for '{search term}'" message
+- "Add '{search term}' to Price Book" button appears in dropdown
+- Click button to open entry form with name pre-filled
+- After saving new entry, can immediately assign it
+
+**Technical Implementation**:
+- Per-row search state tracking
+- Click-outside handler to close dropdowns
+- Real-time filtering with case-insensitive matching
+- Hover effects on dropdown items
+- Disabled state support during save operations
+
+**Benefits**:
+- Faster assignment workflow - no scrolling through long lists
+- Quick creation of missing entries without leaving the assignment flow
+- Consistent search experience across price book management and assignments
+- Reduced errors from similar fixture names
+- Better UX for price books with many entries
+
+**Usage Tips**:
+- Start typing immediately when field is focused
+- Use clear button (×) to quickly reassign a fixture
+- Create new entries on-the-fly when needed
+- Dropdown shows all entries when field is empty
+
 ---
 
 ## Latest Updates (v2.25)
