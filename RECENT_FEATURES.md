@@ -3,31 +3,195 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.24)](#latest-updates-v224)
-2. [Latest Updates (v2.23)](#latest-updates-v223)
-3. [Latest Updates (v2.22)](#latest-updates-v222)
-4. [Latest Updates (v2.21)](#latest-updates-v221)
-5. [Latest Updates (v2.20)](#latest-updates-v220)
-6. [Latest Updates (v2.19)](#latest-updates-v219)
-7. [Latest Updates (v2.18)](#latest-updates-v218)
-8. [Latest Updates (v2.17)](#latest-updates-v217)
-9. [Latest Updates (v2.16)](#latest-updates-v216)
-10. [Latest Updates (v2.15)](#latest-updates-v215)
-11. [Latest Updates (v2.14)](#latest-updates-v214)
-12. [Latest Updates (v2.13)](#latest-updates-v213)
-13. [Latest Updates (v2.12)](#latest-updates-v212)
-14. [Latest Updates (v2.11)](#latest-updates-v211)
-15. [Latest Updates (v2.10)](#latest-updates-v210)
-16. [Latest Updates (v2.9)](#latest-updates-v29)
-17. [Latest Updates (v2.8)](#latest-updates-v28)
-18. [Latest Updates (v2.7)](#latest-updates-v27)
-19. [Latest Updates (v2.6)](#latest-updates-v26)
-20. [Workflow Features](#workflow-features)
-21. [Calendar Updates](#calendar-updates)
-22. [Access Control](#access-control)
-23. [Email Templates](#email-templates)
-24. [Financial Tracking](#financial-tracking)
-25. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.25)](#latest-updates-v225)
+2. [Latest Updates (v2.24)](#latest-updates-v224)
+3. [Latest Updates (v2.23)](#latest-updates-v223)
+4. [Latest Updates (v2.22)](#latest-updates-v222)
+5. [Latest Updates (v2.21)](#latest-updates-v221)
+6. [Latest Updates (v2.20)](#latest-updates-v220)
+7. [Latest Updates (v2.19)](#latest-updates-v219)
+8. [Latest Updates (v2.18)](#latest-updates-v218)
+9. [Latest Updates (v2.17)](#latest-updates-v217)
+10. [Latest Updates (v2.16)](#latest-updates-v216)
+11. [Latest Updates (v2.15)](#latest-updates-v215)
+12. [Latest Updates (v2.14)](#latest-updates-v214)
+13. [Latest Updates (v2.13)](#latest-updates-v213)
+14. [Latest Updates (v2.12)](#latest-updates-v212)
+15. [Latest Updates (v2.11)](#latest-updates-v211)
+16. [Latest Updates (v2.10)](#latest-updates-v210)
+17. [Latest Updates (v2.9)](#latest-updates-v29)
+18. [Latest Updates (v2.8)](#latest-updates-v28)
+19. [Latest Updates (v2.7)](#latest-updates-v27)
+20. [Latest Updates (v2.6)](#latest-updates-v26)
+21. [Workflow Features](#workflow-features)
+22. [Calendar Updates](#calendar-updates)
+23. [Access Control](#access-control)
+24. [Email Templates](#email-templates)
+25. [Financial Tracking](#financial-tracking)
+26. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.25)
+
+### Cost Estimate: Driving Cost Calculation and Labor Book Improvements
+
+**Date**: 2026-02-06
+
+**Overview**:
+Enhanced the Cost Estimate tab with automated driving cost calculations based on total man-hours and distance to office, plus improved labor book application workflow.
+
+#### Driving Cost Calculation
+
+**Feature**: Automatic calculation of driving costs based on job parameters.
+
+**How It Works**:
+- Formula: (Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance to Office
+- Example: 40 hrs / 2 hrs/trip × $0.70/mi × 50 miles = $700
+
+**Features**:
+- Editable rate per mile (default: $0.70)
+- Editable hours per trip (default: 2.0 hours)
+- Displays distance to office from bid data
+- "Edit Bid" button for quick distance updates
+- Automatically included in labor total and grand total
+- Appears in Summary section and PDF exports
+
+**UI Location**:
+Yellow-highlighted "Driving Cost Parameters" section appears after the labor hours table in Cost Estimate tab.
+
+**Database**:
+- Added `driving_cost_rate` column to `cost_estimates` table
+- Added `hours_per_trip` column to `cost_estimates` table
+- Migration: `add_cost_estimate_driving_cost_fields.sql`
+
+**Technical Details**:
+- Values persist per cost estimate
+- Updates save to database with other cost estimate changes
+- PDF export includes driving cost breakdown
+- Submission preview calculations include driving cost in margins
+
+#### Labor Book Application Improvements
+
+**Enhancement**: Streamlined workflow for applying labor book templates to cost estimates.
+
+**Features**:
+- "Apply matching Labor Hours" button moved to top-right header (next to Print button)
+- Auto-selects first labor book version when opening Cost Estimate tab
+- One-click application (no confirmation dialogs)
+- Blue button styling matches "Apply matching Fixture Templates" pattern
+- Success message appears inline next to button
+- Button only visible when labor book is selected
+
+**Smart Matching**:
+- Only updates fixtures that match entries in the selected labor book
+- Non-matching fixtures preserve their existing hours or fall back to system defaults
+- Uses fixture name and alias name matching (case-insensitive)
+
+**Fallback Logic**:
+When creating new labor rows:
+1. First attempts to use hours from selected labor book
+2. Falls back to `fixture_labor_defaults` table for non-matching fixtures
+3. Defaults to 0 only if fixture exists in neither source
+
+**Impact**:
+- Faster workflow - button always visible and ready to use
+- Consistent UX - matches takeoffs tab pattern
+- Safer - preserves non-matching fixture hours
+- Better discoverability - prominent header placement
+
+---
+
+## Latest Updates (v2.25)
+
+### Cost Estimate: Driving Cost Calculation and Labor Book Improvements
+
+**Date**: 2026-02-06
+
+**Overview**:
+Enhanced the Cost Estimate tab with automated driving cost calculations and streamlined labor book application workflow.
+
+#### Driving Cost Calculation
+
+**Feature**: Automatic calculation of driving costs based on job parameters and editable cost factors.
+
+**How It Works**:
+- **Formula**: (Total Man Hours ÷ Hours Per Trip) × Rate Per Mile × Distance to Office
+- **Example**: 40 hrs ÷ 2 hrs/trip × $0.70/mi × 50 miles = $700 driving cost
+
+**Editable Parameters**:
+- **Rate per mile**: Default $0.70, adjustable per estimate
+- **Hours per trip**: Default 2.0 hours, adjustable per estimate
+- Parameters persist with the cost estimate when saved
+
+**UI Features**:
+- Yellow-highlighted "Driving Cost Parameters" section after labor table
+- Displays current distance to office from bid data
+- "Edit Bid" button for quick access to update distance
+- Real-time calculation display showing trips, rate, distance, and total cost
+- Shows "Distance to office: Not set" when no distance is configured
+
+**Summary Integration**:
+- Driving cost appears as separate line item in Summary section
+- Included in "Labor total" (Labor + Driving)
+- Incorporated into Grand total calculation
+- Format: `Driving: $700.00` (always visible, shows $0.00 if no distance)
+
+**PDF Export**:
+- Driving cost calculation included in Cost Estimate PDF
+- Shows breakdown: "Driving cost: 20.0 trips × $0.70/mi × 50mi = $700.00"
+- Appears in summary table with Labor and Materials totals
+- Included in Submission & Followup preview calculations for margin analysis
+
+**Database Changes**:
+- Table: `cost_estimates`
+- New columns: `driving_cost_rate` (NUMERIC(10,2), default 0.70), `hours_per_trip` (NUMERIC(10,2), default 2.0)
+- Migration file: `supabase/migrations/add_cost_estimate_driving_cost_fields.sql`
+
+#### Labor Book Application Workflow
+
+**Enhancement**: Streamlined labor book template application with better visibility and user experience.
+
+**Button Placement**:
+- Moved to top-right header next to Print button (previously below labor rate input)
+- Renamed to "Apply matching Labor Hours" for consistency with Takeoffs tab
+- Blue styling matching "Apply matching Fixture Templates" pattern
+- Compact size (0.35rem × 0.75rem padding)
+
+**Auto-Selection**:
+- First labor book version automatically selected when opening Cost Estimate tab
+- Preserves any previously saved labor book selection for the bid
+- Button immediately clickable without manual selection
+
+**Simplified Workflow**:
+- One-click operation (no confirmation dialogs)
+- Success message appears inline next to button
+- Shows "Applying..." state while processing
+- Green success message displays for 3 seconds after completion
+
+**Smart Matching Behavior**:
+- Only updates fixtures that exist in the selected labor book
+- Matches by fixture name and alias names (case-insensitive)
+- Non-matching fixtures remain unchanged
+
+**Fallback Logic for New Fixtures**:
+When adding new fixtures to cost estimate:
+1. Uses hours from selected labor book if fixture matches
+2. Falls back to `fixture_labor_defaults` table for non-matching fixtures (e.g., Toilet: 1/1/1 hrs)
+3. Defaults to 0 only if fixture not found in either source
+
+**Technical Details**:
+- Function: `applyLaborBookHoursToEstimate()` (line 2005)
+- Sync function: `loadCostEstimateLaborRowsAndSync()` (line 1082)
+- Auto-selection logic in Cost Estimate tab useEffect (line 3326)
+- Button only visible when labor rows exist and labor book is selected
+
+**Benefits**:
+- More discoverable - prominent header placement
+- Faster workflow - auto-selection and one-click application
+- Consistent UX - matches patterns from other tabs
+- Safer - preserves non-matching fixture hours using fallback defaults
+- Better visibility - success feedback right at the button
 
 ---
 

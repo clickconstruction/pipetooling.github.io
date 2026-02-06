@@ -644,6 +644,9 @@ export default function Bids() {
   const [pricingVersionToDelete, setPricingVersionToDelete] = useState<PriceBookVersion | null>(null)
   const [deletePricingVersionNameInput, setDeletePricingVersionNameInput] = useState('')
   const [deletePricingVersionError, setDeletePricingVersionError] = useState<string | null>(null)
+  const [priceBookSearchQuery, setPriceBookSearchQuery] = useState('')
+  const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
+  const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
@@ -1101,15 +1104,36 @@ export default function Bids() {
       const countVal = Number(cr.count)
       if (!existing) {
         const def = defaults.find((d) => d.fixture.toLowerCase() === cr.fixture.toLowerCase())
+        // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
+        let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
+        if (def) {
+          hours = { rough_in_hrs: def.rough_in_hrs, top_out_hrs: def.top_out_hrs, trim_set_hrs: def.trim_set_hrs }
+        } else {
+          // Load from fixture_labor_defaults as fallback
+          const { data: fallbackData } = await supabase
+            .from('fixture_labor_defaults')
+            .select('*')
+            .ilike('fixture', cr.fixture)
+            .limit(1)
+            .maybeSingle()
+          if (fallbackData) {
+            hours = { 
+              rough_in_hrs: Number(fallbackData.rough_in_hrs), 
+              top_out_hrs: Number(fallbackData.top_out_hrs), 
+              trim_set_hrs: Number(fallbackData.trim_set_hrs) 
+            }
+          }
+        }
+        
         const { data: inserted, error: insErr } = await supabase
           .from('cost_estimate_labor_rows')
           .insert({
             cost_estimate_id: estimateId,
             fixture: cr.fixture,
             count: countVal,
-            rough_in_hrs_per_unit: def?.rough_in_hrs ?? 0,
-            top_out_hrs_per_unit: def?.top_out_hrs ?? 0,
-            trim_set_hrs_per_unit: def?.trim_set_hrs ?? 0,
+            rough_in_hrs_per_unit: hours.rough_in_hrs,
+            top_out_hrs_per_unit: hours.top_out_hrs,
+            trim_set_hrs_per_unit: hours.trim_set_hrs,
             sequence_order: ++seq,
           })
           .select('*')
@@ -1408,6 +1432,18 @@ export default function Bids() {
     e.preventDefault()
     const name = pricingVersionNameInput.trim()
     if (!name) return
+    
+    // Check for duplicate name (case-insensitive)
+    const isDuplicate = priceBookVersions.some((v) => 
+      v.name.toLowerCase() === name.toLowerCase() && 
+      v.id !== editingPricingVersion?.id
+    )
+    
+    if (isDuplicate) {
+      setError(`A price book named "${name}" already exists. Please use a different name.`)
+      return
+    }
+    
     setSavingPricingVersion(true)
     setError(null)
     if (editingPricingVersion) {
@@ -1947,6 +1983,20 @@ export default function Bids() {
     await saveBidSelectedPriceBookVersion(bidId, versionId)
   }
 
+  async function saveLaborRows() {
+    for (const row of costEstimateLaborRows) {
+      await supabase
+        .from('cost_estimate_labor_rows')
+        .update({
+          rough_in_hrs_per_unit: row.rough_in_hrs_per_unit,
+          top_out_hrs_per_unit: row.top_out_hrs_per_unit,
+          trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
+          count: row.count,
+        })
+        .eq('id', row.id)
+    }
+  }
+
   async function saveCostEstimate() {
     if (!costEstimate) return
     setSavingCostEstimate(true)
@@ -1988,17 +2038,7 @@ export default function Bids() {
       return
     }
     setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum, driving_cost_rate: drivingCostRateNum, hours_per_trip: hoursPerTripNum } as any : null))
-    for (const row of costEstimateLaborRows) {
-      await supabase
-        .from('cost_estimate_labor_rows')
-        .update({
-          rough_in_hrs_per_unit: row.rough_in_hrs_per_unit,
-          top_out_hrs_per_unit: row.top_out_hrs_per_unit,
-          trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
-          count: row.count,
-        })
-        .eq('id', row.id)
-    }
+    await saveLaborRows()
     setSavingCostEstimate(false)
   }
 
@@ -2008,6 +2048,10 @@ export default function Bids() {
     setApplyingLaborBookHours(true)
     setError(null)
     try {
+      // Auto-save current labor rows to database before applying labor book
+      // This ensures non-matching fixtures preserve their current values
+      await saveLaborRows()
+      
       const { data: entries, error: fetchErr } = await supabase
         .from('labor_book_entries')
         .select('fixture_name, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs')
@@ -3327,13 +3371,22 @@ export default function Bids() {
     const bidJustChanged = costEstimateBidIdRef.current !== bidId
     if (bidJustChanged) {
       costEstimateBidIdRef.current = bidId
-      setSelectedLaborBookVersionId(selectedBidForCostEstimate.selected_labor_book_version_id ?? null)
+      // Auto-select first labor book if none is saved for this bid
+      const savedLaborBookId = selectedBidForCostEstimate.selected_labor_book_version_id
+      if (!savedLaborBookId && laborBookVersions.length > 0) {
+        const firstLaborBookId = laborBookVersions[0]?.id
+        if (firstLaborBookId) {
+          setSelectedLaborBookVersionId(firstLaborBookId)
+        }
+      } else {
+        setSelectedLaborBookVersionId(savedLaborBookId ?? null)
+      }
     }
     const laborBookVersionId = bidJustChanged
-      ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? null)
+      ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? (laborBookVersions.length > 0 ? laborBookVersions[0]?.id ?? null : null))
       : selectedLaborBookVersionId
     loadCostEstimateData(bidId, laborBookVersionId)
-  }, [activeTab, selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.selected_labor_book_version_id, selectedLaborBookVersionId])
+  }, [activeTab, selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.selected_labor_book_version_id, selectedLaborBookVersionId, laborBookVersions])
 
   useEffect(() => {
     if ((activeTab !== 'pricing' && activeTab !== 'cover-letter') || !selectedBidForPricing?.id) {
@@ -3352,12 +3405,36 @@ export default function Bids() {
     const bidJustChanged = pricingBidIdRef.current !== bidId
     if (bidJustChanged) {
       pricingBidIdRef.current = bidId
-      setSelectedPricingVersionId(selectedBidForPricing.selected_price_book_version_id ?? null)
+      const savedVersionId = selectedBidForPricing.selected_price_book_version_id
+      if (!savedVersionId && priceBookVersions.length > 0) {
+        // Auto-select "Default" if it exists
+        const defaultVersion = priceBookVersions.find((v) => v.name === 'Default')
+        if (defaultVersion) {
+          setSelectedPricingVersionId(defaultVersion.id)
+        } else {
+          setSelectedPricingVersionId(null)
+        }
+      } else {
+        setSelectedPricingVersionId(savedVersionId ?? null)
+      }
     }
     const versionId = bidJustChanged ? (selectedBidForPricing.selected_price_book_version_id ?? null) : selectedPricingVersionId
     loadBidPricingAssignments(bidId, versionId)
     loadPricingDataForBid(bidId)
-  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId])
+  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (pricingAssignmentDropdownOpen) {
+        const target = event.target as HTMLElement
+        if (!target.closest('[data-pricing-assignment-dropdown]')) {
+          setPricingAssignmentDropdownOpen(null)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [pricingAssignmentDropdownOpen])
 
   useEffect(() => {
     if (!selectedPricingVersionId) {
@@ -4937,6 +5014,29 @@ export default function Bids() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCostEstimate) || 'Bid'}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {costEstimateLaborRows.length > 0 && selectedLaborBookVersionId && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => applyLaborBookHoursToEstimate()}
+                        disabled={applyingLaborBookHours}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: applyingLaborBookHours ? 'wait' : 'pointer',
+                          fontSize: '0.875rem',
+                        }}
+                      >
+                        {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
+                      </button>
+                      {laborBookApplyMessage && (
+                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                      )}
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => printCostEstimatePage()}
@@ -5060,33 +5160,6 @@ export default function Bids() {
                         style={{ width: '8rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                       />
                     </div>
-                    {selectedLaborBookVersionId && costEstimateLaborRows.length > 0 && (
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm('Overwrite all fixture hours with values from the selected labor book? Current values will be replaced.')) {
-                              applyLaborBookHoursToEstimate()
-                            }
-                          }}
-                          disabled={applyingLaborBookHours}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: applyingLaborBookHours ? 'wait' : 'pointer',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {applyingLaborBookHours ? 'Applying…' : 'Apply labor book hours'}
-                        </button>
-                        {laborBookApplyMessage && (
-                          <span style={{ marginLeft: '0.5rem', color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
-                        )}
-                      </div>
-                    )}
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: '#f9fafb' }}>
@@ -5812,22 +5885,133 @@ export default function Bids() {
                           <tr key={countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.75rem' }}>{countRow.fixture}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>{count}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <select
-                                value={entry?.id ?? ''}
-                                onChange={(e) => {
-                                  const id = e.target.value
-                                  if (id) savePricingAssignment(countRow.id, id)
-                                  else removePricingAssignment(countRow.id)
-                                }}
-                                disabled={savingPricingAssignment === countRow.id}
-                                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '10rem' }}
-                              >
-                                <option value="">— Assign —</option>
-                                {priceBookEntries.map((e) => (
-                                  <option key={e.id} value={e.id}>{e.fixture_name}</option>
-                                ))}
-                              </select>
+                            <td style={{ padding: '0.75rem', position: 'relative' }}>
+                              <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
+                                <input
+                                  type="text"
+                                  value={pricingAssignmentSearches[countRow.id] ?? entry?.fixture_name ?? ''}
+                                  onChange={(e) => {
+                                    setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: e.target.value }))
+                                    setPricingAssignmentDropdownOpen(countRow.id)
+                                  }}
+                                  onFocus={() => setPricingAssignmentDropdownOpen(countRow.id)}
+                                  placeholder="Search or assign..."
+                                  disabled={savingPricingAssignment === countRow.id}
+                                  style={{ 
+                                    width: '100%',
+                                    padding: '0.35rem', 
+                                    border: '1px solid #d1d5db', 
+                                    borderRadius: 4, 
+                                    minWidth: '10rem',
+                                    boxSizing: 'border-box',
+                                    paddingRight: entry ? '2rem' : '0.35rem'
+                                  }}
+                                />
+                                {entry && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      removePricingAssignment(countRow.id)
+                                      setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: '' }))
+                                    }}
+                                    style={{
+                                      position: 'absolute',
+                                      right: '0.5rem',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      color: '#6b7280',
+                                      fontSize: '1.25rem',
+                                      lineHeight: 1,
+                                      padding: 0
+                                    }}
+                                    title="Clear assignment"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                                {pricingAssignmentDropdownOpen === countRow.id && (() => {
+                                  const searchTerm = pricingAssignmentSearches[countRow.id] || ''
+                                  const filtered = priceBookEntries.filter((e) => 
+                                    e.fixture_name.toLowerCase().includes(searchTerm.toLowerCase())
+                                  )
+                                  return (
+                                    <div style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      left: 0,
+                                      right: 0,
+                                      background: 'white',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                      marginTop: '0.25rem',
+                                      maxHeight: '200px',
+                                      overflowY: 'auto',
+                                      zIndex: 10,
+                                      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                    }}>
+                                      {filtered.length > 0 ? (
+                                        filtered.map((e) => (
+                                          <div
+                                            key={e.id}
+                                            onClick={() => {
+                                              savePricingAssignment(countRow.id, e.id)
+                                              setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: '' }))
+                                              setPricingAssignmentDropdownOpen(null)
+                                            }}
+                                            style={{
+                                              padding: '0.5rem',
+                                              cursor: 'pointer',
+                                              borderBottom: '1px solid #f3f4f6',
+                                              background: entry?.id === e.id ? '#eff6ff' : 'white'
+                                            }}
+                                            onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
+                                            onMouseLeave={(ev) => { ev.currentTarget.style.background = entry?.id === e.id ? '#eff6ff' : 'white' }}
+                                          >
+                                            {e.fixture_name}
+                                          </div>
+                                        ))
+                                      ) : searchTerm ? (
+                                        <div style={{ padding: '0.75rem', textAlign: 'center', color: '#6b7280' }}>
+                                          No matches for "{searchTerm}"
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingPricingEntry(null)
+                                              setPricingEntryFixtureName(searchTerm)
+                                              setPricingEntryRoughIn('')
+                                              setPricingEntryTopOut('')
+                                              setPricingEntryTrimSet('')
+                                              setPricingEntryTotal('')
+                                              setPricingEntryFormOpen(true)
+                                              setPricingAssignmentDropdownOpen(null)
+                                            }}
+                                            style={{
+                                              display: 'block',
+                                              margin: '0.5rem auto 0',
+                                              padding: '0.5rem 1rem',
+                                              background: '#3b82f6',
+                                              color: 'white',
+                                              border: 'none',
+                                              borderRadius: 4,
+                                              cursor: 'pointer',
+                                              fontSize: '0.875rem'
+                                            }}
+                                          >
+                                            Add "{searchTerm}" to Price Book
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div style={{ padding: '0.5rem', color: '#6b7280', textAlign: 'center' }}>
+                                          Start typing to search...
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
+                              </div>
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(revenue)}</td>
@@ -5980,6 +6164,20 @@ export default function Bids() {
               {selectedPricingVersionId && (
                 <>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
+                  <input
+                    type="text"
+                    placeholder="Search fixture/tie-in name..."
+                    value={priceBookSearchQuery}
+                    onChange={(e) => setPriceBookSearchQuery(e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.5rem', 
+                      border: '1px solid #d1d5db', 
+                      borderRadius: 4, 
+                      marginBottom: '0.5rem', 
+                      boxSizing: 'border-box' 
+                    }}
+                  />
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
@@ -5993,7 +6191,11 @@ export default function Bids() {
                         </tr>
                       </thead>
                       <tbody>
-                        {priceBookEntries.map((entry) => (
+                        {priceBookEntries
+                          .filter((entry) => 
+                            entry.fixture_name.toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                          )
+                          .map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
@@ -6009,6 +6211,43 @@ export default function Bids() {
                       </tbody>
                     </table>
                   </div>
+                  {priceBookSearchQuery && 
+                   priceBookEntries.filter((e) => 
+                     e.fixture_name.toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                   ).length === 0 && (
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '1rem', 
+                      color: '#6b7280' 
+                    }}>
+                      No entries match "{priceBookSearchQuery}"
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingPricingEntry(null)
+                          setPricingEntryFixtureName(priceBookSearchQuery)
+                          setPricingEntryRoughIn('')
+                          setPricingEntryTopOut('')
+                          setPricingEntryTrimSet('')
+                          setPricingEntryTotal('')
+                          setPricingEntryFormOpen(true)
+                        }}
+                        style={{ 
+                          display: 'block',
+                          margin: '0.5rem auto 0',
+                          padding: '0.5rem 1rem', 
+                          background: '#3b82f6', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: 4, 
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        Add "{priceBookSearchQuery}" to Price Book
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={openNewPricingEntry}
