@@ -584,6 +584,8 @@ export default function Bids() {
   const [costEstimateMaterialTotalTopOut, setCostEstimateMaterialTotalTopOut] = useState<number | null>(null)
   const [costEstimateMaterialTotalTrimSet, setCostEstimateMaterialTotalTrimSet] = useState<number | null>(null)
   const [laborRateInput, setLaborRateInput] = useState('')
+  const [drivingCostRate, setDrivingCostRate] = useState('0.70')
+  const [hoursPerTrip, setHoursPerTrip] = useState('2')
   const [savingCostEstimate, setSavingCostEstimate] = useState(false)
   const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
@@ -1036,6 +1038,8 @@ export default function Bids() {
     setCostEstimate(est)
     if (est) {
       setLaborRateInput(est.labor_rate != null ? String(est.labor_rate) : '')
+      setDrivingCostRate((est as any).driving_cost_rate?.toString() ?? '0.70')
+      setHoursPerTrip((est as any).hours_per_trip?.toString() ?? '2')
       const rough = est.purchase_order_id_rough_in ? await loadPOTotal(est.purchase_order_id_rough_in) : 0
       const top = est.purchase_order_id_top_out ? await loadPOTotal(est.purchase_order_id_top_out) : 0
       const trim = est.purchase_order_id_trim_set ? await loadPOTotal(est.purchase_order_id_trim_set) : 0
@@ -1044,6 +1048,8 @@ export default function Bids() {
       setCostEstimateMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trim : null)
     } else {
       setLaborRateInput('')
+      setDrivingCostRate('0.70')
+      setHoursPerTrip('2')
       setCostEstimateMaterialTotalRoughIn(null)
       setCostEstimateMaterialTotalTopOut(null)
       setCostEstimateMaterialTotalTrimSet(null)
@@ -1951,6 +1957,20 @@ export default function Bids() {
       setSavingCostEstimate(false)
       return
     }
+    const drivingCostRateNum = drivingCostRate.trim() === '' ? 0.70 : parseFloat(drivingCostRate)
+    const hoursPerTripNum = hoursPerTrip.trim() === '' ? 2.0 : parseFloat(hoursPerTrip)
+    
+    if (isNaN(drivingCostRateNum) || drivingCostRateNum < 0) {
+      setError('Driving cost rate must be a non-negative number.')
+      setSavingCostEstimate(false)
+      return
+    }
+    
+    if (isNaN(hoursPerTripNum) || hoursPerTripNum <= 0) {
+      setError('Hours per trip must be a positive number.')
+      setSavingCostEstimate(false)
+      return
+    }
     const { error: updateErr } = await supabase
       .from('cost_estimates')
       .update({
@@ -1958,6 +1978,8 @@ export default function Bids() {
         purchase_order_id_top_out: costEstimate.purchase_order_id_top_out || null,
         purchase_order_id_trim_set: costEstimate.purchase_order_id_trim_set || null,
         labor_rate: laborRateNum,
+        driving_cost_rate: drivingCostRateNum,
+        hours_per_trip: hoursPerTripNum,
       })
       .eq('id', costEstimate.id)
     if (updateErr) {
@@ -1965,7 +1987,7 @@ export default function Bids() {
       setSavingCostEstimate(false)
       return
     }
-    setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum } : null))
+    setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum, driving_cost_rate: drivingCostRateNum, hours_per_trip: hoursPerTripNum } as any : null))
     for (const row of costEstimateLaborRows) {
       await supabase
         .from('cost_estimate_labor_rows')
@@ -2575,7 +2597,12 @@ export default function Bids() {
         (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
         0
       )
-      reviewGroupCostEstimateAmount = totalMaterialsR + totalHoursR * rateR
+      const distanceR = parseFloat(b.distance_from_office ?? '0') || 0
+      const drivingRateR = (estForReviewData as any).driving_cost_rate ? Number((estForReviewData as any).driving_cost_rate) : 0.70
+      const hrsPerTripR = (estForReviewData as any).hours_per_trip ? Number((estForReviewData as any).hours_per_trip) : 2.0
+      const numTripsR = totalHoursR / hrsPerTripR
+      const drivingCostR = numTripsR * drivingRateR * distanceR
+      reviewGroupCostEstimateAmount = totalMaterialsR + (totalHoursR * rateR) + drivingCostR
     }
     const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
     const countRowsReview = (countDataReview as BidCountRow[]) ?? []
@@ -2718,7 +2745,13 @@ export default function Bids() {
         0
       )
       const laborCost = totalHours * rate
-      const grandTotal = totalMaterials + laborCost
+      const distance = parseFloat(b.distance_from_office ?? '0') || 0
+      const drivingRatePerMile = (est as any).driving_cost_rate ? Number((est as any).driving_cost_rate) : 0.70
+      const hrsPerTrip = (est as any).hours_per_trip ? Number((est as any).hours_per_trip) : 2.0
+      const numTrips = totalHours / hrsPerTrip
+      const drivingCost = numTrips * drivingRatePerMile * distance
+      const laborCostWithDriving = laborCost + drivingCost
+      const grandTotal = totalMaterials + laborCostWithDriving
 
       push('Materials')
       y += lineHeight
@@ -2751,13 +2784,24 @@ export default function Bids() {
       y += lineHeight
       push(`Labor total: ${totalHours.toFixed(2)} hrs × $${formatCurrency(rate)}/hr = $${formatCurrency(laborCost)}`)
       y += lineHeight
+      if (distance > 0 && totalHours > 0) {
+        push(`Driving cost: ${numTrips.toFixed(1)} trips × $${drivingRatePerMile.toFixed(2)}/mi × ${distance.toFixed(0)}mi = $${formatCurrency(drivingCost)}`)
+        y += lineHeight
+      }
       push('Summary', true)
       const summaryColWidths = [100, 70]
-      y = drawTable(y, summaryColWidths, ['Item', 'Amount'], [
+      const summaryRows: [string, string][] = [
         ['Materials Total', `$${formatCurrency(totalMaterials)}`],
-        ['Labor total', `$${formatCurrency(laborCost)}`],
-        ['Grand total', `$${formatCurrency(grandTotal)}`],
-      ])
+        ['Labor', `$${formatCurrency(laborCost)}`],
+      ]
+      if (distance > 0 && totalHours > 0) {
+        summaryRows.push(['Driving', `$${formatCurrency(drivingCost)}`])
+      }
+      summaryRows.push(
+        ['Labor total', `$${formatCurrency(laborCostWithDriving)}`],
+        ['Grand total', `$${formatCurrency(grandTotal)}`]
+      )
+      y = drawTable(y, summaryColWidths, ['Item', 'Amount'], summaryRows)
     }
 
     // Page 4: Cover Letter
@@ -5128,6 +5172,67 @@ export default function Bids() {
                         </p>
                       )
                     })()}
+                    {/* Driving Cost Section */}
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Driving Cost Parameters</h4>
+                        {selectedBidForCostEstimate && (
+                          <button
+                            type="button"
+                            onClick={() => openEditBid(selectedBidForCostEstimate)}
+                            style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                          >
+                            Edit Bid
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                        <div>
+                          <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Rate per mile ($)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={drivingCostRate}
+                            onChange={(e) => setDrivingCostRate(e.target.value)}
+                            style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Hours per trip</label>
+                          <input
+                            type="number"
+                            min={0.1}
+                            step={0.1}
+                            value={hoursPerTrip}
+                            onChange={(e) => setHoursPerTrip(e.target.value)}
+                            style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
+                        const totalHours = costEstimateLaborRows.reduce(
+                          (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                          0
+                        )
+                        const ratePerMile = parseFloat(drivingCostRate) || 0.70
+                        const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
+                        const numTrips = totalHours / hrsPerTrip
+                        const drivingCost = numTrips * ratePerMile * distance
+                        
+                        return (
+                          <>
+                            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                              Distance to office: {distance > 0 ? `${distance.toFixed(1)} miles` : 'Not set'}
+                            </p>
+                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem' }}>
+                              Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = ${formatCurrency(drivingCost)}
+                            </p>
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
                   {/* Summary */}
                   <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
@@ -5141,11 +5246,21 @@ export default function Bids() {
                       )
                       const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
                       const laborCost = totalHours * rate
-                      const grandTotal = totalMaterials + laborCost
+                      const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
+                      const ratePerMile = parseFloat(drivingCostRate) || 0.70
+                      const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
+                      const numTrips = totalHours / hrsPerTrip
+                      const drivingCost = numTrips * ratePerMile * distance
+                      const laborCostWithDriving = laborCost + drivingCost
+                      const grandTotal = totalMaterials + laborCostWithDriving
                       return (
                         <>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Materials Total: ${formatCurrency(totalMaterials)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Labor total: ${formatCurrency(laborCost)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Labor: ${formatCurrency(laborCost)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Driving: ${formatCurrency(drivingCost)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>
+                            Labor total: ${formatCurrency(laborCostWithDriving)}
+                          </p>
                           <p style={{ margin: '0.5rem 0 0', fontWeight: 700, fontSize: '1.125rem', textAlign: 'right' }}>Grand total: ${formatCurrency(grandTotal)}</p>
                         </>
                       )
