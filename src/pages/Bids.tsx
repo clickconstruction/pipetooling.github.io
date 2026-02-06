@@ -658,6 +658,7 @@ export default function Bids() {
   const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
   const [coverLetterBidSubmissionQuickAddValue, setCoverLetterBidSubmissionQuickAddValue] = useState('')
+  const [applyingBidValue, setApplyingBidValue] = useState(false)
 
   /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, and Submission so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
@@ -3715,6 +3716,22 @@ export default function Bids() {
     setNotesModalBid(null)
   }
 
+  async function applyProposedAmountToBidValue(bidId: string, amount: number) {
+    setApplyingBidValue(true)
+    const { error } = await supabase
+      .from('bids')
+      .update({ bid_value: amount })
+      .eq('id', bidId)
+    
+    if (error) {
+      alert('Error updating bid value: ' + error.message)
+    } else {
+      // Reload bids to show updated value
+      await loadBids()
+    }
+    setApplyingBidValue(false)
+  }
+
   function openGcBuilderOrCustomerModal(bid: BidWithBuilder) {
     if (bid.customer_id && bid.customers) {
       setViewingCustomer(bid.customers)
@@ -6649,8 +6666,32 @@ export default function Bids() {
                   ))}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Proposed amount (from Pricing)</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</div>
+                    <button
+                      type="button"
+                      onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
+                      disabled={applyingBidValue || coverLetterRevenue === 0}
+                      style={{
+                        padding: '0.25rem 0.75rem',
+                        background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                      title="Apply this amount to Bid Value"
+                    >
+                      {applyingBidValue ? 'Applying...' : 'Apply to Bid Value'}
+                    </button>
+                  </div>
                   <div>{revenueWords} ({revenueNumber})</div>
+                  {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      Current Bid Value: ${formatCurrency(bid.bid_value)}
+                    </div>
+                  )}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>Include in combined document</div>
@@ -7691,7 +7732,32 @@ export default function Bids() {
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office (miles)</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label style={{ fontWeight: 500, margin: 0 }}>Distance to Office (miles)</label>
+                  {address && (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                      }}
+                      title={`View ${address} on map`}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 640 640"
+                        style={{ width: '16px', height: '16px', fill: 'currentColor' }}
+                      >
+                        <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
                 <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
