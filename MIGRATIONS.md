@@ -9,7 +9,7 @@ last_updated: 2026-02-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~82
+total_migrations: ~83
 date_range: "Through February 7, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -93,6 +93,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### February 2026
 
 #### February 7, 2026
+
+**`allow_masters_see_other_masters.sql`**
+- **Purpose**: Allow masters to see other masters in "Share with other Master" feature
+- **Root Cause**: Missing SELECT policy - masters could not query other master_technician users
+- **Changes**: Added SELECT policy allowing masters and devs to view all master_technician users
+- **Impact**: Masters can now see other masters in Settings to enable the sharing feature
+- **Category**: Access Control / RLS Bug Fix
 
 **`allow_assistants_update_customers.sql`**
 - **Purpose**: Allow assistants to update customer information
@@ -461,6 +468,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `allow_assistants_access_bids.sql` - Assistants full bids access
 - `allow_assistants_insert_customers.sql` - Assistants can create customers
 - `allow_assistants_update_customers.sql` (Feb 7, 2026) - Assistants can edit customers
+- `allow_masters_see_other_masters.sql` (Feb 7, 2026) - Masters can view other masters for sharing
 - `allow_estimators_access_bids.sql` - Estimators full bids access
 - `allow_estimators_select_customers.sql` (Feb 4, 2026) - Estimators SELECT/INSERT customers
 - `verify_projects_rls_for_assistants.sql` - Assistants see all stages

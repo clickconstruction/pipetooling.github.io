@@ -99,6 +99,12 @@ export default function Settings() {
   const [deleteName, setDeleteName] = useState('')
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [deleteReassignOpen, setDeleteReassignOpen] = useState(false)
+  const [deleteReassignUserId, setDeleteReassignUserId] = useState('')
+  const [deleteReassignNewMasterId, setDeleteReassignNewMasterId] = useState('')
+  const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
+  const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
+  const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
   const [sendingSignInEmailId, setSendingSignInEmailId] = useState<string | null>(null)
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
   const [setPasswordUser, setSetPasswordUser] = useState<UserRow | null>(null)
@@ -886,6 +892,12 @@ export default function Settings() {
     loadData()
   }, [authUser?.id])
 
+  useEffect(() => {
+    if (deleteReassignUserId) {
+      loadCustomerCount(deleteReassignUserId)
+    }
+  }, [deleteReassignUserId])
+
   async function handleClaimCode(e: React.FormEvent) {
     e.preventDefault()
     setCodeError(null)
@@ -1060,6 +1072,84 @@ export default function Settings() {
 
   function closeDelete() {
     setDeleteOpen(false)
+  }
+
+  function openDeleteReassign() {
+    setDeleteReassignOpen(true)
+    setDeleteReassignUserId('')
+    setDeleteReassignNewMasterId('')
+    setDeleteReassignCustomerCount(0)
+    setDeleteReassignError(null)
+  }
+
+  function closeDeleteReassign() {
+    setDeleteReassignOpen(false)
+  }
+
+  async function loadCustomerCount(userId: string) {
+    if (!userId) {
+      setDeleteReassignCustomerCount(0)
+      return
+    }
+    
+    const { count, error } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact', head: true })
+      .eq('master_user_id', userId)
+    
+    if (!error && count !== null) {
+      setDeleteReassignCustomerCount(count)
+    }
+  }
+
+  async function handleDeleteReassign(e: React.FormEvent) {
+    e.preventDefault()
+    setDeleteReassignError(null)
+    
+    if (!deleteReassignUserId || !deleteReassignNewMasterId) {
+      setDeleteReassignError('Please select both users')
+      return
+    }
+    
+    if (deleteReassignUserId === deleteReassignNewMasterId) {
+      setDeleteReassignError('Cannot reassign to the same user')
+      return
+    }
+    
+    const userToDelete = users.find(u => u.id === deleteReassignUserId)
+    if (!userToDelete) {
+      setDeleteReassignError('User to delete not found')
+      return
+    }
+    
+    setDeleteReassignSubmitting(true)
+    
+    const { data, error: eFn } = await supabase.functions.invoke('delete-user', {
+      body: { 
+        email: userToDelete.email, 
+        name: userToDelete.name,
+        reassign_customers_to: deleteReassignNewMasterId 
+      },
+    })
+    
+    setDeleteReassignSubmitting(false)
+    
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        msg = (eFn.context.json as { error?: string }).error || msg
+      }
+      setDeleteReassignError(msg)
+      return
+    }
+    
+    if (data?.error) {
+      setDeleteReassignError(data.error)
+      return
+    }
+    
+    closeDeleteReassign()
+    loadUsers()
   }
 
   function closeSetPassword() {
@@ -1465,6 +1555,9 @@ export default function Settings() {
             </button>
             <button type="button" onClick={openDelete} style={{ padding: '0.5rem 1rem' }}>
               Delete user
+            </button>
+            <button type="button" onClick={openDeleteReassign} style={{ padding: '0.5rem 1rem' }}>
+              Delete User & Reassign Customers
             </button>
           </div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
@@ -2192,6 +2285,133 @@ export default function Settings() {
                   {deleteSubmitting ? 'Deleting…' : 'Delete user'}
                 </button>
                 <button type="button" onClick={closeDelete} disabled={deleteSubmitting}>Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {deleteReassignOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
+            <h2 style={{ marginTop: 0 }}>Delete User & Reassign Customers</h2>
+            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              Select a user to delete and a master to inherit their customers. 
+              The user will be deleted after all customers are reassigned.
+            </p>
+            <form onSubmit={handleDeleteReassign}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="delete-reassign-user" style={{ display: 'block', marginBottom: 4 }}>
+                  User to delete *
+                </label>
+                <select
+                  id="delete-reassign-user"
+                  value={deleteReassignUserId}
+                  onChange={(e) => {
+                    setDeleteReassignUserId(e.target.value)
+                    setDeleteReassignError(null)
+                  }}
+                  required
+                  disabled={deleteReassignSubmitting}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select user...</option>
+                  {users
+                    .filter(u => u.role === 'master_technician' || u.role === 'dev')
+                    .map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email} ({u.email})
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+              
+              {deleteReassignCustomerCount > 0 && (
+                <p style={{ 
+                  background: '#fef3c7', 
+                  border: '1px solid #f59e0b', 
+                  padding: '0.75rem', 
+                  borderRadius: 4, 
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem'
+                }}>
+                  ⚠️ This user has <strong>{deleteReassignCustomerCount}</strong> customer{deleteReassignCustomerCount !== 1 ? 's' : ''} that will be reassigned.
+                </p>
+              )}
+              
+              {deleteReassignUserId && deleteReassignCustomerCount === 0 && (
+                <p style={{ 
+                  background: '#e0e7ff', 
+                  border: '1px solid #6366f1', 
+                  padding: '0.75rem', 
+                  borderRadius: 4, 
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem'
+                }}>
+                  ℹ️ This user has no customers to reassign.
+                </p>
+              )}
+              
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="delete-reassign-new-master" style={{ display: 'block', marginBottom: 4 }}>
+                  New master for customers *
+                </label>
+                <select
+                  id="delete-reassign-new-master"
+                  value={deleteReassignNewMasterId}
+                  onChange={(e) => {
+                    setDeleteReassignNewMasterId(e.target.value)
+                    setDeleteReassignError(null)
+                  }}
+                  required
+                  disabled={deleteReassignSubmitting || !deleteReassignUserId}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select new master...</option>
+                  {users
+                    .filter(u => 
+                      (u.role === 'master_technician' || u.role === 'dev') &&
+                      u.id !== deleteReassignUserId
+                    )
+                    .map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email} ({u.email})
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+              
+              {deleteReassignError && (
+                <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                  {deleteReassignError}
+                </p>
+              )}
+              
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button 
+                  type="submit" 
+                  disabled={deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId} 
+                  style={{ 
+                    padding: '0.5rem 1rem',
+                    color: '#fff',
+                    background: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? '#9ca3af' : '#dc2626',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {deleteReassignSubmitting ? 'Processing…' : 'Delete & Reassign'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={closeDeleteReassign} 
+                  disabled={deleteReassignSubmitting}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>

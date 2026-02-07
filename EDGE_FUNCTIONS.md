@@ -263,17 +263,21 @@ const response = await supabase.functions.invoke('create-user', {
 
 ```typescript
 interface DeleteUserRequest {
-  email?: string  // Find user by email
-  name?: string   // Find user by name (if email not provided)
+  email?: string                    // Find user by email
+  name?: string                     // Find user by name (if email not provided)
+  reassign_customers_to?: string    // Optional: UUID of master to reassign customers to before deletion
 }
 ```
 
-**Note**: Must provide either `email` or `name` (email takes precedence if both provided)
+**Notes**: 
+- Must provide either `email` or `name` (email takes precedence if both provided)
+- If `reassign_customers_to` is provided, all customers owned by the deleted user will be reassigned to the specified master before deletion
+- The new master must be a `dev` or `master_technician` role
 
 #### Example Request
 
 ```typescript
-// Delete by email
+// Delete by email (simple deletion)
 const response = await supabase.functions.invoke('delete-user', {
   body: {
     email: 'user@example.com'
@@ -286,6 +290,14 @@ const response = await supabase.functions.invoke('delete-user', {
     name: 'John Doe'
   }
 })
+
+// Delete and reassign customers to another master
+const response = await supabase.functions.invoke('delete-user', {
+  body: {
+    email: 'oldmaster@example.com',
+    reassign_customers_to: 'uuid-of-new-master'
+  }
+})
 ```
 
 #### Success Response
@@ -295,12 +307,17 @@ const response = await supabase.functions.invoke('delete-user', {
 ```json
 {
   "success": true,
-  "message": "User deleted successfully",
-  "deleted_user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Doe"
-  }
+  "message": "User user@example.com deleted successfully"
+}
+```
+
+**With customer reassignment**:
+
+```json
+{
+  "success": true,
+  "message": "User oldmaster@example.com deleted and 5 customers reassigned",
+  "customersReassigned": 5
 }
 ```
 
@@ -310,6 +327,20 @@ const response = await supabase.functions.invoke('delete-user', {
 ```json
 {
   "error": "Missing required fields: email or name"
+}
+```
+
+**400 Bad Request** - Invalid new master (reassignment):
+```json
+{
+  "error": "New master user not found"
+}
+```
+
+**400 Bad Request** - Invalid role for new master:
+```json
+{
+  "error": "New master must be a dev or master_technician"
 }
 ```
 
@@ -327,6 +358,13 @@ const response = await supabase.functions.invoke('delete-user', {
 }
 ```
 
+**500 Internal Server Error** - Reassignment failed:
+```json
+{
+  "error": "Failed to reassign customers: [error message]"
+}
+```
+
 **500 Internal Server Error** - Service role key missing:
 ```json
 {
@@ -339,10 +377,14 @@ const response = await supabase.functions.invoke('delete-user', {
 1. Validates caller is `dev` role
 2. Finds user by email or name in `public.users` table
 3. Prevents self-deletion (cannot delete calling user)
-4. Deletes from `auth.users` using `supabase.auth.admin.deleteUser()`
-5. Cascading deletes handled by database foreign keys:
+4. **If `reassign_customers_to` is provided**:
+   - Validates new master exists and has role `dev` or `master_technician`
+   - Counts customers owned by user to delete
+   - Reassigns all customers to new master via UPDATE
+5. Deletes from `auth.users` using `supabase.auth.admin.deleteUser()`
+6. Cascading deletes handled by database foreign keys:
    - `master_assistants` records
-   - `customers` owned by user
+   - `customers` owned by user (CASCADE DELETE - unless reassigned first)
    - `projects` owned by user
    - `purchase_orders` created by user
    - Other related records with FK constraints

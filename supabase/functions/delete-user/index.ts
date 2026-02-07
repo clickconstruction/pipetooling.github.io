@@ -10,6 +10,7 @@ const corsHeaders = {
 interface DeleteUserRequest {
   email: string
   name: string
+  reassign_customers_to?: string  // Optional: UUID of master to reassign customers to
 }
 
 serve(async (req) => {
@@ -72,7 +73,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, name }: DeleteUserRequest = await req.json()
+    const { email, name, reassign_customers_to }: DeleteUserRequest = await req.json()
 
     if (!email && !name) {
       return new Response(
@@ -157,6 +158,63 @@ serve(async (req) => {
       },
     })
 
+    // If reassigning customers, do it before deleting the user
+    let customerCount = 0
+    if (reassign_customers_to) {
+      // Validate new master exists and is a master/dev
+      const { data: newMaster, error: newMasterError } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('id', reassign_customers_to)
+        .single()
+      
+      if (newMasterError || !newMaster) {
+        return new Response(
+          JSON.stringify({ error: 'New master user not found' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      if (!['dev', 'master_technician'].includes(newMaster.role)) {
+        return new Response(
+          JSON.stringify({ error: 'New master must be a dev or master_technician' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      // Count customers to reassign
+      const { count, error: countError } = await adminClient
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('master_user_id', userToDelete.id)
+      
+      if (countError) {
+        return new Response(
+          JSON.stringify({ error: `Failed to count customers: ${countError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      customerCount = count || 0
+      
+      // Reassign all customers to new master
+      if (customerCount > 0) {
+        const { error: reassignError } = await adminClient
+          .from('customers')
+          .update({ master_user_id: reassign_customers_to })
+          .eq('master_user_id', userToDelete.id)
+        
+        if (reassignError) {
+          return new Response(
+            JSON.stringify({ 
+              error: `Failed to reassign customers: ${reassignError.message}` 
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
+      }
+    }
+
     // Delete from auth.users (requires service role)
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userToDelete.id)
 
@@ -183,7 +241,10 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `User ${userToDelete.email || userToDelete.name} deleted successfully`,
+        message: reassign_customers_to 
+          ? `User ${userToDelete.email || userToDelete.name} deleted and ${customerCount} customer${customerCount !== 1 ? 's' : ''} reassigned`
+          : `User ${userToDelete.email || userToDelete.name} deleted successfully`,
+        customersReassigned: reassign_customers_to ? customerCount : 0,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
