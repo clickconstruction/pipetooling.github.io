@@ -760,6 +760,38 @@ WHERE proname IN (
   - Records `changed_at` (current timestamp) and `changed_by` (current user)
 - **Migration**: `supabase/migrations/create_price_history_trigger.sql`
 
+#### `public.get_supply_house_price_counts()`
+- **Returns**: Table of `(supply_house_id uuid, name text, price_count integer)`
+- **Purpose**: Returns price coverage statistics for all supply houses
+- **Usage**: Used in Supply Houses modal statistics section on Materials page
+- **Logic**:
+  - LEFT JOIN to include supply houses with zero prices
+  - Counts prices per supply house
+  - Sorted by `price_count DESC` (most prices first)
+- **Migration**: `supabase/migrations/create_supply_house_stats_function.sql`
+- **Example Result**:
+```sql
+supply_house_id | name              | price_count
+----------------|-------------------|------------
+uuid1           | Supply House A    | 450
+uuid2           | Supply House B    | 320
+uuid3           | Supply House C    | 0
+```
+
+#### `public.get_parts_ordered_by_price_count(ascending_order boolean)`
+- **Returns**: Array of part UUIDs `uuid[]`
+- **Purpose**: Returns all part IDs sorted globally by price count
+- **Parameters**:
+  - `ascending_order`: `true` for fewest prices first, `false` for most prices first
+- **Usage**: Used for server-side sorting in Price Book (click "#" column header)
+- **Logic**:
+  - LEFT JOIN to include parts with zero prices
+  - Counts prices per part
+  - Sorts by price_count according to parameter
+  - Returns ordered array of part IDs
+- **Migration**: `supabase/migrations/create_parts_with_price_count_function.sql`
+- **Frontend Integration**: Frontend fetches parts by ID in correct order for current page
+
 ### Materials Management Tables
 
 #### `public.supply_houses`
@@ -878,6 +910,8 @@ WHERE proname IN (
 
 ### Bids Management Tables
 
+**See [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) for complete Bids system documentation including all tabs, workflows, and features.**
+
 #### `public.bids_gc_builders`
 - **Purpose**: GC/Builder entities for bids (legacy; prefer linking bids to `customers` via `bids.customer_id`)
 - **Key Fields**:
@@ -893,14 +927,14 @@ WHERE proname IN (
 - **Migrations**: `create_bids_gc_builders.sql`, `allow_assistants_access_bids.sql`
 
 #### `public.bids`
-- **Purpose**: Main bids (Bid Board)
+- **Purpose**: Main bids table (Bid Board)
 - **Key Fields**:
   - `id` (uuid, PK)
   - `drive_link` (text, nullable) - Project folder link
   - `plans_link` (text, nullable) - Plans link from project folder
   - `gc_builder_id` (uuid, FK → `bids_gc_builders.id` ON DELETE SET NULL, nullable) - Legacy GC/Builder
   - `customer_id` (uuid, FK → `customers.id` ON DELETE SET NULL, nullable) - Customer (GC/Builder); same list as Customers page
-  - `project_name` (text, nullable)
+  - `project_name` (text, nullable) - **Required in UI**
   - `address` (text, nullable)
   - `gc_contact_name` (text, nullable) - Project contact person for this bid
   - `gc_contact_phone` (text, nullable) - Project contact phone for this bid
@@ -908,32 +942,40 @@ WHERE proname IN (
   - `bid_due_date` (date, nullable)
   - `bid_date_sent` (date, nullable)
   - `outcome` (text, nullable) - `'won' | 'lost' | 'started_or_complete'`
+  - `loss_reason` (text, nullable) - Why bid was lost (when outcome is 'lost')
   - `bid_value` (numeric(14, 2), nullable)
   - `agreed_value` (numeric(14, 2), nullable)
   - `profit` (numeric(14, 2), nullable) - Projected maximum profit
   - `estimated_job_start_date` (date, nullable) - When outcome is won; shown in New/Edit modal and Won table
-  - `distance_from_office` (text, nullable) - Distance from office (miles; UI uses number input)
+  - `distance_to_office` (numeric(10, 2), nullable) - Distance from office in miles (used for driving cost calculation)
   - `last_contact` (timestamptz, nullable)
   - `notes` (text, nullable)
   - `created_by` (uuid, FK → `users.id`, required)
   - `estimator_id` (uuid, FK → `users.id` ON DELETE SET NULL, nullable) - Estimator user assigned to this bid
+  - `selected_takeoff_book_version_id` (uuid, FK → `takeoff_book_versions.id` ON DELETE SET NULL, nullable) - Selected takeoff book version
+  - `selected_labor_book_version_id` (uuid, FK → `labor_book_versions.id` ON DELETE SET NULL, nullable) - Selected labor book version
+  - `selected_price_book_version_id` (uuid, FK → `price_book_versions.id` ON DELETE SET NULL, nullable) - Selected price book version
   - `created_at`, `updated_at` (timestamptz)
-- **RLS**: Devs and masters can CRUD; assistants and estimators have full access (see `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`)
-- **Special Features**: GC/Builder field uses `customers` table as primary source (searchable combobox); legacy `gc_builder_id` retained for backward compatibility. Clicking GC/Builder name opens modal with customer or legacy GC/Builder details and won/lost bid counts.
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **RLS**: Devs, masters, assistants, and estimators have full access (see `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`)
+- **Special Features**: 
+  - GC/Builder field uses `customers` table as primary source (searchable combobox)
+  - Legacy `gc_builder_id` retained for backward compatibility
+  - Clicking GC/Builder name opens modal with customer details and all bid statuses
+  - "Save and start Counts" button in New Bid modal
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)
 - **Key Fields**:
   - `id` (uuid, PK)
   - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE, required)
-  - `fixture` (text, required)
-  - `count` (numeric(12, 2), required, default 0)
-  - `page` (text, nullable) - Plan page reference
+  - `fixture_or_tiein` (text, required) - Fixture or tie-in name
+  - `count` (integer, required, CHECK count >= 0) - Quantity
+  - `plan_page` (text, nullable) - Plan page reference
   - `sequence_order` (integer, required, default 0)
-  - `created_at` (timestamptz)
-- **RLS**: Access follows parent bid; devs, masters, and assistants (via `allow_assistants_access_bids.sql`)
-- **Migrations**: `create_bids_count_rows.sql`, `add_bids_count_rows_page.sql`, `allow_assistants_access_bids.sql`
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Access follows parent bid; devs, masters, assistants, estimators
+- **Migrations**: `create_bids_count_rows.sql`, `add_bids_count_rows_page.sql`, `add_data_integrity_constraints.sql`, `allow_assistants_access_bids.sql`
 
 #### `public.bids_submission_entries`
 - **Purpose**: Submission and follow-up entries per bid (Submission & Followup tab)
@@ -944,8 +986,136 @@ WHERE proname IN (
   - `notes` (text, nullable)
   - `occurred_at` (timestamptz, required, default now())
   - `created_at` (timestamptz)
-- **RLS**: Access follows parent bid; devs, masters, and assistants (via `allow_assistants_access_bids.sql`)
+- **RLS**: Access follows parent bid; devs, masters, assistants, estimators
 - **Migrations**: `create_bids_submission_entries.sql`, `allow_assistants_access_bids.sql`
+
+#### `public.cost_estimates`
+- **Purpose**: Cost estimates for bids (Cost Estimate tab)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE, unique)
+  - `labor_rate` (numeric(10,2), nullable) - Hourly labor rate
+  - `driving_cost_rate` (numeric(10,2), default 0.70) - Rate per mile for driving
+  - `hours_per_trip` (numeric(10,2), default 2.0) - Hours per trip for driving calculation
+  - `created_at`, `updated_at` (timestamptz)
+- **RLS**: Devs, masters, assistants, estimators have full access
+- **Driving Cost Formula**: `(Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance to Office`
+- **Migrations**: `create_cost_estimates.sql`, `add_cost_estimate_driving_cost_fields.sql`
+
+#### `public.cost_estimate_labor_rows`
+- **Purpose**: Labor hours per fixture for cost estimates
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `cost_estimate_id` (uuid, FK → `cost_estimates.id` ON DELETE CASCADE)
+  - `fixture_name` (text, required)
+  - `rough_in_hrs` (numeric(10,2), default 0)
+  - `top_out_hrs` (numeric(10,2), default 0)
+  - `trim_set_hrs` (numeric(10,2), default 0)
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+- **RLS**: Follows parent cost_estimate access
+- **Migrations**: `create_cost_estimate_labor_rows.sql`
+
+#### Takeoff Book Tables
+
+**Purpose**: Standardized mappings from fixture names to material templates and stages
+
+##### `public.takeoff_book_versions`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `created_at` (timestamptz)
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_takeoff_book_versions.sql`
+
+##### `public.takeoff_book_entries`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `version_id` (uuid, FK → `takeoff_book_versions.id` ON DELETE CASCADE)
+  - `fixture_name` (text, required)
+  - `alias_names` (text[], nullable) - Array of alternative names for case-insensitive matching
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+  - **UNIQUE** `(version_id, fixture_name)`
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_takeoff_book_entries.sql`, `add_takeoff_book_entries_alias_names.sql`
+
+##### `public.takeoff_book_entry_items`
+- **Purpose**: Multiple (Template, Stage) pairs per takeoff entry
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `entry_id` (uuid, FK → `takeoff_book_entries.id` ON DELETE CASCADE)
+  - `template_id` (uuid, FK → `material_templates.id` ON DELETE CASCADE)
+  - `stage` (text, required) - 'Rough In', 'Top Out', 'Trim Set'
+  - `created_at` (timestamptz)
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `add_takeoff_book_entry_items.sql`
+
+#### Labor Book Tables
+
+**Purpose**: Standardized labor hours for fixtures across plumbing stages
+
+##### `public.labor_book_versions`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required)
+  - `created_at` (timestamptz)
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_labor_book_versions_and_entries.sql`
+
+##### `public.labor_book_entries`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `version_id` (uuid, FK → `labor_book_versions.id` ON DELETE CASCADE)
+  - `fixture_name` (text, required)
+  - `alias_names` (text[], nullable) - Array of alternative names for matching
+  - `rough_in_hrs` (numeric(10,2), required)
+  - `top_out_hrs` (numeric(10,2), required)
+  - `trim_set_hrs` (numeric(10,2), required)
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+  - **UNIQUE** `(version_id, fixture_name)`
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`
+
+#### Price Book Tables
+
+**Purpose**: Standardized pricing for fixtures across plumbing stages
+
+##### `public.price_book_versions`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, **unique**, required) - Unique constraint ensures no duplicate version names
+  - `created_at` (timestamptz)
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_price_book_versions_and_entries.sql`, `add_unique_constraint_to_price_book_versions.sql`
+
+##### `public.price_book_entries`
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `version_id` (uuid, FK → `price_book_versions.id` ON DELETE CASCADE)
+  - `fixture_name` (text, required)
+  - `rough_in_price` (numeric(10,2), required)
+  - `top_out_price` (numeric(10,2), required)
+  - `trim_set_price` (numeric(10,2), required)
+  - `total_price` (numeric(10,2), required)
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+  - **UNIQUE** `(version_id, fixture_name)`
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Migrations**: `create_price_book_versions_and_entries.sql`
+
+##### `public.bid_pricing_assignments`
+- **Purpose**: Persist fixture-to-price-book-entry assignments for margin analysis
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE)
+  - `count_row_id` (uuid, FK → `bids_count_rows.id` ON DELETE CASCADE)
+  - `price_book_entry_id` (uuid, FK → `price_book_entries.id` ON DELETE CASCADE)
+  - `created_at` (timestamptz)
+  - **UNIQUE** `(bid_id, count_row_id)`
+- **RLS**: Access controlled via bid access policies
+- **Migrations**: `create_bid_pricing_assignments.sql`
 
 ### Foreign Key Relationships
 ```
@@ -1014,11 +1184,41 @@ bids_gc_builders (id)
 
 users (id)
   ├── bids_gc_builders.created_by
-  └── bids.created_by
+  ├── bids.created_by
+  └── bids.estimator_id (ON DELETE SET NULL)
+
+takeoff_book_versions (id)
+  ├── takeoff_book_entries.version_id (ON DELETE CASCADE)
+  └── bids.selected_takeoff_book_version_id (ON DELETE SET NULL)
+
+takeoff_book_entries (id)
+  └── takeoff_book_entry_items.entry_id (ON DELETE CASCADE)
+
+material_templates (id)
+  └── takeoff_book_entry_items.template_id (ON DELETE CASCADE)
+
+labor_book_versions (id)
+  ├── labor_book_entries.version_id (ON DELETE CASCADE)
+  └── bids.selected_labor_book_version_id (ON DELETE SET NULL)
+
+price_book_versions (id)
+  ├── price_book_entries.version_id (ON DELETE CASCADE)
+  └── bids.selected_price_book_version_id (ON DELETE SET NULL)
 
 bids (id)
   ├── bids_count_rows.bid_id (ON DELETE CASCADE)
-  └── bids_submission_entries.bid_id (ON DELETE CASCADE)
+  ├── bids_submission_entries.bid_id (ON DELETE CASCADE)
+  ├── cost_estimates.bid_id (ON DELETE CASCADE)
+  └── bid_pricing_assignments.bid_id (ON DELETE CASCADE)
+
+cost_estimates (id)
+  └── cost_estimate_labor_rows.cost_estimate_id (ON DELETE CASCADE)
+
+bids_count_rows (id)
+  └── bid_pricing_assignments.count_row_id (ON DELETE CASCADE)
+
+price_book_entries (id)
+  └── bid_pricing_assignments.price_book_entry_id (ON DELETE CASCADE)
 ```
 
 **Important**: When deleting, respect foreign key order:
@@ -1142,14 +1342,89 @@ bids (id)
   - Cannot see private notes, line items, or projections
 
 #### `estimator`
-- **Access**: Materials, Bids only (no Dashboard, Customers, Projects, People, Settings, Calendar)
-- **Restrictions**:
-  - Navigation links: only Materials and Bids; client-side redirect sends estimators to `/bids` for any other path (including `/customers`, `/projects`)
-  - **Cannot** access `/customers` or `/projects` pages (no ongoing customer or project management)
-- **Bids**:
-  - Can see all customers in the GC/Builder dropdown and when viewing bid data (customers RLS allows estimator SELECT)
-  - Can create new customers from the **Add Customer** modal (opened via "+ Add new customer" in the GC/Builder dropdown); must assign a **Customer Owner (Master)**; new customer is then selected as the bid's GC/Builder (customers RLS allows estimator INSERT when `master_user_id` is set to a valid master)
-  - Full access to Bids (bid board, counts, takeoffs, cover letter, submission & followup) per `allow_estimators_access_bids.sql`
+
+**Purpose**: Dedicated role for bid estimation and material management without access to ongoing project operations.
+
+##### Pages Allowed
+- **Materials** - Full access to price book, parts, templates, purchase orders
+- **Bids** - Full access to all Bids tabs and features
+
+##### Pages Blocked
+- Dashboard, Customers, Projects, People, Templates, Calendar, Settings
+- **Layout redirects**: Attempts to access blocked pages redirect to `/bids`
+
+##### Bids Capabilities
+
+**Full Bids System Access**:
+- All 6 Bids tabs (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup)
+- Create, edit, and delete bids
+- Enter fixture counts with quick-select and number pad
+- Map counts to material templates (Takeoff tab)
+- Calculate costs with labor book and driving costs (Cost Estimate tab)
+- Analyze margins with price book (Pricing tab)
+- Generate cover letters and track submissions
+
+**Customer Access via Bids**:
+- **SELECT**: Can see all customers in GC/Builder dropdown (RLS policy allows estimator SELECT on customers table)
+- **CREATE**: Can create new customers via "+ Add new customer" modal in Bids
+  - Opens Add Customer modal (same form as /customers/new but without Quick Fill)
+  - **Must assign Customer Owner (Master)** - dropdown shows all masters
+  - **RLS**: INSERT policy allows estimators when `master_user_id` is set to valid master (dev or master_technician)
+  - New customer automatically selected as bid's GC/Builder
+- **NO UPDATE/DELETE**: Cannot modify or delete existing customers
+- **NO UI ACCESS**: Cannot navigate to `/customers` page
+
+**NewCustomerForm Component**:
+- Supports estimator role with Customer Owner dropdown
+- Shows all masters for estimator selection
+- Requires master selection (validation enforced)
+- Used in Bids Add Customer modal with `showQuickFill={false}`, `mode="modal"`
+
+##### Materials Capabilities
+
+**Full Materials Access**:
+- Same permissions as master_technicians
+- Price Book: View, edit, and manage all parts and prices
+- Supply Houses: Full CRUD on supply house records
+- Templates: Create and edit material templates
+- Purchase Orders: Create draft and finalized POs
+- Price History: View price change tracking
+
+**Use Case**: Estimators can manage material pricing and templates while focusing on bids, without access to ongoing project management.
+
+##### Database Access
+
+**RLS Policies**:
+- `customers`:
+  - SELECT: Allowed (for dropdowns and bid data) - `allow_estimators_select_customers.sql`
+  - INSERT: Allowed when `master_user_id` is set to valid master
+  - UPDATE/DELETE: Not allowed
+- `bids` and related tables (count_rows, submission_entries, cost_estimates, etc.):
+  - Full CRUD access - `allow_estimators_access_bids.sql`
+- `material_*` tables (parts, prices, templates, purchase_orders):
+  - Full CRUD access (same as master_technician)
+- `takeoff_book_*`, `labor_book_*`, `price_book_*`:
+  - Full CRUD access (same as master_technician)
+
+##### Workflow Integration
+
+**Typical Estimator Workflow**:
+1. Receive bid request
+2. Create or find customer in Bids (GC/Builder dropdown)
+3. Create new bid with project details
+4. Enter fixture counts (Counts tab)
+5. Map to material templates (Takeoff tab, create PO if needed)
+6. Calculate labor and costs (Cost Estimate tab)
+7. Analyze margins (Pricing tab)
+8. Generate cover letter and submit bid
+9. Track follow-ups and outcomes (Submission & Followup tab)
+
+**Benefits of Estimator Role**:
+- **Focused interface**: Only sees estimation-relevant pages
+- **Streamlined access**: Can create customers when needed for bids without full customer management
+- **Material management**: Can update pricing and templates for accurate estimates
+- **Security**: Cannot access ongoing projects, workflows, or sensitive operational data
+- **Flexibility**: Can work for multiple masters by creating customers for different masters
 
 ### Row Level Security (RLS) Patterns
 
@@ -2813,35 +3088,115 @@ For questions or issues:
   - **Price Book**: Parts, supply houses, and price management
   - **Templates & Purchase Orders**: Template creation and draft PO building
   - **Purchase Orders (Management)**: PO management and workflow integration
+
+#### Price Book Performance Enhancements (v2.24)
+
+- ✅ **Load All Mode** (default):
+  - **Toggle button** with speed icon (triangle SVG) next to filter dropdowns
+  - **Progressive loading**: Fetches all parts in batches of 50 with count display
+  - Shows "Loading all parts... (X loaded)" during load
+  - **Instant client-side search**: No network delay, filters as you type
+  - **Instant client-side sorting**: Click "#" to sort by price count immediately
+  - **Visual indicators**:
+    - Button turns blue when Load All is active
+    - Search box background turns light blue
+    - Search placeholder: "Search all parts (instant)..."
+  - **Default mode**: Enabled by default for optimal bulk editing workflow
+  - **Perfect for assistants**: Bulk price updates without pagination interruption
+  - **Toggle anytime**: Switch to paginated mode if needed
+  - **Implementation**: `loadAllParts()` with batched loading, `allParts` state array
+
+- ✅ **Infinite Scroll** (paginated mode):
+  - **Automatic loading** when within 200px of page bottom
+  - Loads next 50 parts seamlessly
+  - Loading indicators: "Loading more parts…" or "Scroll down to load more"
+  - Prevents duplicate requests via `loadingPartsRef`
+  - Only active on Price Book tab (respects current search/filter)
+  - Automatically disabled in Load All mode
+  - No manual button clicking needed
+
+- ✅ **Server-Side Search**:
+  - **Searches entire database** (not just current page)
+  - **300ms debounce** prevents excessive queries while typing
+  - **Searches across**: name, manufacturer, fixture type, notes fields
+  - Uses Supabase `.ilike()` for case-insensitive matching
+  - Works with pagination - filtered results paginate correctly
+  - Query pattern: `.or('name.ilike.%term%,manufacturer.ilike.%term%,...')`
+  - Compatible with fixture type and manufacturer filters
+
+- ✅ **Server-Side Sorting by Price Count**:
+  - Click **"#" column header** to sort all parts by price count
+  - **Database function**: `get_parts_ordered_by_price_count(ascending_order)`
+  - Returns ordered part IDs array
+  - Frontend fetches parts by ID for current page in correct order
+  - Maintains global sort order across pages (not just current page)
+  - **Use case**: Quickly identify parts needing prices (sort ascending = 0 prices first)
+  - Migration: `create_parts_with_price_count_function.sql`
+
+- ✅ **Supply House Statistics**:
+  - **Global stats** displayed at top of Supply Houses modal
+  - Shows:
+    - Total parts count across database
+    - Percentage of parts with prices
+    - Percentage of parts with multiple prices
+    - Per-supply-house coverage sorted by count (highest first)
+  - **Auto-refresh** every time modal opens
+  - **Database function**: `get_supply_house_price_counts()`
+  - Returns `(supply_house_id, name, price_count)` sorted by count DESC
+  - **Benefits**: Quick visibility into pricing coverage, identify gaps
+  - Migration: `create_supply_house_stats_function.sql`
+
+#### Materials System Features
+
 - ✅ **Supply House Management**:
   - Full CRUD for supply houses (create, edit, delete)
   - Contact information tracking (name, contact person, phone, email, address, notes)
   - Delete button in Edit Supply House form
+  - Price coverage statistics in modal
+
 - ✅ **Price History Tracking**:
   - Automatic price change tracking via database trigger
   - View price history with old price, new price, percentage change, timestamp, user, and notes
   - "View History" button in price management modal
   - History entries created on price updates and confirmations
+
 - ✅ **Price Confirmation System**:
   - Per-item checkbox in PO view for assistants to confirm prices (draft POs only; Confirmed column hidden for finalized)
   - Shows "time since checked" (e.g., "2 hours ago")
   - Creates price history entry when confirmed (for charting/analysis)
   - Tracks who confirmed and when
+
 - ✅ **Finalized PO Notes**:
   - Add-only notes to finalized purchase orders
   - Shows user name and timestamp
   - Use cases: final bill amounts, pickup difficulties
   - Notes display prominently at top of PO view
+  - RLS policy enforces add-only (can only update when notes is null)
+
 - ✅ **Purchase Order Features**:
   - Default name: "New Purchase Order [current date]"
   - Inline name editing for draft POs
-  - "Duplicate as Draft" button for finalized POs
-  - Change supply house for individual items (even if higher price) via supply house dropdown
+  - **"Duplicate as Draft" button** for finalized POs (creates copy, resets confirmation)
+  - **Print Purchase Order**:
+    - Draft POs: Shows all prices per part (every supply house)
+    - Finalized POs: Shows chosen prices only
+    - Print-friendly formatting, opens in new window
+  - **Inline PO View** (not modal): Selected PO section above search
+  - **Supply House Dropdown** (draft POs): Shows "Supply House - $X.XX", immediate update
+  - Change supply house for individual items (even if higher price)
   - Delete button in selected PO section (inline view)
+
+- ✅ **Template Features**:
+  - **Nested template support**: Templates can contain other templates
+  - **Template expansion**: `expandTemplate()` utility recursively expands nested templates
+  - **"From template" tags**: PO items tagged when added via template
+  - Used by Bids Takeoff tab for creating purchase orders
+
 - ✅ **UI Improvements**:
   - Delete buttons moved to edit modals (parts, templates, supply houses, POs)
   - Price edit modal: Delete button only visible after Edit is pressed
   - Improved sorting and organization
+  - Load All mode optimized for bulk editing workflows
 
 ### Line Items Enhancement
 - ✅ **Link Field Added**:

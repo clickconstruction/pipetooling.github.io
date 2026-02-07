@@ -3,7 +3,8 @@
 This document summarizes all recent features and improvements added to Pipetooling.
 
 ## Table of Contents
-1. [Latest Updates (v2.25)](#latest-updates-v225)
+1. [Latest Updates (v2.26)](#latest-updates-v226)
+2. [Latest Updates (v2.25)](#latest-updates-v225)
 2. [Latest Updates (v2.24)](#latest-updates-v224)
 3. [Latest Updates (v2.23)](#latest-updates-v223)
 4. [Latest Updates (v2.22)](#latest-updates-v222)

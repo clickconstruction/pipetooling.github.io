@@ -609,6 +609,13 @@ export default function Bids() {
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
   const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
   const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
+  const [missingLaborBookFixtures, setMissingLaborBookFixtures] = useState<Set<string>>(new Set())
+  const [addMissingFixtureModalOpen, setAddMissingFixtureModalOpen] = useState(false)
+  const [addMissingFixtureName, setAddMissingFixtureName] = useState('')
+  const [addMissingFixtureRoughIn, setAddMissingFixtureRoughIn] = useState('')
+  const [addMissingFixtureTopOut, setAddMissingFixtureTopOut] = useState('')
+  const [addMissingFixtureTrimSet, setAddMissingFixtureTrimSet] = useState('')
+  const [savingMissingFixture, setSavingMissingFixture] = useState(false)
   const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(true)
 
   // Pricing tab
@@ -2073,6 +2080,13 @@ export default function Bids() {
           if (key && !entriesByFixture.has(key)) entriesByFixture.set(key, hours)
         }
       }
+      const missingFixtures = new Set<string>()
+      for (const row of costEstimateLaborRows) {
+        const entry = entriesByFixture.get(row.fixture.toLowerCase())
+        if (!entry) {
+          missingFixtures.add(row.fixture)
+        }
+      }
       for (const row of costEstimateLaborRows) {
         const entry = entriesByFixture.get(row.fixture.toLowerCase())
         if (!entry) continue
@@ -2101,10 +2115,68 @@ export default function Bids() {
         setCostEstimateLaborRows((refetched as CostEstimateLaborRow[]) ?? [])
         setLaborBookApplyMessage('Labor book hours applied.')
         setTimeout(() => setLaborBookApplyMessage(null), 3000)
+        setMissingLaborBookFixtures(missingFixtures)
       }
     } finally {
       setApplyingLaborBookHours(false)
     }
+  }
+
+  function openAddMissingFixtureModal(fixtureName: string) {
+    setAddMissingFixtureName(fixtureName)
+    setAddMissingFixtureRoughIn('')
+    setAddMissingFixtureTopOut('')
+    setAddMissingFixtureTrimSet('')
+    setAddMissingFixtureModalOpen(true)
+  }
+
+  async function saveMissingFixtureToLaborBook(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedLaborBookVersionId || !addMissingFixtureName.trim()) return
+    
+    setSavingMissingFixture(true)
+    setError(null)
+    
+    const rough = parseFloat(addMissingFixtureRoughIn) || 0
+    const top = parseFloat(addMissingFixtureTopOut) || 0
+    const trim = parseFloat(addMissingFixtureTrimSet) || 0
+    
+    // Get max sequence order for the version
+    const { data: entries } = await supabase
+      .from('labor_book_entries')
+      .select('sequence_order')
+      .eq('version_id', selectedLaborBookVersionId)
+      .order('sequence_order', { ascending: false })
+      .limit(1)
+    
+    const maxSeq = entries && entries.length > 0 ? entries[0].sequence_order : 0
+    
+    const { error: insertErr } = await supabase
+      .from('labor_book_entries')
+      .insert({
+        version_id: selectedLaborBookVersionId,
+        fixture_name: addMissingFixtureName.trim(),
+        rough_in_hrs: rough,
+        top_out_hrs: top,
+        trim_set_hrs: trim,
+        sequence_order: maxSeq + 1
+      })
+    
+    if (insertErr) {
+      setError(`Failed to add fixture: ${insertErr.message}`)
+    } else {
+      // Remove from missing set
+      setMissingLaborBookFixtures(prev => {
+        const next = new Set(prev)
+        next.delete(addMissingFixtureName)
+        return next
+      })
+      setAddMissingFixtureModalOpen(false)
+      // Optionally re-apply labor hours to update the row
+      await applyLaborBookHoursToEstimate()
+    }
+    
+    setSavingMissingFixture(false)
   }
 
   function setCostEstimatePO(stage: 'rough_in' | 'top_out' | 'trim_set', poId: string) {
@@ -2271,6 +2343,215 @@ export default function Bids() {
     <p style="font-weight:700; font-size:1.125rem;">Grand total: $${formatCurrency(grandTotal)}</p>
   </div>
 </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printRoughInSubSheet() {
+    if (!selectedBidForCostEstimate) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Rough In Labor Sub Sheet'
+    const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
+
+    const laborRowsHtml =
+      costEstimateLaborRows.length === 0
+        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : costEstimateLaborRows
+            .map((row) => {
+              const quantity = Number(row.count)
+              const hours = Number(row.rough_in_hrs_per_unit)
+              const totalCost = rate * hours * quantity
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+            })
+            .join('')
+
+    let totalCost = 0
+    if (costEstimateLaborRows.length > 0) {
+      totalCost = costEstimateLaborRows.reduce((sum, row) => {
+        return sum + rate * Number(row.rough_in_hrs_per_unit) * Number(row.count)
+      }, 0)
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+  </table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printTopOutSubSheet() {
+    if (!selectedBidForCostEstimate) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Top Out Labor Sub Sheet'
+    const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
+
+    const laborRowsHtml =
+      costEstimateLaborRows.length === 0
+        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : costEstimateLaborRows
+            .map((row) => {
+              const quantity = Number(row.count)
+              const hours = Number(row.top_out_hrs_per_unit)
+              const totalCost = rate * hours * quantity
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+            })
+            .join('')
+
+    let totalCost = 0
+    if (costEstimateLaborRows.length > 0) {
+      totalCost = costEstimateLaborRows.reduce((sum, row) => {
+        return sum + rate * Number(row.top_out_hrs_per_unit) * Number(row.count)
+      }, 0)
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+  </table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printTrimSetSubSheet() {
+    if (!selectedBidForCostEstimate) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Trim Set Labor Sub Sheet'
+    const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
+
+    const laborRowsHtml =
+      costEstimateLaborRows.length === 0
+        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : costEstimateLaborRows
+            .map((row) => {
+              const quantity = Number(row.count)
+              const hours = Number(row.trim_set_hrs_per_unit)
+              const totalCost = rate * hours * quantity
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+            })
+            .join('')
+
+    let totalCost = 0
+    if (costEstimateLaborRows.length > 0) {
+      totalCost = costEstimateLaborRows.reduce((sum, row) => {
+        return sum + rate * Number(row.trim_set_hrs_per_unit) * Number(row.count)
+      }, 0)
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+  </table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printAllSubSheets() {
+    if (!selectedBidForCostEstimate) return
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const bidName = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid')
+    const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
+
+    // Helper to generate table for a stage
+    const generateStageTable = (stageName: string, hoursField: 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit') => {
+      const laborRowsHtml =
+        costEstimateLaborRows.length === 0
+          ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+          : costEstimateLaborRows
+              .map((row) => {
+                const quantity = Number(row.count)
+                const hours = Number(row[hoursField])
+                const totalCost = rate * hours * quantity
+                return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+              })
+              .join('')
+
+      const totalCost = costEstimateLaborRows.reduce((sum, row) => {
+        return sum + rate * Number(row[hoursField]) * Number(row.count)
+      }, 0)
+
+      return `
+      <h2>${stageName}</h2>
+      <table>
+        <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
+        <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+      </table>
+    `
+    }
+
+    const roughInTable = generateStageTable('Rough In', 'rough_in_hrs_per_unit')
+    const topOutTable = generateStageTable('Top Out', 'top_out_hrs_per_unit')
+    const trimSetTable = generateStageTable('Trim Set', 'trim_set_hrs_per_unit')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${bidName} — Labor Sub Sheets</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; page-break-before: auto; }
+  h2:first-of-type { margin-top: 0.5rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; page-break-inside: avoid; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { 
+    body { margin: 0.5in; }
+    h2 { page-break-after: avoid; }
+  }
+</style></head><body>
+  <h1>${bidName} — Labor Sub Sheets</h1>
+  ${roughInTable}
+  ${topOutTable}
+  ${trimSetTable}
+</body></html>`
+
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(html)
@@ -3977,7 +4258,7 @@ export default function Bids() {
                 onClick={() => { setEvaluateChecked({}); setEvaluateModalOpen(true) }}
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
-                Evaluate
+                Checklist
               </button>
               <button
                 type="button"
@@ -5192,17 +5473,6 @@ export default function Bids() {
                   {/* Labor section */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>LABOR</h3>
-                    <div style={{ marginBottom: '0.75rem' }}>
-                      <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={laborRateInput}
-                        onChange={(e) => setLaborRateInput(e.target.value)}
-                        style={{ width: '8rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      />
-                    </div>
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: '#f9fafb' }}>
@@ -5220,7 +5490,32 @@ export default function Bids() {
                             const totalHrs = Number(row.count) * (Number(row.rough_in_hrs_per_unit) + Number(row.top_out_hrs_per_unit) + Number(row.trim_set_hrs_per_unit))
                             return (
                               <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
+                                <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <span>{row.fixture}</span>
+                                  {missingLaborBookFixtures.has(row.fixture) && selectedLaborBookVersionId && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openAddMissingFixtureModal(row.fixture)}
+                                      title="Add to labor book"
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        display: 'flex',
+                                        alignItems: 'center'
+                                      }}
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 640 640"
+                                        style={{ width: '1rem', height: '1rem', fill: '#3b82f6' }}
+                                      >
+                                        <path d="M192 576L512 576C529.7 576 544 561.7 544 544C544 526.3 529.7 512 512 512L512 445.3C530.6 438.7 544 420.9 544 400L544 112C544 85.5 522.5 64 496 64L192 64C139 64 96 107 96 160L96 480C96 533 139 576 192 576zM160 480C160 462.3 174.3 448 192 448L448 448L448 512L192 512C174.3 512 160 497.7 160 480zM288 184C288 175.2 295.2 168 304 168L336 168C344.8 168 352 175.2 352 184L352 224L392 224C400.8 224 408 231.2 408 240L408 272C408 280.8 400.8 288 392 288L352 288L352 328C352 336.8 344.8 344 336 344L304 344C295.2 344 288 336.8 288 328L288 288L248 288C239.2 288 232 280.8 232 272L232 240C232 231.2 239.2 224 248 224L288 224L288 184z"/>
+                                      </svg>
+                                    </button>
+                                  )}
+                                </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                   <input
@@ -5229,6 +5524,7 @@ export default function Bids() {
                                     step={0.01}
                                     value={row.rough_in_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                                   />
                                 </td>
@@ -5239,6 +5535,7 @@ export default function Bids() {
                                     step={0.01}
                                     value={row.top_out_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                                   />
                                 </td>
@@ -5249,6 +5546,7 @@ export default function Bids() {
                                     step={0.01}
                                     value={row.trim_set_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                    onWheel={(e) => e.currentTarget.blur()}
                                     style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                                   />
                                 </td>
@@ -5274,6 +5572,50 @@ export default function Bids() {
                           })()}
                         </tbody>
                       </table>
+                    </div>
+                    <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={laborRateInput}
+                          onChange={(e) => setLaborRateInput(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          style={{ width: '8rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={printRoughInSubSheet}
+                          style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                          Rough In sub sheet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={printTopOutSubSheet}
+                          style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                          Top Out sub sheet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={printTrimSetSubSheet}
+                          style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                          Trim Set sub sheet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={printAllSubSheets}
+                          style={{ padding: '0.35rem 0.75rem', background: '#10b981', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
+                        >
+                          Print All
+                        </button>
+                      </div>
                     </div>
                     {costEstimateLaborRows.length > 0 && (() => {
                       const totalHours = costEstimateLaborRows.reduce(
@@ -5311,6 +5653,7 @@ export default function Bids() {
                             step={0.01}
                             value={drivingCostRate}
                             onChange={(e) => setDrivingCostRate(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
                             style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                           />
                         </div>
@@ -5322,6 +5665,7 @@ export default function Bids() {
                             step={0.1}
                             value={hoursPerTrip}
                             onChange={(e) => setHoursPerTrip(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
                             style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                           />
                         </div>
@@ -5807,6 +6151,109 @@ export default function Bids() {
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                     <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {addMissingFixtureModalOpen && selectedLaborBookVersionId && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 50,
+              }}
+              onClick={() => setAddMissingFixtureModalOpen(false)}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: '1.5rem',
+                  maxWidth: 500,
+                  width: '90%',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>
+                  Add "{addMissingFixtureName}" to Labor Book
+                </h3>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Adding to: <strong>{laborBookVersions.find(v => v.id === selectedLaborBookVersionId)?.name || 'Unknown'}</strong>
+                </p>
+                <form onSubmit={saveMissingFixtureToLaborBook}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Rough In (hrs/unit)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={addMissingFixtureRoughIn}
+                        onChange={(e) => setAddMissingFixtureRoughIn(e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Top Out (hrs/unit)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={addMissingFixtureTopOut}
+                        onChange={(e) => setAddMissingFixtureTopOut(e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                        Trim Set (hrs/unit)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={addMissingFixtureTrimSet}
+                        onChange={(e) => setAddMissingFixtureTrimSet(e.target.value)}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAddMissingFixtureModalOpen(false)}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingMissingFixture}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: savingMissingFixture ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: savingMissingFixture ? 'wait' : 'pointer'
+                      }}
+                    >
+                      {savingMissingFixture ? 'Adding...' : 'Add to Labor Book'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -8033,7 +8480,7 @@ export default function Bids() {
         </div>
       )}
 
-      {/* Evaluate checklist modal */}
+      {/* Checklist modal */}
       {evaluateModalOpen && (
         <div
           style={{
@@ -8058,7 +8505,7 @@ export default function Bids() {
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Evaluate Bid</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Evaluate Bids Checklist</h2>
               <button
                 type="button"
                 onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
