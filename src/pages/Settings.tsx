@@ -1149,7 +1149,7 @@ export default function Settings() {
     }
     
     closeDeleteReassign()
-    loadUsers()
+    await loadData()
   }
 
   function closeSetPassword() {
