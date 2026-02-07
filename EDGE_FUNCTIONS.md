@@ -1,5 +1,81 @@
 # Edge Functions API Reference
 
+---
+file: EDGE_FUNCTIONS.md
+type: API Reference
+purpose: Complete API documentation for all 6 Supabase Edge Functions
+audience: Developers, DevOps, AI Agents
+last_updated: 2026-02-07
+estimated_read_time: 20-25 minutes
+difficulty: Intermediate
+
+runtime: "Deno (TypeScript)"
+authentication: "Manual JWT validation"
+total_functions: 6
+
+key_sections:
+  - name: "create-user"
+    line: ~55
+    anchor: "#create-user"
+    description: "Create users with roles (dev-only)"
+  - name: "delete-user"
+    line: ~181
+    anchor: "#delete-user"
+    description: "Delete users by email/name (dev-only)"
+  - name: "login-as-user"
+    line: ~293
+    anchor: "#login-as-user"
+    description: "Generate magic link for impersonation"
+  - name: "send-workflow-notification"
+    line: ~401
+    anchor: "#send-workflow-notification"
+    description: "Send email notifications via Resend"
+  - name: "set-user-password"
+    line: ~497
+    anchor: "#set-user-password"
+    description: "Set user password (dev-only)"
+  - name: "test-email"
+    line: ~571
+    anchor: "#test-email"
+    description: "Test email templates"
+  - name: "Error Handling"
+    line: ~655
+    anchor: "#error-handling"
+    description: "Standard error responses"
+  - name: "Deployment"
+    line: ~747
+    anchor: "#deployment"
+    description: "Deploy and test procedures"
+
+quick_navigation:
+  - "[All Functions](#functions) - Complete function list"
+  - "[Error Responses](#error-handling) - Error format and codes"
+  - "[Deployment Guide](#deployment) - How to deploy"
+
+related_docs:
+  - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Architecture context"
+  - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role requirements"
+  - "[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md) - Email config"
+
+prerequisites:
+  - Understanding of Supabase Edge Functions
+  - Familiarity with Deno runtime
+  - Knowledge of JWT authentication
+
+required_secrets:
+  - "SUPABASE_URL"
+  - "SUPABASE_ANON_KEY"
+  - "SUPABASE_SERVICE_ROLE_KEY"
+  - "RESEND_API_KEY (for email functions)"
+
+when_to_read:
+  - Calling edge functions from frontend
+  - Adding new edge functions
+  - Debugging function errors
+  - Understanding authentication flow
+  - Deploying functions
+---
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Authentication](#authentication)

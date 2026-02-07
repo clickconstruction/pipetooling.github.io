@@ -2,6 +2,49 @@
 
 This document summarizes all recent features and improvements added to Pipetooling.
 
+---
+file: RECENT_FEATURES.md
+type: Changelog
+purpose: Chronological log of all features and updates by version
+audience: All users (developers, product managers, AI agents)
+last_updated: 2026-02-07
+estimated_read_time: 30-40 minutes
+difficulty: Beginner to Intermediate
+
+format: "Reverse chronological (newest first)"
+version_range: "v2.25 → v2.4"
+
+key_sections:
+  - name: "Latest Version (v2.25)"
+    line: ~1
+    description: "Most recent features and changes"
+  - name: "Bids System Updates"
+    versions: "v2.25, v2.24, v2.23, v2.22"
+    description: "Book systems, driving costs, pricing features"
+  - name: "Materials Enhancements"
+    versions: "v2.24, v2.20, v2.19"
+    description: "Load All mode, infinite scroll, PO features"
+  - name: "Database Improvements"
+    versions: "v2.22"
+    description: "Triggers, constraints, transaction functions"
+
+quick_navigation:
+  - "Latest features at top (v2.25)"
+  - "Search for specific version: v2.XX"
+  - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
+
+related_docs:
+  - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Technical details"
+  - "[BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - Bids features"
+  - "[MIGRATIONS.md](./MIGRATIONS.md) - Database changes"
+
+when_to_read:
+  - Understanding what changed recently
+  - Finding when a feature was added
+  - Reviewing project evolution
+  - Catching up after time away
+---
+
 ## Table of Contents
 1. [Latest Updates (v2.26)](#latest-updates-v226)
 2. [Latest Updates (v2.25)](#latest-updates-v225)

@@ -26,14 +26,52 @@ A web application for Master Plumbers to track plumbing work across multiple pro
    npm run build
    ```
 
+## For AI Agents / New Developers
+
+**Start here**: Read [AI_CONTEXT.md](./AI_CONTEXT.md) first (30-second project overview)
+
+**Then consult based on your task**:
+
+| Your Task | Documentation to Read |
+|-----------|----------------------|
+| Understanding roles/permissions | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Complete permissions matrix |
+| Working with database/schema | [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - "Database Schema" section |
+| Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 6 tabs documented |
+| Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
+| Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
+| Migration history | [MIGRATIONS.md](./MIGRATIONS.md) - All database changes |
+| Understanding terminology | [GLOSSARY.md](./GLOSSARY.md) - All domain terms and concepts defined |
+
+**Common AI Agent Tasks**:
+- **Adding a table**: Create migration → Update RLS policies → Regenerate types → Document
+- **Adding a page**: Create component → Add route → Update navigation → Verify role access
+- **Fixing RLS issue**: Check user role → Review table policies → Verify adoption/sharing
+- **Understanding feature**: Check RECENT_FEATURES.md → Read relevant system doc → Review code
+
+**Key Constraints to Remember**:
+- Never edit existing migrations (append-only)
+- Every new table needs RLS policies for all 5 roles
+- Update TypeScript types after schema changes: `supabase gen types typescript --local > src/types/database.ts`
+- TypeScript strict mode: No `any` types, handle null/undefined
+- Test RLS for all roles: dev, master, assistant, subcontractor, estimator
+
+---
+
 ## Documentation
 
 📖 **Main Documentation**:
-- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation
+- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation (architecture, database schema, patterns)
+- **[GLOSSARY.md](./GLOSSARY.md)** - Definitions of all domain terms and technical concepts
 - **[RECENT_FEATURES.md](./RECENT_FEATURES.md)** - Summary of all recent features and updates
 - **[WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
-📋 **Feature-Specific Documentation**:
+📋 **System-Specific Documentation**:
+- **[BIDS_SYSTEM.md](./BIDS_SYSTEM.md)** - Complete Bids system documentation (6 tabs, book systems, workflows)
+- **[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
+- **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
+- **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking
+
+📝 **Feature-Specific Documentation**:
 - **[PRIVATE_NOTES_SETUP.md](./PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup
 - **[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)** - Email templates database setup
 - **[EMAIL_TESTING.md](./EMAIL_TESTING.md)** - Email testing and integration status

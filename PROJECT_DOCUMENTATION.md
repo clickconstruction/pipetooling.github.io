@@ -1,5 +1,70 @@
 # Pipetooling Project Documentation
 
+> **New to this project?** Start with [AI_CONTEXT.md](./AI_CONTEXT.md) for a 30-second overview, then return here for deep technical details.
+
+---
+file: PROJECT_DOCUMENTATION.md
+type: Technical Reference
+purpose: Complete technical documentation covering architecture, database schema, and development patterns
+audience: Developers, AI Agents, Technical Staff
+last_updated: 2026-02-07
+estimated_read_time: 45-60 minutes
+difficulty: Advanced
+
+key_sections:
+  - name: "Database Schema"
+    line: ~600
+    anchor: "#database-schema"
+    description: "Complete table definitions, relationships, and RLS policies"
+  - name: "Authentication & Authorization" 
+    line: ~1247
+    anchor: "#authentication--authorization"
+    description: "User roles, permissions, and access patterns"
+  - name: "Database Functions"
+    line: ~711
+    anchor: "#database-functions"
+    description: "Triggers, helper functions, and transaction functions"
+  - name: "Key Features"
+    line: ~1480
+    anchor: "#key-features"
+    description: "Feature-by-feature implementation details"
+  - name: "Materials Management"
+    line: ~763
+    anchor: "#materials-management-tables"
+    description: "Price book, templates, purchase orders"
+  - name: "Bids Management"
+    line: ~879
+    anchor: "#bids-management-tables"
+    description: "Bids tables and book systems"
+
+quick_navigation:
+  - "[Database Schema](#database-schema)"
+  - "[User Roles](#user-roles)"
+  - "[RLS Patterns](#row-level-security-rls-patterns)"
+  - "[Common Patterns](#common-patterns)"
+  - "[Known Issues](#known-issues--gotchas)"
+
+related_docs:
+  - "[AI_CONTEXT.md](./AI_CONTEXT.md) - Quick project overview"
+  - "[BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - Bids system details"
+  - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role permissions"
+  - "[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - API reference"
+  - "[MIGRATIONS.md](./MIGRATIONS.md) - Schema changes"
+  - "[GLOSSARY.md](./GLOSSARY.md) - Term definitions"
+
+prerequisites:
+  - Basic understanding of PostgreSQL and RLS
+  - Familiarity with React and TypeScript
+  - Understanding of Supabase concepts
+
+when_to_read:
+  - Adding new database tables or modifying schema
+  - Understanding RLS policy patterns
+  - Implementing new features
+  - Debugging database access issues
+  - Learning project architecture
+---
+
 ## Table of Contents
 1. [Project Overview](#project-overview)
 2. [Tech Stack](#tech-stack)
@@ -1478,6 +1543,12 @@ user_id = auth.uid()
 ---
 
 ## Key Features
+
+**See also specialized documentation**:
+- **[BIDS_SYSTEM.md](./BIDS_SYSTEM.md)** - Complete Bids system documentation (all 6 tabs, workflows, and integrations)
+- **[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, email notifications)
+- **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Complete role-based permissions matrix and RLS patterns
+- **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking
 
 ### 1. Customer Management
 - **Page**: `Customers.tsx`, `CustomerForm.tsx`
@@ -3197,6 +3268,109 @@ For questions or issues:
   - Price edit modal: Delete button only visible after Edit is pressed
   - Improved sorting and organization
   - Load All mode optimized for bulk editing workflows
+
+### Data Export and Backup Features
+
+**Location**: Settings page → Data Export section (dev-only)
+
+- ✅ **Projects Export**:
+  - **Data included**: Complete projects data with workflows, steps, and related information
+  - **Format**: JSON file download
+  - **Filename**: `projects_export_YYYY-MM-DD.json`
+  - **Use cases**: 
+    - Backup project data before major changes
+    - Export for external analysis or reporting
+    - Archive completed projects
+  - **Access**: Dev role only
+  - **Implementation**: Exports all projects accessible to current user via RLS
+
+- ✅ **Materials Export**:
+  - **Data included**:
+    - Parts (`material_parts`)
+    - Prices (`material_part_prices`)
+    - Supply houses (`supply_houses`)
+    - Templates (`material_templates`, `material_template_items`)
+    - Purchase orders (`purchase_orders`, `purchase_order_items`)
+  - **Format**: JSON file with nested structure
+  - **Filename**: `materials_export_YYYY-MM-DD.json`
+  - **Use cases**:
+    - Backup materials database
+    - Share price book with other users
+    - Migrate to new system
+  - **Access**: Dev and master_technician roles
+  - **Complete export**: Includes all related tables with proper relationships
+
+- ✅ **Bids Backup Export**:
+  - **Data included**:
+    - All bids data (`bids`, `bids_count_rows`, `bids_submission_entries`)
+    - Cost estimates (`cost_estimates`, `cost_estimate_labor_rows`)
+    - Price book (`price_book_versions`, `price_book_entries`, `bid_pricing_assignments`)
+    - Labor book (`labor_book_versions`, `labor_book_entries`)
+    - Takeoff book (`takeoff_book_versions`, `takeoff_book_entries`, `takeoff_book_entry_items`)
+    - Purchase orders (`purchase_orders`, `purchase_order_items`) - all rows under RLS
+  - **Format**: Comprehensive JSON backup
+  - **Filename**: `bids_backup_YYYY-MM-DD.json`
+  - **Use cases**:
+    - Complete bid system backup
+    - Preserve estimation data for analysis
+    - Migration or system transfer
+    - Historical record keeping
+  - **Access**: Dev and estimator roles
+  - **Complete system**: Exports entire bidding and estimation system
+
+- ✅ **Orphaned Prices Cleanup**:
+  - **Purpose**: Remove prices for deleted parts (data maintenance)
+  - **What it does**:
+    - Finds prices in `material_part_prices` where `part_id` no longer exists in `material_parts`
+    - Displays count of orphaned prices before deletion
+    - Requires confirmation (shows list of affected supply houses)
+    - Deletes orphaned price records
+  - **When to use**:
+    - After bulk part deletions
+    - Database cleanup and maintenance
+    - Before major data exports (ensures clean data)
+  - **Safety**:
+    - Shows preview before deletion
+    - Requires explicit confirmation
+    - Cannot be undone (recommend export backup first)
+  - **Access**: Dev role only
+  - **Implementation**: Uses LEFT JOIN to find orphaned records
+
+### Export File Formats
+
+**JSON Structure Pattern**:
+```json
+{
+  "export_date": "2026-02-07T12:00:00Z",
+  "export_type": "projects|materials|bids",
+  "data": {
+    "main_table": [...],
+    "related_table_1": [...],
+    "related_table_2": [...]
+  },
+  "metadata": {
+    "total_records": 123,
+    "tables_included": ["table1", "table2"],
+    "exported_by": "user_id"
+  }
+}
+```
+
+**Benefits of Export System**:
+- **Backup**: Regular backups prevent data loss
+- **Migration**: Easy transfer to new systems or projects
+- **Analysis**: External data analysis in Excel, Python, etc.
+- **Audit**: Historical records of system state
+- **Sharing**: Share configurations (templates, price books) between users
+- **Recovery**: Restore from backup if needed
+
+**Best Practices**:
+1. Export regularly (weekly/monthly backups)
+2. Store exports in secure location (not just browser downloads)
+3. Name exports with dates for easy tracking
+4. Test imports/restores periodically
+5. Export before major system changes
+6. Keep exports for audit trail (at least 1 year)
 
 ### Line Items Enhancement
 - ✅ **Link Field Added**:

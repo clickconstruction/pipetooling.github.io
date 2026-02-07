@@ -1,5 +1,80 @@
 # Bids System Documentation
 
+---
+file: BIDS_SYSTEM.md
+type: System Documentation
+purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
+audience: Developers, Estimators, AI Agents
+last_updated: 2026-02-07
+estimated_read_time: 30-40 minutes
+difficulty: Intermediate to Advanced
+
+system_components:
+  - "6 Tabs: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission"
+  - "3 Book Systems: Takeoff Book, Labor Book, Price Book"
+  - "Integration with Materials (PO creation)"
+
+key_sections:
+  - name: "Overview"
+    line: ~17
+    anchor: "#overview"
+    description: "System purpose and workflow summary"
+  - name: "Bid Board Tab"
+    line: ~35
+    anchor: "#bid-board-tab"
+    description: "Main bid list, search, and management"
+  - name: "Counts Tab"
+    line: ~97
+    anchor: "#counts-tab"
+    description: "Fixture quantity entry with number pad"
+  - name: "Takeoff Tab"
+    line: ~184
+    anchor: "#takeoff-tab"
+    description: "Map counts to templates, create POs"
+  - name: "Cost Estimate Tab"
+    line: ~333
+    anchor: "#cost-estimate-tab"
+    description: "Materials + labor + driving costs"
+  - name: "Pricing Tab"
+    line: ~503
+    anchor: "#pricing-tab"
+    description: "Compare costs to price book, margins"
+  - name: "Cover Letter Tab"
+    line: ~681
+    anchor: "#cover-letter-tab"
+    description: "Generate proposal documents"
+  - name: "Submission & Followup Tab"
+    line: ~732
+    anchor: "#submission--followup-tab"
+    description: "Track bid outcomes and follow-ups"
+  - name: "Database Schema"
+    line: ~897
+    anchor: "#database-schema"
+    description: "All bids-related tables"
+
+quick_navigation:
+  - "[6-Tab Workflow](#overview) - Tab sequence and purpose"
+  - "[Book Systems](#takeoff-tab) - Template libraries"
+  - "[Database Tables](#database-schema) - Schema reference"
+  - "[Materials Integration](#integration-with-materials) - PO creation"
+
+related_docs:
+  - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Database schema details"
+  - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Estimator role access"
+  - "[GLOSSARY.md](./GLOSSARY.md) - Bids terminology"
+
+prerequisites:
+  - Understanding of plumbing estimation process
+  - Familiarity with stages: Rough In, Top Out, Trim Set
+  - Basic understanding of materials and labor costing
+
+when_to_read:
+  - Working on bids features
+  - Understanding bid workflow
+  - Implementing book systems
+  - Debugging bids issues
+---
+
 ## Table of Contents
 1. [Overview](#overview)
 2. [Bid Board Tab](#bid-board-tab)
