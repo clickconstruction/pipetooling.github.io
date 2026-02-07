@@ -2149,7 +2149,7 @@ export default function Bids() {
       .order('sequence_order', { ascending: false })
       .limit(1)
     
-    const maxSeq = entries && entries.length > 0 ? entries[0].sequence_order : 0
+    const maxSeq = entries?.[0]?.sequence_order ?? 0
     
     const { error: insertErr } = await supabase
       .from('labor_book_entries')
