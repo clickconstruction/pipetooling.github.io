@@ -9,7 +9,7 @@ last_updated: 2026-02-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~83
+total_migrations: ~84
 date_range: "Through February 7, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -94,11 +94,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 7, 2026
 
+**`fix_masters_see_other_masters_recursion.sql`**
+- **Purpose**: Fix infinite recursion in "Masters and devs can see other masters" policy
+- **Root Cause**: Policy used EXISTS on users table causing infinite loop
+- **Changes**: 
+  - Created `is_master_or_dev()` SECURITY DEFINER helper function
+  - Dropped and recreated policy using the helper function
+- **Impact**: Masters can now see other masters without recursion errors
+- **Category**: RLS Bug Fix
+
 **`allow_masters_see_other_masters.sql`**
 - **Purpose**: Allow masters to see other masters in "Share with other Master" feature
 - **Root Cause**: Missing SELECT policy - masters could not query other master_technician users
 - **Changes**: Added SELECT policy allowing masters and devs to view all master_technician users
-- **Impact**: Masters can now see other masters in Settings to enable the sharing feature
+- **Impact**: Initial fix (had recursion bug, fixed by next migration)
 - **Category**: Access Control / RLS Bug Fix
 
 **`allow_assistants_update_customers.sql`**
