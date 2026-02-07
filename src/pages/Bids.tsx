@@ -198,7 +198,7 @@ function formatCurrency(n: number): string {
 }
 
 function bidDisplayName(b: Bid): string {
-  return [b.project_name, b.address].filter(Boolean).join(' – ') || ''
+  return b.project_name || ''
 }
 
 function marginFlag(marginPercent: number | null): 'red' | 'yellow' | 'green' | null {
@@ -7115,6 +7115,7 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
@@ -7122,7 +7123,7 @@ export default function Bids() {
                 </thead>
                 <tbody>
                   {submissionPending.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionPending.map((bid) => (
                       <tr
@@ -7135,7 +7136,16 @@ export default function Bids() {
                           background: selectedBidForSubmission?.id === bid.id ? '#eff6ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div>
+                            <div>{formatBidNameWithValue(bid)}</div>
+                            {bid.address && (
+                              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                {bid.address}
+                              </div>
+                            )}
+                          </div>
+                        </td>
                         <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                           {(bid.customers || bid.bids_gc_builders) ? (
                             <button type="button" onClick={(e) => { e.stopPropagation(); openGcBuilderOrCustomerModal(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
@@ -7144,6 +7154,12 @@ export default function Bids() {
                           ) : (
                             '—'
                           )}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const am = bid.account_manager as EstimatorUser | null
+                            return am ? (am.name || am.email) : '—'
+                          })()}
                         </td>
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
                           (() => {
@@ -7210,12 +7226,13 @@ export default function Bids() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Start Date</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {submissionWon.length === 0 ? (
-                    <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionWon.map((bid) => (
                       <tr
@@ -7238,6 +7255,12 @@ export default function Bids() {
                           ) : (
                             '—'
                           )}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const am = bid.account_manager as EstimatorUser | null
+                            return am ? (am.name || am.email) : '—'
+                          })()}
                         </td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
