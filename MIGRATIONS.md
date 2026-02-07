@@ -9,8 +9,8 @@ last_updated: 2026-02-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~80
-date_range: "Through February 2026"
+total_migrations: ~81
+date_range: "Through February 7, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 7, 2026
+
+**`fix_cost_estimates_rls_for_assistants.sql`**
+- **Purpose**: Fix RLS policies to allow assistants to create cost estimates
+- **Root Cause**: INSERT policy had flawed logic with redundant/complex nested EXISTS checks
+- **Changes**: 
+  - Dropped all 4 existing policies (SELECT, INSERT, UPDATE, DELETE)
+  - Created simplified policies that only check user role
+  - Aligned with bids table access pattern (all dev/master/assistant/estimator users can access)
+- **Impact**: Assistants can now create/edit cost estimates without RLS errors
+- **Category**: RLS Bug Fix
 
 #### February 6, 2026
 
@@ -369,6 +381,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_cost_estimates.sql` - Initial cost estimates
 - `create_cost_estimate_labor_rows.sql` - Labor hours table
 - `add_cost_estimate_driving_cost_fields.sql` (Feb 6, 2026)
+- `fix_cost_estimates_rls_for_assistants.sql` (Feb 7, 2026) - Simplified RLS policies
 
 **Counts and Submission**:
 - `create_bids_count_rows.sql` - Fixture counts
@@ -442,6 +455,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `allow_estimators_access_bids.sql` - Estimators full bids access
 - `allow_estimators_select_customers.sql` (Feb 4, 2026) - Estimators SELECT/INSERT customers
 - `verify_projects_rls_for_assistants.sql` - Assistants see all stages
+- `fix_cost_estimates_rls_for_assistants.sql` (Feb 7, 2026) - Simplified RLS for cost estimates
 
 **Customer Management**:
 - `add_customers_delete_rls.sql` - Masters can delete own customers
