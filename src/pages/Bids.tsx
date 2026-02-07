@@ -7294,7 +7294,28 @@ export default function Bids() {
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
                 <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}><strong>Builder Name</strong> {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name ?? '—'}</p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Builder Name</strong>{' '}
+                  {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
+                    <button 
+                      type="button" 
+                      onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)} 
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: '#3b82f6', 
+                        cursor: 'pointer', 
+                        textDecoration: 'underline', 
+                        padding: 0, 
+                        textAlign: 'left' 
+                      }}
+                    >
+                      {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
+                    </button>
+                  ) : (
+                    '—'
+                  )}
+                </p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Address</strong> {selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address ?? '—'}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Phone Number</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone || '—' : (selectedBidForSubmission.bids_gc_builders?.contact_number ?? '—')}</p>
                 <p style={{ margin: '0.25rem 0' }}><strong>Builder Email</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email || '—' : (selectedBidForSubmission.bids_gc_builders?.email ?? '—')}</p>

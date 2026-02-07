@@ -9,7 +9,7 @@ last_updated: 2026-02-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~81
+total_migrations: ~82
 date_range: "Through February 7, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -93,6 +93,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### February 2026
 
 #### February 7, 2026
+
+**`allow_assistants_update_customers.sql`**
+- **Purpose**: Allow assistants to update customer information
+- **Root Cause**: Missing UPDATE policy - assistants could SELECT and INSERT customers but not UPDATE them
+- **Changes**: Added UPDATE policy for assistants matching INSERT policy logic
+- **Impact**: Assistants can now edit customer details for customers owned by masters who have adopted them
+- **Category**: Access Control / RLS
 
 **`fix_cost_estimates_rls_for_assistants.sql`**
 - **Purpose**: Fix RLS policies to allow assistants to create cost estimates
@@ -452,6 +459,8 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **Role-Specific Access**:
 - `allow_assistants_access_bids.sql` - Assistants full bids access
+- `allow_assistants_insert_customers.sql` - Assistants can create customers
+- `allow_assistants_update_customers.sql` (Feb 7, 2026) - Assistants can edit customers
 - `allow_estimators_access_bids.sql` - Estimators full bids access
 - `allow_estimators_select_customers.sql` (Feb 4, 2026) - Estimators SELECT/INSERT customers
 - `verify_projects_rls_for_assistants.sql` - Assistants see all stages
