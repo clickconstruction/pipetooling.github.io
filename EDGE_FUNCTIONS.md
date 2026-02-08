@@ -259,6 +259,11 @@ const response = await supabase.functions.invoke('create-user', {
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
+**Authentication**: 
+- `verify_jwt: false` - Function handles its own authentication internally
+- Validates JWT token and checks user role = 'dev' in the function code
+- Provides detailed error messages for authentication failures
+
 #### Request Parameters
 
 ```typescript

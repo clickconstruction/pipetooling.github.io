@@ -9,5 +9,6 @@ if (!url || !anonKey) {
 }
 
 // Create Supabase client
-// Note: Refresh token errors are handled gracefully in useAuth hook
+// Note: Auth errors are handled by useAuth hook with periodic session checks
+// and automatic sign-out on expiry
 export const supabase = createClient<Database>(url, anonKey)

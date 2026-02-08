@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-07
+last_updated: 2026-02-08
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~84
-date_range: "Through February 7, 2026"
+total_migrations: ~87
+date_range: "Through February 8, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,31 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 8, 2026
+
+**`restrict_supply_house_deletion_to_devs.sql`**
+- **Purpose**: Restrict supply house deletion to dev role only
+- **Root Cause**: All roles (dev, master, assistant, estimator) could delete supply houses, risking accidental data loss
+- **Changes**: Changed DELETE RLS policy to only allow 'dev' role
+- **Impact**: Only devs can delete supply houses; UI delete button hidden for other roles
+- **Category**: Access Control / Data Protection
+
+**`preserve_price_history_on_deletion.sql`**
+- **Purpose**: Preserve all price history records permanently, even after part/supply house deletion
+- **Root Cause**: CASCADE constraints deleted historical pricing data when business entities were removed
+- **Changes**: 
+  - Made part_id and supply_house_id nullable
+  - Changed both FK constraints from ON DELETE CASCADE to ON DELETE SET NULL
+- **Impact**: Price history is now truly permanent; orphaned records show pricing trends even for deleted items
+- **Category**: Database Improvements / Data Preservation
+
+**`fix_price_history_user_deletion.sql`**
+- **Purpose**: Allow user deletion when they have price history records
+- **Root Cause**: NO ACTION constraint blocked deletion if user had changed_by records in material_part_price_history
+- **Changes**: Changed material_part_price_history.changed_by FK to ON DELETE SET NULL
+- **Impact**: Users can be deleted smoothly; price history preserved but attribution nulled
+- **Category**: Database Improvements / User Management
 
 #### February 7, 2026
 

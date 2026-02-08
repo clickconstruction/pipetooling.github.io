@@ -407,7 +407,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 |---------|-----|--------|-----------|-----|-----------|
 | View price book | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Edit parts/prices | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Manage supply houses | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Create/edit supply houses | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Delete supply houses | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Create templates | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Draft POs | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Finalize POs | ✅ | ✅ | ✅ | ❌ | ✅ |

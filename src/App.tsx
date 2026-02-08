@@ -19,6 +19,7 @@ import Templates from './pages/Templates'
 import People from './pages/People'
 import Materials from './pages/Materials'
 import Bids from './pages/Bids'
+import { Toast, useToast } from './components/Toast'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -66,6 +67,25 @@ function AuthHandler() {
 }
 
 export default function App() {
+  const { toasts, showToast, removeToast } = useToast()
+
+  useEffect(() => {
+    // Listen for session expiring events
+    const handleSessionExpiring = ((event: CustomEvent) => {
+      const minutes = event.detail.minutesRemaining
+      showToast(
+        `Your session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''}. Please save your work.`,
+        'warning'
+      )
+    }) as EventListener
+
+    window.addEventListener('session-expiring', handleSessionExpiring)
+    
+    return () => {
+      window.removeEventListener('session-expiring', handleSessionExpiring)
+    }
+  }, [showToast])
+
   return (
     <>
       <AuthHandler />
@@ -100,6 +120,15 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {/* Toast notifications */}
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
     </>
   )
 }

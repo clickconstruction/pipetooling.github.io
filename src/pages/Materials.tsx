@@ -2772,7 +2772,7 @@ export default function Materials() {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {editingSupplyHouse && (
+                  {editingSupplyHouse && myRole === 'dev' && (
                     <button
                       type="button"
                       onClick={() => {

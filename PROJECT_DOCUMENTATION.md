@@ -897,20 +897,20 @@ uuid3           | Supply House C    | 0
 - **Trigger**: `track_price_history()` automatically logs changes
 
 #### `public.material_part_price_history`
-- **Purpose**: Historical price change tracking
+- **Purpose**: Historical price change tracking - permanent audit trail
 - **Key Fields**:
   - `id` (uuid, PK)
-  - `part_id` (uuid, FK → `material_parts.id`)
-  - `supply_house_id` (uuid, FK → `supply_houses.id`)
+  - `part_id` (uuid, FK → `material_parts.id`, nullable) - ON DELETE SET NULL (preserves history if part deleted)
+  - `supply_house_id` (uuid, FK → `supply_houses.id`, nullable) - ON DELETE SET NULL (preserves history if supply house deleted)
   - `old_price` (numeric(10, 2), nullable) - NULL for new prices
   - `new_price` (numeric(10, 2), required)
   - `price_change_percent` (numeric(5, 2), nullable) - Calculated percentage change
   - `changed_at` (timestamptz, required)
-  - `changed_by` (uuid, FK → `users.id`, nullable)
+  - `changed_by` (uuid, FK → `users.id`, nullable) - ON DELETE SET NULL (preserves history if user deleted)
   - `notes` (text, nullable) - Optional notes about the change
   - `created_at` (timestamptz)
 - **RLS**: Only devs and master_technicians can read
-- **Purpose**: Complete audit trail of all price changes, including manual confirmations
+- **Data Preservation**: Price history records are **never deleted** - all foreign keys use ON DELETE SET NULL to preserve audit trail even when parts, supply houses, or users are deleted
 
 #### `public.material_templates`
 - **Purpose**: Reusable material templates (can contain parts and/or nested templates)
@@ -1917,9 +1917,12 @@ user_id = auth.uid()
   - **Delete button**: Located in Edit Part modal (left side, only visible when editing)
 - **Supply House Management**:
   - "Manage Supply Houses" button opens management modal
-  - Create/edit/delete supply houses with contact information
+  - Create/edit supply houses with contact information (all roles: dev, master, assistant, estimator)
   - Manage supply house details (name, contact name, phone, email, address, notes)
-  - **Delete button**: Located in Edit Supply House form (left side, only visible when editing)
+  - **Delete supply houses**: **Dev-only operation** (restricted via RLS and UI)
+    - Delete button: Located in Edit Supply House form (left side, only visible to devs when editing)
+    - Database enforces deletion restriction via RLS policy
+    - When a supply house is deleted, all associated price history records are preserved (price history `supply_house_id` set to NULL)
   - Supply houses appear in "Add Price" dropdown after creation
 - **Price Management**:
   - Add/edit prices for parts across different supply houses
