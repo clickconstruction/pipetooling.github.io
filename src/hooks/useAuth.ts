@@ -14,6 +14,8 @@ export function useAuth(): UseAuthReturn {
   const [loading, setLoading] = useState(true)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
   const warningShownRef = useRef(false)
+  const lastActivityRef = useRef(Date.now())
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>()
 
   // Check if session is valid
   const checkSession = useCallback(async () => {
@@ -29,6 +31,34 @@ export function useAuth(): UseAuthReturn {
     setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null)
     return true
   }, [])
+
+  // Handle user activity and refresh session if needed
+  const handleActivity = useCallback(() => {
+    lastActivityRef.current = Date.now()
+    
+    // If we have a session and it's within 10 minutes of expiry, refresh it
+    if (sessionExpiresAt) {
+      const timeUntilExpiry = sessionExpiresAt - Date.now()
+      
+      // Refresh if within 10 minutes of expiry
+      if (timeUntilExpiry > 0 && timeUntilExpiry < 10 * 60 * 1000) {
+        // Debounce: only refresh once per minute
+        if (refreshTimeoutRef.current) return
+        
+        refreshTimeoutRef.current = setTimeout(() => {
+          refreshTimeoutRef.current = undefined
+        }, 60 * 1000)
+        
+        // Refresh the session
+        supabase.auth.refreshSession().then(({ data, error }) => {
+          if (!error && data.session) {
+            setSessionExpiresAt(data.session.expires_at ? data.session.expires_at * 1000 : null)
+            warningShownRef.current = false // Reset warning flag
+          }
+        })
+      }
+    }
+  }, [sessionExpiresAt])
 
   useEffect(() => {
     // Initial session check
@@ -53,6 +83,12 @@ export function useAuth(): UseAuthReturn {
       setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
     })
 
+    // Track user activity to refresh session
+    const activityEvents = ['mousedown', 'keydown', 'touchstart', 'scroll']
+    activityEvents.forEach(event => {
+      window.addEventListener(event, handleActivity, { passive: true })
+    })
+
     // Periodic session validation (every 5 minutes when tab is visible)
     const sessionCheckInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -72,8 +108,13 @@ export function useAuth(): UseAuthReturn {
         return
       }
 
-      // 5 minutes before expiry - show warning once
-      if (timeUntilExpiry < 5 * 60 * 1000 && !warningShownRef.current) {
+      // Check for recent activity (within last 2 minutes)
+      const timeSinceActivity = Date.now() - lastActivityRef.current
+      const hasRecentActivity = timeSinceActivity < 2 * 60 * 1000
+
+      // If there's recent activity and session is expiring soon, it should have been refreshed
+      // Only show warning if no recent activity
+      if (timeUntilExpiry < 5 * 60 * 1000 && !warningShownRef.current && !hasRecentActivity) {
         warningShownRef.current = true
         // Dispatch custom event for warning
         window.dispatchEvent(new CustomEvent('session-expiring', {
@@ -91,8 +132,14 @@ export function useAuth(): UseAuthReturn {
       subscription.unsubscribe()
       clearInterval(sessionCheckInterval)
       clearInterval(expiryCheckInterval)
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity)
+      })
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current)
+      }
     }
-  }, [checkSession, sessionExpiresAt])
+  }, [checkSession, sessionExpiresAt, handleActivity])
 
   return { user, loading, checkSession, sessionExpiresAt }
 }

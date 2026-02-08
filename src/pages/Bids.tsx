@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
@@ -520,6 +520,7 @@ export default function Bids() {
   const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
   const [submissionPricingByVersion, setSubmissionPricingByVersion] = useState<Array<{ versionId: string; versionName: string; revenue: number | null; margin: number | null; complete: boolean }>>([])
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  const [selectedAccountManagerForPrint, setSelectedAccountManagerForPrint] = useState<string>('')
   const [, setTick] = useState(0)
 
   // Takeoffs tab
@@ -3191,6 +3192,450 @@ export default function Bids() {
     doc.save(filename)
   }
 
+  async function printFollowupSheet(accountManagerFilter: string) {
+    if (!accountManagerFilter) return
+
+    // Load all submission entries for the bids
+    const { data: submissionEntries } = await supabase
+      .from('bids_submission_entries')
+      .select('*')
+      .order('occurred_at', { ascending: false })
+    
+    // Group entries by bid_id and take latest 3
+    const entriesByBid = new Map<string, BidSubmissionEntry[]>()
+    for (const entry of submissionEntries ?? []) {
+      if (!entry.bid_id) continue
+      const existing = entriesByBid.get(entry.bid_id) ?? []
+      if (existing.length < 3) {
+        existing.push(entry)
+        entriesByBid.set(entry.bid_id, existing)
+      }
+    }
+
+    const escapeHtml = (s: string) => 
+      (s ?? '').replace(/&/g, '&amp;')
+               .replace(/</g, '&lt;')
+               .replace(/>/g, '&gt;')
+               .replace(/"/g, '&quot;')
+
+    const formatOutcome = (outcome: string | null): string => {
+      if (!outcome) return '—'
+      if (outcome === 'won') return 'Won'
+      if (outcome === 'lost') return 'Lost'
+      if (outcome === 'started_or_complete') return 'Started/Complete'
+      return '—'
+    }
+
+    // Helper to format submission entries HTML
+    const renderSubmissionEntriesHtml = (bidId: string): string => {
+      const entries = entriesByBid.get(bidId) ?? []
+      if (entries.length === 0) return ''
+      
+      return `
+        <div class="submission-entries">
+          <div class="submission-header">Recent Contact Attempts:</div>
+          ${entries.map((entry, idx) => `
+            <div class="submission-entry">
+              <span class="submission-label">${idx + 1}.</span>
+              <span class="submission-label">Contact Method:</span> ${escapeHtml(entry.contact_method ?? '—')}
+              <span class="submission-label">Notes:</span> ${escapeHtml(entry.notes ?? '—')}
+              <span class="submission-label">Time:</span> ${entry.occurred_at ? new Date(entry.occurred_at).toLocaleString() : '—'}
+            </div>
+          `).join('')}
+        </div>
+      `
+    }
+
+    // Generate HTML for a single project
+    const renderProjectHtml = (bid: BidWithBuilder): string => {
+      const builderName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+      const builderAddress = bid.customers?.address ?? bid.bids_gc_builders?.address ?? '—'
+      const builderPhone = bid.customers 
+        ? extractContactInfo(bid.customers.contact_info ?? null).phone || '—' 
+        : (bid.bids_gc_builders?.contact_number ?? '—')
+      const builderEmail = bid.customers 
+        ? extractContactInfo(bid.customers.contact_info ?? null).email || '—' 
+        : (bid.bids_gc_builders?.email ?? '—')
+
+      return `<div class="project">
+        <div class="project-title">Project: ${escapeHtml(bid.project_name ?? '—')}</div>
+        <div class="field"><span class="label">Address:</span> ${escapeHtml(bid.address ?? '—')}</div>
+        <div class="field-indented"><span class="label">Builder:</span> ${escapeHtml(builderName)}</div>
+        <div class="field-indented"><span class="label">Builder Phone:</span> ${builderPhone !== '—' ? `<a href="tel:${builderPhone.replace(/[^0-9+]/g, '')}">${escapeHtml(builderPhone)}</a>` : '—'}</div>
+        <div class="field-indented"><span class="label">Builder Address:</span> ${escapeHtml(builderAddress)}</div>
+        <div class="field-indented"><span class="label">Builder Email:</span> ${builderEmail !== '—' ? `<a href="mailto:${escapeHtml(builderEmail)}">${escapeHtml(builderEmail)}</a>` : '—'}</div>
+        <div class="field"><span class="label">Project Contact:</span> ${escapeHtml(bid.gc_contact_name ?? '—')}</div>
+        <div class="field"><span class="label">Project Contact Phone:</span> ${bid.gc_contact_phone && bid.gc_contact_phone !== '—' ? `<a href="tel:${bid.gc_contact_phone.replace(/[^0-9+]/g, '')}">${escapeHtml(bid.gc_contact_phone)}</a>` : '—'}</div>
+        <div class="field"><span class="label">Project Contact Email:</span> ${bid.gc_contact_email && bid.gc_contact_email !== '—' ? `<a href="mailto:${escapeHtml(bid.gc_contact_email)}">${escapeHtml(bid.gc_contact_email)}</a>` : '—'}</div>
+        <div class="field-indented"><span class="label">Win/ Loss:</span> ${formatOutcome(bid.outcome)}</div>
+        <div class="field-indented"><span class="label">Bid Date:</span> ${formatDateYYMMDD(bid.bid_due_date)}</div>
+        <div class="field-indented"><span class="label">Bid Date Sent:</span> ${formatDateYYMMDD(bid.bid_date_sent)}</div>
+        <div class="field-indented"><span class="label">Design Drawing Plan Date:</span> ${formatDesignDrawingPlanDate(bid.design_drawing_plan_date)}</div>
+        <div class="field"><span class="label">Bid Value:</span> ${formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)}</div>
+        <div class="field"><span class="label">Agreed Value:</span> ${formatCompactCurrency(bid.agreed_value != null ? Number(bid.agreed_value) : null)}</div>
+        <div class="field"><span class="label">Distance to Office:</span> ${bid.distance_from_office ? parseFloat(bid.distance_from_office).toFixed(1) + ' mi' : '—'}</div>
+        <div class="field"><span class="label">Notes:</span> ${escapeHtml(bid.notes ?? '—')}</div>
+        ${renderSubmissionEntriesHtml(bid.id)}
+      </div>`
+    }
+
+    // Generate HTML section for unassigned bids
+    const renderUnassignedSection = (): string => {
+      const unassignedBids = bids.filter(b => {
+        const am = b.account_manager
+        const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+        return !accountManager
+      })
+      const notYetWonOrLost = unassignedBids.filter(b => 
+        !b.outcome || (b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+      )
+      const won = unassignedBids.filter(b => b.outcome === 'won')
+
+      let html = '<h2>Not yet won or lost</h2>'
+      if (notYetWonOrLost.length === 0) {
+        html += '<p class="empty-section">None</p>'
+      } else {
+        html += notYetWonOrLost.map(renderProjectHtml).join('')
+      }
+
+      html += '<h2>Won</h2>'
+      if (won.length === 0) {
+        html += '<p class="empty-section">None</p>'
+      } else {
+        html += won.map(renderProjectHtml).join('')
+      }
+
+      return html
+    }
+
+    // Generate HTML section for one account manager
+    const renderManagerSection = (managerId: string): string => {
+      const bidsForManager = bids.filter(b => {
+        const am = b.account_manager
+        const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+        return accountManager?.id === managerId
+      })
+      const notYetWonOrLost = bidsForManager.filter(b => 
+        !b.outcome || (b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+      )
+      const won = bidsForManager.filter(b => b.outcome === 'won')
+
+      let html = '<h2>Not yet won or lost</h2>'
+      if (notYetWonOrLost.length === 0) {
+        html += '<p class="empty-section">None</p>'
+      } else {
+        html += notYetWonOrLost.map(renderProjectHtml).join('')
+      }
+
+      html += '<h2>Won</h2>'
+      if (won.length === 0) {
+        html += '<p class="empty-section">None</p>'
+      } else {
+        html += won.map(renderProjectHtml).join('')
+      }
+
+      return html
+    }
+
+    // Generate HTML content
+    let bodyContent: string
+    let title: string
+
+    if (accountManagerFilter === 'ALL') {
+      title = 'Followup Sheets - All Account Managers'
+      const allSections: string[] = []
+      
+      // Add each account manager's section
+      uniqueAccountManagers.forEach((manager) => {
+        allSections.push(`<div style="page-break-after: always;">
+          <h1>Followup Sheet for ${escapeHtml(manager.name)}</h1>
+          ${renderManagerSection(manager.id)}
+        </div>`)
+      })
+      
+      // Add unassigned section (without page break after since it's the last)
+      if (unassignedBidsCount > 0) {
+        allSections.push(`<div>
+          <h1>Followup Sheet for Unassigned</h1>
+          ${renderUnassignedSection()}
+        </div>`)
+      }
+      
+      bodyContent = allSections.join('')
+      
+      if (uniqueAccountManagers.length === 0 && unassignedBidsCount === 0) {
+        bodyContent = '<p class="empty-section">No bids found.</p>'
+      }
+    } else if (accountManagerFilter === 'UNASSIGNED') {
+      title = 'Followup Sheet - Unassigned'
+      bodyContent = `<h1>Followup Sheet for Unassigned</h1>
+        ${renderUnassignedSection()}`
+    } else {
+      const manager = uniqueAccountManagers.find(m => m.id === accountManagerFilter)
+      if (!manager) return
+      title = `Followup Sheet - ${escapeHtml(manager.name)}`
+      bodyContent = `<h1>Followup Sheet for ${escapeHtml(manager.name)}</h1>
+        ${renderManagerSection(manager.id)}`
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.3rem; margin-bottom: 0.75rem; }
+  h2 { font-size: 1.1rem; margin: 1rem 0 0.4rem; border-bottom: 2px solid #333; padding-bottom: 0.2rem; }
+  .project { margin-bottom: 1rem; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; page-break-inside: avoid; }
+  .project-title { font-weight: bold; font-size: 1rem; margin-bottom: 0.4rem; }
+  .field { margin: 0.15rem 0; }
+  .field-indented { margin: 0.15rem 0; padding-left: 10ch; }
+  .label { font-weight: bold; }
+  .empty-section { color: #6b7280; font-style: italic; }
+  a { color: #3b82f6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .submission-entries { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e5e7eb; }
+  .submission-header { font-weight: bold; margin-bottom: 0.3rem; font-size: 0.9rem; }
+  .submission-entry { margin: 0.2rem 0; font-size: 0.85rem; padding-left: 1rem; }
+  .submission-label { font-weight: bold; margin-right: 0.3rem; }
+  @media print { 
+    body { margin: 0.4in; }
+    .project { page-break-inside: avoid; }
+  }
+</style></head><body>
+  ${bodyContent}
+</body></html>`
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  async function downloadFollowupSheetPdf(accountManagerFilter: string) {
+    if (!accountManagerFilter) return
+
+    // Load submission entries
+    const { data: submissionEntries } = await supabase
+      .from('bids_submission_entries')
+      .select('*')
+      .order('occurred_at', { ascending: false })
+    
+    const entriesByBid = new Map<string, BidSubmissionEntry[]>()
+    for (const entry of submissionEntries ?? []) {
+      if (!entry.bid_id) continue
+      const existing = entriesByBid.get(entry.bid_id) ?? []
+      if (existing.length < 3) {
+        existing.push(entry)
+        entriesByBid.set(entry.bid_id, existing)
+      }
+    }
+
+    const formatOutcome = (outcome: string | null): string => {
+      if (!outcome) return '—'
+      if (outcome === 'won') return 'Won'
+      if (outcome === 'lost') return 'Lost'
+      if (outcome === 'started_or_complete') return 'Started/Complete'
+      return '—'
+    }
+
+    const doc = new jsPDF({ format: 'a4', unit: 'mm' })
+    const margin = 10
+    const lineHeight = 5
+    let y = margin
+    const pageH = doc.internal.pageSize.getHeight()
+
+    const push = (text: string, bold = false): void => {
+      if (y > pageH - margin) { doc.addPage(); y = margin }
+      if (bold) doc.setFont('helvetica', 'bold')
+      doc.text(text, margin, y)
+      if (bold) doc.setFont('helvetica', 'normal')
+      y += lineHeight
+    }
+
+    const pushLink = (label: string, value: string, linkType: 'tel' | 'mailto' | null = null): void => {
+      if (y > pageH - margin) { doc.addPage(); y = margin }
+      doc.setFont('helvetica', 'bold')
+      doc.text(label + ' ', margin, y)
+      const labelW = doc.getTextWidth(label + ' ')
+      doc.setFont('helvetica', 'normal')
+      
+      if (value !== '—' && linkType) {
+        // Create clickable link
+        let url = ''
+        if (linkType === 'tel') {
+          const phoneClean = value.replace(/[^0-9+]/g, '')
+          url = `tel:${phoneClean}`
+        } else if (linkType === 'mailto') {
+          url = `mailto:${value}`
+        }
+        
+        doc.setTextColor(0, 0, 255)
+        doc.textWithLink(value, margin + labelW, y, { url })
+        doc.setTextColor(0, 0, 0)
+      } else {
+        doc.text(value, margin + labelW, y)
+      }
+      y += lineHeight
+    }
+
+    const renderSubmissionEntriesPdf = (bidId: string): void => {
+      const entries = entriesByBid.get(bidId) ?? []
+      if (entries.length === 0) return
+      
+      y += lineHeight * 0.3
+      push('Recent Contact Attempts:', true)
+      doc.setFontSize(9)
+      
+      entries.forEach((entry, idx) => {
+        push(`  ${idx + 1}. Contact Method: ${entry.contact_method ?? '—'}`)
+        push(`     Notes: ${entry.notes ?? '—'}`)
+        push(`     Time: ${entry.occurred_at ? new Date(entry.occurred_at).toLocaleString() : '—'}`)
+        y += lineHeight * 0.2
+      })
+      
+      doc.setFontSize(10)
+    }
+
+    const renderProjectPdf = (bid: BidWithBuilder): void => {
+      const builderName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+      const builderAddress = bid.customers?.address ?? bid.bids_gc_builders?.address ?? '—'
+      const builderPhone = bid.customers 
+        ? extractContactInfo(bid.customers.contact_info ?? null).phone || '—' 
+        : (bid.bids_gc_builders?.contact_number ?? '—')
+      const builderEmail = bid.customers 
+        ? extractContactInfo(bid.customers.contact_info ?? null).email || '—' 
+        : (bid.bids_gc_builders?.email ?? '—')
+
+      if (y > pageH - margin - 80) { doc.addPage(); y = margin }
+      
+      push(`Project: ${bid.project_name ?? '—'}`, true)
+      push(`  Address: ${bid.address ?? '—'}`)
+      push(`          Builder: ${builderName}`)
+      pushLink('          Builder Phone:', builderPhone, 'tel')
+      push(`          Builder Address: ${builderAddress}`)
+      pushLink('          Builder Email:', builderEmail, 'mailto')
+      push(`  Project Contact: ${bid.gc_contact_name ?? '—'}`)
+      pushLink('  Project Contact Phone:', bid.gc_contact_phone ?? '—', 'tel')
+      pushLink('  Project Contact Email:', bid.gc_contact_email ?? '—', 'mailto')
+      push(`          Win/ Loss: ${formatOutcome(bid.outcome)}`)
+      push(`          Bid Date: ${formatDateYYMMDD(bid.bid_due_date)}`)
+      push(`          Bid Date Sent: ${formatDateYYMMDD(bid.bid_date_sent)}`)
+      push(`          Design Drawing Plan Date: ${formatDesignDrawingPlanDate(bid.design_drawing_plan_date)}`)
+      push(`  Bid Value: ${formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)}`)
+      push(`  Agreed Value: ${formatCompactCurrency(bid.agreed_value != null ? Number(bid.agreed_value) : null)}`)
+      push(`  Distance to Office: ${bid.distance_from_office ? parseFloat(bid.distance_from_office).toFixed(1) + ' mi' : '—'}`)
+      push(`  Notes: ${bid.notes ?? '—'}`)
+      renderSubmissionEntriesPdf(bid.id)
+      y += lineHeight * 0.5
+    }
+
+    const renderUnassignedBids = (): void => {
+      const unassignedBids = bids.filter(b => {
+        const am = b.account_manager
+        const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+        return !accountManager
+      })
+      const notYetWonOrLost = unassignedBids.filter(b => 
+        !b.outcome || (b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+      )
+      const won = unassignedBids.filter(b => b.outcome === 'won')
+
+      push('Not yet won or lost', true)
+      if (notYetWonOrLost.length === 0) {
+        push('None')
+      } else {
+        notYetWonOrLost.forEach(renderProjectPdf)
+      }
+
+      y += lineHeight
+      push('Won', true)
+      if (won.length === 0) {
+        push('None')
+      } else {
+        won.forEach(renderProjectPdf)
+      }
+    }
+
+    const renderManagerBids = (managerId: string): void => {
+      const bidsForManager = bids.filter(b => {
+        const am = b.account_manager
+        const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+        return accountManager?.id === managerId
+      })
+      const notYetWonOrLost = bidsForManager.filter(b => 
+        !b.outcome || (b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+      )
+      const won = bidsForManager.filter(b => b.outcome === 'won')
+
+      push('Not yet won or lost', true)
+      if (notYetWonOrLost.length === 0) {
+        push('None')
+      } else {
+        notYetWonOrLost.forEach(renderProjectPdf)
+      }
+
+      y += lineHeight
+      push('Won', true)
+      if (won.length === 0) {
+        push('None')
+      } else {
+        won.forEach(renderProjectPdf)
+      }
+    }
+
+    // Generate PDF content
+    if (accountManagerFilter === 'ALL') {
+      doc.setFontSize(14)
+      push('Followup Sheets - All Account Managers', true)
+      y += lineHeight
+      doc.setFontSize(10)
+      
+      // Add each account manager's section
+      uniqueAccountManagers.forEach((manager, idx) => {
+        if (idx > 0) { doc.addPage(); y = margin }
+        doc.setFontSize(12)
+        push(`Followup Sheet for ${manager.name}`, true)
+        y += lineHeight * 0.5
+        doc.setFontSize(10)
+        renderManagerBids(manager.id)
+      })
+      
+      // Add unassigned section
+      if (unassignedBidsCount > 0) {
+        doc.addPage()
+        y = margin
+        doc.setFontSize(12)
+        push('Followup Sheet for Unassigned', true)
+        y += lineHeight * 0.5
+        doc.setFontSize(10)
+        renderUnassignedBids()
+      }
+    } else if (accountManagerFilter === 'UNASSIGNED') {
+      doc.setFontSize(12)
+      push('Followup Sheet - Unassigned', true)
+      y += lineHeight
+      doc.setFontSize(10)
+      renderUnassignedBids()
+    } else {
+      const manager = uniqueAccountManagers.find(m => m.id === accountManagerFilter)
+      if (!manager) return
+      doc.setFontSize(12)
+      push(`Followup Sheet - ${manager.name}`, true)
+      y += lineHeight
+      doc.setFontSize(10)
+      renderManagerBids(manager.id)
+    }
+
+    // Download the PDF
+    const filename = accountManagerFilter === 'ALL' 
+      ? 'followup-sheets-all.pdf'
+      : accountManagerFilter === 'UNASSIGNED'
+      ? 'followup-sheet-unassigned.pdf'
+      : `followup-sheet-${uniqueAccountManagers.find(m => m.id === accountManagerFilter)?.name.toLowerCase().replace(/\s+/g, '-') ?? 'manager'}.pdf`
+    
+    doc.save(filename)
+  }
+
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>>) {
     setCostEstimateLaborRows((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
@@ -4114,6 +4559,39 @@ export default function Bids() {
       .filter((p) => [p.name, p.manufacturer, p.fixture_type, p.notes].some((f) => (f || '').toLowerCase().includes(q)))
       .slice(0, limit)
   }
+
+  const uniqueAccountManagers = useMemo(() => {
+    const managers = new Map<string, { id: string; name: string; count: number }>()
+    bids.forEach((bid) => {
+      const am = bid.account_manager
+      const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+      if (accountManager && accountManager.id && accountManager.name) {
+        const existing = managers.get(accountManager.id)
+        if (existing) {
+          existing.count++
+        } else {
+          managers.set(accountManager.id, {
+            id: accountManager.id,
+            name: accountManager.name,
+            count: 1
+          })
+        }
+      }
+    })
+    return Array.from(managers.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [bids])
+
+  const unassignedBidsCount = useMemo(() => {
+    return bids.filter((bid) => {
+      const am = bid.account_manager
+      const accountManager = am == null ? null : Array.isArray(am) ? am[0] ?? null : am
+      return !accountManager
+    }).length
+  }, [bids])
+
+  const totalBidsCount = useMemo(() => {
+    return bids.length
+  }, [bids])
 
   const submissionUnsent = filteredBidsForSubmission.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
   const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
@@ -7926,6 +8404,60 @@ export default function Bids() {
             </table>
           </div>
           )}
+
+          {/* Print Followup Sheet UI */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '2rem' }}>
+            <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
+              Followup sheet for:
+            </label>
+            <select
+              id="account-manager-print"
+              value={selectedAccountManagerForPrint}
+              onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
+            >
+              <option value="">Select...</option>
+              <option value="ALL">ALL ({totalBidsCount})</option>
+              <option value="UNASSIGNED">UNASSIGNED ({unassignedBidsCount})</option>
+              {uniqueAccountManagers.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name} ({manager.count})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => printFollowupSheet(selectedAccountManagerForPrint)}
+              disabled={!selectedAccountManagerForPrint}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 4, 
+                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                fontWeight: 500
+              }}
+            >
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
+              disabled={!selectedAccountManagerForPrint}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 4, 
+                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                fontWeight: 500
+              }}
+            >
+              PDF
+            </button>
+          </div>
         </div>
       )}
 
