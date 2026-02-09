@@ -7731,6 +7731,60 @@ export default function Bids() {
       {/* Submission & Followup Tab */}
       {activeTab === 'submission-followup' && (
         <div>
+          {/* Print Followup Sheet UI */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
+              Followup sheet for:
+            </label>
+            <select
+              id="account-manager-print"
+              value={selectedAccountManagerForPrint}
+              onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
+            >
+              <option value="">Select...</option>
+              <option value="ALL">ALL ({totalBidsCount})</option>
+              <option value="UNASSIGNED">UNASSIGNED ({unassignedBidsCount})</option>
+              {uniqueAccountManagers.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name} ({manager.count})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => printFollowupSheet(selectedAccountManagerForPrint)}
+              disabled={!selectedAccountManagerForPrint}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 4, 
+                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                fontWeight: 500
+              }}
+            >
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
+              disabled={!selectedAccountManagerForPrint}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 4, 
+                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
+                fontWeight: 500
+              }}
+            >
+              PDF
+            </button>
+          </div>
+
           <input
             type="text"
             placeholder="Search bids (project name or GC/Builder)..."
@@ -8404,60 +8458,6 @@ export default function Bids() {
             </table>
           </div>
           )}
-
-          {/* Print Followup Sheet UI */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '2rem' }}>
-            <label htmlFor="account-manager-print" style={{ fontWeight: 500 }}>
-              Followup sheet for:
-            </label>
-            <select
-              id="account-manager-print"
-              value={selectedAccountManagerForPrint}
-              onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
-            >
-              <option value="">Select...</option>
-              <option value="ALL">ALL ({totalBidsCount})</option>
-              <option value="UNASSIGNED">UNASSIGNED ({unassignedBidsCount})</option>
-              {uniqueAccountManagers.map((manager) => (
-                <option key={manager.id} value={manager.id}>
-                  {manager.name} ({manager.count})
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => printFollowupSheet(selectedAccountManagerForPrint)}
-              disabled={!selectedAccountManagerForPrint}
-              style={{ 
-                padding: '0.5rem 1rem', 
-                background: selectedAccountManagerForPrint ? '#3b82f6' : '#d1d5db', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: 4, 
-                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
-                fontWeight: 500
-              }}
-            >
-              Print
-            </button>
-            <button
-              type="button"
-              onClick={() => downloadFollowupSheetPdf(selectedAccountManagerForPrint)}
-              disabled={!selectedAccountManagerForPrint}
-              style={{ 
-                padding: '0.5rem 1rem', 
-                background: selectedAccountManagerForPrint ? '#10b981' : '#d1d5db', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: 4, 
-                cursor: selectedAccountManagerForPrint ? 'pointer' : 'not-allowed',
-                fontWeight: 500
-              }}
-            >
-              PDF
-            </button>
-          </div>
         </div>
       )}
 
