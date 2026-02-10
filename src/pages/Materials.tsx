@@ -696,7 +696,8 @@ export default function Materials() {
       const loadForServiceType = async () => {
         setPartsPage(0)
         setHasMoreParts(true)
-        setAllParts([])  // Clear stale data immediately
+        setParts([])     // Clear paginated mode data
+        setAllParts([])  // Clear Load All mode data
         await Promise.all([
           loadSupplyHouses(),
           loadAllParts(),
