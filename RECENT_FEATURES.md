@@ -7,12 +7,12 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-07
+last_updated: 2026-02-10
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.25 → v2.4"
+version_range: "v2.27 → v2.4"
 
 key_sections:
   - name: "Latest Version (v2.25)"
@@ -46,9 +46,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.26)](#latest-updates-v226)
-2. [Latest Updates (v2.25)](#latest-updates-v225)
-2. [Latest Updates (v2.24)](#latest-updates-v224)
+1. [Latest Updates (v2.27)](#latest-updates-v227)
+2. [Latest Updates (v2.26)](#latest-updates-v226)
+3. [Latest Updates (v2.25)](#latest-updates-v225)
+4. [Latest Updates (v2.24)](#latest-updates-v224)
 3. [Latest Updates (v2.23)](#latest-updates-v223)
 4. [Latest Updates (v2.22)](#latest-updates-v222)
 5. [Latest Updates (v2.21)](#latest-updates-v221)
@@ -73,6 +74,103 @@ when_to_read:
 24. [Email Templates](#email-templates)
 25. [Financial Tracking](#financial-tracking)
 26. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.27)
+
+### Service Type System
+
+**Date**: 2026-02-10
+
+**Overview**:
+Implemented comprehensive Service Type system for categorizing materials (parts, templates, purchase orders) and bids by trade type (Plumbing, Electrical, HVAC), with filtering UI in both Materials and Bids sections.
+
+**Features**:
+- Three initial service types: Plumbing, Electrical, HVAC
+- Dev-only management interface in Settings for adding/editing/reordering service types
+- Filter buttons above tabs in `/materials` to show only items of selected type
+- Filter buttons above tabs in `/bids` to show only bids of selected type
+- All existing data automatically assigned to Plumbing service type
+- Service type displayed when adding new parts in Materials
+- Service type required field for all new bids and materials
+- Color-coded service type buttons for visual distinction
+
+**UI Components**:
+- Materials: Service type filter buttons above Price Book, Templates, and PO tabs
+- Bids: Service type filter buttons above all bid tabs
+- Settings: Service Types management section (dev-only)
+
+**Database**:
+- New table: `service_types` (id, name, description, color, sequence_order)
+- New columns: `service_type_id` added to `material_parts`, `material_templates`, `purchase_orders`, `bids`
+- RLS: Dev-only write access, all authenticated read access
+
+**Bug Fix**: Fixed stale data issue where switching service types in Materials would briefly show parts from previous type
+
+**Files Modified**:
+- `src/pages/Materials.tsx`: Service type filtering and UI
+- `src/pages/Bids.tsx`: Service type filtering and UI
+- `src/pages/Settings.tsx`: Service type management (CRUD operations)
+
+### Followup Sheet Print and PDF
+
+**Date**: 2026-02-09
+
+**Overview**:
+Added print preview and downloadable PDF functionality for account manager follow-up sheets in Submission & Followup tab.
+
+**Features**:
+- Dropdown to select specific account manager or "ALL" or "UNASSIGNED"
+- Print button opens printable preview window (similar to Pricing tab)
+- PDF button downloads formatted PDF with clickable phone numbers and emails
+- Shows projects grouped by status: "Not Yet Won or Lost" and "Won"
+- Includes complete project details, builder information, and latest 3 submission entries
+- Phone numbers are clickable (tel: links) in PDF for mobile devices
+- Emails are clickable (mailto: links) for quick composition
+
+**UI Location**:
+Located within Submission & Followup tab, above the search bar
+
+**Print Format**:
+- Project name and address
+- Builder Phone (clickable in PDF)
+- Builder Address
+- Builder Email (clickable in PDF)
+- Project Contact name, phone, email
+- Win/Loss status, Bid Date, Sent Date, Design Drawing Date
+- Bid Value, Agreed Value, Distance to Office, Notes
+- Latest 3 submission entries with contact method, notes, timestamp
+- Builder details indented 10 spaces for visual separation
+
+**Technical Implementation**:
+- `printFollowupSheet()`: Opens print preview window with HTML generation
+- `downloadFollowupSheetPdf()`: Generates downloadable PDF using jsPDF library
+- Filters bids by account manager and status
+- Fetches latest 3 submission entries per project
+- Formats contact information with clickable links
+
+**Files Modified**:
+- `src/pages/Bids.tsx`: Print/PDF functions and UI controls
+
+### Bid Board Display Improvements
+
+**Date**: 2026-02-09
+
+**Overview**:
+Improved bid date display formatting in Bid Board for better readability.
+
+**Changes**:
+- Bid Date and Sent Date now display on two separate lines
+- Format: "02/06" on first line, "[+4]" (days ago) on second line
+- Previous format was single line: "02/06 [+4]"
+
+**Implementation**:
+- Added `formatDateYYMMDDParts()` helper function to split date and days-ago into separate strings
+- Updated Bid Board table cells to render dates vertically
+
+**Files Modified**:
+- `src/pages/Bids.tsx`: Date formatting in Bid Board table
 
 ---
 

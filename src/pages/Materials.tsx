@@ -14,6 +14,16 @@ type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
 
+interface ServiceType {
+  id: string
+  name: string
+  description: string | null
+  color: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 type PartWithPrices = MaterialPart & {
   prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
 }
@@ -43,6 +53,10 @@ export default function Materials() {
   const [activeTab, setActiveTab] = useState<'price-book' | 'templates-po' | 'purchase-orders'>('price-book')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Service Types state
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
 
   // Price Book state
   const [parts, setParts] = useState<PartWithPrices[]>([])
@@ -176,6 +190,26 @@ export default function Materials() {
     // For allowed roles, do not set loading false here; data-load effect will set it after parts etc. load
   }
 
+  async function loadServiceTypes() {
+    const { data, error } = await supabase
+      .from('service_types' as any)
+      .select('*')
+      .order('sequence_order', { ascending: true })
+    
+    if (error) {
+      setError(`Failed to load service types: ${error.message}`)
+      return
+    }
+    
+    const types = (data as unknown as ServiceType[]) ?? []
+    setServiceTypes(types)
+    
+    // Set default to first service type
+    if (types.length > 0 && !selectedServiceTypeId && types[0]) {
+      setSelectedServiceTypeId(types[0].id)
+    }
+  }
+
   async function loadSupplyHouses() {
     const { data, error } = await supabase
       .from('supply_houses')
@@ -284,6 +318,7 @@ export default function Materials() {
     let query = supabase
       .from('material_parts')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('name')
     
     // Apply search filter if provided
@@ -376,6 +411,7 @@ export default function Materials() {
       const { data: allPartsData, error: partsError } = await supabase
         .from('material_parts')
         .select('*')
+        .eq('service_type_id', selectedServiceTypeId)
         .order('name')
       
       if (partsError) throw partsError
@@ -423,6 +459,7 @@ export default function Materials() {
     const { data, error } = await supabase
       .from('material_templates')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('name')
     if (error) {
       setError(`Failed to load templates: ${error.message}`)
@@ -556,6 +593,7 @@ export default function Materials() {
     const { data: poData, error: poError } = await supabase
       .from('purchase_orders')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('created_at', { ascending: false })
     
     if (poError) {
@@ -622,13 +660,8 @@ export default function Materials() {
         try {
           setPartsPage(0)
           setHasMoreParts(true)
-          await Promise.all([
-            loadSupplyHouses(),
-            loadAllParts(),
-            loadMaterialTemplates(),
-            loadPurchaseOrders(),
-            loadGlobalPriceBookStats(),
-          ])
+          // Load service types first, then load data for default service type
+          await loadServiceTypes()
         } finally {
           setLoading(false)
         }
@@ -636,6 +669,25 @@ export default function Materials() {
       loadInitial()
     }
   }, [myRole])
+  
+  // Reload data when service type changes
+  useEffect(() => {
+    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+      const loadForServiceType = async () => {
+        setPartsPage(0)
+        setHasMoreParts(true)
+        setAllParts([])  // Clear stale data immediately
+        await Promise.all([
+          loadSupplyHouses(),
+          loadAllParts(),
+          loadMaterialTemplates(),
+          loadPurchaseOrders(),
+          loadGlobalPriceBookStats(),
+        ])
+      }
+      loadForServiceType()
+    }
+  }, [selectedServiceTypeId])
 
   useEffect(() => {
     const state = location.state as { refreshPrices?: boolean } | null
@@ -944,6 +996,7 @@ export default function Materials() {
           manufacturer: partManufacturer.trim() || null,
           fixture_type: partFixtureType.trim() || null,
           notes: partNotes.trim() || null,
+          service_type_id: selectedServiceTypeId,
         })
       if (e) {
         setError(e.message)
@@ -1136,6 +1189,7 @@ export default function Materials() {
         .insert({
           name: templateName.trim(),
           description: templateDescription.trim() || null,
+          service_type_id: selectedServiceTypeId,
         })
       if (e) {
         setError(e.message)
@@ -1245,6 +1299,7 @@ export default function Materials() {
         status: 'draft',
         created_by: authUser.id,
         notes: null,
+        service_type_id: selectedServiceTypeId,
       })
       .select('id')
       .single()
@@ -1278,6 +1333,7 @@ export default function Materials() {
         status: 'draft',
         created_by: authUser.id,
         notes: null,
+        service_type_id: selectedServiceTypeId,
       })
       .select('id')
       .single()
@@ -2224,6 +2280,30 @@ export default function Materials() {
         </div>
       )}
 
+      {/* Service Type Filter */}
+      {serviceTypes.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {serviceTypes.map(st => (
+            <button
+              key={st.id}
+              type="button"
+              onClick={() => setSelectedServiceTypeId(st.id)}
+              style={{
+                padding: '0.5rem 1rem',
+                border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
+                color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
+                borderRadius: 6,
+                fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
+                cursor: 'pointer'
+              }}
+            >
+              {st.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
         <button
@@ -2531,7 +2611,14 @@ export default function Materials() {
       {partFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginBottom: '1.5rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
+            <h2 style={{ marginBottom: '1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
+            {!editingPart && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeId)?.name}</strong>
+                </span>
+              </div>
+            )}
             <form onSubmit={savePart}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>

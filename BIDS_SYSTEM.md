@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-07
+last_updated: 2026-02-10
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -117,6 +117,14 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 Central hub for viewing and managing all bids. Provides high-level overview of bid status, values, and outcomes.
 
 ### Features
+
+#### Service Type Filtering
+- **Filter buttons** appear above all tabs (Bid Board, Counts, Takeoffs, etc.)
+- **Displays** all available service types (Plumbing, Electrical, HVAC, etc.)
+- **Active filter** highlighted with background color matching service type color
+- **Filters all tabs**: When a service type is selected, all bid-related tabs show only bids of that type
+- **Required field**: All bids must have a service type assigned
+- **Management**: Devs can add/edit/reorder service types in Settings
 
 #### Search Functionality
 - **Full-width search input** filters bids in real-time
@@ -1113,6 +1121,67 @@ Each section has clickable header with:
 - "Start Date" (was "Estimated Job Start Date", Won bids only)
 - "Edit" (gear icon column)
 
+### Print and PDF Features
+
+**Location**: Above search bar in Submission & Followup tab
+
+**Components**:
+1. Account Manager selector dropdown
+2. Print button (opens preview window)
+3. PDF button (downloads file)
+
+**Account Manager Options**:
+- Individual account managers (shows only their assigned bids)
+- "ALL" (shows all bids, grouped by account manager, one page each)
+- "UNASSIGNED" (shows bids without account manager)
+
+**Print Preview Window**:
+- Opens in new window with print-optimized formatting
+- Projects grouped by status:
+  - "Not Yet Won or Lost" section
+  - "Won" section
+- Excludes lost bids from printout
+
+**PDF Format**:
+Same formatting as print preview with enhanced features:
+- Clickable phone numbers (tel: links for mobile)
+- Clickable email addresses (mailto: links)
+- Professional formatting for field use
+
+**Content Per Project**:
+- Project name and address
+- Builder information (indented 10 spaces):
+  - Phone (clickable in PDF)
+  - Address
+  - Email (clickable in PDF)
+- Project Contact details:
+  - Name
+  - Phone (clickable in PDF)
+  - Email (clickable in PDF)
+- Bid Details:
+  - Win/Loss status
+  - Bid Date
+  - Sent Date
+  - Design Drawing Plan Date
+  - Bid Value
+  - Agreed Value
+  - Distance to Office (miles)
+  - Notes
+- Latest 3 Submission Entries:
+  - Contact method
+  - Notes
+  - Timestamp
+
+**Technical Implementation**:
+- `printFollowupSheet()`: Opens print preview window with HTML generation
+- `downloadFollowupSheetPdf()`: Generates downloadable PDF using jsPDF library
+- Filters bids by account manager and status
+- Fetches latest 3 submission entries per project
+- Formats contact information with clickable links
+
+**Use Case**:
+Account managers can print or download their assigned projects for field reference, with clickable contact information for immediate communication from mobile devices.
+
 ---
 
 ## Database Schema
@@ -1127,6 +1196,7 @@ bids:
   customer_id (uuid, FK → customers, nullable)
   gc_builder (text, nullable) -- Legacy field
   estimator_id (uuid, FK → users, nullable)
+  service_type_id (uuid, FK → service_types, required) -- Trade category
   bid_due_date (date, nullable)
   outcome (text, nullable) -- 'won', 'lost', 'started_or_complete'
   loss_reason (text, nullable)

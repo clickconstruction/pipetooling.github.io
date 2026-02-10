@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-07
+last_updated: 2026-02-10
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -857,6 +857,32 @@ uuid3           | Supply House C    | 0
 - **Migration**: `supabase/migrations/create_parts_with_price_count_function.sql`
 - **Frontend Integration**: Frontend fetches parts by ID in correct order for current page
 
+### Service Types Table
+
+#### `public.service_types`
+- **Purpose**: Define trade types (Plumbing, Electrical, HVAC, etc.) for categorizing materials and bids
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `name` (text, required) - Service type name (e.g., "Plumbing")
+  - `description` (text, nullable) - Optional description
+  - `color` (text, nullable) - Hex color code for UI display
+  - `sequence_order` (integer, required) - Display order (lower numbers first)
+  - `created_at`, `updated_at` (timestamptz)
+- **Initial Data**:
+  - Plumbing (sequence_order: 1)
+  - Electrical (sequence_order: 2)
+  - HVAC (sequence_order: 3)
+- **RLS**:
+  - SELECT: All authenticated users
+  - INSERT/UPDATE/DELETE: Dev role only
+- **Relationships**:
+  - Referenced by: `material_parts.service_type_id`
+  - Referenced by: `material_templates.service_type_id`
+  - Referenced by: `purchase_orders.service_type_id`
+  - Referenced by: `bids.service_type_id`
+- **Foreign Key Behavior**: ON DELETE RESTRICT (prevents deletion of service types in use)
+- **Management**: Devs can add, edit, delete (if not in use), and reorder service types in Settings page
+
 ### Materials Management Tables
 
 #### `public.supply_houses`
@@ -880,8 +906,10 @@ uuid3           | Supply House C    | 0
   - `manufacturer` (text, nullable)
   - `fixture_type` (text, nullable) - Predefined options (Fitting, Pipe, Drain, Sink, etc.)
   - `notes` (text, nullable) - Can include SKU numbers
+  - `service_type_id` (uuid, FK → `service_types.id`, required) - Trade category
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: Only devs and master_technicians can CRUD
+- **Filtering**: UI filters parts by selected service type
 
 #### `public.material_part_prices`
 - **Purpose**: Prices for parts by supply house
@@ -918,8 +946,10 @@ uuid3           | Supply House C    | 0
   - `id` (uuid, PK)
   - `name` (text, required)
   - `description` (text, nullable)
+  - `service_type_id` (uuid, FK → `service_types.id`, required) - Trade category
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: Only devs and master_technicians can CRUD
+- **Filtering**: UI filters templates by selected service type
 
 #### `public.material_template_items`
 - **Purpose**: Items within material templates (supports nested structure)
@@ -943,6 +973,7 @@ uuid3           | Supply House C    | 0
   - `name` (text, required)
   - `status` (enum: 'draft' | 'finalized', default 'draft')
   - `created_by` (uuid, FK → `users.id`, required)
+  - `service_type_id` (uuid, FK → `service_types.id`, required) - Trade category
   - `finalized_at` (timestamptz, nullable) - Set when status changes to 'finalized'
   - `notes` (text, nullable) - Can be added to finalized POs (add-only)
   - `notes_added_by` (uuid, FK → `users.id`, nullable) - User who added notes to finalized PO
@@ -951,6 +982,7 @@ uuid3           | Supply House C    | 0
 - **RLS**: 
   - Devs and master_technicians can CRUD
   - Special policy allows updating notes fields on finalized POs (but only when notes is null - add-only)
+- **Filtering**: UI filters purchase orders by selected service type
 - **Special Features**:
   - Draft POs are editable, finalized POs are immutable (except notes can be added once)
   - Notes on finalized POs show user name and timestamp
@@ -1017,11 +1049,13 @@ uuid3           | Supply House C    | 0
   - `notes` (text, nullable)
   - `created_by` (uuid, FK → `users.id`, required)
   - `estimator_id` (uuid, FK → `users.id` ON DELETE SET NULL, nullable) - Estimator user assigned to this bid
+  - `service_type_id` (uuid, FK → `service_types.id`, required) - Trade category
   - `selected_takeoff_book_version_id` (uuid, FK → `takeoff_book_versions.id` ON DELETE SET NULL, nullable) - Selected takeoff book version
   - `selected_labor_book_version_id` (uuid, FK → `labor_book_versions.id` ON DELETE SET NULL, nullable) - Selected labor book version
   - `selected_price_book_version_id` (uuid, FK → `price_book_versions.id` ON DELETE SET NULL, nullable) - Selected price book version
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: Devs, masters, assistants, and estimators have full access (see `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`)
+- **Filtering**: UI filters all bid tabs by selected service type
 - **Special Features**: 
   - GC/Builder field uses `customers` table as primary source (searchable combobox)
   - Legacy `gc_builder_id` retained for backward compatibility

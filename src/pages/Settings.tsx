@@ -38,6 +38,16 @@ type EmailTemplate = {
   updated_at: string | null
 }
 
+interface ServiceType {
+  id: string
+  name: string
+  description: string | null
+  color: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
@@ -131,6 +141,16 @@ export default function Settings() {
   const [editEmail, setEditEmail] = useState('')
   const [editName, setEditName] = useState('')
   const [editError, setEditError] = useState<string | null>(null)
+  
+  // Service Types state
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [serviceTypeFormOpen, setServiceTypeFormOpen] = useState(false)
+  const [editingServiceType, setEditingServiceType] = useState<ServiceType | null>(null)
+  const [serviceTypeName, setServiceTypeName] = useState('')
+  const [serviceTypeDescription, setServiceTypeDescription] = useState('')
+  const [serviceTypeColor, setServiceTypeColor] = useState('')
+  const [serviceTypeSaving, setServiceTypeSaving] = useState(false)
+  const [serviceTypeError, setServiceTypeError] = useState<string | null>(null)
 
   type OrphanedPriceRow = {
     id: string
@@ -480,9 +500,10 @@ export default function Settings() {
       setNonUserPeople([])
     }
     
-    // Load email templates if dev
+    // Load email templates and service types if dev
     if (role === 'dev') {
       await loadEmailTemplates()
+      await loadServiceTypes()
     }
     
     setLoading(false)
@@ -886,6 +907,137 @@ export default function Settings() {
         closeEditTemplate()
       }
     }
+  }
+
+  // Service Types functions
+  async function loadServiceTypes() {
+    const { data, error: eServiceTypes } = await supabase
+      .from('service_types' as any)
+      .select('*')
+      .order('sequence_order', { ascending: true })
+    
+    if (eServiceTypes) {
+      console.error('Error loading service types:', eServiceTypes)
+    } else {
+      setServiceTypes((data as unknown as ServiceType[]) ?? [])
+    }
+  }
+
+  function openEditServiceType(serviceType: ServiceType | null) {
+    setEditingServiceType(serviceType)
+    setServiceTypeName(serviceType?.name || '')
+    setServiceTypeDescription(serviceType?.description || '')
+    setServiceTypeColor(serviceType?.color || '')
+    setServiceTypeError(null)
+    setServiceTypeFormOpen(true)
+  }
+
+  function closeEditServiceType() {
+    setEditingServiceType(null)
+    setServiceTypeName('')
+    setServiceTypeDescription('')
+    setServiceTypeColor('')
+    setServiceTypeError(null)
+    setServiceTypeFormOpen(false)
+  }
+
+  async function saveServiceType(e: React.FormEvent) {
+    e.preventDefault()
+    
+    setServiceTypeSaving(true)
+    setServiceTypeError(null)
+    
+    if (!serviceTypeName.trim()) {
+      setServiceTypeError('Name is required')
+      setServiceTypeSaving(false)
+      return
+    }
+    
+    if (editingServiceType) {
+      // Update existing service type
+      const { error: e } = await supabase
+        .from('service_types' as any)
+        .update({
+          name: serviceTypeName.trim(),
+          description: serviceTypeDescription.trim() || null,
+          color: serviceTypeColor.trim() || null,
+        } as any)
+        .eq('id', editingServiceType.id)
+      
+      setServiceTypeSaving(false)
+      
+      if (e) {
+        setServiceTypeError(e.message)
+      } else {
+        await loadServiceTypes()
+        closeEditServiceType()
+      }
+    } else {
+      // Create new service type
+      const maxSeq = serviceTypes.reduce((max, st) => Math.max(max, st.sequence_order), 0)
+      const { error: e } = await supabase
+        .from('service_types' as any)
+        .insert({
+          name: serviceTypeName.trim(),
+          description: serviceTypeDescription.trim() || null,
+          color: serviceTypeColor.trim() || null,
+          sequence_order: maxSeq + 1,
+        } as any)
+      
+      setServiceTypeSaving(false)
+      
+      if (e) {
+        setServiceTypeError(e.message)
+      } else {
+        await loadServiceTypes()
+        closeEditServiceType()
+      }
+    }
+  }
+
+  async function deleteServiceType(serviceType: ServiceType) {
+    if (!confirm(`Are you sure you want to delete "${serviceType.name}"? This will fail if any items are assigned to this service type.`)) {
+      return
+    }
+    
+    const { error: e } = await supabase
+      .from('service_types' as any)
+      .delete()
+      .eq('id', serviceType.id)
+    
+    if (e) {
+      if (e.message.includes('violates foreign key constraint')) {
+        setError(`Cannot delete service type "${serviceType.name}" because it has associated items. Please reassign or delete those items first.`)
+      } else {
+        setError(e.message)
+      }
+    } else {
+      await loadServiceTypes()
+    }
+  }
+
+  async function moveServiceType(serviceType: ServiceType, direction: 'up' | 'down') {
+    const currentIndex = serviceTypes.findIndex(st => st.id === serviceType.id)
+    if (currentIndex === -1) return
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= serviceTypes.length) return
+    
+    const targetServiceType = serviceTypes[targetIndex]
+    if (!targetServiceType) return
+    
+    // Swap sequence orders
+    await supabase
+      .from('service_types' as any)
+      .update({ sequence_order: targetServiceType.sequence_order } as any)
+      .eq('id', serviceType.id)
+    
+    await supabase
+      .from('service_types' as any)
+      .update({ sequence_order: serviceType.sequence_order } as any)
+      .eq('id', targetServiceType.id)
+    
+    await loadServiceTypes()
   }
 
   useEffect(() => {
@@ -2531,6 +2683,185 @@ export default function Settings() {
           >
             Review orphaned material prices
           </button>
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Service Types</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Manage service types for categorizing bids and materials (Plumbing, Electrical, HVAC, etc.). These filters appear on the Materials and Bids pages.
+          </p>
+          
+          <div style={{ marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => openEditServiceType(null)}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              + Add Service Type
+            </button>
+          </div>
+
+          {serviceTypes.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {serviceTypes.map((st, idx) => (
+                <div key={st.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{st.name}</h3>
+                        {st.color && (
+                          <div style={{ width: '1rem', height: '1rem', borderRadius: '50%', background: st.color, border: '1px solid #d1d5db' }}></div>
+                        )}
+                      </div>
+                      {st.description && (
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{st.description}</p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => moveServiceType(st, 'up')}
+                        disabled={idx === 0}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.875rem',
+                          background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveServiceType(st, 'down')}
+                        disabled={idx === serviceTypes.length - 1}
+                        style={{
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.875rem',
+                          background: idx === serviceTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: idx === serviceTypes.length - 1 ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openEditServiceType(st)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteServiceType(st)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>No service types created yet.</p>
+          )}
+
+          {serviceTypeFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>
+                  {editingServiceType ? 'Edit Service Type' : 'Add Service Type'}
+                </h3>
+                
+                {serviceTypeError && (
+                  <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem', fontSize: '0.875rem' }}>
+                    {serviceTypeError}
+                  </div>
+                )}
+                
+                <form onSubmit={saveServiceType}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={serviceTypeName}
+                      onChange={(e) => setServiceTypeName(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      required
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Description
+                    </label>
+                    <textarea
+                      value={serviceTypeDescription}
+                      onChange={(e) => setServiceTypeDescription(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minHeight: '80px' }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Color (optional)
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={serviceTypeColor || '#3b82f6'}
+                        onChange={(e) => setServiceTypeColor(e.target.value)}
+                        style={{ width: '60px', height: '40px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      />
+                      <input
+                        type="text"
+                        value={serviceTypeColor}
+                        onChange={(e) => setServiceTypeColor(e.target.value)}
+                        placeholder="#3b82f6"
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={closeEditServiceType}
+                      disabled={serviceTypeSaving}
+                      style={{ padding: '0.5rem 1rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={serviceTypeSaving}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: serviceTypeSaving ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: serviceTypeSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {serviceTypeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </>
       )}
 

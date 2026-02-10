@@ -39,11 +39,22 @@ const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_o
 
 type EstimatorUser = { id: string; name: string | null; email: string }
 
+interface ServiceType {
+  id: string
+  name: string
+  description: string | null
+  color: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 type BidWithBuilder = Bid & {
   customers: Customer | null
   bids_gc_builders: GcBuilder | null
   estimator?: EstimatorUser | EstimatorUser[] | null
   account_manager?: EstimatorUser | EstimatorUser[] | null
+  service_type?: ServiceType | null
 }
 
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
@@ -146,6 +157,24 @@ function formatDateYYMMDD(dateStr: string | null): string {
   const formattedDate = `${m}/${day}`
   if (diffDays < 0) return `${formattedDate} [+${Math.abs(diffDays)}]`
   return `${formattedDate} [-${diffDays}]`
+}
+
+function formatDateYYMMDDParts(dateStr: string | null): { date: string; bracket: string } | null {
+  if (!dateStr) return null
+  const d = new Date(dateStr + 'T12:00:00')
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  d.setHours(0, 0, 0, 0)
+  const diffMs = d.getTime() - today.getTime()
+  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
+  
+  const formattedDate = `${m}/${day}`
+  const bracket = diffDays < 0 ? `[+${Math.abs(diffDays)}]` : `[-${diffDays}]`
+  
+  return { date: formattedDate, bracket }
 }
 
 function formatBidNameWithValue(bid: BidWithBuilder): string {
@@ -449,6 +478,10 @@ export default function Bids() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'bid-board' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup'>('bid-board')
+  
+  // Service Types state
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -485,6 +518,7 @@ export default function Bids() {
   const [estimatorId, setEstimatorId] = useState('')
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
   const [accountManagerId, setAccountManagerId] = useState('')
+  const [formServiceTypeId, setFormServiceTypeId] = useState('')
   const [bidDueDate, setBidDueDate] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
@@ -738,10 +772,31 @@ export default function Bids() {
     setCustomers((data as Customer[]) ?? [])
   }
 
+  async function loadServiceTypes() {
+    const { data, error } = await supabase
+      .from('service_types' as any)
+      .select('*')
+      .order('sequence_order', { ascending: true })
+    
+    if (error) {
+      setError(`Failed to load service types: ${error.message}`)
+      return
+    }
+    
+    const types = (data as unknown as ServiceType[]) ?? []
+    setServiceTypes(types)
+    
+    // Set default to first service type
+    if (types.length > 0 && !selectedServiceTypeId && types[0]) {
+      setSelectedServiceTypeId(types[0].id)
+    }
+  }
+
   async function loadBids(): Promise<BidWithBuilder[]> {
     const { data, error } = await supabase
       .from('bids')
-      .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email)')
+      .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('bid_due_date', { ascending: false, nullsFirst: false })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
@@ -3804,7 +3859,8 @@ export default function Bids() {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
       const load = async () => {
         try {
-          await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers()])
+          // Load service types first
+          await loadServiceTypes()
         } finally {
           setLoading(false)
         }
@@ -3812,6 +3868,16 @@ export default function Bids() {
       load()
     }
   }, [myRole])
+  
+  // Reload data when service type changes
+  useEffect(() => {
+    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+      const loadForServiceType = async () => {
+        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers()])
+      }
+      loadForServiceType()
+    }
+  }, [selectedServiceTypeId])
 
   useEffect(() => {
     if (selectedBidForCounts?.id) loadCountRows(selectedBidForCounts.id)
@@ -4196,6 +4262,7 @@ export default function Bids() {
     setDistanceFromOffice('')
     setLastContact('')
     setNotes('')
+    setFormServiceTypeId(selectedServiceTypeId)
     setBidFormOpen(true)
     setError(null)
   }
@@ -4234,6 +4301,7 @@ export default function Bids() {
     setDistanceFromOffice(bid.distance_from_office ?? '')
     setLastContact(bid.last_contact ? bid.last_contact.slice(0, 16) : '')
     setNotes(bid.notes ?? '')
+    setFormServiceTypeId((bid as any).service_type_id ?? selectedServiceTypeId)
     setDeleteConfirmProjectName('')
     setBidFormOpen(true)
     setError(null)
@@ -4287,6 +4355,7 @@ export default function Bids() {
       distance_from_office: distanceFromOffice.trim() || null,
       last_contact: lastContact ? new Date(lastContact).toISOString() : null,
       notes: notes.trim() || null,
+      service_type_id: formServiceTypeId,
     }
     if (editingBid) {
       const { error: err } = await supabase.from('bids').update(payload).eq('id', editingBid.id)
@@ -4695,6 +4764,30 @@ export default function Bids() {
         </div>
       )}
 
+      {/* Service Type Filter */}
+      {serviceTypes.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {serviceTypes.map(st => (
+            <button
+              key={st.id}
+              type="button"
+              onClick={() => setSelectedServiceTypeId(st.id)}
+              style={{
+                padding: '0.5rem 1rem',
+                border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
+                color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
+                borderRadius: 6,
+                fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
+                cursor: 'pointer'
+              }}
+            >
+              {st.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
         <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
           Bid Board
@@ -4847,8 +4940,28 @@ export default function Bids() {
                       </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
                       <td style={{ padding: 0, textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+                        {(() => {
+                          const parts = formatDateYYMMDDParts(bid.bid_due_date)
+                          return parts ? (
+                            <div style={{ lineHeight: 1.2 }}>
+                              <div>{parts.date}</div>
+                              <div>{parts.bracket}</div>
+                            </div>
+                          ) : '—'
+                        })()}
+                      </td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
+                        {(() => {
+                          const parts = formatDateYYMMDDParts(bid.bid_date_sent)
+                          return parts ? (
+                            <div style={{ lineHeight: 1.2 }}>
+                              <div>{parts.date}</div>
+                              <div>{parts.bracket}</div>
+                            </div>
+                          ) : '—'
+                        })()}
+                      </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
                         {bid.distance_from_office != null && bid.distance_from_office !== ''
                           ? `${Number.isNaN(Number(bid.distance_from_office)) ? bid.distance_from_office : Math.round(Number(bid.distance_from_office))}mi`
@@ -8493,6 +8606,20 @@ export default function Bids() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
                 <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
+                <select
+                  value={formServiceTypeId}
+                  onChange={(e) => setFormServiceTypeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  required
+                >
+                  <option value="">Select service type...</option>
+                  {serviceTypes.map(st => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/ Loss</label>

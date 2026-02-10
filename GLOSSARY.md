@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-02-07
+last_updated: 2026-02-10
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~120
+total_terms: ~122
 categories: 9
 
 key_sections:
@@ -379,6 +379,19 @@ Link between a count row and a price book entry. Stores fixture-to-pricing mappi
 
 **Purpose**: Persist which price book entry applies to each fixture count
 
+### Followup Sheet
+Printable/downloadable report showing account manager's assigned projects with contact details and submission history. Available in Submission & Followup tab.
+
+**Formats**: Print preview window, downloadable PDF
+
+**Features**: 
+- Select specific account manager, "ALL", or "UNASSIGNED"
+- Groups projects by status (Not Yet Won or Lost, Won)
+- Includes project details, builder info, project contact, bid details, and latest 3 submission entries
+- PDF has clickable phone numbers (tel: links) and emails (mailto: links) for mobile use
+
+**Purpose**: Field reference for account managers with quick access to contact information
+
 ### Book / Book Version
 Reusable template collection (Takeoff, Labor, or Price book). Multiple versions allow different standards for different job types.
 
@@ -428,6 +441,17 @@ Assistant verification of a price before ordering. Tracked per PO item.
 **Display**: "X hours ago" since confirmation
 
 **Purpose**: Ensure prices are current before placing orders
+
+### Service Type
+Trade category (Plumbing, Electrical, HVAC) used to organize materials and bids by specialty. Each part, template, purchase order, and bid must be assigned a service type.
+
+**Database**: `service_types` table (referenced by `material_parts`, `material_templates`, `purchase_orders`, `bids`)
+
+**Initial Types**: Plumbing, Electrical, HVAC
+
+**Management**: Devs can add, edit, delete (if not in use), and reorder service types in Settings
+
+**UI**: Filter buttons above tabs in Materials and Bids sections show only items of selected type
 
 ### Template / Material Template
 Reusable list of parts (can include nested templates). Used to quickly add standard part sets to purchase orders.
