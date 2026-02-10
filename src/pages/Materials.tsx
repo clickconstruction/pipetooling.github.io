@@ -228,6 +228,11 @@ export default function Materials() {
     manufacturer?: string
     sortByPriceCount?: boolean
   }) {
+    if (!selectedServiceTypeId) {
+      // No service type selected yet, skip loading
+      return
+    }
+    
     setLoadingPartsPage(true)
     const from = page * PARTS_PAGE_SIZE
     const to = from + PARTS_PAGE_SIZE - 1
@@ -403,6 +408,11 @@ export default function Materials() {
   }
 
   async function loadAllParts() {
+    if (!selectedServiceTypeId) {
+      // No service type selected yet, skip loading
+      return
+    }
+    
     setLoadingAllParts(true)
     setError(null)
     
@@ -456,6 +466,11 @@ export default function Materials() {
   }
 
   async function loadMaterialTemplates() {
+    if (!selectedServiceTypeId) {
+      // No service type selected yet, skip loading
+      return
+    }
+    
     const { data, error } = await supabase
       .from('material_templates')
       .select('*')
@@ -590,6 +605,11 @@ export default function Materials() {
   }
 
   async function loadPurchaseOrders() {
+    if (!selectedServiceTypeId) {
+      // No service type selected yet, skip loading
+      return
+    }
+    
     const { data: poData, error: poError } = await supabase
       .from('purchase_orders')
       .select('*')
