@@ -889,7 +889,7 @@ export default function Bids() {
   async function loadCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*, fixture_types(name)')
+      .select('*')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -923,7 +923,7 @@ export default function Bids() {
   async function loadTakeoffCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*, fixture_types(name)')
+      .select('*')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -1170,7 +1170,7 @@ export default function Bids() {
   async function loadCostEstimateCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*, fixture_types(name)')
+      .select('*')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -1419,7 +1419,7 @@ export default function Bids() {
   async function loadPricingDataForBid(bidId: string) {
     const { data: countData, error: countErr } = await supabase
       .from('bids_count_rows')
-      .select('*, fixture_types(name)')
+      .select('*')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (countErr) {
@@ -4004,7 +4004,7 @@ export default function Bids() {
     ;(async () => {
       const { data: countData, error: countErr } = await supabase
         .from('bids_count_rows')
-        .select('*, fixture_types(name)')
+        .select('*')
         .eq('bid_id', bidId)
         .order('sequence_order', { ascending: true })
       if (countErr || cancelled) {
