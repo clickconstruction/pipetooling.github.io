@@ -1042,9 +1042,12 @@ export default function Bids() {
   }
 
   async function loadTakeoffBookVersions() {
+    if (!selectedServiceTypeId) return
+    
     const { data, error } = await supabase
       .from('takeoff_book_versions')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('name', { ascending: true })
     if (error) {
       setError(`Failed to load takeoff book versions: ${error.message}`)
@@ -1319,9 +1322,12 @@ export default function Bids() {
   }
 
   async function loadLaborBookVersions() {
+    if (!selectedServiceTypeId) return
+    
     const { data, error } = await supabase
       .from('labor_book_versions')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('name', { ascending: true })
     if (error) {
       setError(`Failed to load labor book versions: ${error.message}`)
@@ -1368,9 +1374,12 @@ export default function Bids() {
   }
 
   async function loadPriceBookVersions() {
+    if (!selectedServiceTypeId) return
+    
     const { data, error } = await supabase
       .from('price_book_versions')
       .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
       .order('name', { ascending: true })
     if (error) {
       setError(`Failed to load price book versions: ${error.message}`)
@@ -1386,16 +1395,15 @@ export default function Bids() {
     }
     const { data, error } = await supabase
       .from('price_book_entries')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('version_id', versionId)
       .order('sequence_order', { ascending: true })
-      .order('fixture_name', { ascending: true })
     if (error) {
       setError(`Failed to load price book entries: ${error.message}`)
       setPriceBookEntries([])
       return
     }
-    setPriceBookEntries((data as PriceBookEntry[]) ?? [])
+    setPriceBookEntries((data as PriceBookEntryWithFixture[]) ?? [])
   }
 
   async function loadBidPricingAssignments(bidId: string, versionId: string | null) {
@@ -1561,7 +1569,7 @@ export default function Bids() {
         closePricingVersionForm()
       }
     } else {
-      const { error: err } = await supabase.from('price_book_versions').insert({ name })
+      const { error: err } = await supabase.from('price_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
       if (err) setError(err.message)
       else {
         await loadPriceBookVersions()
@@ -1724,7 +1732,7 @@ export default function Bids() {
         closeLaborVersionForm()
       }
     } else {
-      const { error: err } = await supabase.from('labor_book_versions').insert({ name })
+      const { error: err } = await supabase.from('labor_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
       if (err) setError(err.message)
       else {
         await loadLaborBookVersions()
@@ -1860,7 +1868,7 @@ export default function Bids() {
         closeTakeoffBookVersionForm()
       }
     } else {
-      const { error: err } = await supabase.from('takeoff_book_versions').insert({ name })
+      const { error: err } = await supabase.from('takeoff_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
       if (err) setError(err.message)
       else {
         await loadTakeoffBookVersions()
@@ -3929,7 +3937,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes()])
+        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions()])
       }
       loadForServiceType()
     }
@@ -4015,7 +4023,7 @@ export default function Bids() {
       const results = await Promise.all(
         versions.map(async (v) => {
           const [entriesRes, assignRes] = await Promise.all([
-            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }).order('fixture_name', { ascending: true }),
+            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }),
             supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
           ])
           const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
@@ -7691,7 +7699,20 @@ export default function Bids() {
             const datePart = `${yy}${mm}${dd}`
             const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
             const templateCopyTarget = `ClickProposal_${datePart}_${sanitizedProjectName}`
-            const googleDocsCopyUrl = 'https://docs.google.com/document/d/1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8/copy?title=' + encodeURIComponent(templateCopyTarget)
+            
+            // Get service type name to use appropriate Google Docs template
+            const bidServiceType = serviceTypes.find(st => st.id === bid.service_type_id)
+            const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
+            
+            // Service-type-specific Google Docs template URLs
+            let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8' // Default: Plumbing
+            if (serviceTypeName === 'Electrical') {
+              googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
+            } else if (serviceTypeName === 'HVAC') {
+              googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8' // TODO: Update when HVAC template is available
+            }
+            
+            const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
             const copyToClipboard = () => {
               if (navigator.clipboard && navigator.clipboard.write) {
                 const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })

@@ -651,18 +651,29 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          service_type_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
+          service_type_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
+          service_type_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "labor_book_versions_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       master_assistants: {
         Row: {
@@ -1121,18 +1132,29 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          service_type_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
+          service_type_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
+          service_type_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "price_book_versions_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_workflow_step_actions: {
         Row: {
@@ -1735,18 +1757,29 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          service_type_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
+          service_type_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
+          service_type_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "takeoff_book_versions_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
