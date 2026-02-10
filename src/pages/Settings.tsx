@@ -48,6 +48,16 @@ interface ServiceType {
   updated_at: string
 }
 
+interface FixtureType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
@@ -151,6 +161,16 @@ export default function Settings() {
   const [serviceTypeColor, setServiceTypeColor] = useState('')
   const [serviceTypeSaving, setServiceTypeSaving] = useState(false)
   const [serviceTypeError, setServiceTypeError] = useState<string | null>(null)
+
+  // Fixture Types state
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([])
+  const [selectedServiceTypeForFixtures, setSelectedServiceTypeForFixtures] = useState<string>('')
+  const [fixtureTypeFormOpen, setFixtureTypeFormOpen] = useState(false)
+  const [editingFixtureType, setEditingFixtureType] = useState<FixtureType | null>(null)
+  const [fixtureTypeName, setFixtureTypeName] = useState('')
+  const [fixtureTypeCategory, setFixtureTypeCategory] = useState('')
+  const [fixtureTypeSaving, setFixtureTypeSaving] = useState(false)
+  const [fixtureTypeError, setFixtureTypeError] = useState<string | null>(null)
 
   type OrphanedPriceRow = {
     id: string
@@ -1040,6 +1060,145 @@ export default function Settings() {
     await loadServiceTypes()
   }
 
+  // Fixture Types functions
+  async function loadFixtureTypes() {
+    if (!selectedServiceTypeForFixtures) {
+      setFixtureTypes([])
+      return
+    }
+    
+    const { data, error: eFixtureTypes } = await supabase
+      .from('fixture_types' as any)
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeForFixtures)
+      .order('sequence_order', { ascending: true })
+    
+    if (eFixtureTypes) {
+      console.error('Error loading fixture types:', eFixtureTypes)
+    } else {
+      setFixtureTypes((data as unknown as FixtureType[]) ?? [])
+    }
+  }
+
+  function openEditFixtureType(fixtureType: FixtureType | null) {
+    setEditingFixtureType(fixtureType)
+    setFixtureTypeName(fixtureType?.name || '')
+    setFixtureTypeCategory(fixtureType?.category || '')
+    setFixtureTypeError(null)
+    setFixtureTypeFormOpen(true)
+  }
+
+  function closeEditFixtureType() {
+    setEditingFixtureType(null)
+    setFixtureTypeName('')
+    setFixtureTypeCategory('')
+    setFixtureTypeError(null)
+    setFixtureTypeFormOpen(false)
+  }
+
+  async function saveFixtureType(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!selectedServiceTypeForFixtures) {
+      setFixtureTypeError('Please select a service type first')
+      return
+    }
+    
+    setFixtureTypeSaving(true)
+    setFixtureTypeError(null)
+    
+    if (!fixtureTypeName.trim()) {
+      setFixtureTypeError('Name is required')
+      setFixtureTypeSaving(false)
+      return
+    }
+    
+    if (editingFixtureType) {
+      // Update existing fixture type
+      const { error: e } = await supabase
+        .from('fixture_types' as any)
+        .update({
+          name: fixtureTypeName.trim(),
+          category: fixtureTypeCategory.trim() || null,
+        } as any)
+        .eq('id', editingFixtureType.id)
+      
+      setFixtureTypeSaving(false)
+      
+      if (e) {
+        setFixtureTypeError(e.message)
+      } else {
+        await loadFixtureTypes()
+        closeEditFixtureType()
+      }
+    } else {
+      // Create new fixture type
+      const maxSeq = fixtureTypes.reduce((max, ft) => Math.max(max, ft.sequence_order), 0)
+      const { error: e } = await supabase
+        .from('fixture_types' as any)
+        .insert({
+          service_type_id: selectedServiceTypeForFixtures,
+          name: fixtureTypeName.trim(),
+          category: fixtureTypeCategory.trim() || null,
+          sequence_order: maxSeq + 1,
+        } as any)
+      
+      setFixtureTypeSaving(false)
+      
+      if (e) {
+        setFixtureTypeError(e.message)
+      } else {
+        await loadFixtureTypes()
+        closeEditFixtureType()
+      }
+    }
+  }
+
+  async function deleteFixtureType(fixtureType: FixtureType) {
+    if (!confirm(`Are you sure you want to delete "${fixtureType.name}"? This will fail if any items are assigned to this fixture type.`)) {
+      return
+    }
+    
+    const { error: e } = await supabase
+      .from('fixture_types' as any)
+      .delete()
+      .eq('id', fixtureType.id)
+    
+    if (e) {
+      if (e.message.includes('violates foreign key constraint')) {
+        setError(`Cannot delete fixture type "${fixtureType.name}" because it has associated items. Please reassign or delete those items first.`)
+      } else {
+        setError(e.message)
+      }
+    } else {
+      await loadFixtureTypes()
+    }
+  }
+
+  async function moveFixtureType(fixtureType: FixtureType, direction: 'up' | 'down') {
+    const currentIndex = fixtureTypes.findIndex(ft => ft.id === fixtureType.id)
+    if (currentIndex === -1) return
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= fixtureTypes.length) return
+    
+    const targetFixtureType = fixtureTypes[targetIndex]
+    if (!targetFixtureType) return
+    
+    // Swap sequence orders
+    await supabase
+      .from('fixture_types' as any)
+      .update({ sequence_order: targetFixtureType.sequence_order } as any)
+      .eq('id', fixtureType.id)
+    
+    await supabase
+      .from('fixture_types' as any)
+      .update({ sequence_order: fixtureType.sequence_order } as any)
+      .eq('id', targetFixtureType.id)
+    
+    await loadFixtureTypes()
+  }
+
   useEffect(() => {
     loadData()
   }, [authUser?.id])
@@ -1049,6 +1208,12 @@ export default function Settings() {
       loadCustomerCount(deleteReassignUserId)
     }
   }, [deleteReassignUserId])
+
+  useEffect(() => {
+    if (selectedServiceTypeForFixtures) {
+      loadFixtureTypes()
+    }
+  }, [selectedServiceTypeForFixtures])
 
   async function handleClaimCode(e: React.FormEvent) {
     e.preventDefault()
@@ -2856,6 +3021,195 @@ export default function Settings() {
                       }}
                     >
                       {serviceTypeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Fixture Types</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Manage fixture types for each service type. Fixture types are used in Materials (part categories), Bids (count rows), and book entries (labor, pricing, takeoff).
+          </p>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Select Service Type *
+            </label>
+            <select
+              value={selectedServiceTypeForFixtures}
+              onChange={(e) => setSelectedServiceTypeForFixtures(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+            >
+              <option value="">-- Select a service type --</option>
+              {serviceTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedServiceTypeForFixtures && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => openEditFixtureType(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  + Add Fixture Type
+                </button>
+              </div>
+
+              {fixtureTypes.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {fixtureTypes.map((ft, idx) => (
+                    <div key={ft.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{ft.name}</h3>
+                            {ft.category && (
+                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
+                                {ft.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveFixtureType(ft, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveFixtureType(ft, 'down')}
+                            disabled={idx === fixtureTypes.length - 1}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === fixtureTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === fixtureTypes.length - 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditFixtureType(ft)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteFixtureType(ft)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  No fixture types yet. Click "Add Fixture Type" to create one.
+                </div>
+              )}
+            </>
+          )}
+
+          {fixtureTypeFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Fixture Type' : 'Add Fixture Type'}</h2>
+                
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForFixtures)?.name}</strong>
+                  </span>
+                </div>
+                
+                {fixtureTypeError && (
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                    {fixtureTypeError}
+                  </div>
+                )}
+                
+                <form onSubmit={saveFixtureType}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={fixtureTypeName}
+                      onChange={(e) => setFixtureTypeName(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      required
+                      autoFocus
+                      placeholder="e.g., Toilet, Kitchen Sink, Water Heater"
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Category (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={fixtureTypeCategory}
+                      onChange={(e) => setFixtureTypeCategory(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      placeholder="e.g., Bathrooms, Kitchen, Parts, Appliances"
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
+                      Used for grouping in dropdowns and quick-select buttons
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={closeEditFixtureType}
+                      disabled={fixtureTypeSaving}
+                      style={{ padding: '0.5rem 1rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={fixtureTypeSaving}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: fixtureTypeSaving ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: fixtureTypeSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {fixtureTypeSaving ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 </form>

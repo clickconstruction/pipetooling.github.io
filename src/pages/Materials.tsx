@@ -24,8 +24,19 @@ interface ServiceType {
   updated_at: string
 }
 
+interface FixtureType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 type PartWithPrices = MaterialPart & {
   prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
+  fixture_type?: FixtureType
 }
 
 type TemplateItemWithDetails = MaterialTemplateItem & {
@@ -58,18 +69,21 @@ export default function Materials() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
 
+  // Fixture Types state
+  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([])
+
   // Price Book state
   const [parts, setParts] = useState<PartWithPrices[]>([])
   const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterFixtureType, setFilterFixtureType] = useState<string>('')
+  const [filterFixtureTypeId, setFilterFixtureTypeId] = useState<string>('')
   const [filterManufacturer, setFilterManufacturer] = useState<string>('')
   const [sortByPriceCountAsc, setSortByPriceCountAsc] = useState(false)
   const [editingPart, setEditingPart] = useState<MaterialPart | null>(null)
   const [partFormOpen, setPartFormOpen] = useState(false)
   const [partName, setPartName] = useState('')
   const [partManufacturer, setPartManufacturer] = useState('')
-  const [partFixtureType, setPartFixtureType] = useState('')
+  const [partFixtureTypeId, setPartFixtureTypeId] = useState('')
   const [partNotes, setPartNotes] = useState('')
   const [savingPart, setSavingPart] = useState(false)
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
@@ -192,7 +206,7 @@ export default function Materials() {
 
   async function loadServiceTypes() {
     const { data, error } = await supabase
-      .from('service_types' as any)
+      .from('service_types')
       .select('*')
       .order('sequence_order', { ascending: true })
     
@@ -210,6 +224,27 @@ export default function Materials() {
     }
   }
 
+  async function loadFixtureTypes() {
+    if (!selectedServiceTypeId) {
+      setFixtureTypes([])
+      return
+    }
+    
+    const { data, error } = await supabase
+      .from('fixture_types')
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: true })
+    
+    if (error) {
+      console.error('Failed to load fixture types:', error)
+      setFixtureTypes([])
+      return
+    }
+    
+    setFixtureTypes((data as unknown as FixtureType[]) ?? [])
+  }
+
   async function loadSupplyHouses() {
     const { data, error } = await supabase
       .from('supply_houses')
@@ -224,7 +259,7 @@ export default function Materials() {
 
   async function loadParts(page = 0, options?: {
     searchQuery?: string
-    fixtureType?: string
+    fixtureTypeId?: string
     manufacturer?: string
     sortByPriceCount?: boolean
   }) {
@@ -329,12 +364,12 @@ export default function Materials() {
     // Apply search filter if provided
     if (options?.searchQuery) {
       const q = options.searchQuery.toLowerCase()
-      query = query.or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,fixture_type.ilike.%${q}%,notes.ilike.%${q}%`)
+      query = query.or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,notes.ilike.%${q}%`)
     }
     
     // Apply fixture type filter if provided
-    if (options?.fixtureType) {
-      query = query.eq('fixture_type', options.fixtureType)
+    if (options?.fixtureTypeId) {
+      query = query.eq('fixture_type_id', options.fixtureTypeId)
     }
     
     // Apply manufacturer filter if provided
@@ -559,7 +594,7 @@ export default function Materials() {
     setHasMoreParts(true)
     await loadParts(0, {
       searchQuery,
-      fixtureType: filterFixtureType,
+      fixtureTypeId: filterFixtureTypeId,
       manufacturer: filterManufacturer,
       sortByPriceCount: sortByPriceCountAsc,
     })
@@ -700,6 +735,7 @@ export default function Materials() {
         setAllParts([])  // Clear Load All mode data
         await Promise.all([
           loadSupplyHouses(),
+          loadFixtureTypes(),
           loadAllParts(),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
@@ -723,7 +759,7 @@ export default function Materials() {
     }, 300) // 300ms debounce for search, immediate for filter changes
     
     return () => clearTimeout(timer)
-  }, [searchQuery, filterFixtureType, filterManufacturer, sortByPriceCountAsc])
+  }, [searchQuery, filterFixtureTypeId, filterManufacturer, sortByPriceCountAsc])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -859,7 +895,7 @@ export default function Materials() {
         setPartsPage(nextPage)
         loadParts(nextPage, {
           searchQuery,
-          fixtureType: filterFixtureType,
+          fixtureTypeId: filterFixtureTypeId,
           manufacturer: filterManufacturer,
           sortByPriceCount: sortByPriceCountAsc,
         }).finally(() => {
@@ -921,8 +957,7 @@ export default function Materials() {
   // Note: Virtual scrolling with useVirtualizer could be added here for even better
   // performance with 10k+ parts, but the current implementation works well for <5000 parts
 
-  // Get unique fixture types and manufacturers for filters
-  const fixtureTypes = [...new Set(parts.map(p => p.fixture_type).filter(Boolean))].sort()
+  // Get unique manufacturers for filters
   const manufacturers = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort()
 
   // Filter purchase orders
@@ -964,17 +999,17 @@ export default function Materials() {
     setEditingPart(null)
     setPartName((initialName ?? '').trim())
     setPartManufacturer('')
-    setPartFixtureType('')
+    setPartFixtureTypeId('')
     setPartNotes('')
     setPartFormOpen(true)
     setError(null)
   }
 
-  function openEditPart(part: MaterialPart) {
+  function openEditPart(part: MaterialPart & { fixture_type_id?: string }) {
     setEditingPart(part)
     setPartName(part.name)
     setPartManufacturer(part.manufacturer || '')
-    setPartFixtureType(part.fixture_type || '')
+    setPartFixtureTypeId(part.fixture_type_id || '')
     setPartNotes(part.notes || '')
     setPartFormOpen(true)
     setError(null)
@@ -999,7 +1034,7 @@ export default function Materials() {
         .update({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          fixture_type: partFixtureType.trim() || null,
+          fixture_type_id: partFixtureTypeId || null,
           notes: partNotes.trim() || null,
         })
         .eq('id', editingPart.id)
@@ -1015,7 +1050,7 @@ export default function Materials() {
         .insert({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          fixture_type: partFixtureType.trim() || null,
+          fixture_type_id: partFixtureTypeId || null,
           notes: partNotes.trim() || null,
           service_type_id: selectedServiceTypeId,
         })
@@ -2404,14 +2439,16 @@ export default function Materials() {
               }}
             />
             <select
-              value={filterFixtureType}
-              onChange={(e) => setFilterFixtureType(e.target.value)}
+              value={filterFixtureTypeId}
+              onChange={(e) => setFilterFixtureTypeId(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               disabled={loadAllMode}
             >
               <option value="">All Fixture Types</option>
               {fixtureTypes.map(ft => (
-                <option key={ft} value={ft || ''}>{ft || ''}</option>
+                <option key={ft.id} value={ft.id}>
+                  {ft.name}{ft.category ? ` (${ft.category})` : ''}
+                </option>
               ))}
             </select>
             <select
@@ -2496,7 +2533,7 @@ export default function Materials() {
                 {displayParts.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      {(searchQuery || clientSearchQuery || filterFixtureType || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
+                      {(searchQuery || clientSearchQuery || filterFixtureTypeId || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
                     </td>
                   </tr>
                 ) : (
@@ -2663,28 +2700,22 @@ export default function Materials() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Fixture Type</label>
                 <select
-                  value={partFixtureType}
-                  onChange={(e) => setPartFixtureType(e.target.value)}
+                  value={partFixtureTypeId}
+                  onChange={(e) => setPartFixtureTypeId(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 >
                   <option value="">Select fixture type...</option>
-                  <option value="Fitting">Fitting</option>
-                  <option value="Pipe">Pipe</option>
-                  <option value="Drain">Drain</option>
-                  <option value="Sink">Sink</option>
-                  <option value="Faucet">Faucet</option>
-                  <option value="Toilet">Toilet</option>
-                  <option value="Shower">Shower</option>
-                  <option value="Bathtub">Bathtub</option>
-                  <option value="Valve">Valve</option>
-                  <option value="Water Heater">Water Heater</option>
-                  <option value="Vent">Vent</option>
-                  <option value="Trap">Trap</option>
-                  <option value="Elbow">Elbow</option>
-                  <option value="Tee">Tee</option>
-                  <option value="Coupling">Coupling</option>
-                  <option value="Other">Other</option>
+                  {fixtureTypes.map((ft) => (
+                    <option key={ft.id} value={ft.id}>
+                      {ft.name}{ft.category ? ` (${ft.category})` : ''}
+                    </option>
+                  ))}
                 </select>
+                {fixtureTypes.length === 0 && (
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
+                    No fixture types available. Devs can add them in Settings.
+                  </p>
+                )}
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes (SKU, etc.)</label>
