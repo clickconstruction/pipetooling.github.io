@@ -262,8 +262,10 @@ export default function Materials() {
     partTypeId?: string
     manufacturer?: string
     sortByPriceCount?: boolean
+    serviceTypeId?: string
   }) {
-    if (!selectedServiceTypeId) {
+    const serviceType = options?.serviceTypeId ?? selectedServiceTypeId
+    if (!serviceType) {
       // No service type selected yet, skip loading
       return
     }
@@ -362,7 +364,7 @@ export default function Materials() {
     let query = supabase
       .from('material_parts')
       .select('*, part_types(*)')
-      .eq('service_type_id', selectedServiceTypeId)
+      .eq('service_type_id', serviceType)
       .order('name')
     
     // Apply search filter if provided
@@ -450,8 +452,9 @@ export default function Materials() {
     setLoadingPartsPage(false)
   }
 
-  async function loadAllParts() {
-    if (!selectedServiceTypeId) {
+  async function loadAllParts(serviceTypeId?: string) {
+    const serviceType = serviceTypeId ?? selectedServiceTypeId
+    if (!serviceType) {
       // No service type selected yet, skip loading
       return
     }
@@ -464,7 +467,7 @@ export default function Materials() {
       const { data: allPartsData, error: partsError } = await supabase
         .from('material_parts')
         .select('*, part_types(*)')
-        .eq('service_type_id', selectedServiceTypeId)
+        .eq('service_type_id', serviceType)
         .order('name')
       
       if (partsError) throw partsError
@@ -748,8 +751,8 @@ export default function Materials() {
         await Promise.all([
           loadSupplyHouses(),
           loadPartTypes(),
-          loadParts(0),
-          loadAllParts(),
+          loadParts(0, { serviceTypeId: selectedServiceTypeId }),
+          loadAllParts(selectedServiceTypeId),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
           loadGlobalPriceBookStats(),
