@@ -24,7 +24,7 @@ interface ServiceType {
   updated_at: string
 }
 
-interface FixtureType {
+interface PartType {
   id: string
   service_type_id: string
   name: string
@@ -36,7 +36,7 @@ interface FixtureType {
 
 type PartWithPrices = MaterialPart & {
   prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
-  fixture_type?: FixtureType
+  part_type?: PartType
 }
 
 type TemplateItemWithDetails = MaterialTemplateItem & {
@@ -69,21 +69,21 @@ export default function Materials() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
 
-  // Fixture Types state
-  const [fixtureTypes, setFixtureTypes] = useState<FixtureType[]>([])
+  // Part Types state
+  const [partTypes, setPartTypes] = useState<PartType[]>([])
 
   // Price Book state
   const [parts, setParts] = useState<PartWithPrices[]>([])
   const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterFixtureTypeId, setFilterFixtureTypeId] = useState<string>('')
+  const [filterPartTypeId, setFilterPartTypeId] = useState<string>('')
   const [filterManufacturer, setFilterManufacturer] = useState<string>('')
   const [sortByPriceCountAsc, setSortByPriceCountAsc] = useState(false)
   const [editingPart, setEditingPart] = useState<MaterialPart | null>(null)
   const [partFormOpen, setPartFormOpen] = useState(false)
   const [partName, setPartName] = useState('')
   const [partManufacturer, setPartManufacturer] = useState('')
-  const [partFixtureTypeId, setPartFixtureTypeId] = useState('')
+  const [partPartTypeId, setPartPartTypeId] = useState('')
   const [partNotes, setPartNotes] = useState('')
   const [savingPart, setSavingPart] = useState(false)
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
@@ -98,7 +98,7 @@ export default function Materials() {
   const [globalSupplyHousePriceCounts, setGlobalSupplyHousePriceCounts] = useState<Array<{ id: string; name: string; count: number }> | null>(null)
 
   // Load All Mode state
-  const [loadAllMode, setLoadAllMode] = useState(true)
+  const [loadAllMode, setLoadAllMode] = useState(false)
   const [allParts, setAllParts] = useState<PartWithPrices[]>([])
   const [loadingAllParts, setLoadingAllParts] = useState(false)
   const [clientSearchQuery, setClientSearchQuery] = useState('')
@@ -224,25 +224,25 @@ export default function Materials() {
     }
   }
 
-  async function loadFixtureTypes() {
+  async function loadPartTypes() {
     if (!selectedServiceTypeId) {
-      setFixtureTypes([])
+      setPartTypes([])
       return
     }
     
     const { data, error } = await supabase
-      .from('fixture_types')
+      .from('part_types')
       .select('*')
       .eq('service_type_id', selectedServiceTypeId)
       .order('sequence_order', { ascending: true })
     
     if (error) {
-      console.error('Failed to load fixture types:', error)
-      setFixtureTypes([])
+      console.error('Failed to load part types:', error)
+      setPartTypes([])
       return
     }
     
-    setFixtureTypes((data as unknown as FixtureType[]) ?? [])
+    setPartTypes((data as unknown as PartType[]) ?? [])
   }
 
   async function loadSupplyHouses() {
@@ -259,7 +259,7 @@ export default function Materials() {
 
   async function loadParts(page = 0, options?: {
     searchQuery?: string
-    fixtureTypeId?: string
+    partTypeId?: string
     manufacturer?: string
     sortByPriceCount?: boolean
   }) {
@@ -302,7 +302,7 @@ export default function Materials() {
       // Fetch the actual parts data for these IDs
       const { data: partsData, error: partsError } = await supabase
         .from('material_parts')
-        .select('*')
+        .select('*, part_types(*)')
         .in('id', pagePartIds)
       
       if (partsError) {
@@ -312,9 +312,13 @@ export default function Materials() {
       }
       
       // Sort the results to match the order we got from RPC
-      const partsList = (partsData as MaterialPart[]) ?? []
+      const partsList = (partsData as any[]) ?? []
+      const partsWithTypes = partsList.map(p => ({
+        ...p,
+        part_type: p.part_types
+      }))
       const orderedPartsList = pagePartIds
-        .map(id => partsList.find(p => p.id === id))
+        .map(id => partsWithTypes.find(p => p.id === id))
         .filter(p => p !== undefined) as MaterialPart[]
       
       // Load prices for each part
@@ -357,7 +361,7 @@ export default function Materials() {
     // Build the query with filters
     let query = supabase
       .from('material_parts')
-      .select('*')
+      .select('*, part_types(*)')
       .eq('service_type_id', selectedServiceTypeId)
       .order('name')
     
@@ -367,9 +371,9 @@ export default function Materials() {
       query = query.or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,notes.ilike.%${q}%`)
     }
     
-    // Apply fixture type filter if provided
-    if (options?.fixtureTypeId) {
-      query = query.eq('fixture_type_id', options.fixtureTypeId)
+    // Apply part type filter if provided
+    if (options?.partTypeId) {
+      query = query.eq('part_type_id', options.partTypeId)
     }
     
     // Apply manufacturer filter if provided
@@ -388,7 +392,11 @@ export default function Materials() {
       return
     }
 
-    const partsList = (partsData as MaterialPart[]) ?? []
+    const rawPartsList = (partsData as any[]) ?? []
+    const partsList = rawPartsList.map(p => ({
+      ...p,
+      part_type: p.part_types
+    })) as MaterialPart[]
 
     // If there are no parts yet, skip price lookup entirely
     if (partsList.length === 0) {
@@ -455,13 +463,17 @@ export default function Materials() {
       // Fetch all part IDs first
       const { data: allPartsData, error: partsError } = await supabase
         .from('material_parts')
-        .select('*')
+        .select('*, part_types(*)')
         .eq('service_type_id', selectedServiceTypeId)
         .order('name')
       
       if (partsError) throw partsError
       
-      const partsList = (allPartsData as MaterialPart[]) ?? []
+      const rawPartsList = (allPartsData as any[]) ?? []
+      const partsList = rawPartsList.map(p => ({
+        ...p,
+        part_type: p.part_types
+      })) as MaterialPart[]
       
       // Load prices for each part (show progress)
       const partsWithPrices: PartWithPrices[] = []
@@ -594,7 +606,7 @@ export default function Materials() {
     setHasMoreParts(true)
     await loadParts(0, {
       searchQuery,
-      fixtureTypeId: filterFixtureTypeId,
+      partTypeId: filterPartTypeId,
       manufacturer: filterManufacturer,
       sortByPriceCount: sortByPriceCountAsc,
     })
@@ -735,7 +747,7 @@ export default function Materials() {
         setAllParts([])  // Clear Load All mode data
         await Promise.all([
           loadSupplyHouses(),
-          loadFixtureTypes(),
+          loadPartTypes(),
           loadAllParts(),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
@@ -759,7 +771,7 @@ export default function Materials() {
     }, 300) // 300ms debounce for search, immediate for filter changes
     
     return () => clearTimeout(timer)
-  }, [searchQuery, filterFixtureTypeId, filterManufacturer, sortByPriceCountAsc])
+  }, [searchQuery, filterPartTypeId, filterManufacturer, sortByPriceCountAsc])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -895,7 +907,7 @@ export default function Materials() {
         setPartsPage(nextPage)
         loadParts(nextPage, {
           searchQuery,
-          fixtureTypeId: filterFixtureTypeId,
+          partTypeId: filterPartTypeId,
           manufacturer: filterManufacturer,
           sortByPriceCount: sortByPriceCountAsc,
         }).finally(() => {
@@ -906,7 +918,7 @@ export default function Materials() {
 
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [activeTab, hasMoreParts, loadingPartsPage, partsPage, searchQuery, filterFixtureType, filterManufacturer, loadAllMode])
+  }, [activeTab, hasMoreParts, loadingPartsPage, partsPage, searchQuery, filterPartTypeId, filterManufacturer, loadAllMode])
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
@@ -916,12 +928,12 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, and estimators can access materials.</div>
   }
 
-  // Filter parts by search query (name, manufacturer, fixture_type, notes) — used by part pickers
+  // Filter parts by search query (name, manufacturer, part_type, notes) — used by part pickers
   function filterPartsByQuery(partList: PartWithPrices[], query: string, limit = 50): PartWithPrices[] {
     const q = (query || '').trim().toLowerCase()
     if (!q) return partList.slice(0, limit)
     return partList
-      .filter(p => [p.name, p.manufacturer, p.fixture_type, p.notes].some(f => (f || '').toLowerCase().includes(q)))
+      .filter(p => [p.name, p.manufacturer, p.part_type?.name, p.notes].some(f => (f || '').toLowerCase().includes(q)))
       .slice(0, limit)
   }
 
@@ -938,7 +950,7 @@ export default function Materials() {
           return (
             part.name.toLowerCase().includes(q) ||
             part.manufacturer?.toLowerCase().includes(q) ||
-            part.fixture_type?.toLowerCase().includes(q) ||
+            part.part_type?.name?.toLowerCase().includes(q) ||
             part.notes?.toLowerCase().includes(q)
           )
         })
@@ -958,7 +970,7 @@ export default function Materials() {
   // performance with 10k+ parts, but the current implementation works well for <5000 parts
 
   // Get unique manufacturers for filters
-  const manufacturers = [...new Set(parts.map(p => p.manufacturer).filter(Boolean))].sort()
+  const manufacturers = [...new Set((loadAllMode ? allParts : parts).map(p => p.manufacturer).filter(Boolean))].sort()
 
   // Filter purchase orders
   const filteredPOs = allPOs.filter(po => {
@@ -1005,11 +1017,11 @@ export default function Materials() {
     setError(null)
   }
 
-  function openEditPart(part: MaterialPart & { fixture_type_id?: string }) {
+  function openEditPart(part: MaterialPart & { part_type_id?: string }) {
     setEditingPart(part)
     setPartName(part.name)
     setPartManufacturer(part.manufacturer || '')
-    setPartFixtureTypeId(part.fixture_type_id || '')
+    setPartPartTypeId(part.part_type_id || '')
     setPartNotes(part.notes || '')
     setPartFormOpen(true)
     setError(null)
@@ -1034,7 +1046,7 @@ export default function Materials() {
         .update({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          fixture_type_id: partFixtureTypeId || null,
+          part_type_id: partPartTypeId || null,
           notes: partNotes.trim() || null,
         })
         .eq('id', editingPart.id)
@@ -1050,7 +1062,7 @@ export default function Materials() {
         .insert({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          fixture_type_id: partFixtureTypeId || null,
+          part_type_id: partPartTypeId || null,
           notes: partNotes.trim() || null,
           service_type_id: selectedServiceTypeId,
         })
@@ -2439,13 +2451,13 @@ export default function Materials() {
               }}
             />
             <select
-              value={filterFixtureTypeId}
-              onChange={(e) => setFilterFixtureTypeId(e.target.value)}
+              value={filterPartTypeId}
+              onChange={(e) => setFilterPartTypeId(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               disabled={loadAllMode}
             >
-              <option value="">All Fixture Types</option>
-              {fixtureTypes.map(ft => (
+              <option value="">All Part Types</option>
+              {partTypes.map(ft => (
                 <option key={ft.id} value={ft.id}>
                   {ft.name}{ft.category ? ` (${ft.category})` : ''}
                 </option>
@@ -2510,7 +2522,7 @@ export default function Materials() {
                 <tr>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Manufacturer</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture Type</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part Type</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Best Price</th>
                   <th
                     style={{
@@ -2533,7 +2545,7 @@ export default function Materials() {
                 {displayParts.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                      {(searchQuery || clientSearchQuery || filterFixtureTypeId || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
+                      {(searchQuery || clientSearchQuery || filterPartTypeId || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
                     </td>
                   </tr>
                 ) : (
@@ -2564,7 +2576,7 @@ export default function Materials() {
                             {part.name}
                           </td>
                           <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
-                          <td style={{ padding: '0.75rem' }}>{part.fixture_type || '-'}</td>
+                          <td style={{ padding: '0.75rem' }}>{part.part_type?.name || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : ''}
                           </td>
@@ -2698,22 +2710,22 @@ export default function Materials() {
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Fixture Type</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type</label>
                 <select
-                  value={partFixtureTypeId}
-                  onChange={(e) => setPartFixtureTypeId(e.target.value)}
+                  value={partPartTypeId}
+                  onChange={(e) => setPartPartTypeId(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 >
-                  <option value="">Select fixture type...</option>
-                  {fixtureTypes.map((ft) => (
+                  <option value="">Select part type...</option>
+                  {partTypes.map((ft) => (
                     <option key={ft.id} value={ft.id}>
                       {ft.name}{ft.category ? ` (${ft.category})` : ''}
                     </option>
                   ))}
                 </select>
-                {fixtureTypes.length === 0 && (
+                {partTypes.length === 0 && (
                   <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
-                    No fixture types available. Devs can add them in Settings.
+                    No part types available. Devs can add them in Settings.
                   </p>
                 )}
               </div>

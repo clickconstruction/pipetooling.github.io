@@ -58,6 +58,16 @@ interface FixtureType {
   updated_at: string
 }
 
+interface PartType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
@@ -171,6 +181,19 @@ export default function Settings() {
   const [fixtureTypeCategory, setFixtureTypeCategory] = useState('')
   const [fixtureTypeSaving, setFixtureTypeSaving] = useState(false)
   const [fixtureTypeError, setFixtureTypeError] = useState<string | null>(null)
+  const [fixtureTypePriceBookCounts, setFixtureTypePriceBookCounts] = useState<Record<string, number>>({})
+
+  // Part Types state (for Materials)
+  const [partTypes, setPartTypes] = useState<PartType[]>([])
+  const [selectedServiceTypeForParts, setSelectedServiceTypeForParts] = useState<string>('')
+  const [partTypeFormOpen, setPartTypeFormOpen] = useState(false)
+  const [editingPartType, setEditingPartType] = useState<PartType | null>(null)
+  const [partTypeName, setPartTypeName] = useState('')
+  const [partTypeCategory, setPartTypeCategory] = useState('')
+  const [partTypeSaving, setPartTypeSaving] = useState(false)
+  const [partTypeError, setPartTypeError] = useState<string | null>(null)
+  const [partTypePartCounts, setPartTypePartCounts] = useState<Record<string, number>>({})
+  const [removingUnusedPartTypes, setRemovingUnusedPartTypes] = useState(false)
 
   type OrphanedPriceRow = {
     id: string
@@ -1080,6 +1103,44 @@ export default function Settings() {
     }
   }
 
+  async function loadFixtureTypePriceBookCounts() {
+    if (!selectedServiceTypeForFixtures) {
+      setFixtureTypePriceBookCounts({})
+      return
+    }
+    
+    // Get all fixture types for this service type
+    const fixtureTypeIds = fixtureTypes.map(ft => ft.id)
+    
+    if (fixtureTypeIds.length === 0) {
+      setFixtureTypePriceBookCounts({})
+      return
+    }
+    
+    // Query price_book_entries grouped by fixture_type_id
+    const { data, error } = await supabase
+      .from('price_book_entries')
+      .select('fixture_type_id')
+      .in('fixture_type_id', fixtureTypeIds)
+    
+    if (error) {
+      console.error('Error loading price book counts:', error)
+      return
+    }
+    
+    // Count entries per fixture type
+    const counts: Record<string, number> = {}
+    fixtureTypeIds.forEach(id => counts[id] = 0)
+    
+    data?.forEach(row => {
+      if (row.fixture_type_id) {
+        counts[row.fixture_type_id] = (counts[row.fixture_type_id] || 0) + 1
+      }
+    })
+    
+    setFixtureTypePriceBookCounts(counts)
+  }
+
   function openEditFixtureType(fixtureType: FixtureType | null) {
     setEditingFixtureType(fixtureType)
     setFixtureTypeName(fixtureType?.name || '')
@@ -1199,6 +1260,224 @@ export default function Settings() {
     await loadFixtureTypes()
   }
 
+  // Part Types functions (for Materials)
+  async function loadPartTypes() {
+    if (!selectedServiceTypeForParts) {
+      setPartTypes([])
+      return
+    }
+    
+    const { data, error: ePartTypes } = await supabase
+      .from('part_types' as any)
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeForParts)
+      .order('sequence_order', { ascending: true })
+    
+    if (ePartTypes) {
+      console.error('Error loading part types:', ePartTypes)
+    } else {
+      setPartTypes((data as unknown as PartType[]) ?? [])
+    }
+  }
+
+  async function loadPartTypePartCounts() {
+    if (!selectedServiceTypeForParts) {
+      setPartTypePartCounts({})
+      return
+    }
+    
+    // Get all part types for this service type
+    const partTypeIds = partTypes.map(pt => pt.id)
+    
+    if (partTypeIds.length === 0) {
+      setPartTypePartCounts({})
+      return
+    }
+    
+    // Query material_parts grouped by part_type_id
+    const { data, error } = await supabase
+      .from('material_parts')
+      .select('part_type_id')
+      .in('part_type_id', partTypeIds)
+    
+    if (error) {
+      console.error('Error loading part counts:', error)
+      return
+    }
+    
+    // Count parts per part type
+    const counts: Record<string, number> = {}
+    partTypeIds.forEach(id => counts[id] = 0)
+    
+    data?.forEach(row => {
+      if (row.part_type_id) {
+        counts[row.part_type_id] = (counts[row.part_type_id] || 0) + 1
+      }
+    })
+    
+    setPartTypePartCounts(counts)
+  }
+
+  function openEditPartType(partType: PartType | null) {
+    setEditingPartType(partType)
+    setPartTypeName(partType?.name || '')
+    setPartTypeCategory(partType?.category || '')
+    setPartTypeError(null)
+    setPartTypeFormOpen(true)
+  }
+
+  function closeEditPartType() {
+    setEditingPartType(null)
+    setPartTypeName('')
+    setPartTypeCategory('')
+    setPartTypeError(null)
+    setPartTypeFormOpen(false)
+  }
+
+  async function savePartType(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!selectedServiceTypeForParts) {
+      setPartTypeError('Please select a service type first')
+      return
+    }
+    
+    setPartTypeSaving(true)
+    setPartTypeError(null)
+    
+    if (!partTypeName.trim()) {
+      setPartTypeError('Name is required')
+      setPartTypeSaving(false)
+      return
+    }
+    
+    if (editingPartType) {
+      // Update existing part type
+      const { error: e } = await supabase
+        .from('part_types' as any)
+        .update({
+          name: partTypeName.trim(),
+          category: partTypeCategory.trim() || null,
+        } as any)
+        .eq('id', editingPartType.id)
+      
+      setPartTypeSaving(false)
+      
+      if (e) {
+        setPartTypeError(e.message)
+      } else {
+        await loadPartTypes()
+        closeEditPartType()
+      }
+    } else {
+      // Create new part type
+      const maxSeq = partTypes.reduce((max, pt) => Math.max(max, pt.sequence_order), 0)
+      const { error: e } = await supabase
+        .from('part_types' as any)
+        .insert({
+          service_type_id: selectedServiceTypeForParts,
+          name: partTypeName.trim(),
+          category: partTypeCategory.trim() || null,
+          sequence_order: maxSeq + 1,
+        } as any)
+      
+      setPartTypeSaving(false)
+      
+      if (e) {
+        setPartTypeError(e.message)
+      } else {
+        await loadPartTypes()
+        closeEditPartType()
+      }
+    }
+  }
+
+  async function deletePartType(partType: PartType) {
+    if (!confirm(`Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this part type.`)) {
+      return
+    }
+    
+    const { error: e } = await supabase
+      .from('part_types' as any)
+      .delete()
+      .eq('id', partType.id)
+    
+    if (e) {
+      if (e.message.includes('violates foreign key constraint')) {
+        setError(`Cannot delete part type "${partType.name}" because it has associated parts. Please reassign or delete those parts first.`)
+      } else {
+        setError(e.message)
+      }
+    } else {
+      await loadPartTypes()
+    }
+  }
+
+  async function removeAllUnusedPartTypes() {
+    // Filter part types with 0 parts
+    const unusedPartTypes = partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0)
+    
+    if (unusedPartTypes.length === 0) {
+      setError('No unused part types to remove')
+      return
+    }
+    
+    // Confirm with user
+    const partTypeNames = unusedPartTypes.map(pt => pt.name).join(', ')
+    const confirmed = confirm(
+      `This will delete ${unusedPartTypes.length} unused part type(s):\n\n${partTypeNames}\n\nAre you sure?`
+    )
+    
+    if (!confirmed) return
+    
+    setRemovingUnusedPartTypes(true)
+    setError(null)
+    
+    // Delete each unused part type
+    const deletePromises = unusedPartTypes.map(pt =>
+      supabase
+        .from('part_types' as any)
+        .delete()
+        .eq('id', pt.id)
+    )
+    
+    const results = await Promise.all(deletePromises)
+    const errors = results.filter(r => r.error)
+    
+    setRemovingUnusedPartTypes(false)
+    
+    if (errors.length > 0) {
+      setError(`Failed to delete ${errors.length} part type(s). They may have parts assigned.`)
+    } else {
+      // Success - reload the list
+      await loadPartTypes()
+    }
+  }
+
+  async function movePartType(partType: PartType, direction: 'up' | 'down') {
+    const currentIndex = partTypes.findIndex(pt => pt.id === partType.id)
+    if (currentIndex === -1) return
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= partTypes.length) return
+    
+    const targetPartType = partTypes[targetIndex]
+    if (!targetPartType) return
+    
+    // Swap sequence orders
+    await supabase
+      .from('part_types' as any)
+      .update({ sequence_order: targetPartType.sequence_order } as any)
+      .eq('id', partType.id)
+    
+    await supabase
+      .from('part_types' as any)
+      .update({ sequence_order: partType.sequence_order } as any)
+      .eq('id', targetPartType.id)
+    
+    await loadPartTypes()
+  }
+
   useEffect(() => {
     loadData()
   }, [authUser?.id])
@@ -1214,6 +1493,24 @@ export default function Settings() {
       loadFixtureTypes()
     }
   }, [selectedServiceTypeForFixtures])
+
+  useEffect(() => {
+    if (fixtureTypes.length > 0) {
+      loadFixtureTypePriceBookCounts()
+    }
+  }, [fixtureTypes])
+
+  useEffect(() => {
+    if (selectedServiceTypeForParts) {
+      loadPartTypes()
+    }
+  }, [selectedServiceTypeForParts])
+
+  useEffect(() => {
+    if (partTypes.length > 0) {
+      loadPartTypePartCounts()
+    }
+  }, [partTypes])
 
   async function handleClaimCode(e: React.FormEvent) {
     e.preventDefault()
@@ -3078,6 +3375,19 @@ export default function Settings() {
                                 {ft.category}
                               </span>
                             )}
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: fixtureTypePriceBookCounts[ft.id] > 0 ? '#d1fae5' : '#f3f4f6',
+                                color: fixtureTypePriceBookCounts[ft.id] > 0 ? '#065f46' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title={`In ${fixtureTypePriceBookCounts[ft.id] || 0} price book entr${fixtureTypePriceBookCounts[ft.id] === 1 ? 'y' : 'ies'}`}
+                            >
+                              {fixtureTypePriceBookCounts[ft.id] || 0} price book{fixtureTypePriceBookCounts[ft.id] === 1 ? '' : 's'}
+                            </span>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -3210,6 +3520,227 @@ export default function Settings() {
                       }}
                     >
                       {fixtureTypeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Part Types</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Manage part types for each service type. Part types are used in the Materials system to categorize material parts (pipes, fittings, valves, etc.). This is separate from Fixture Types which are used in Bids/Books for installed fixtures.
+          </p>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Select Service Type *
+            </label>
+            <select
+              value={selectedServiceTypeForParts}
+              onChange={(e) => setSelectedServiceTypeForParts(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+            >
+              <option value="">-- Select a service type --</option>
+              {serviceTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedServiceTypeForParts && (
+            <>
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => openEditPartType(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  + Add Part Type
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={removeAllUnusedPartTypes}
+                  disabled={removingUnusedPartTypes || partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: removingUnusedPartTypes ? '#d1d5db' : '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: removingUnusedPartTypes || partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                    opacity: partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 0.5 : 1
+                  }}
+                  title={partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'No unused part types' : `Remove ${partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length} unused part type(s)`}
+                >
+                  {removingUnusedPartTypes ? 'Removing...' : 'Remove All Unused Part Types'}
+                </button>
+              </div>
+
+              {partTypes.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {partTypes.map((pt, idx) => (
+                    <div key={pt.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{pt.name}</h3>
+                            {pt.category && (
+                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
+                                {pt.category}
+                              </span>
+                            )}
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: partTypePartCounts[pt.id] > 0 ? '#d1fae5' : '#f3f4f6',
+                                color: partTypePartCounts[pt.id] > 0 ? '#065f46' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title={`${partTypePartCounts[pt.id] || 0} material part${partTypePartCounts[pt.id] === 1 ? '' : 's'} assigned`}
+                            >
+                              {partTypePartCounts[pt.id] || 0} part{partTypePartCounts[pt.id] === 1 ? '' : 's'}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => movePartType(pt, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => movePartType(pt, 'down')}
+                            disabled={idx === partTypes.length - 1}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === partTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === partTypes.length - 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditPartType(pt)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deletePartType(pt)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  No part types yet. Click "Add Part Type" to create one.
+                </div>
+              )}
+            </>
+          )}
+
+          {partTypeFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginBottom: '1rem' }}>{editingPartType ? 'Edit Part Type' : 'Add Part Type'}</h2>
+                
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForParts)?.name}</strong>
+                  </span>
+                </div>
+                
+                {partTypeError && (
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                    {partTypeError}
+                  </div>
+                )}
+                
+                <form onSubmit={savePartType}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={partTypeName}
+                      onChange={(e) => setPartTypeName(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      required
+                      autoFocus
+                      placeholder="e.g., Pipe, Fitting, Valve, Sink, Faucet"
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Category (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={partTypeCategory}
+                      onChange={(e) => setPartTypeCategory(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      placeholder="e.g., Supply, Drain, Fixtures, Connections"
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
+                      Used for grouping in dropdowns and quick-select buttons
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={closeEditPartType}
+                      disabled={partTypeSaving}
+                      style={{ padding: '0.5rem 1rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={partTypeSaving}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: partTypeSaving ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: partTypeSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {partTypeSaving ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 </form>

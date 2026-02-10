@@ -49,6 +49,16 @@ interface ServiceType {
   updated_at: string
 }
 
+interface PartType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 type BidWithBuilder = Bid & {
   customers: Customer | null
   bids_gc_builders: GcBuilder | null
@@ -597,7 +607,10 @@ export default function Bids() {
   const [takeoffNewTemplateName, setTakeoffNewTemplateName] = useState('')
   const [takeoffNewTemplateDescription, setTakeoffNewTemplateDescription] = useState('')
   const [takeoffNewTemplateItems, setTakeoffNewTemplateItems] = useState<Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
-  const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPart[]>([])
+  
+  type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
+  const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
+  
   const [takeoffNewItemType, setTakeoffNewItemType] = useState<'part' | 'template'>('part')
   const [takeoffNewItemPartId, setTakeoffNewItemPartId] = useState('')
   const [takeoffNewItemTemplateId, setTakeoffNewItemTemplateId] = useState('')
@@ -4042,7 +4055,7 @@ export default function Bids() {
   useEffect(() => {
     if (!takeoffAddTemplateModalOpen) return
     let cancelled = false
-    supabase.from('material_parts').select('*').order('name', { ascending: true }).then(({ data, error }) => {
+    supabase.from('material_parts').select('*, part_types(*)').order('name', { ascending: true }).then(({ data, error }) => {
       if (cancelled) return
       if (error) {
         setTakeoffAddTemplateParts([])
@@ -4621,11 +4634,11 @@ export default function Bids() {
     return [selected, ...filtered]
   }
 
-  function filterPartsByQuery(parts: MaterialPart[], query: string, limit = 50): MaterialPart[] {
+  function filterPartsByQuery(parts: MaterialPartWithType[], query: string, limit = 50): MaterialPartWithType[] {
     const q = (query || '').trim().toLowerCase()
     if (!q) return parts.slice(0, limit)
     return parts
-      .filter((p) => [p.name, p.manufacturer, p.fixture_type, p.notes].some((f) => (f || '').toLowerCase().includes(q)))
+      .filter((p) => [p.name, p.manufacturer, p.part_types?.name, p.notes].some((f) => (f || '').toLowerCase().includes(q)))
       .slice(0, limit)
   }
 
@@ -5509,7 +5522,7 @@ export default function Bids() {
                           </div>
                           {takeoffNewItemPartDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.fixture_type) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}</div>}</li>))}
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                             </ul>
                           )}
                         </div>

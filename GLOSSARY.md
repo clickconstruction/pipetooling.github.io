@@ -408,7 +408,14 @@ Individual plumbing part or material in the catalog (pipe, fitting, fixture, val
 
 **Database**: `material_parts` table
 
-**Fields**: name, manufacturer, fixture_type, notes (can include SKU)
+**Fields**: name, manufacturer, part_type_id (FK to part_types), notes (can include SKU)
+
+### Part Type
+Category for organizing material parts in the Materials system (Pipe, Fitting, Valve, Sink, Faucet, etc.). Service-type-specific categorization separate from fixture types used in Bids.
+
+**Database**: `part_types` table (separate from `fixture_types`)
+
+**Management**: Settings page, Part Types section (dev access)
 
 ### Supply House / Vendor
 Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plumbing supply, etc.).

@@ -92,55 +92,54 @@ COMMENT ON TABLE public.fixture_types IS 'Fixture types categorized by service t
 DO $$
 DECLARE
   plumbing_id UUID;
-  seq_order INTEGER := 0;
 BEGIN
   SELECT id INTO plumbing_id FROM public.service_types WHERE name = 'Plumbing' LIMIT 1;
   
   -- Material Parts Fixture Types (from Materials.tsx hardcoded list)
   INSERT INTO public.fixture_types (service_type_id, name, category, sequence_order)
   VALUES
-    (plumbing_id, 'Fitting', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Pipe', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Drain', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Sink', 'Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Faucet', 'Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Toilet', 'Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Shower', 'Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Bathtub', 'Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Valve', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Water Heater', 'Appliances', seq_order := seq_order + 1),
-    (plumbing_id, 'Vent', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Trap', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Elbow', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Tee', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Coupling', 'Parts', seq_order := seq_order + 1),
-    (plumbing_id, 'Other', 'Parts', seq_order := seq_order + 1),
+    (plumbing_id, 'Fitting', 'Parts', 1),
+    (plumbing_id, 'Pipe', 'Parts', 2),
+    (plumbing_id, 'Drain', 'Parts', 3),
+    (plumbing_id, 'Sink', 'Fixtures', 4),
+    (plumbing_id, 'Faucet', 'Fixtures', 5),
+    (plumbing_id, 'Toilet', 'Fixtures', 6),
+    (plumbing_id, 'Shower', 'Fixtures', 7),
+    (plumbing_id, 'Bathtub', 'Fixtures', 8),
+    (plumbing_id, 'Valve', 'Parts', 9),
+    (plumbing_id, 'Water Heater', 'Appliances', 10),
+    (plumbing_id, 'Vent', 'Parts', 11),
+    (plumbing_id, 'Trap', 'Parts', 12),
+    (plumbing_id, 'Elbow', 'Parts', 13),
+    (plumbing_id, 'Tee', 'Parts', 14),
+    (plumbing_id, 'Coupling', 'Parts', 15),
+    (plumbing_id, 'Other', 'Parts', 16),
     
     -- Bids Count Row Fixtures (from Bids.tsx fixtureGroups)
-    (plumbing_id, 'Toilets', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Bathroom sinks', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Shower/tub combos', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Showers no tub', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Bathtubs', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Urinals', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Water closets', 'Bathrooms', seq_order := seq_order + 1),
-    (plumbing_id, 'Kitchen sinks', 'Kitchen', seq_order := seq_order + 1),
-    (plumbing_id, 'Garbage disposals', 'Kitchen', seq_order := seq_order + 1),
-    (plumbing_id, 'Ice makers', 'Kitchen', seq_order := seq_order + 1),
-    (plumbing_id, 'Pot filler', 'Kitchen', seq_order := seq_order + 1),
-    (plumbing_id, 'Laundry sinks', 'Laundry', seq_order := seq_order + 1),
-    (plumbing_id, 'Washing machine', 'Laundry', seq_order := seq_order + 1),
-    (plumbing_id, 'Hose bibs', 'Plumbing Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Water fountain', 'Plumbing Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Gas drops', 'Plumbing Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Floor drains', 'Plumbing Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Dog wash', 'Plumbing Fixtures', seq_order := seq_order + 1),
-    (plumbing_id, 'Water heaters (gas)', 'Appliances', seq_order := seq_order + 1),
-    (plumbing_id, 'Water heaters (electric)', 'Appliances', seq_order := seq_order + 1),
-    (plumbing_id, 'Water heaters (tankless)', 'Appliances', seq_order := seq_order + 1),
-    (plumbing_id, 'Water softener', 'Appliances', seq_order := seq_order + 1),
+    (plumbing_id, 'Toilets', 'Bathrooms', 17),
+    (plumbing_id, 'Bathroom sinks', 'Bathrooms', 18),
+    (plumbing_id, 'Shower/tub combos', 'Bathrooms', 19),
+    (plumbing_id, 'Showers no tub', 'Bathrooms', 20),
+    (plumbing_id, 'Bathtubs', 'Bathrooms', 21),
+    (plumbing_id, 'Urinals', 'Bathrooms', 22),
+    (plumbing_id, 'Water closets', 'Bathrooms', 23),
+    (plumbing_id, 'Kitchen sinks', 'Kitchen', 24),
+    (plumbing_id, 'Garbage disposals', 'Kitchen', 25),
+    (plumbing_id, 'Ice makers', 'Kitchen', 26),
+    (plumbing_id, 'Pot filler', 'Kitchen', 27),
+    (plumbing_id, 'Laundry sinks', 'Laundry', 28),
+    (plumbing_id, 'Washing machine', 'Laundry', 29),
+    (plumbing_id, 'Hose bibs', 'Plumbing Fixtures', 30),
+    (plumbing_id, 'Water fountain', 'Plumbing Fixtures', 31),
+    (plumbing_id, 'Gas drops', 'Plumbing Fixtures', 32),
+    (plumbing_id, 'Floor drains', 'Plumbing Fixtures', 33),
+    (plumbing_id, 'Dog wash', 'Plumbing Fixtures', 34),
+    (plumbing_id, 'Water heaters (gas)', 'Appliances', 35),
+    (plumbing_id, 'Water heaters (electric)', 'Appliances', 36),
+    (plumbing_id, 'Water heaters (tankless)', 'Appliances', 37),
+    (plumbing_id, 'Water softener', 'Appliances', 38),
     
     -- Additional common plumbing fixtures
-    (plumbing_id, 'Lavatory', 'Bathrooms', seq_order := seq_order + 1)
+    (plumbing_id, 'Lavatory', 'Bathrooms', 39)
   ON CONFLICT (service_type_id, name) DO NOTHING;
 END $$;
