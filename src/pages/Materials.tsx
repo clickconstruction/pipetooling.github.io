@@ -748,6 +748,7 @@ export default function Materials() {
         await Promise.all([
           loadSupplyHouses(),
           loadPartTypes(),
+          loadParts(0),
           loadAllParts(),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
@@ -1001,7 +1002,7 @@ export default function Materials() {
     setEditingPart(null)
     setPartName('')
     setPartManufacturer('')
-    setPartFixtureType('')
+    setPartPartTypeId('')
     setPartNotes('')
     setPartFormOpen(true)
     setError(null)
@@ -1011,7 +1012,7 @@ export default function Materials() {
     setEditingPart(null)
     setPartName((initialName ?? '').trim())
     setPartManufacturer('')
-    setPartFixtureTypeId('')
+    setPartPartTypeId('')
     setPartNotes('')
     setPartFormOpen(true)
     setError(null)
@@ -1037,6 +1038,10 @@ export default function Materials() {
       setError('Part name is required')
       return
     }
+    if (!partPartTypeId) {
+      setError('Part type is required')
+      return
+    }
     setSavingPart(true)
     setError(null)
 
@@ -1046,7 +1051,7 @@ export default function Materials() {
         .update({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId || null,
+          part_type_id: partPartTypeId,
           notes: partNotes.trim() || null,
         })
         .eq('id', editingPart.id)
@@ -1062,7 +1067,7 @@ export default function Materials() {
         .insert({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId || null,
+          part_type_id: partPartTypeId,
           notes: partNotes.trim() || null,
           service_type_id: selectedServiceTypeId,
         })
@@ -2126,6 +2131,7 @@ export default function Materials() {
         status: 'draft',
         created_by: authUser.id,
         notes: sourcePO.notes,
+        service_type_id: (sourcePO as { service_type_id?: string }).service_type_id ?? selectedServiceTypeId,
       })
       .select('id')
       .single()
@@ -3183,9 +3189,9 @@ export default function Materials() {
                                 }}
                               >
                                 <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                {(p.manufacturer || p.fixture_type) && (
+                                {(p.manufacturer || p.part_type?.name) && (
                                   <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                    {[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}
+                                    {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
                                   </div>
                                 )}
                               </li>
@@ -3788,9 +3794,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                   }}
                                 >
                                   <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                  {(p.manufacturer || p.fixture_type) && (
+                                  {(p.manufacturer || p.part_type?.name) && (
                                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                      {[p.manufacturer, p.fixture_type].filter(Boolean).join(' · ')}
+                                      {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
                                     </div>
                                   )}
                                 </li>

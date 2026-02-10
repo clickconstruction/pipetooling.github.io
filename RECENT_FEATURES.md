@@ -46,9 +46,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.27)](#latest-updates-v227)
-2. [Latest Updates (v2.26)](#latest-updates-v226)
-3. [Latest Updates (v2.25)](#latest-updates-v225)
+1. [Latest Updates (v2.28)](#latest-updates-v228)
+2. [Latest Updates (v2.27)](#latest-updates-v227)
+3. [Latest Updates (v2.26)](#latest-updates-v226)
+4. [Latest Updates (v2.25)](#latest-updates-v225)
 4. [Latest Updates (v2.24)](#latest-updates-v224)
 3. [Latest Updates (v2.23)](#latest-updates-v223)
 4. [Latest Updates (v2.22)](#latest-updates-v222)
@@ -74,6 +75,147 @@ when_to_read:
 24. [Email Templates](#email-templates)
 25. [Financial Tracking](#financial-tracking)
 26. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.28)
+
+### Part Types vs Fixture Types: Complete Domain Separation
+
+**Date**: 2026-02-10
+
+**Overview**:
+Major architectural refactor splitting the overloaded "Fixture Type" concept into two distinct domains: Part Types (for Materials) and Fixture Types (for Bids/Books). This resolves semantic confusion and properly separates material catalog management from bid estimation workflows.
+
+#### The Problem
+
+The original implementation used "Fixture Type" for two unrelated purposes:
+1. **Materials Price Book**: Categorizing parts like pipes, fittings, valves (should be "Part Type")
+2. **Bids/Books**: Categorizing installed fixtures like toilets, sinks for labor/pricing calculations
+
+This caused confusion and data model issues where plumbing supply parts were being treated as installed fixtures.
+
+#### The Solution
+
+**Created separate tables and workflows:**
+
+1. **Part Types** (`part_types` table) - for Materials system
+   - Used in Materials Price Book to categorize material parts
+   - Examples: Pipe, Fitting, Valve, Coupling, Adapter
+   - Foreign key: `material_parts.part_type_id`
+   - Management: Settings page, Part Types section (appears first)
+
+2. **Fixture Types** (`fixture_types` table) - for Bids/Books system
+   - Used in Labor Books and Price Books for calculations
+   - Examples: Toilet, Sink, Tub, Water Heater, Faucet
+   - Foreign keys: `labor_book_entries.fixture_type_id`, `price_book_entries.fixture_type_id`
+   - Management: Settings page, Fixture Types section (appears second)
+   - Count rows usage: Count rows (`bids_count_rows`) use free text `fixture` field for flexibility
+
+#### Database Changes
+
+**New Tables**:
+- `part_types` - Service-type-specific part categorization for materials
+
+**Migrations**:
+1. `20260210122816_create_part_types.sql` - Creates `part_types` table, copies Plumbing data from `fixture_types`
+2. `20260210122817_add_part_type_id_to_material_parts.sql` - Adds `part_type_id` FK to `material_parts`, backfills data
+3. `20260210122818_remove_fixture_type_from_material_parts.sql` - Removes old `fixture_type_id` from `material_parts`
+4. `20260210_revert_count_rows_to_text.sql` - Reverts `bids_count_rows` from FK to free text
+
+**Schema Summary**:
+- `material_parts.part_type_id` → `part_types.id` (FK)
+- `labor_book_entries.fixture_type_id` → `fixture_types.id` (FK)
+- `price_book_entries.fixture_type_id` → `fixture_types.id` (FK)
+- `bids_count_rows.fixture` (TEXT, not FK - free text for flexibility)
+
+#### Frontend Refactor (47 TypeScript Errors Fixed)
+
+**Comprehensive code updates across 8 files:**
+
+1. **Materials.tsx** (5 errors fixed)
+   - Renamed all `fixtureType` references to `partType`
+   - Updated queries to use `part_types` table
+   - Changed display logic to show `part_type?.name`
+   - Added validation for required `part_type_id`
+   - Fixed initial page load issue (added `loadParts(0)` to service type change effect)
+
+2. **Bids.tsx** (36+ errors fixed)
+   - Created extended types with joined fixture data: `LaborBookEntryWithFixture`, `PriceBookEntryWithFixture`
+   - Added `fixture_types(name)` joins to all labor/price book queries
+   - Updated all display logic to use `fixture_types?.name ?? ''`
+   - Converted INSERT/UPDATE to use `fixture_type_id` with name lookup helper
+   - Reverted count rows to use free text `fixture` field
+   - Added `service_type_id` to material template and bid inserts
+   - Added `loadFixtureTypes()` function and state management
+
+3. **Settings.tsx** (4 errors fixed)
+   - Duplicated fixture type management UI for part types
+   - Added part count display and cleanup feature
+   - Added fixture type usage counts (labor, price, count rows)
+   - Fixed undefined checks in count badges
+   - Reordered sections: Part Types first, Fixture Types second
+   - Updated count row matching to use free text name matching
+
+4. **Other Files** (7 errors fixed)
+   - CustomerForm/NewCustomerForm: Fixed `master_user_id` null handling
+   - Dashboard/Workflow: Added null coalescing for boolean fields
+
+#### Key Technical Decisions
+
+1. **Count Rows Stay Free Text**: 
+   - `bids_count_rows.fixture` remains TEXT (not FK) for flexibility
+   - Users can enter any text, not restricted to fixture types
+   - Settings counts match by name for display purposes only
+
+2. **Books Use Structured FKs**:
+   - Labor and Price books need structured data for calculations
+   - Forms now use fixture type lookup by name
+   - Validation ensures fixture type exists before saving
+
+3. **Helper Function Pattern**:
+   - Added `getFixtureTypeIdByName()` for name-to-ID lookups
+   - Preserves text-based UI while using structured database
+
+#### Benefits
+
+- Clear semantic separation between Materials and Bids domains
+- Better data integrity with proper foreign keys
+- Flexible count rows for field notes
+- Structured books for reliable calculations
+- Settings UI properly organized by domain
+- All TypeScript errors resolved
+
+#### Build Verification
+
+```
+npm run build
+✓ built in 1.54s
+```
+
+All 47 TypeScript errors resolved and production build succeeds.
+
+#### Files Modified (8)
+
+- `src/pages/Materials.tsx` - Part type refactor, initial load fix
+- `src/pages/Bids.tsx` - Count rows revert, fixture type joins, inserts
+- `src/pages/Settings.tsx` - Dual management UI, count badges, reordering
+- `src/components/NewCustomerForm.tsx` - Null handling
+- `src/pages/CustomerForm.tsx` - Null handling
+- `src/pages/Dashboard.tsx` - Boolean null coalescing
+- `src/pages/Workflow.tsx` - Boolean null coalescing
+- `src/types/database.ts` - Regenerated types
+
+#### Migration Files (4)
+
+- `supabase/migrations/20260210122816_create_part_types.sql`
+- `supabase/migrations/20260210122817_add_part_type_id_to_material_parts.sql`
+- `supabase/migrations/20260210122818_remove_fixture_type_from_material_parts.sql`
+- `supabase/migrations/20260210_revert_count_rows_to_text.sql`
+
+#### Updated Documentation
+
+- `GLOSSARY.md` - Updated Fixture, Part Type, Count Row, Labor Book, and Price Book definitions
 
 ---
 

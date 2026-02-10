@@ -244,7 +244,7 @@ export type Database = {
           bid_id: string
           count: number
           created_at: string | null
-          fixture_type_id: string
+          fixture: string
           id: string
           page: string | null
           sequence_order: number
@@ -253,7 +253,7 @@ export type Database = {
           bid_id: string
           count?: number
           created_at?: string | null
-          fixture_type_id: string
+          fixture: string
           id?: string
           page?: string | null
           sequence_order?: number
@@ -262,7 +262,7 @@ export type Database = {
           bid_id?: string
           count?: number
           created_at?: string | null
-          fixture_type_id?: string
+          fixture?: string
           id?: string
           page?: string | null
           sequence_order?: number
@@ -273,13 +273,6 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_count_rows_fixture_type_id_fkey"
-            columns: ["fixture_type_id"]
-            isOneToOne: false
-            referencedRelation: "fixture_types"
             referencedColumns: ["id"]
           },
         ]

@@ -182,6 +182,8 @@ export default function Settings() {
   const [fixtureTypeSaving, setFixtureTypeSaving] = useState(false)
   const [fixtureTypeError, setFixtureTypeError] = useState<string | null>(null)
   const [fixtureTypePriceBookCounts, setFixtureTypePriceBookCounts] = useState<Record<string, number>>({})
+  const [fixtureTypeLaborBookCounts, setFixtureTypeLaborBookCounts] = useState<Record<string, number>>({})
+  const [fixtureTypeCountRowCounts, setFixtureTypeCountRowCounts] = useState<Record<string, number>>({})
 
   // Part Types state (for Materials)
   const [partTypes, setPartTypes] = useState<PartType[]>([])
@@ -1103,42 +1105,76 @@ export default function Settings() {
     }
   }
 
-  async function loadFixtureTypePriceBookCounts() {
+  async function loadFixtureTypeCounts() {
     if (!selectedServiceTypeForFixtures) {
       setFixtureTypePriceBookCounts({})
+      setFixtureTypeLaborBookCounts({})
+      setFixtureTypeCountRowCounts({})
       return
     }
     
-    // Get all fixture types for this service type
     const fixtureTypeIds = fixtureTypes.map(ft => ft.id)
     
     if (fixtureTypeIds.length === 0) {
       setFixtureTypePriceBookCounts({})
+      setFixtureTypeLaborBookCounts({})
+      setFixtureTypeCountRowCounts({})
       return
     }
     
-    // Query price_book_entries grouped by fixture_type_id
-    const { data, error } = await supabase
-      .from('price_book_entries')
-      .select('fixture_type_id')
-      .in('fixture_type_id', fixtureTypeIds)
+    // Query all three tables in parallel
+    const [priceBookResult, laborBookResult, countRowResult] = await Promise.all([
+      supabase
+        .from('price_book_entries')
+        .select('fixture_type_id')
+        .in('fixture_type_id', fixtureTypeIds),
+      supabase
+        .from('labor_book_entries')
+        .select('fixture_type_id')
+        .in('fixture_type_id', fixtureTypeIds),
+      supabase
+        .from('bids_count_rows')
+        .select('fixture')
+    ])
     
-    if (error) {
-      console.error('Error loading price book counts:', error)
-      return
-    }
-    
-    // Count entries per fixture type
-    const counts: Record<string, number> = {}
-    fixtureTypeIds.forEach(id => counts[id] = 0)
-    
-    data?.forEach(row => {
+    // Count price book entries
+    const priceBookCounts: Record<string, number> = {}
+    fixtureTypeIds.forEach(id => priceBookCounts[id] = 0)
+    priceBookResult.data?.forEach(row => {
       if (row.fixture_type_id) {
-        counts[row.fixture_type_id] = (counts[row.fixture_type_id] || 0) + 1
+        priceBookCounts[row.fixture_type_id] = (priceBookCounts[row.fixture_type_id] || 0) + 1
       }
     })
+    setFixtureTypePriceBookCounts(priceBookCounts)
     
-    setFixtureTypePriceBookCounts(counts)
+    // Count labor book entries
+    const laborBookCounts: Record<string, number> = {}
+    fixtureTypeIds.forEach(id => laborBookCounts[id] = 0)
+    laborBookResult.data?.forEach(row => {
+      if (row.fixture_type_id) {
+        laborBookCounts[row.fixture_type_id] = (laborBookCounts[row.fixture_type_id] || 0) + 1
+      }
+    })
+    setFixtureTypeLaborBookCounts(laborBookCounts)
+    
+    // Count bids count rows
+    const countRowCounts: Record<string, number> = {}
+    fixtureTypeIds.forEach(id => countRowCounts[id] = 0)
+    // Count rows now use free text 'fixture' field, so we match by name
+    countRowResult.data?.forEach(row => {
+      const matchingFixtureType = fixtureTypes.find(ft => 
+        ft.name.toLowerCase() === (row.fixture ?? '').toLowerCase()
+      )
+      if (matchingFixtureType) {
+        countRowCounts[matchingFixtureType.id] = (countRowCounts[matchingFixtureType.id] || 0) + 1
+      }
+    })
+    setFixtureTypeCountRowCounts(countRowCounts)
+    
+    // Log any errors
+    if (priceBookResult.error) console.error('Error loading price book counts:', priceBookResult.error)
+    if (laborBookResult.error) console.error('Error loading labor book counts:', laborBookResult.error)
+    if (countRowResult.error) console.error('Error loading count row counts:', countRowResult.error)
   }
 
   function openEditFixtureType(fixtureType: FixtureType | null) {
@@ -1496,7 +1532,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (fixtureTypes.length > 0) {
-      loadFixtureTypePriceBookCounts()
+      loadFixtureTypeCounts()
     }
   }, [fixtureTypes])
 
@@ -1933,7 +1969,7 @@ export default function Settings() {
 
     setConvertSubmitting(true)
     try {
-      const { data, error } = await supabase.rpc('convert_master_user', {
+      const { data, error } = await (supabase as any).rpc('convert_master_user', {
         old_master_id: convertMasterId,
         new_master_id: convertNewMasterId,
         new_role: convertNewRole,
@@ -3329,208 +3365,6 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Fixture Types</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Manage fixture types for each service type. Fixture types are used in Materials (part categories), Bids (count rows), and book entries (labor, pricing, takeoff).
-          </p>
-          
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Select Service Type *
-            </label>
-            <select
-              value={selectedServiceTypeForFixtures}
-              onChange={(e) => setSelectedServiceTypeForFixtures(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
-            >
-              <option value="">-- Select a service type --</option>
-              {serviceTypes.map((st) => (
-                <option key={st.id} value={st.id}>{st.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {selectedServiceTypeForFixtures && (
-            <>
-              <div style={{ marginBottom: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => openEditFixtureType(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                >
-                  + Add Fixture Type
-                </button>
-              </div>
-
-              {fixtureTypes.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {fixtureTypes.map((ft, idx) => (
-                    <div key={ft.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{ft.name}</h3>
-                            {ft.category && (
-                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
-                                {ft.category}
-                              </span>
-                            )}
-                            <span 
-                              style={{ 
-                                padding: '0.125rem 0.5rem', 
-                                fontSize: '0.75rem', 
-                                background: fixtureTypePriceBookCounts[ft.id] > 0 ? '#d1fae5' : '#f3f4f6',
-                                color: fixtureTypePriceBookCounts[ft.id] > 0 ? '#065f46' : '#6b7280',
-                                borderRadius: 4,
-                                fontWeight: 500
-                              }}
-                              title={`In ${fixtureTypePriceBookCounts[ft.id] || 0} price book entr${fixtureTypePriceBookCounts[ft.id] === 1 ? 'y' : 'ies'}`}
-                            >
-                              {fixtureTypePriceBookCounts[ft.id] || 0} price book{fixtureTypePriceBookCounts[ft.id] === 1 ? '' : 's'}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => moveFixtureType(ft, 'up')}
-                            disabled={idx === 0}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveFixtureType(ft, 'down')}
-                            disabled={idx === fixtureTypes.length - 1}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              background: idx === fixtureTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              cursor: idx === fixtureTypes.length - 1 ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            ↓
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditFixtureType(ft)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteFixtureType(ft)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  No fixture types yet. Click "Add Fixture Type" to create one.
-                </div>
-              )}
-            </>
-          )}
-
-          {fixtureTypeFormOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Fixture Type' : 'Add Fixture Type'}</h2>
-                
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForFixtures)?.name}</strong>
-                  </span>
-                </div>
-                
-                {fixtureTypeError && (
-                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
-                    {fixtureTypeError}
-                  </div>
-                )}
-                
-                <form onSubmit={saveFixtureType}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                      Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={fixtureTypeName}
-                      onChange={(e) => setFixtureTypeName(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      required
-                      autoFocus
-                      placeholder="e.g., Toilet, Kitchen Sink, Water Heater"
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                      Category (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={fixtureTypeCategory}
-                      onChange={(e) => setFixtureTypeCategory(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      placeholder="e.g., Bathrooms, Kitchen, Parts, Appliances"
-                    />
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
-                      Used for grouping in dropdowns and quick-select buttons
-                    </p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button
-                      type="button"
-                      onClick={closeEditFixtureType}
-                      disabled={fixtureTypeSaving}
-                      style={{ padding: '0.5rem 1rem' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={fixtureTypeSaving}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: fixtureTypeSaving ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: fixtureTypeSaving ? 'not-allowed' : 'pointer',
-                        fontWeight: 500
-                      }}
-                    >
-                      {fixtureTypeSaving ? 'Saving...' : 'Save'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {myRole === 'dev' && (
-        <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Part Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Manage part types for each service type. Part types are used in the Materials system to categorize material parts (pipes, fittings, valves, etc.). This is separate from Fixture Types which are used in Bids/Books for installed fixtures.
@@ -3600,8 +3434,8 @@ export default function Settings() {
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: partTypePartCounts[pt.id] > 0 ? '#d1fae5' : '#f3f4f6',
-                                color: partTypePartCounts[pt.id] > 0 ? '#065f46' : '#6b7280',
+                                background: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
+                                color: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -3741,6 +3575,234 @@ export default function Settings() {
                       }}
                     >
                       {partTypeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Fixture Types</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Manage fixture types for each service type. Fixture types are used in Materials (part categories), Bids (count rows), and book entries (labor, pricing, takeoff).
+          </p>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Select Service Type *
+            </label>
+            <select
+              value={selectedServiceTypeForFixtures}
+              onChange={(e) => setSelectedServiceTypeForFixtures(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+            >
+              <option value="">-- Select a service type --</option>
+              {serviceTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedServiceTypeForFixtures && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => openEditFixtureType(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  + Add Fixture Type
+                </button>
+              </div>
+
+              {fixtureTypes.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {fixtureTypes.map((ft, idx) => (
+                    <div key={ft.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{ft.name}</h3>
+                            {ft.category && (
+                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
+                                {ft.category}
+                              </span>
+                            )}
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#dbeafe' : '#f3f4f6',
+                                color: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#1e40af' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title="Labor book entries"
+                            >
+                              {fixtureTypeLaborBookCounts[ft.id] || 0} labor
+                            </span>
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
+                                color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title="Price book entries"
+                            >
+                              {fixtureTypePriceBookCounts[ft.id] || 0} price
+                            </span>
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: (fixtureTypeCountRowCounts[ft.id] ?? 0) > 0 ? '#fef3c7' : '#f3f4f6',
+                                color: (fixtureTypeCountRowCounts[ft.id] ?? 0) > 0 ? '#92400e' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title="Bid count rows"
+                            >
+                              {fixtureTypeCountRowCounts[ft.id] || 0} counts
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveFixtureType(ft, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveFixtureType(ft, 'down')}
+                            disabled={idx === fixtureTypes.length - 1}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === fixtureTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === fixtureTypes.length - 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditFixtureType(ft)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteFixtureType(ft)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  No fixture types yet. Click "Add Fixture Type" to create one.
+                </div>
+              )}
+            </>
+          )}
+
+          {fixtureTypeFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Fixture Type' : 'Add Fixture Type'}</h2>
+                
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForFixtures)?.name}</strong>
+                  </span>
+                </div>
+                
+                {fixtureTypeError && (
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                    {fixtureTypeError}
+                  </div>
+                )}
+                
+                <form onSubmit={saveFixtureType}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={fixtureTypeName}
+                      onChange={(e) => setFixtureTypeName(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      required
+                      autoFocus
+                      placeholder="e.g., Toilet, Kitchen Sink, Water Heater"
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Category (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={fixtureTypeCategory}
+                      onChange={(e) => setFixtureTypeCategory(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      placeholder="e.g., Bathrooms, Kitchen, Parts, Appliances"
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
+                      Used for grouping in dropdowns and quick-select buttons
+                    </p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={closeEditFixtureType}
+                      disabled={fixtureTypeSaving}
+                      style={{ padding: '0.5rem 1rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={fixtureTypeSaving}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: fixtureTypeSaving ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: fixtureTypeSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {fixtureTypeSaving ? 'Saving...' : 'Save'}
                     </button>
                   </div>
                 </form>

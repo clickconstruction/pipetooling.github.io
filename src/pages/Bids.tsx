@@ -67,6 +67,16 @@ type BidWithBuilder = Bid & {
   service_type?: ServiceType | null
 }
 
+// Extended types that include joined fixture_types data
+// Note: BidCountRow uses free text `fixture` field, not FK
+type LaborBookEntryWithFixture = LaborBookEntry & { 
+  fixture_types?: { name: string } | null 
+}
+
+type PriceBookEntryWithFixture = PriceBookEntry & { 
+  fixture_types?: { name: string } | null 
+}
+
 function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   if (ci == null) return { phone: '', email: '' }
   if (typeof ci === 'object' && ci !== null) {
@@ -492,6 +502,14 @@ export default function Bids() {
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
+  const [fixtureTypes, setFixtureTypes] = useState<Array<{ id: string; name: string }>>([])
+  
+  // Helper function to find fixture_type_id by name
+  const getFixtureTypeIdByName = (name: string): string | null => {
+    const normalized = name.trim().toLowerCase()
+    const match = fixtureTypes.find(ft => ft.name.toLowerCase() === normalized)
+    return match?.id || null
+  }
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -639,7 +657,7 @@ export default function Bids() {
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
   const [costEstimatePOModalTaxPercent, setCostEstimatePOModalTaxPercent] = useState('8.25')
   const [laborBookVersions, setLaborBookVersions] = useState<LaborBookVersion[]>([])
-  const [laborBookEntries, setLaborBookEntries] = useState<LaborBookEntry[]>([])
+  const [laborBookEntries, setLaborBookEntries] = useState<LaborBookEntryWithFixture[]>([])
   const [selectedLaborBookVersionId, setSelectedLaborBookVersionId] = useState<string | null>(null)
   const [laborBookEntriesVersionId, setLaborBookEntriesVersionId] = useState<string | null>(null)
   const costEstimateBidIdRef = useRef<string | null>(null)
@@ -648,7 +666,7 @@ export default function Bids() {
   const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
   const [savingLaborVersion, setSavingLaborVersion] = useState(false)
   const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
-  const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntry | null>(null)
+  const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntryWithFixture | null>(null)
   const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
   const [laborEntryAliasNames, setLaborEntryAliasNames] = useState('')
   const [laborEntryRoughIn, setLaborEntryRoughIn] = useState('')
@@ -671,7 +689,7 @@ export default function Bids() {
   const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(true)
   const [selectedBidForPricing, setSelectedBidForPricing] = useState<BidWithBuilder | null>(null)
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
-  const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntry[]>([])
+  const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
   const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
   const pricingBidIdRef = useRef<string | null>(null)
@@ -687,7 +705,7 @@ export default function Bids() {
   const [pricingVersionNameInput, setPricingVersionNameInput] = useState('')
   const [savingPricingVersion, setSavingPricingVersion] = useState(false)
   const [pricingEntryFormOpen, setPricingEntryFormOpen] = useState(false)
-  const [editingPricingEntry, setEditingPricingEntry] = useState<PriceBookEntry | null>(null)
+  const [editingPricingEntry, setEditingPricingEntry] = useState<PriceBookEntryWithFixture | null>(null)
   const [pricingEntryFixtureName, setPricingEntryFixtureName] = useState('')
   const [pricingEntryRoughIn, setPricingEntryRoughIn] = useState('')
   const [pricingEntryTopOut, setPricingEntryTopOut] = useState('')
@@ -805,6 +823,18 @@ export default function Bids() {
     }
   }
 
+  async function loadFixtureTypes() {
+    if (!selectedServiceTypeId) return
+    const { data, error } = await supabase
+      .from('fixture_types')
+      .select('id, name')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: true })
+    if (!error && data) {
+      setFixtureTypes(data)
+    }
+  }
+
   async function loadBids(): Promise<BidWithBuilder[]> {
     const { data, error } = await supabase
       .from('bids')
@@ -859,7 +889,7 @@ export default function Bids() {
   async function loadCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -893,7 +923,7 @@ export default function Bids() {
   async function loadTakeoffCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -937,9 +967,9 @@ export default function Bids() {
     }
     setSavingTakeoffNewTemplate(true)
     setError(null)
-    const { data: templateData, error: templateError } = await supabase
+    const { data: templateData, error: templateError} = await supabase
       .from('material_templates')
-      .insert({ name, description: takeoffNewTemplateDescription.trim() || null })
+      .insert({ name, description: takeoffNewTemplateDescription.trim() || null, service_type_id: selectedServiceTypeId })
       .select('id')
       .single()
     if (templateError) {
@@ -1140,7 +1170,7 @@ export default function Bids() {
   async function loadCostEstimateCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (error) {
@@ -1172,15 +1202,15 @@ export default function Bids() {
     }
     let rows = (laborData as CostEstimateLaborRow[]) ?? []
     const countByFixture = new Map<string, number>()
-    for (const r of countRows) countByFixture.set(r.fixture, Number(r.count))
-    const fixtureSet = new Set(countRows.map((r) => r.fixture))
+    for (const r of countRows) countByFixture.set(r.fixture ?? '', Number(r.count))
+    const fixtureSet = new Set(countRows.map((r) => r.fixture ?? ''))
     const maxSeq = rows.length === 0 ? 0 : Math.max(...rows.map((r) => r.sequence_order))
     let seq = maxSeq
     for (const cr of countRows) {
-      const existing = rows.find((l) => l.fixture === cr.fixture)
+      const existing = rows.find((l) => (l.fixture ?? '') === (cr.fixture ?? ''))
       const countVal = Number(cr.count)
       if (!existing) {
-        const def = defaults.find((d) => d.fixture.toLowerCase() === cr.fixture.toLowerCase())
+        const def = defaults.find((d) => d.fixture.toLowerCase() === (cr.fixture ?? '').toLowerCase())
         // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
         let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
         if (def) {
@@ -1190,7 +1220,7 @@ export default function Bids() {
           const { data: fallbackData } = await supabase
             .from('fixture_labor_defaults')
             .select('*')
-            .ilike('fixture', cr.fixture)
+            .ilike('fixture', cr.fixture ?? '')
             .limit(1)
             .maybeSingle()
           if (fallbackData) {
@@ -1206,7 +1236,7 @@ export default function Bids() {
           .from('cost_estimate_labor_rows')
           .insert({
             cost_estimate_id: estimateId,
-            fixture: cr.fixture,
+            fixture: cr.fixture ?? '',
             count: countVal,
             rough_in_hrs_per_unit: hours.rough_in_hrs,
             top_out_hrs_per_unit: hours.top_out_hrs,
@@ -1220,7 +1250,7 @@ export default function Bids() {
         await supabase.from('cost_estimate_labor_rows').update({ count: countVal }).eq('id', existing.id)
       }
     }
-    const toDelete = rows.filter((r) => !fixtureSet.has(r.fixture))
+    const toDelete = rows.filter((r) => !fixtureSet.has(r.fixture ?? ''))
     for (const r of toDelete) {
       await supabase.from('cost_estimate_labor_rows').delete().eq('id', r.id)
     }
@@ -1264,16 +1294,16 @@ export default function Bids() {
     if (laborBookVersionId) {
       const { data: entries, error } = await supabase
         .from('labor_book_entries')
-        .select('*')
+        .select('*, fixture_types(name)')
         .eq('version_id', laborBookVersionId)
         .order('sequence_order', { ascending: true })
       if (error || !entries?.length) {
         defaults = await loadFixtureLaborDefaults()
       } else {
         const map = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
-        for (const e of entries as LaborBookEntry[]) {
+        for (const e of entries as (LaborBookEntry & { fixture_types?: { name: string } | null })[]) {
           const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
-          const primary = e.fixture_name.trim().toLowerCase()
+          const primary = (e.fixture_types?.name ?? '').trim().toLowerCase()
           if (primary && !map.has(primary)) map.set(primary, hours)
           for (const name of e.alias_names ?? []) {
             const key = name.trim().toLowerCase()
@@ -1307,10 +1337,10 @@ export default function Bids() {
     }
     const { data, error } = await supabase
       .from('labor_book_entries')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('version_id', versionId)
       .order('sequence_order', { ascending: true })
-      .order('fixture_name', { ascending: true })
+      .order('fixture_types(name)', { ascending: true })
     if (error) {
       setError(`Failed to load labor book entries: ${error.message}`)
       setLaborBookEntries([])
@@ -1389,7 +1419,7 @@ export default function Bids() {
   async function loadPricingDataForBid(bidId: string) {
     const { data: countData, error: countErr } = await supabase
       .from('bids_count_rows')
-      .select('*')
+      .select('*, fixture_types(name)')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
     if (countErr) {
@@ -1595,9 +1625,9 @@ export default function Bids() {
     setPricingEntryFormOpen(true)
   }
 
-  function openEditPricingEntry(entry: PriceBookEntry) {
+  function openEditPricingEntry(entry: PriceBookEntryWithFixture) {
     setEditingPricingEntry(entry)
-    setPricingEntryFixtureName(entry.fixture_name)
+    setPricingEntryFixtureName(entry.fixture_types?.name ?? '')
     setPricingEntryRoughIn(String(entry.rough_in_price))
     setPricingEntryTopOut(String(entry.top_out_price))
     setPricingEntryTrimSet(String(entry.trim_set_price))
@@ -1620,6 +1650,11 @@ export default function Bids() {
     if (!selectedPricingVersionId) return
     const fixtureName = pricingEntryFixtureName.trim()
     if (!fixtureName) return
+    const fixtureTypeId = getFixtureTypeIdByName(fixtureName)
+    if (!fixtureTypeId) {
+      setError(`Fixture type "${fixtureName}" not found. Please select a valid fixture type.`)
+      return
+    }
     const rough = parseFloat(pricingEntryRoughIn) || 0
     const top = parseFloat(pricingEntryTopOut) || 0
     const trim = parseFloat(pricingEntryTrimSet) || 0
@@ -1629,7 +1664,7 @@ export default function Bids() {
     if (editingPricingEntry) {
       const { error: err } = await supabase
         .from('price_book_entries')
-        .update({ fixture_name: fixtureName, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
+        .update({ fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         .eq('id', editingPricingEntry.id)
       if (err) setError(err.message)
       else {
@@ -1640,7 +1675,7 @@ export default function Bids() {
       const maxSeq = priceBookEntries.length === 0 ? 0 : Math.max(...priceBookEntries.map((e) => e.sequence_order))
       const { error: err } = await supabase
         .from('price_book_entries')
-        .insert({ version_id: selectedPricingVersionId, fixture_name: fixtureName, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
+        .insert({ version_id: selectedPricingVersionId, fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
       if (err) setError(err.message)
       else {
         await loadPriceBookEntries(selectedPricingVersionId)
@@ -1650,8 +1685,8 @@ export default function Bids() {
     setSavingPricingEntry(false)
   }
 
-  async function deletePricingEntry(entry: PriceBookEntry) {
-    if (!confirm(`Delete "${entry.fixture_name}" from this price book?`)) return
+  async function deletePricingEntry(entry: PriceBookEntryWithFixture) {
+    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this price book?`)) return
     const { error: err } = await supabase.from('price_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (selectedPricingVersionId) await loadPriceBookEntries(selectedPricingVersionId)
@@ -1729,9 +1764,9 @@ export default function Bids() {
     setLaborEntryFormOpen(true)
   }
 
-  function openEditLaborEntry(entry: LaborBookEntry) {
+  function openEditLaborEntry(entry: LaborBookEntryWithFixture) {
     setEditingLaborEntry(entry)
-    setLaborEntryFixtureName(entry.fixture_name)
+    setLaborEntryFixtureName(entry.fixture_types?.name ?? '')
     setLaborEntryAliasNames((entry.alias_names ?? []).join(', '))
     setLaborEntryRoughIn(String(entry.rough_in_hrs))
     setLaborEntryTopOut(String(entry.top_out_hrs))
@@ -1754,6 +1789,11 @@ export default function Bids() {
     if (!laborBookEntriesVersionId) return
     const fixtureName = laborEntryFixtureName.trim()
     if (!fixtureName) return
+    const fixtureTypeId = getFixtureTypeIdByName(fixtureName)
+    if (!fixtureTypeId) {
+      setError(`Fixture type "${fixtureName}" not found. Please select a valid fixture type.`)
+      return
+    }
     const aliasNames = laborEntryAliasNames
       .split(',')
       .map((s) => s.trim())
@@ -1766,7 +1806,7 @@ export default function Bids() {
     if (editingLaborEntry) {
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .update({ fixture_name: fixtureName, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
+        .update({ fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
         .eq('id', editingLaborEntry.id)
       if (err) setError(err.message)
       else {
@@ -1777,7 +1817,7 @@ export default function Bids() {
       const maxSeq = laborBookEntries.length === 0 ? 0 : Math.max(...laborBookEntries.map((e) => e.sequence_order))
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .insert({ version_id: laborBookEntriesVersionId, fixture_name: fixtureName, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
+        .insert({ version_id: laborBookEntriesVersionId, fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
       if (err) setError(err.message)
       else {
         await loadLaborBookEntries(laborBookEntriesVersionId)
@@ -1787,8 +1827,8 @@ export default function Bids() {
     setSavingLaborEntry(false)
   }
 
-  async function deleteLaborEntry(entry: LaborBookEntry) {
-    if (!confirm(`Delete "${entry.fixture_name}" from this labor book?`)) return
+  async function deleteLaborEntry(entry: LaborBookEntryWithFixture) {
+    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`)) return
     const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
@@ -1972,7 +2012,7 @@ export default function Bids() {
 
   async function deleteTakeoffBookEntry(entry: TakeoffBookEntryWithItems) {
     const n = entry.items.length
-    if (!confirm(`Delete "${entry.fixture_name}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
+    if (!confirm(`Delete "${entry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
     const { error: err } = await supabase.from('takeoff_book_entries').delete().eq('id', entry.id)
     if (err) setError(err.message)
     else if (takeoffBookEntriesVersionId) await loadTakeoffBookEntries(takeoffBookEntriesVersionId)
@@ -2026,7 +2066,7 @@ export default function Bids() {
       )
       const toAdd: TakeoffMapping[] = []
       for (const row of takeoffCountRows) {
-        const fixtureLower = row.fixture.toLowerCase()
+        const fixtureLower = (row.fixture ?? '').toLowerCase()
         for (const entry of entriesList) {
           const matchesPrimary = entry.fixture_name.toLowerCase() === fixtureLower
           const matchesAlias = (entry.alias_names ?? []).some((alias) => alias.trim().toLowerCase() === fixtureLower)
@@ -2131,7 +2171,7 @@ export default function Bids() {
       
       const { data: entries, error: fetchErr } = await supabase
         .from('labor_book_entries')
-        .select('fixture_name, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs')
+        .select('fixture_type_id, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs, fixture_types(name)')
         .eq('version_id', selectedLaborBookVersionId)
         .order('sequence_order', { ascending: true })
       if (fetchErr) {
@@ -2139,25 +2179,22 @@ export default function Bids() {
         setApplyingLaborBookHours(false)
         return
       }
-      const entriesByFixture = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
-      for (const e of (entries as LaborBookEntry[]) ?? []) {
+      const entriesByFixtureName = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
+      type LaborEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
+      for (const e of (entries as LaborEntryWithFixture[]) ?? []) {
         const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
-        const primary = e.fixture_name.trim().toLowerCase()
-        if (primary && !entriesByFixture.has(primary)) entriesByFixture.set(primary, hours)
-        for (const name of e.alias_names ?? []) {
-          const key = name.trim().toLowerCase()
-          if (key && !entriesByFixture.has(key)) entriesByFixture.set(key, hours)
-        }
+        const name = e.fixture_types?.name ?? ''
+        if (name) entriesByFixtureName.set(name.toLowerCase(), hours)
       }
       const missingFixtures = new Set<string>()
       for (const row of costEstimateLaborRows) {
-        const entry = entriesByFixture.get(row.fixture.toLowerCase())
+        const entry = entriesByFixtureName.get((row.fixture ?? '').toLowerCase())
         if (!entry) {
-          missingFixtures.add(row.fixture)
+          missingFixtures.add(row.fixture ?? '')
         }
       }
       for (const row of costEstimateLaborRows) {
-        const entry = entriesByFixture.get(row.fixture.toLowerCase())
+        const entry = entriesByFixtureName.get((row.fixture ?? '').toLowerCase())
         if (!entry) continue
         const { error: updateErr } = await supabase
           .from('cost_estimate_labor_rows')
@@ -2203,6 +2240,12 @@ export default function Bids() {
     e.preventDefault()
     if (!selectedLaborBookVersionId || !addMissingFixtureName.trim()) return
     
+    const fixtureTypeId = getFixtureTypeIdByName(addMissingFixtureName.trim())
+    if (!fixtureTypeId) {
+      setError(`Fixture type "${addMissingFixtureName.trim()}" not found. Please select a valid fixture type.`)
+      return
+    }
+    
     setSavingMissingFixture(true)
     setError(null)
     
@@ -2224,7 +2267,8 @@ export default function Bids() {
       .from('labor_book_entries')
       .insert({
         version_id: selectedLaborBookVersionId,
-        fixture_name: addMissingFixtureName.trim(),
+        fixture_type_id: fixtureTypeId,
+        alias_names: [],
         rough_in_hrs: rough,
         top_out_hrs: top,
         trim_set_hrs: trim,
@@ -2649,8 +2693,8 @@ export default function Bids() {
       let totalRevenue = 0
       const rows = pricingCountRows.map((countRow) => {
         const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
-        const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === countRow.fixture.toLowerCase())
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
         const count = Number(countRow.count)
         const laborHrs = laborRow
           ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
@@ -2667,7 +2711,7 @@ export default function Bids() {
       const tableRows = rows
         .map(
           ({ countRow, entry, count, cost, revenue, margin }) =>
-            `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+            `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
         )
         .join('')
       const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
@@ -2715,7 +2759,7 @@ export default function Bids() {
     } else {
       const versionIds = priceBookVersions.map((v) => v.id)
       const [entriesResult, assignmentsResult] = await Promise.all([
-        supabase.from('price_book_entries').select('*').in('version_id', versionIds),
+        supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', selectedBidForPricing.id),
       ])
       const { data: allEntries, error: entriesErr } = entriesResult
@@ -2724,8 +2768,8 @@ export default function Bids() {
         return
       }
       const allAssignments = (assignmentsResult.data as BidPricingAssignment[]) ?? []
-      const entriesByVersion = new Map<string, PriceBookEntry[]>()
-      for (const e of (allEntries as PriceBookEntry[]) ?? []) {
+      const entriesByVersion = new Map<string, PriceBookEntryWithFixture[]>()
+      for (const e of (allEntries as PriceBookEntryWithFixture[]) ?? []) {
         const list = entriesByVersion.get(e.version_id) ?? []
         list.push(e)
         entriesByVersion.set(e.version_id, list)
@@ -2749,11 +2793,8 @@ export default function Bids() {
           const assignment = assignmentForVersion(countRow.id)
           const entry = assignment
             ? entriesById.get(assignment.price_book_entry_id)
-            : entries.find(
-                (e) =>
-                  (e.fixture_name ?? '').trim().toLowerCase() === (countRow.fixture ?? '').trim().toLowerCase()
-              )
-          const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+            : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+          const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
           const count = Number(countRow.count)
           const laborHrs = laborRow
             ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
@@ -2770,7 +2811,7 @@ export default function Bids() {
         const tableRows = rows
           .map(
             ({ countRow, entry, count, cost, revenue, margin }) =>
-              `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
+              `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
           )
           .join('')
         const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
@@ -3003,17 +3044,17 @@ export default function Bids() {
     const countRowsReview = (countDataReview as BidCountRow[]) ?? []
     for (const v of priceBookVersions) {
       const [entriesResR, assignResR] = await Promise.all([
-        supabase.from('price_book_entries').select('*').eq('version_id', v.id).order('sequence_order', { ascending: true }),
+        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
       ])
-      const entriesR = (entriesResR.data as PriceBookEntry[]) ?? []
+      const entriesR = (entriesResR.data as PriceBookEntryWithFixture[]) ?? []
       const assignmentsR = (assignResR.data as BidPricingAssignment[]) ?? []
       const entriesByIdR = new Map(entriesR.map((e) => [e.id, e]))
       let totalRevenueR = 0
       let completeR = true
       for (const row of countRowsReview) {
         const assignment = assignmentsR.find((a) => a.count_row_id === row.id)
-        const entry = assignment ? entriesByIdR.get(assignment.price_book_entry_id) : entriesR.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+        const entry = assignment ? entriesByIdR.get(assignment.price_book_entry_id) : entriesR.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
         if (!entry) completeR = false
         totalRevenueR += Number(row.count) * (entry ? Number(entry.total_price) : 0)
       }
@@ -3075,10 +3116,10 @@ export default function Bids() {
     let pricingContent = 'No price book selected or no count rows.'
     if (versionId && countRows.length > 0) {
       const [entriesRes, assignRes] = await Promise.all([
-        supabase.from('price_book_entries').select('*').eq('version_id', versionId).order('sequence_order', { ascending: true }),
+        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId).order('sequence_order', { ascending: true }),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
       ])
-      const entries = (entriesRes.data as PriceBookEntry[]) ?? []
+      const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
       const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
       const entriesById = new Map(entries.map((e) => [e.id, e]))
       let totalRevenue = 0
@@ -3089,14 +3130,14 @@ export default function Bids() {
       const pricingRows: string[][] = []
       for (const row of countRows) {
         const assignment = assignments.find((a) => a.count_row_id === row.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
         const unitPrice = entry ? Number(entry.total_price) : 0
         const revenue = Number(row.count) * unitPrice
         totalRevenue += revenue
         pricingRows.push([
           row.fixture ?? '',
           String(row.count),
-          entry?.fixture_name ?? '—',
+          (entry as PriceBookEntryWithFixture | undefined)?.fixture_types?.name ?? '—',
           `$${Math.round(unitPrice).toLocaleString('en-US')}`,
           `$${Math.round(revenue).toLocaleString('en-US')}`,
         ])
@@ -3214,12 +3255,12 @@ export default function Bids() {
     let coverLetterRevenue = 0
     const fixtureRows: { fixture: string; count: number }[] = []
     if (versionId && countRows.length > 0) {
-      const entries = (await supabase.from('price_book_entries').select('*').eq('version_id', versionId)).data as PriceBookEntry[] ?? []
+      const entries = (await supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId)).data as PriceBookEntryWithFixture[] ?? []
       const assignments = (await supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidPricingAssignment[] ?? []
       const entriesById = new Map(entries.map((e) => [e.id, e]))
       countRows.forEach((countRow) => {
         const assignment = assignments.find((a) => a.count_row_id === countRow.id)
-        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
         const unitPrice = entry ? Number(entry.total_price) : 0
         coverLetterRevenue += Number(countRow.count) * unitPrice
         fixtureRows.push({ fixture: countRow.fixture ?? '', count: Number(countRow.count) })
@@ -3758,6 +3799,7 @@ export default function Bids() {
           created_by: authUser.id,
           notes: null,
           stage,
+          service_type_id: selectedServiceTypeId,
         })
         .select('id')
         .single()
@@ -3874,6 +3916,7 @@ export default function Bids() {
         try {
           // Load service types first
           await loadServiceTypes()
+          await loadFixtureTypes()
         } finally {
           setLoading(false)
         }
@@ -3886,7 +3929,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers()])
+        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes()])
       }
       loadForServiceType()
     }
@@ -3961,7 +4004,7 @@ export default function Bids() {
     ;(async () => {
       const { data: countData, error: countErr } = await supabase
         .from('bids_count_rows')
-        .select('*')
+        .select('*, fixture_types(name)')
         .eq('bid_id', bidId)
         .order('sequence_order', { ascending: true })
       if (countErr || cancelled) {
@@ -3972,17 +4015,17 @@ export default function Bids() {
       const results = await Promise.all(
         versions.map(async (v) => {
           const [entriesRes, assignRes] = await Promise.all([
-            supabase.from('price_book_entries').select('*').eq('version_id', v.id).order('sequence_order', { ascending: true }).order('fixture_name', { ascending: true }),
+            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }).order('fixture_name', { ascending: true }),
             supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
           ])
-          const entries = (entriesRes.data as PriceBookEntry[]) ?? []
+          const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
           const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
           const entriesById = new Map(entries.map((e) => [e.id, e]))
           let totalRevenue = 0
           let complete = true
           for (const row of countRows) {
             const assignment = assignments.find((a) => a.count_row_id === row.id)
-            const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => e.fixture_name.toLowerCase() === (row.fixture ?? '').toLowerCase())
+            const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
             if (!entry) complete = false
             const unitPrice = entry ? Number(entry.total_price) : 0
             totalRevenue += Number(row.count) * unitPrice
@@ -4306,7 +4349,7 @@ export default function Bids() {
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
-    setOutcome(bid.outcome ?? '')
+    setOutcome((bid.outcome ?? '') as OutcomeOption)
     setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
     setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
     setAgreedValue(bid.agreed_value != null ? String(bid.agreed_value) : '')
@@ -4433,6 +4476,7 @@ export default function Bids() {
       distance_from_office: distanceFromOffice.trim() || null,
       last_contact: lastContact ? new Date(lastContact).toISOString() : null,
       notes: notes.trim() || null,
+      service_type_id: formServiceTypeId,
     }
     let bidId: string
     if (editingBid) {
@@ -5201,7 +5245,7 @@ export default function Bids() {
                           if (mappingsForRow.length === 0) {
                             return (
                               <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
+                                <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
@@ -5262,7 +5306,7 @@ export default function Bids() {
                                 }
                                 return (
                                   <tr key={mapping.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                    <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
+                                    <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
                                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                       <div style={{ position: 'relative' }}>
@@ -5743,7 +5787,7 @@ export default function Bids() {
                       <tbody>
                         {takeoffBookEntries.map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}{entry.alias_names?.length ? (
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name ?? ''}{entry.alias_names?.length ? (
                               <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                             ) : null}</td>
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => materialTemplates.find((t) => t.id === i.template_id)?.name ?? i.template_id).join(', ')}</td>
@@ -6095,11 +6139,11 @@ export default function Bids() {
                             return (
                               <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                 <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <span>{row.fixture}</span>
-                                  {missingLaborBookFixtures.has(row.fixture) && selectedLaborBookVersionId && (
+                                  <span>{row.fixture ?? ''}</span>
+                                  {missingLaborBookFixtures.has(row.fixture ?? '') && selectedLaborBookVersionId && (
                                     <button
                                       type="button"
-                                      onClick={() => openAddMissingFixtureModal(row.fixture)}
+                                      onClick={() => openAddMissingFixtureModal(row.fixture ?? '')}
                                       title="Add to labor book"
                                       style={{
                                         background: 'none',
@@ -6611,7 +6655,7 @@ export default function Bids() {
                         {laborBookEntries.map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.5rem' }}>
-                              {entry.fixture_name}
+                              {entry.fixture_types?.name ?? ''}
                               {entry.alias_names?.length ? (
                                 <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                               ) : null}
@@ -6944,8 +6988,8 @@ export default function Bids() {
                 let totalRevenue = 0
                 const rows = pricingCountRows.map((countRow) => {
                   const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-                  const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
-                  const laborRow = pricingLaborRows.find((l) => l.fixture.toLowerCase() === countRow.fixture.toLowerCase())
+                  const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+                  const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
                   const count = Number(countRow.count)
                   const laborHrs = laborRow
                     ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
@@ -6977,13 +7021,13 @@ export default function Bids() {
                       <tbody>
                         {rows.map(({ countRow, entry, count, cost, revenue, margin, flag }) => (
                           <tr key={countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>{countRow.fixture}</td>
+                            <td style={{ padding: '0.75rem' }}>{countRow.fixture ?? ''}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>{count}</td>
                             <td style={{ padding: '0.75rem', position: 'relative' }}>
                               <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
                                 <input
                                   type="text"
-                                  value={pricingAssignmentSearches[countRow.id] || entry?.fixture_name || ''}
+                                  value={(pricingAssignmentSearches[countRow.id] ?? entry?.fixture_types?.name) ?? ''}
                                   onChange={(e) => {
                                     setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: e.target.value }))
                                     setPricingAssignmentDropdownOpen(countRow.id)
@@ -7029,7 +7073,7 @@ export default function Bids() {
                                 {pricingAssignmentDropdownOpen === countRow.id && (() => {
                                   const searchTerm = pricingAssignmentSearches[countRow.id] || ''
                                   const filtered = priceBookEntries.filter((e) => 
-                                    e.fixture_name.toLowerCase().includes(searchTerm.toLowerCase())
+                                    (e.fixture_types?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
                                   )
                                   return (
                                     <div style={{
@@ -7064,7 +7108,7 @@ export default function Bids() {
                                             onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
                                             onMouseLeave={(ev) => { ev.currentTarget.style.background = entry?.id === e.id ? '#eff6ff' : 'white' }}
                                           >
-                                            {e.fixture_name}
+                                            {e.fixture_types?.name ?? ''}
                                           </div>
                                         ))
                                       ) : searchTerm ? (
@@ -7287,11 +7331,11 @@ export default function Bids() {
                       <tbody>
                         {priceBookEntries
                           .filter((entry) => 
-                            entry.fixture_name.toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                            (entry.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
                           )
                           .map((entry) => (
                           <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem' }}>{entry.fixture_name}</td>
+                            <td style={{ padding: '0.5rem' }}>{entry.fixture_types?.name ?? ''}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.top_out_price))}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.trim_set_price))}</td>
@@ -7307,7 +7351,7 @@ export default function Bids() {
                   </div>
                   {priceBookSearchQuery && 
                    priceBookEntries.filter((e) => 
-                     e.fixture_name.toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                     (e.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
                    ).length === 0 && (
                     <div style={{ 
                       textAlign: 'center', 
@@ -7623,14 +7667,14 @@ export default function Bids() {
             let coverLetterRevenue = 0
             pricingCountRows.forEach((countRow) => {
               const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
-              const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => e.fixture_name.toLowerCase() === countRow.fixture.toLowerCase())
+              const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
               const count = Number(countRow.count)
               const unitPrice = entry ? Number(entry.total_price) : 0
               coverLetterRevenue += count * unitPrice
             })
             const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
-            const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture, count: Number(r.count) }))
+            const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture ?? '', count: Number(r.count) }))
             const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
             const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
             const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
@@ -9294,7 +9338,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
 }
 
 function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () => void; onDelete: () => void }) {
-  const [fixture, setFixture] = useState(row.fixture)
+  const [fixture, setFixture] = useState(row.fixture ?? '')
   const [count, setCount] = useState(String(row.count))
   const [page, setPage] = useState(row.page ?? '')
   const [editing, setEditing] = useState(false)
@@ -9339,7 +9383,7 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
   return (
     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
       <td style={{ padding: '0.75rem' }}>{row.count}</td>
-      <td style={{ padding: '0.75rem' }}>{row.fixture}</td>
+      <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
         <button type="button" onClick={() => setEditing(true)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>

@@ -145,9 +145,9 @@ export default function Dashboard() {
                     step_name: step.name,
                     project_id: projectId,
                     project_name: projectName,
-                    notify_when_started: sub.notify_when_started,
-                    notify_when_complete: sub.notify_when_complete,
-                    notify_when_reopened: sub.notify_when_reopened,
+                    notify_when_started: sub.notify_when_started ?? false,
+                    notify_when_complete: sub.notify_when_complete ?? false,
+                    notify_when_reopened: sub.notify_when_reopened ?? false,
                   })
                 }
               })

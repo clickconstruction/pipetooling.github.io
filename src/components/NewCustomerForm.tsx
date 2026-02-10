@@ -175,12 +175,13 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
     setLoading(true)
     let customerMasterId = masterUserId
     if (!customerMasterId && myRole === 'master_technician') customerMasterId = user.id
+    if (!customerMasterId) customerMasterId = user.id
     const payload = {
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
-      master_user_id: customerMasterId || null,
+      master_user_id: customerMasterId,
     }
     const { data, error: err } = await supabase.from('customers').insert(payload).select().single()
     setLoading(false)

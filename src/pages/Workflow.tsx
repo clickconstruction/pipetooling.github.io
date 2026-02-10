@@ -286,9 +286,9 @@ export default function Workflow() {
           const subsMap: Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }> = {}
           subs.forEach((sub) => {
             subsMap[sub.step_id] = {
-              notify_when_started: sub.notify_when_started,
-              notify_when_complete: sub.notify_when_complete,
-              notify_when_reopened: sub.notify_when_reopened,
+              notify_when_started: sub.notify_when_started ?? false,
+              notify_when_complete: sub.notify_when_complete ?? false,
+              notify_when_reopened: sub.notify_when_reopened ?? false,
             }
           })
           setUserSubscriptions(subsMap)

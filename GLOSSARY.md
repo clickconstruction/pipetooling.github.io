@@ -272,12 +272,18 @@ Customer in the bids context. The entity requesting the bid (can be actual GC, h
 
 **Alias**: "GC/Builder", "GC", "Builder", "Customer" all refer to same concept in Bids
 
-### Fixture
-Plumbing fixture installed in a project (toilet, sink, faucet, shower, tub, water heater, etc.).
+### Fixture / Fixture Type
+Installed plumbing fixture in a project (toilet, sink, faucet, shower, tub, water heater, etc.). Service-type-specific categorization used in Bids system for labor and pricing calculations.
 
-**Used In**: Counts tab, Takeoff book, Labor book, Price book
+**Database**: `fixture_types` table with FK to `service_types`
+
+**Used In**: Labor book entries, Price book entries (structured with FK)
+
+**Count Rows**: Use free text `fixture` field (not FK) for flexibility
 
 **Example Values**: "Toilet", "Kitchen Sink", "Shower Valve", "Tub/Shower Combo"
+
+**Management**: Settings page, Fixture Types section (dev access)
 
 ### Tie-in
 Connection point where new plumbing connects to existing systems (water supply, waste lines, vent stacks).
@@ -287,11 +293,13 @@ Connection point where new plumbing connects to existing systems (water supply, 
 **Example Values**: "Water Supply Tie-in", "Waste Line Connection", "Gas Line Tie-in"
 
 ### Count / Count Row
-Quantity entry for a fixture or tie-in in a bid. Stored in Counts tab.
+Quantity entry for a fixture or tie-in in a bid. Stored in Counts tab. Uses free text for flexibility.
 
 **Database**: `bids_count_rows` table
 
-**Fields**: fixture_or_tiein (name), count (quantity), plan_page (optional reference)
+**Fields**: fixture (free text name), count (quantity), page (optional plan page reference)
+
+**Note**: Unlike labor/price books, count rows use free text `fixture` field (not FK) to allow flexible field notes
 
 ### Rough In
 Initial plumbing installation phase. In-wall piping, water supply lines, drain/waste/vent lines installed before walls closed.
@@ -327,22 +335,22 @@ Template library mapping fixture names to material templates and stages. Standar
 **Features**: Alias names for matching, multiple templates per fixture
 
 ### Labor Book
-Template library mapping fixture names to labor hours per stage. Standardizes labor estimates.
+Template library mapping fixture types to labor hours per stage. Standardizes labor estimates.
 
 **Database**: `labor_book_versions`, `labor_book_entries`
 
-**Structure**: Version → Entries (fixture + hours per stage)
+**Structure**: Version → Entries (fixture_type_id FK + hours per stage)
 
-**Fields**: rough_in_hrs, top_out_hrs, trim_set_hrs, alias_names
+**Fields**: fixture_type_id (FK to fixture_types), rough_in_hrs, top_out_hrs, trim_set_hrs, alias_names
 
 ### Price Book
-Template library mapping fixture names to pricing per stage. Used for margin analysis.
+Template library mapping fixture types to pricing per stage. Used for margin analysis.
 
 **Database**: `price_book_versions`, `price_book_entries`
 
-**Structure**: Version → Entries (fixture + prices per stage)
+**Structure**: Version → Entries (fixture_type_id FK + prices per stage)
 
-**Fields**: rough_in_price, top_out_price, trim_set_price, total_price
+**Fields**: fixture_type_id (FK to fixture_types), rough_in_price, top_out_price, trim_set_price, total_price
 
 ### Cost Estimate
 Calculated total project cost including materials, labor, and driving expenses. Created in Cost Estimate tab (4th tab).
@@ -814,7 +822,7 @@ Command to auto-generate TypeScript types from Supabase schema: `supabase gen ty
 
 ---
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-10
 
 **Related Documentation**: 
 - [AI_CONTEXT.md](./AI_CONTEXT.md) - Quick project overview

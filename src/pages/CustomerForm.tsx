@@ -143,12 +143,14 @@ export default function CustomerForm() {
     setLoading(true)
     let customerMasterId = masterUserId
     if (!customerMasterId && myRole === 'master_technician' && user?.id) customerMasterId = user.id
-    const payload = {
+    const payload: any = {
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
-      master_user_id: customerMasterId || null,
+    }
+    if (customerMasterId) {
+      payload.master_user_id = customerMasterId
     }
     const { error: err } = await supabase.from('customers').update(payload).eq('id', id!)
     setLoading(false)
