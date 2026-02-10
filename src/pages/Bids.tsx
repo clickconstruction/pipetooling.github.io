@@ -6857,7 +6857,7 @@ export default function Bids() {
                               <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
                                 <input
                                   type="text"
-                                  value={pricingAssignmentSearches[countRow.id] ?? entry?.fixture_name ?? ''}
+                                  value={pricingAssignmentSearches[countRow.id] || entry?.fixture_name || ''}
                                   onChange={(e) => {
                                     setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: e.target.value }))
                                     setPricingAssignmentDropdownOpen(countRow.id)
