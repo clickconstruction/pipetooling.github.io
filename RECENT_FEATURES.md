@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-10
+last_updated: 2026-02-11
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.29 → v2.4"
+version_range: "v2.30 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.29)"
+  - name: "Latest Version (v2.30)"
     line: ~82
+    description: "Estimator service type filtering"
+  - name: "v2.29"
+    line: ~110
     description: "Price/Labor book enhancements and fixed price feature"
   - name: "Bids System Updates"
     versions: "v2.25, v2.24, v2.23, v2.22"
@@ -46,8 +49,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-2. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+1. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+2. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+3. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
 3. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
 4. [Latest Updates (v2.26)](#latest-updates-v226)
 5. [Latest Updates (v2.25)](#latest-updates-v225)
@@ -76,6 +80,31 @@ when_to_read:
 24. [Email Templates](#email-templates)
 25. [Financial Tracking](#financial-tracking)
 26. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.30)
+
+### Estimator Service Type Filtering
+
+**Date**: 2026-02-11
+
+**Overview**:
+Devs can restrict estimators to specific service types (Plumbing, Electrical, HVAC). Estimators with restrictions see only their allowed service types in Bids and Materials; estimators with no restriction continue to see all service types.
+
+**Implementation**:
+- **Database**: Added `estimator_service_type_ids uuid[]` to `users` (nullable). NULL or empty = all types; non-empty = only those types
+- **RLS**: Helper function `estimator_can_access_service_type()` used in policies for bids, materials, books, and reference tables
+- **Settings**: Manual Add User and Edit User show service type checkboxes when role is estimator
+- **create-user Edge Function**: Accepts optional `service_type_ids` when creating estimators
+- **Materials & Bids pages**: Filter service type tabs/selector to only show allowed types for restricted estimators
+
+**User Flow**:
+1. Dev creates or edits an estimator in Settings
+2. When role is estimator, service type checkboxes appear (Plumbing, Electrical, HVAC)
+3. Leave all unchecked = estimator sees all types (default)
+4. Check specific types = estimator sees only those (e.g., Electrical only)
+5. Restricted estimator sees only their allowed tabs in Bids and Materials
 
 ---
 

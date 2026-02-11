@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-07
+last_updated: 2026-02-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -275,6 +275,14 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 **Access**:
 - Bids, Materials only
 - **Blocked**: Dashboard, Customers, Projects, People, Templates, Calendar, Settings
+
+**Service Type Filtering**:
+- Devs can restrict an estimator to specific service types (e.g., Electrical only, Plumbing only)
+- Set via `estimator_service_type_ids` on the user record when creating or editing an estimator
+- **NULL or empty array** = estimator sees all service types (Plumbing, Electrical, HVAC) — backward compatible
+- **Non-empty array** = estimator sees only those service types; Bids and Materials tabs/selector show only allowed types
+- RLS policies enforce access at query time; frontend hides disallowed service type tabs
+- Configurable in Settings → Manual Add User (when role is estimator) or Edit User (when editing an estimator)
 
 **Permissions**:
 

@@ -69,6 +69,7 @@ export default function Materials() {
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
+  const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
 
   // Part Types state
   const [partTypes, setPartTypes] = useState<PartType[]>([])
@@ -194,7 +195,7 @@ export default function Materials() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role')
+      .select('role, estimator_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -202,8 +203,14 @@ export default function Materials() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
+    const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     setMyRole(role)
+    if (role === 'estimator' && estIds && estIds.length > 0) {
+      setEstimatorServiceTypeIds(estIds)
+    } else {
+      setEstimatorServiceTypeIds(null)
+    }
     if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator') {
       setLoading(false)
       return
@@ -225,9 +232,17 @@ export default function Materials() {
     const types = (data as unknown as ServiceType[]) ?? []
     setServiceTypes(types)
     
-    // Set default to first service type
-    if (types.length > 0 && !selectedServiceTypeId && types[0]) {
-      setSelectedServiceTypeId(types[0].id)
+    // For estimators with restrictions, filter to allowed types
+    const visibleTypes = estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+      ? types.filter((st) => estimatorServiceTypeIds.includes(st.id))
+      : types
+    const firstId = visibleTypes[0]?.id
+    if (firstId) {
+      // Set or adjust selected: use first allowed, or keep current if still valid
+      setSelectedServiceTypeId((prev) => {
+        if (!prev || !visibleTypes.some((st) => st.id === prev)) return firstId
+        return prev
+      })
     }
   }
 
@@ -743,7 +758,7 @@ export default function Materials() {
       }
       loadInitial()
     }
-  }, [myRole])
+  }, [myRole, estimatorServiceTypeIds])
   
   // Reload data when service type changes
   useEffect(() => {
@@ -2282,6 +2297,11 @@ export default function Materials() {
     }
   }
 
+  // For estimators with restrictions, only show allowed service types
+  const visibleServiceTypes = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+    ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
+    : serviceTypes
+
   return (
     <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {error && (
@@ -2291,9 +2311,9 @@ export default function Materials() {
       )}
 
       {/* Service Type Filter */}
-      {serviceTypes.length > 0 && (
+      {visibleServiceTypes.length > 0 && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          {serviceTypes.map(st => (
+          {visibleServiceTypes.map(st => (
             <button
               key={st.id}
               type="button"

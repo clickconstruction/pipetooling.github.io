@@ -1785,6 +1785,7 @@ export type Database = {
         Row: {
           created_at: string | null
           email: string
+          estimator_service_type_ids: string[] | null
           id: string
           last_sign_in_at: string | null
           name: string
@@ -1794,6 +1795,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           email: string
+          estimator_service_type_ids?: string[] | null
           id: string
           last_sign_in_at?: string | null
           name: string
@@ -1803,6 +1805,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           email?: string
+          estimator_service_type_ids?: string[] | null
           id?: string
           last_sign_in_at?: string | null
           name?: string

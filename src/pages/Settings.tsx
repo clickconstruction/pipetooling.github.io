@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -12,6 +12,7 @@ type UserRow = {
   name: string
   role: UserRole
   last_sign_in_at: string | null
+  estimator_service_type_ids?: string[] | null
 }
 
 type PersonRow = {
@@ -122,6 +123,7 @@ export default function Settings() {
   const [manualAddName, setManualAddName] = useState('')
   const [manualAddRole, setManualAddRole] = useState<UserRole>('master_technician')
   const [manualAddPassword, setManualAddPassword] = useState('')
+  const [manualAddServiceTypeIds, setManualAddServiceTypeIds] = useState<string[]>([])
   const [manualAddError, setManualAddError] = useState<string | null>(null)
   const [manualAddSubmitting, setManualAddSubmitting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -160,6 +162,7 @@ export default function Settings() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [editEmail, setEditEmail] = useState('')
   const [editName, setEditName] = useState('')
+  const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
   
   // Service Types state
@@ -475,7 +478,7 @@ export default function Settings() {
     // Load all users
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at')
+      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids')
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
@@ -1583,6 +1586,7 @@ export default function Settings() {
     setEditingUserId(u.id)
     setEditEmail(u.email)
     setEditName(u.name)
+    setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditError(null)
   }
 
@@ -1590,22 +1594,31 @@ export default function Settings() {
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
+    setEditEstimatorServiceTypeIds([])
     setEditError(null)
   }
 
-  async function updateUserProfile(id: string, updates: { name: string; email: string }) {
+  async function updateUserProfile(id: string, updates: { name: string; email: string; estimator_service_type_ids?: string[] | null }) {
     setUpdatingId(id)
     setError(null)
     setEditError(null)
+    const updatePayload: Record<string, unknown> = { name: updates.name, email: updates.email }
+    if (updates.estimator_service_type_ids !== undefined) {
+      updatePayload.estimator_service_type_ids = updates.estimator_service_type_ids?.length ? updates.estimator_service_type_ids : null
+    }
     const { error: e } = await supabase
       .from('users')
-      .update({ name: updates.name, email: updates.email })
+      .update(updatePayload)
       .eq('id', id)
     if (e) {
       setEditError(e.message)
     } else {
       setUsers((prev) =>
-        prev.map((u) => (u.id === id ? { ...u, name: updates.name, email: updates.email } : u)),
+        prev.map((u) =>
+          u.id === id
+            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}) }
+            : u
+        ),
       )
     }
     setUpdatingId(null)
@@ -1615,6 +1628,7 @@ export default function Settings() {
     if (!editingUserId) return
     const trimmedEmail = editEmail.trim()
     const trimmedName = editName.trim()
+    const editingUser = users.find((u) => u.id === editingUserId)
 
     if (!trimmedEmail) {
       setEditError('Email is required.')
@@ -1622,7 +1636,7 @@ export default function Settings() {
     }
 
     if (trimmedName) {
-      const isDuplicate = await checkDuplicateName(trimmedName)
+      const isDuplicate = await checkDuplicateName(trimmedName, editingUserId)
       if (isDuplicate) {
         setEditError(
           `A person or user with the name "${trimmedName}" already exists. Names must be unique.`,
@@ -1631,10 +1645,18 @@ export default function Settings() {
       }
     }
 
-    await updateUserProfile(editingUserId, { name: trimmedName, email: trimmedEmail })
+    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null } = {
+      name: trimmedName,
+      email: trimmedEmail,
+    }
+    if (editingUser?.role === 'estimator') {
+      updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
+    }
+    await updateUserProfile(editingUserId, updates)
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
+    setEditEstimatorServiceTypeIds([])
     setEditError(null)
   }
 
@@ -1706,6 +1728,7 @@ export default function Settings() {
     setManualAddName('')
     setManualAddRole('master_technician')
     setManualAddPassword('')
+    setManualAddServiceTypeIds([])
     setManualAddError(null)
   }
 
@@ -2004,7 +2027,7 @@ export default function Settings() {
     }
   }
 
-  async function checkDuplicateName(nameToCheck: string): Promise<boolean> {
+  async function checkDuplicateName(nameToCheck: string, excludeUserId?: string): Promise<boolean> {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
     
@@ -2013,14 +2036,14 @@ export default function Settings() {
       .from('people')
       .select('id, name')
     
-    // Check in users table
+    // Check in users table (exclude current user when editing)
     const { data: usersData } = await supabase
       .from('users')
       .select('id, name')
     
-    // Case-insensitive comparison
+    // Case-insensitive comparison; exclude user being edited from duplicate check
     const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false
-    const hasDuplicateInUsers = usersData?.some(u => u.name?.toLowerCase() === trimmedName) ?? false
+    const hasDuplicateInUsers = usersData?.some(u => (u.id !== excludeUserId) && u.name?.toLowerCase() === trimmedName) ?? false
     
     return hasDuplicateInPeople || hasDuplicateInUsers
   }
@@ -2041,13 +2064,17 @@ export default function Settings() {
       }
     }
     
+    const body: Record<string, unknown> = {
+      email: manualAddEmail.trim(),
+      password: manualAddPassword,
+      role: manualAddRole,
+      name: trimmedName || undefined,
+    }
+    if (manualAddRole === 'estimator' && manualAddServiceTypeIds.length > 0) {
+      body.service_type_ids = manualAddServiceTypeIds
+    }
     const { data, error: eFn } = await supabase.functions.invoke('create-user', {
-      body: {
-        email: manualAddEmail.trim(),
-        password: manualAddPassword,
-        role: manualAddRole,
-        name: trimmedName || undefined,
-      },
+      body,
     })
     setManualAddSubmitting(false)
     if (eFn) {
@@ -2218,13 +2245,15 @@ export default function Settings() {
                   <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Service types</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <React.Fragment key={u.id}>
+                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       {editingUserId === u.id ? (
                         <input
@@ -2262,6 +2291,16 @@ export default function Settings() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                      {u.role === 'estimator'
+                        ? (u.estimator_service_type_ids?.length
+                          ? (u.estimator_service_type_ids
+                              .map((id) => serviceTypes.find((st) => st.id === id)?.name)
+                              .filter(Boolean)
+                              .join(', ') || '—')
+                          : 'All')
+                        : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -2326,6 +2365,36 @@ export default function Settings() {
                       </div>
                     </td>
                   </tr>
+                  {editingUserId === u.id && u.role === 'estimator' && (
+                    <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types</div>
+                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                            {serviceTypes.map((st) => (
+                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editEstimatorServiceTypeIds.includes(st.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditEstimatorServiceTypeIds((prev) => [...prev, st.id])
+                                    } else {
+                                      setEditEstimatorServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                                    }
+                                  }}
+                                  disabled={updatingId === u.id}
+                                />
+                                {st.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -2874,6 +2943,31 @@ export default function Settings() {
                   ))}
                 </select>
               </div>
+              {manualAddRole === 'estimator' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all service types. Select specific types to restrict.</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                    {serviceTypes.map((st) => (
+                      <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={manualAddServiceTypeIds.includes(st.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setManualAddServiceTypeIds((prev) => [...prev, st.id])
+                            } else {
+                              setManualAddServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                            }
+                          }}
+                          disabled={manualAddSubmitting}
+                        />
+                        {st.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="manual-name" style={{ display: 'block', marginBottom: 4 }}>Name (optional)</label>
                 <input

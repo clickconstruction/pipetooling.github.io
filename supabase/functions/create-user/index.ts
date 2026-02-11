@@ -12,6 +12,8 @@ interface CreateUserRequest {
   password: string
   role: string
   name?: string
+  /** For estimator role: IDs of service types this estimator can access. Omit or empty = all. */
+  service_type_ids?: string[]
 }
 
 serve(async (req) => {
@@ -74,7 +76,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, role, name }: CreateUserRequest = await req.json()
+    const { email, password, role, name, service_type_ids }: CreateUserRequest = await req.json()
 
     if (!email || !password || !role) {
       return new Response(
@@ -90,6 +92,30 @@ serve(async (req) => {
         JSON.stringify({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
+    }
+
+    // Validate and resolve estimator_service_type_ids when role is estimator
+    let estimatorServiceTypeIds: string[] | null = null
+    if (role === 'estimator' && service_type_ids && service_type_ids.length > 0) {
+      const { data: validTypes, error: typesError } = await supabase
+        .from('service_types')
+        .select('id')
+        .in('id', service_type_ids)
+      if (typesError) {
+        return new Response(
+          JSON.stringify({ error: `Error validating service types: ${typesError.message}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const validIds = (validTypes ?? []).map((r: { id: string }) => r.id)
+      const invalidIds = service_type_ids.filter((id) => !validIds.includes(id))
+      if (invalidIds.length > 0) {
+        return new Response(
+          JSON.stringify({ error: `Invalid service type IDs: ${invalidIds.join(', ')}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      estimatorServiceTypeIds = validIds
     }
 
     // Check if user already exists
@@ -147,14 +173,18 @@ serve(async (req) => {
     }
 
     // Create entry in public.users (trigger should handle this, but we'll do it explicitly to set name)
+    const userRecord: Record<string, unknown> = {
+      id: newAuthUser.user.id,
+      email: email.trim().toLowerCase(),
+      role: role,
+      name: name?.trim() || null,
+    }
+    if (role === 'estimator' && estimatorServiceTypeIds !== null) {
+      userRecord.estimator_service_type_ids = estimatorServiceTypeIds
+    }
     const { error: createUserError } = await adminClient
       .from('users')
-      .upsert({
-        id: newAuthUser.user.id,
-        email: email.trim().toLowerCase(),
-        role: role,
-        name: name?.trim() || null,
-      }, {
+      .upsert(userRecord, {
         onConflict: 'id',
       })
 
@@ -168,16 +198,20 @@ serve(async (req) => {
       )
     }
 
+    const userResponse: Record<string, unknown> = {
+      id: newAuthUser.user.id,
+      email: newAuthUser.user.email,
+      role: role,
+      name: name?.trim() || null,
+    }
+    if (role === 'estimator' && estimatorServiceTypeIds !== null) {
+      userResponse.estimator_service_type_ids = estimatorServiceTypeIds
+    }
     return new Response(
       JSON.stringify({
         success: true,
         message: `User ${email.trim()} created successfully`,
-        user: {
-          id: newAuthUser.user.id,
-          email: newAuthUser.user.email,
-          role: role,
-          name: name?.trim() || null,
-        },
+        user: userResponse,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
