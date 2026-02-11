@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
 import NewCustomerForm from '../components/NewCustomerForm'
+import { PartFormModal } from '../components/PartFormModal'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -15,6 +16,7 @@ type BidCountRow = Database['public']['Tables']['bids_count_rows']['Row']
 type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
+type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type CostEstimate = Database['public']['Tables']['cost_estimates']['Row']
 type CostEstimateLaborRow = Database['public']['Tables']['cost_estimate_labor_rows']['Row']
 type FixtureLaborDefault = Database['public']['Tables']['fixture_labor_defaults']['Row']
@@ -31,7 +33,7 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
-type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number }
+type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number; isSaved: boolean }
 type DraftPO = { id: string; name: string }
 type CostEstimatePO = { id: string; name: string; stage: string | null }
 
@@ -511,6 +513,49 @@ export default function Bids() {
     return match?.id || null
   }
 
+  // Helper function to get or auto-create fixture type
+  async function getOrCreateFixtureTypeId(name: string): Promise<string | null> {
+    const trimmedName = name.trim()
+    if (!trimmedName) return null
+    if (!selectedServiceTypeId) return null
+    
+    // Check if it already exists (case-insensitive match)
+    const existingId = getFixtureTypeIdByName(trimmedName)
+    if (existingId) return existingId
+    
+    // Auto-create new fixture type
+    const maxSeqResult = await supabase
+      .from('fixture_types')
+      .select('sequence_order')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: false })
+      .limit(1)
+      .single()
+    
+    const nextSeq = (maxSeqResult.data?.sequence_order ?? 0) + 1
+    
+    const { data, error } = await supabase
+      .from('fixture_types')
+      .insert({
+        service_type_id: selectedServiceTypeId,
+        name: trimmedName,
+        category: 'Other',
+        sequence_order: nextSeq
+      })
+      .select('id')
+      .single()
+    
+    if (error || !data) {
+      console.error('Failed to create fixture type:', error)
+      return null
+    }
+    
+    // Reload fixture types to update autocomplete suggestions
+    await loadFixtureTypes()
+    
+    return data.id
+  }
+
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
@@ -637,7 +682,23 @@ export default function Bids() {
   const [takeoffNewItemPartDropdownOpen, setTakeoffNewItemPartDropdownOpen] = useState(false)
   const [takeoffNewItemTemplateSearchQuery, setTakeoffNewItemTemplateSearchQuery] = useState('')
   const [takeoffNewItemTemplateDropdownOpen, setTakeoffNewItemTemplateDropdownOpen] = useState(false)
+  
+  // Part Form Modal state
+  const [bidsPartFormOpen, setBidsPartFormOpen] = useState(false)
+  const [bidsPartFormInitialName, setBidsPartFormInitialName] = useState('')
+  const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
+  const [partTypes, setPartTypes] = useState<PartType[]>([])
   const [savingTakeoffNewTemplate, setSavingTakeoffNewTemplate] = useState(false)
+
+  // Add Parts to Template Modal state
+  const [addPartsToTemplateModalOpen, setAddPartsToTemplateModalOpen] = useState(false)
+  const [addPartsToTemplateId, setAddPartsToTemplateId] = useState<string | null>(null)
+  const [addPartsToTemplateName, setAddPartsToTemplateName] = useState<string | null>(null)
+  const [addPartsSelectedPartId, setAddPartsSelectedPartId] = useState('')
+  const [addPartsQuantity, setAddPartsQuantity] = useState('1')
+  const [addPartsSearchQuery, setAddPartsSearchQuery] = useState('')
+  const [addPartsDropdownOpen, setAddPartsDropdownOpen] = useState(false)
+  const [savingTemplateParts, setSavingTemplateParts] = useState(false)
 
   // Cost Estimate tab
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
@@ -732,6 +793,8 @@ export default function Bids() {
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
   const [coverLetterBidSubmissionQuickAddValue, setCoverLetterBidSubmissionQuickAddValue] = useState('')
   const [applyingBidValue, setApplyingBidValue] = useState(false)
+  const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
+  const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
 
   /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, and Submission so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
@@ -835,6 +898,39 @@ export default function Bids() {
     }
   }
 
+  async function loadPartTypes() {
+    if (!selectedServiceTypeId) {
+      setPartTypes([])
+      return
+    }
+    
+    const { data, error } = await supabase
+      .from('part_types')
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: true })
+    
+    if (error) {
+      console.error('Failed to load part types:', error)
+      setPartTypes([])
+      return
+    }
+    
+    setPartTypes((data as unknown as PartType[]) ?? [])
+  }
+
+  async function loadSupplyHouses() {
+    const { data, error } = await supabase
+      .from('supply_houses')
+      .select('*')
+      .order('name')
+    if (error) {
+      console.error('Failed to load supply houses:', error)
+      return
+    }
+    setSupplyHouses((data as SupplyHouse[]) ?? [])
+  }
+
   async function loadBids(): Promise<BidWithBuilder[]> {
     const { data, error } = await supabase
       .from('bids')
@@ -932,7 +1028,53 @@ export default function Bids() {
     }
     const rows = (data as BidCountRow[]) ?? []
     setTakeoffCountRows(rows)
-    setTakeoffMappings(rows.map((row) => ({ id: crypto.randomUUID(), countRowId: row.id, templateId: '', stage: 'rough_in' as TakeoffStage, quantity: Number(row.count) })))
+    
+    // Load existing template mappings from database
+    const { data: mappingsData, error: mappingsError } = await supabase
+      .from('bids_takeoff_template_mappings')
+      .select('*')
+      .eq('bid_id', bidId)
+      .order('sequence_order', { ascending: true })
+    
+    if (mappingsError) {
+      console.error('Failed to load takeoff mappings:', mappingsError)
+      // Continue with empty mappings rather than blocking
+    }
+    
+    const savedMappings = (mappingsData as any[] | null) ?? []
+    
+    // Build mappings: use saved mappings where they exist, create new ones for rows without mappings
+    const mappings: TakeoffMapping[] = []
+    
+    for (const row of rows) {
+      const saved = savedMappings.filter(m => m.count_row_id === row.id)
+      
+      if (saved.length > 0) {
+        // Use existing mappings from database
+        for (const s of saved) {
+          mappings.push({
+            id: s.id,
+            countRowId: s.count_row_id,
+            templateId: s.template_id,
+            stage: s.stage as TakeoffStage,
+            quantity: s.quantity,
+            isSaved: true
+          })
+        }
+      } else {
+        // Create new empty mapping for rows without any
+        mappings.push({
+          id: crypto.randomUUID(),
+          countRowId: row.id,
+          templateId: '',
+          stage: 'rough_in' as TakeoffStage,
+          quantity: Number(row.count),
+          isSaved: false
+        })
+      }
+    }
+    
+    setTakeoffMappings(mappings)
   }
 
   async function loadMaterialTemplates() {
@@ -1024,8 +1166,103 @@ export default function Bids() {
     setTakeoffNewItemTemplateSearchQuery('')
   }
 
+  // Add Parts to Existing Template Modal Functions
+  function openAddPartsToTemplateModal(templateId: string, templateName: string) {
+    setAddPartsToTemplateId(templateId)
+    setAddPartsToTemplateName(templateName)
+    setAddPartsSelectedPartId('')
+    setAddPartsQuantity('1')
+    setAddPartsSearchQuery('')
+    setAddPartsDropdownOpen(false)
+    setAddPartsToTemplateModalOpen(true)
+  }
+
+  function closeAddPartsToTemplateModal() {
+    setAddPartsToTemplateModalOpen(false)
+    setAddPartsToTemplateId(null)
+    setAddPartsToTemplateName(null)
+    setAddPartsSelectedPartId('')
+    setAddPartsQuantity('1')
+    setAddPartsSearchQuery('')
+    setAddPartsDropdownOpen(false)
+  }
+
+  async function savePartsToTemplate() {
+    if (!addPartsToTemplateId || !addPartsSelectedPartId) return
+    
+    setSavingTemplateParts(true)
+    setError(null)
+
+    const qty = Math.max(1, parseInt(addPartsQuantity, 10) || 1)
+
+    // Get the current max sequence_order for this template
+    const { data: existingItems } = await supabase
+      .from('material_template_items')
+      .select('sequence_order')
+      .eq('template_id', addPartsToTemplateId)
+      .order('sequence_order', { ascending: false })
+      .limit(1)
+
+    const maxOrder = existingItems && existingItems.length > 0 ? existingItems[0].sequence_order : 0
+
+    const { error: insertError } = await supabase
+      .from('material_template_items')
+      .insert({
+        template_id: addPartsToTemplateId,
+        item_type: 'part',
+        part_id: addPartsSelectedPartId,
+        nested_template_id: null,
+        quantity: qty,
+        sequence_order: maxOrder + 1,
+        notes: null,
+      })
+
+    if (insertError) {
+      setError(insertError.message)
+      setSavingTemplateParts(false)
+      return
+    }
+
+    // Reload template previews
+    await loadMaterialTemplates()
+    
+    // Reload the preview for this specific template
+    setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [addPartsToTemplateId]: 'loading' }))
+    getTemplatePartsPreview(supabase, addPartsToTemplateId)
+      .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [addPartsToTemplateId]: res })))
+      .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [addPartsToTemplateId]: null })))
+    
+    setSavingTemplateParts(false)
+    closeAddPartsToTemplateModal()
+  }
+
   function removeTakeoffNewTemplateItem(index: number) {
     setTakeoffNewTemplateItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  async function handleBidsPartCreated(part: MaterialPart) {
+    // Reload parts list for the takeoff modal
+    const { data } = await supabase
+      .from('material_parts')
+      .select('*, part_types(*)')
+      .order('name', { ascending: true })
+    
+    if (data) {
+      setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+      
+      // Auto-select the newly created part for whichever modal is open
+      if (addPartsToTemplateModalOpen) {
+        setAddPartsSelectedPartId(part.id)
+        setAddPartsSearchQuery('')
+        setAddPartsDropdownOpen(false)
+      } else {
+        setTakeoffNewItemPartId(part.id)
+        setTakeoffNewItemPartSearchQuery('')
+        setTakeoffNewItemPartDropdownOpen(false)
+      }
+    }
+    
+    setBidsPartFormOpen(false)
   }
 
   async function loadDraftPOs() {
@@ -1525,6 +1762,25 @@ export default function Bids() {
     else await loadBidPricingAssignments(bidId, versionId)
   }
 
+  async function togglePricingAssignmentFixedPrice(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    
+    const existing = bidPricingAssignments.find(
+      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId
+    )
+    if (!existing) return
+    
+    const { error: err } = await supabase
+      .from('bid_pricing_assignments')
+      .update({ is_fixed_price: !existing.is_fixed_price })
+      .eq('id', existing.id)
+    
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+  }
+
   function openNewPricingVersion() {
     setEditingPricingVersion(null)
     setPricingVersionNameInput('')
@@ -1630,6 +1886,7 @@ export default function Bids() {
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setError(null)
     setPricingEntryFormOpen(true)
   }
 
@@ -1640,6 +1897,7 @@ export default function Bids() {
     setPricingEntryTopOut(String(entry.top_out_price))
     setPricingEntryTrimSet(String(entry.trim_set_price))
     setPricingEntryTotal(String(entry.total_price))
+    setError(null)
     setPricingEntryFormOpen(true)
   }
 
@@ -1651,24 +1909,36 @@ export default function Bids() {
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setError(null)
   }
 
   async function savePricingEntry(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedPricingVersionId) return
-    const fixtureName = pricingEntryFixtureName.trim()
-    if (!fixtureName) return
-    const fixtureTypeId = getFixtureTypeIdByName(fixtureName)
-    if (!fixtureTypeId) {
-      setError(`Fixture type "${fixtureName}" not found. Please select a valid fixture type.`)
+    if (!selectedPricingVersionId) {
+      setError('No price book version selected')
       return
     }
+    const fixtureName = pricingEntryFixtureName.trim()
+    if (!fixtureName) {
+      setError('Please enter a fixture type')
+      return
+    }
+    
+    setSavingPricingEntry(true)
+    setError(null)
+    
+    // Get or auto-create fixture type
+    const fixtureTypeId = await getOrCreateFixtureTypeId(fixtureName)
+    if (!fixtureTypeId) {
+      setError(`Failed to create or find fixture type "${fixtureName}"`)
+      setSavingPricingEntry(false)
+      return
+    }
+    
     const rough = parseFloat(pricingEntryRoughIn) || 0
     const top = parseFloat(pricingEntryTopOut) || 0
     const trim = parseFloat(pricingEntryTrimSet) || 0
     const total = parseFloat(pricingEntryTotal) || 0
-    setSavingPricingEntry(true)
-    setError(null)
     if (editingPricingEntry) {
       const { error: err } = await supabase
         .from('price_book_entries')
@@ -1769,6 +2039,7 @@ export default function Bids() {
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
+    setError(null)
     setLaborEntryFormOpen(true)
   }
 
@@ -1779,6 +2050,7 @@ export default function Bids() {
     setLaborEntryRoughIn(String(entry.rough_in_hrs))
     setLaborEntryTopOut(String(entry.top_out_hrs))
     setLaborEntryTrimSet(String(entry.trim_set_hrs))
+    setError(null)
     setLaborEntryFormOpen(true)
   }
 
@@ -1790,18 +2062,32 @@ export default function Bids() {
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
+    setError(null)
   }
 
   async function saveLaborEntry(e: React.FormEvent) {
     e.preventDefault()
-    if (!laborBookEntriesVersionId) return
-    const fixtureName = laborEntryFixtureName.trim()
-    if (!fixtureName) return
-    const fixtureTypeId = getFixtureTypeIdByName(fixtureName)
-    if (!fixtureTypeId) {
-      setError(`Fixture type "${fixtureName}" not found. Please select a valid fixture type.`)
+    if (!laborBookEntriesVersionId) {
+      setError('No labor book version selected')
       return
     }
+    const fixtureName = laborEntryFixtureName.trim()
+    if (!fixtureName) {
+      setError('Please enter a fixture type')
+      return
+    }
+    
+    setSavingLaborEntry(true)
+    setError(null)
+    
+    // Get or auto-create fixture type
+    const fixtureTypeId = await getOrCreateFixtureTypeId(fixtureName)
+    if (!fixtureTypeId) {
+      setError(`Failed to create or find fixture type "${fixtureName}"`)
+      setSavingLaborEntry(false)
+      return
+    }
+    
     const aliasNames = laborEntryAliasNames
       .split(',')
       .map((s) => s.trim())
@@ -1809,8 +2095,6 @@ export default function Bids() {
     const rough = parseFloat(laborEntryRoughIn) || 0
     const top = parseFloat(laborEntryTopOut) || 0
     const trim = parseFloat(laborEntryTrimSet) || 0
-    setSavingLaborEntry(true)
-    setError(null)
     if (editingLaborEntry) {
       const { error: err } = await supabase
         .from('labor_book_entries')
@@ -2393,7 +2677,7 @@ export default function Bids() {
     win.onafterprint = () => win.close()
   }
 
-  function printCostEstimatePage() {
+  async function printCostEstimatePage() {
     if (!selectedBidForCostEstimate) return
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Cost Estimate'
@@ -2404,6 +2688,48 @@ export default function Bids() {
     const matTop = costEstimateMaterialTotalTopOut ?? 0
     const matTrim = costEstimateMaterialTotalTrimSet ?? 0
     const totalMaterials = matRough + matTop + matTrim
+    
+    // Load PO items for each stage
+    const loadPOItems = async (poId: string | null | undefined) => {
+      if (!poId) return []
+      const { data, error } = await supabase
+        .from('purchase_order_items')
+        .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
+        .eq('purchase_order_id', poId)
+        .order('sequence_order', { ascending: true })
+      if (error) return []
+      const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
+      return rows.map(row => ({
+        part_name: row.material_parts?.name ?? '—',
+        quantity: row.quantity,
+        price_at_time: row.price_at_time,
+        template_name: row.source_template?.name ?? null
+      }))
+    }
+    
+    const [roughItems, topItems, trimItems] = await Promise.all([
+      loadPOItems(costEstimate?.purchase_order_id_rough_in),
+      loadPOItems(costEstimate?.purchase_order_id_top_out),
+      loadPOItems(costEstimate?.purchase_order_id_trim_set)
+    ])
+    
+    // Generate PO summary HTML
+    const generatePOSummary = (items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }>) => {
+      if (items.length === 0) return '<p style="margin:0.5rem 0; font-size:0.875rem; color:#6b7280;">No items in this PO.</p>'
+      const tableRows = items.map(item => {
+        const qty = item.quantity.toLocaleString('en-US')
+        const price = item.price_at_time.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        const itemTotal = (item.quantity * item.price_at_time).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        return `<tr><td style="padding:0.25rem 0.5rem">${escapeHtml(item.part_name)}</td><td style="padding:0.25rem 0.5rem; text-align:center">${qty}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${price}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${itemTotal}</td></tr>`
+      }).join('')
+      const total = items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0)
+      const totalFormatted = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      return `
+        <table style="width:100%; border-collapse:collapse; margin:0.5rem 0; font-size:0.875rem">
+          <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Price</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
+          <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Subtotal:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${totalFormatted}</td></tr></tbody>
+        </table>`
+    }
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
     const totalHours = costEstimateLaborRows.reduce(
       (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
@@ -2436,19 +2762,29 @@ export default function Bids() {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
   body { font-family: sans-serif; margin: 1in; }
   h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+  h2 { font-size: 1rem; margin: 1rem 0 0.5rem; text-align: center; }
   table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
   th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
   th { background: #f5f5f5; }
   .summary { margin-top: 1rem; padding: 0.75rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; }
   .summary p { margin: 0.25rem 0; text-align: right; }
+  .po-section { margin-bottom: 1rem; padding: 0.75rem; background: #fafafa; border-left: 3px solid #3b82f6; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>
   <h1>${title}</h1>
   <h2>Materials</h2>
-  <p><strong>PO (Rough In)</strong> ${poRoughName} — $${formatCurrency(matRough)}</p>
-  <p><strong>PO (Top Out)</strong> ${poTopName} — $${formatCurrency(matTop)}</p>
-  <p><strong>PO (Trim Set)</strong> ${poTrimName} — $${formatCurrency(matTrim)}</p>
+  <div class="po-section">
+    <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Rough In)</strong> ${poRoughName} — $${formatCurrency(matRough)}</p>
+    ${generatePOSummary(roughItems)}
+  </div>
+  <div class="po-section">
+    <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Top Out)</strong> ${poTopName} — $${formatCurrency(matTop)}</p>
+    ${generatePOSummary(topItems)}
+  </div>
+  <div class="po-section">
+    <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Trim Set)</strong> ${poTrimName} — $${formatCurrency(matTrim)}</p>
+    ${generatePOSummary(trimItems)}
+  </div>
   <p style="font-weight:600; text-align:right;">Materials Total: $${formatCurrency(totalMaterials)}</p>
   <h2>Labor</h2>
   <p>Labor rate: $${formatCurrency(rate)}/hr</p>
@@ -2461,7 +2797,7 @@ export default function Bids() {
   <div class="summary">
     <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
     <p>Labor total: $${formatCurrency(laborCost)}</p>
-    <p style="font-weight:700; font-size:1.125rem;">Grand total: $${formatCurrency(grandTotal)}</p>
+    <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>
 </body></html>`
     const win = window.open('', '_blank')
@@ -2711,7 +3047,8 @@ export default function Bids() {
         const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
         const cost = laborCost + allocatedMaterials
         const unitPrice = entry ? Number(entry.total_price) : 0
-        const revenue = count * unitPrice
+        const isFixedPrice = assignment?.is_fixed_price ?? false
+        const revenue = isFixedPrice ? unitPrice : count * unitPrice
         totalRevenue += revenue
         const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
         return { countRow, entry, count, cost, revenue, margin }
@@ -2811,7 +3148,8 @@ export default function Bids() {
           const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
           const cost = laborCost + allocatedMaterials
           const unitPrice = entry ? Number(entry.total_price) : 0
-          const revenue = count * unitPrice
+          const isFixedPrice = assignment?.is_fixed_price ?? false
+          const revenue = isFixedPrice ? unitPrice : count * unitPrice
           totalRevenue += revenue
           const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
           return { countRow, entry, count, cost, revenue, margin }
@@ -3269,9 +3607,12 @@ export default function Bids() {
       countRows.forEach((countRow) => {
         const assignment = assignments.find((a) => a.count_row_id === countRow.id)
         const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const count = Number(countRow.count)
         const unitPrice = entry ? Number(entry.total_price) : 0
-        coverLetterRevenue += Number(countRow.count) * unitPrice
-        fixtureRows.push({ fixture: countRow.fixture ?? '', count: Number(countRow.count) })
+        const isFixedPrice = assignment?.is_fixed_price ?? false
+        const revenue = isFixedPrice ? unitPrice : count * unitPrice
+        coverLetterRevenue += revenue
+        fixtureRows.push({ fixture: countRow.fixture ?? '', count: count })
       })
     }
     const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
@@ -3760,22 +4101,134 @@ export default function Bids() {
   }
 
   function setTakeoffMapping(mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) {
-    setTakeoffMappings((prev) =>
-      prev.map((m) =>
-        m.id === mappingId
-          ? { ...m, ...(updates.templateId !== undefined && { templateId: updates.templateId }), ...(updates.stage !== undefined && { stage: updates.stage }), ...(updates.quantity !== undefined && { quantity: updates.quantity }) }
-          : m
+    setTakeoffMappings((prev) => {
+      const originalMapping = prev.find(m => m.id === mappingId)
+      
+      // Check if we're changing template or stage on a saved mapping
+      // If so, we need to delete the old one and insert a new one
+      const isChangingUniqueFields = originalMapping?.isSaved && (
+        (updates.templateId !== undefined && updates.templateId !== originalMapping.templateId) ||
+        (updates.stage !== undefined && updates.stage !== originalMapping.stage)
       )
-    )
+      
+      let mappingToSave: TakeoffMapping | null = null
+      
+      const updated = prev.map((m) => {
+        if (m.id === mappingId) {
+          const updatedMapping = { 
+            ...m, 
+            ...(updates.templateId !== undefined && { templateId: updates.templateId }), 
+            ...(updates.stage !== undefined && { stage: updates.stage }), 
+            ...(updates.quantity !== undefined && { quantity: updates.quantity }) 
+          }
+          
+          // If changing unique constraint fields, mark as not saved and generate new ID
+          if (isChangingUniqueFields) {
+            mappingToSave = { ...updatedMapping, isSaved: false, id: crypto.randomUUID() }
+            return mappingToSave
+          }
+          
+          mappingToSave = updatedMapping
+          return updatedMapping
+        }
+        return m
+      })
+      
+      // Delete old mapping if we're changing unique fields
+      if (isChangingUniqueFields && originalMapping) {
+        supabase
+          .from('bids_takeoff_template_mappings')
+          .delete()
+          .eq('id', originalMapping.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Failed to delete old takeoff mapping:', error)
+            }
+          })
+      }
+      
+      // Save the updated mapping to database
+      if (mappingToSave) {
+        saveTakeoffMapping(mappingToSave)
+      }
+      
+      return updated
+    })
+  }
+
+  async function saveTakeoffMapping(mapping: TakeoffMapping) {
+    if (!selectedBidForTakeoff?.id || !mapping.templateId) return
+    
+    const mappingData: any = {
+      bid_id: selectedBidForTakeoff.id,
+      count_row_id: mapping.countRowId,
+      template_id: mapping.templateId,
+      stage: mapping.stage,
+      quantity: mapping.quantity,
+      sequence_order: takeoffMappings.filter(m => m.countRowId === mapping.countRowId).indexOf(mapping)
+    }
+    
+    // Include ID if this is an existing mapping to ensure we update the correct record
+    if (mapping.isSaved) {
+      mappingData.id = mapping.id
+    }
+    
+    // Use upsert to handle both insert and update cases
+    // When ID is provided, it updates that specific record
+    // When ID is not provided and there's a conflict on the unique constraint, it updates the conflicting record
+    const { data, error } = await supabase
+      .from('bids_takeoff_template_mappings')
+      .upsert(mappingData, { 
+        onConflict: 'count_row_id,template_id,stage',
+        ignoreDuplicates: false 
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Failed to save takeoff mapping:', error)
+      setError(`Failed to save template assignment: ${error.message}`)
+    } else if (data && !mapping.isSaved) {
+      // Update local state with database ID for newly created mappings
+      setTakeoffMappings(prev => prev.map(m => 
+        m.id === mapping.id ? { ...m, id: data.id, isSaved: true } : m
+      ))
+    }
   }
 
   function addTakeoffTemplate(countRowId: string, count?: number) {
     const quantity = count != null && !Number.isNaN(Number(count)) ? Math.max(1, Number(count)) : 1
-    setTakeoffMappings((prev) => [...prev, { id: crypto.randomUUID(), countRowId, templateId: '', stage: 'rough_in', quantity }])
+    const newMapping: TakeoffMapping = { 
+      id: crypto.randomUUID(), 
+      countRowId, 
+      templateId: '', 
+      stage: 'rough_in', 
+      quantity,
+      isSaved: false
+    }
+    setTakeoffMappings((prev) => [...prev, newMapping])
+    // Don't save yet - wait until user selects a template
   }
 
-  function removeTakeoffMapping(mappingId: string) {
+  async function removeTakeoffMapping(mappingId: string) {
+    const mapping = takeoffMappings.find(m => m.id === mappingId)
+    
+    // Remove from local state first for immediate UI update
     setTakeoffMappings((prev) => prev.filter((m) => m.id !== mappingId))
+    
+    // If it was saved to database, delete it
+    if (mapping?.isSaved) {
+      const { error } = await supabase
+        .from('bids_takeoff_template_mappings')
+        .delete()
+        .eq('id', mappingId)
+      
+      if (error) {
+        console.error('Failed to delete takeoff mapping:', error)
+        // Revert local change on error
+        setTakeoffMappings((prev) => [...prev, mapping])
+      }
+    }
   }
 
   async function createPOFromTakeoff() {
@@ -3937,7 +4390,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions()])
+        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions()])
       }
       loadForServiceType()
     }
@@ -4104,7 +4557,7 @@ export default function Bids() {
   }, [takeoffExistingPOId])
 
   useEffect(() => {
-    if (!takeoffAddTemplateModalOpen) return
+    if (!takeoffAddTemplateModalOpen && !addPartsToTemplateModalOpen) return
     let cancelled = false
     supabase.from('material_parts').select('*, part_types(*)').order('name', { ascending: true }).then(({ data, error }) => {
       if (cancelled) return
@@ -4115,7 +4568,7 @@ export default function Bids() {
       setTakeoffAddTemplateParts((data as MaterialPart[]) ?? [])
     })
     return () => { cancelled = true }
-  }, [takeoffAddTemplateModalOpen])
+  }, [takeoffAddTemplateModalOpen, addPartsToTemplateModalOpen])
 
   useEffect(() => {
     if (activeTab === 'takeoffs') {
@@ -4540,6 +4993,9 @@ export default function Bids() {
       if (selectedBidForCostEstimate?.id === bidId) setSelectedBidForCostEstimate(fresh)
       if (selectedBidForPricing?.id === bidId) setSelectedBidForPricing(fresh)
     }
+    // Show success message
+    setBidSubmissionQuickAddSuccess(bidId)
+    setTimeout(() => setBidSubmissionQuickAddSuccess(null), 3000)
     setCoverLetterBidSubmissionQuickAddBidId(null)
     setCoverLetterBidSubmissionQuickAddValue('')
   }
@@ -4588,6 +5044,9 @@ export default function Bids() {
     } else {
       // Reload bids to show updated value
       await loadBids()
+      // Show success message
+      setBidValueAppliedSuccess(true)
+      setTimeout(() => setBidValueAppliedSuccess(false), 3000)
     }
     setApplyingBidValue(false)
   }
@@ -5277,7 +5736,29 @@ export default function Bids() {
                                 if (mapping.templateId) {
                                   if (preview === undefined || preview === 'loading') partsCell = 'Loading…'
                                   else if (preview === null) partsCell = 'Error loading parts'
-                                  else if (!Array.isArray(preview) || preview.length === 0) partsCell = 'No parts'
+                                  else if (!Array.isArray(preview) || preview.length === 0) partsCell = (
+                                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                      No parts{' '}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          openAddPartsToTemplateModal(mapping.templateId!, templateName!)
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          background: '#3b82f6',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: 4,
+                                          cursor: 'pointer',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500
+                                        }}
+                                      >
+                                        Add Parts
+                                      </button>
+                                    </span>
+                                  )
                                   else {
                                     const short = preview.slice(0, PREVIEW_MAX_PARTS).map((p) => `${p.part_name} (${p.quantity})`).join(', ')
                                     const rest = preview.length > PREVIEW_MAX_PARTS ? preview.length - PREVIEW_MAX_PARTS : 0
@@ -5574,7 +6055,7 @@ export default function Bids() {
                           </div>
                           {takeoffNewItemPartDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onClick={() => { setBidsPartFormInitialName(takeoffNewItemPartSearchQuery.trim()); setBidsPartFormOpen(true); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -5667,7 +6148,30 @@ export default function Bids() {
                   const preview = takeoffTemplatePreviewCache[takeoffPreviewModalTemplateId]
                   if (preview === 'loading') return <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
                   if (preview === null) return <p style={{ margin: 0, color: '#b91c1c' }}>Error loading parts.</p>
-                  if (!preview || preview.length === 0) return <p style={{ margin: 0, color: '#6b7280' }}>No parts in this template.</p>
+                  if (!preview || preview.length === 0) return (
+                    <div>
+                      <p style={{ margin: 0, marginBottom: '1rem', color: '#6b7280' }}>No parts in this template.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          openAddPartsToTemplateModal(takeoffPreviewModalTemplateId, takeoffPreviewModalTemplateName!)
+                          setTakeoffPreviewModalTemplateId(null)
+                          setTakeoffPreviewModalTemplateName(null)
+                        }}
+                        style={{
+                          padding: '0.5rem 1rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontWeight: 500
+                        }}
+                      >
+                        Add Parts
+                      </button>
+                    </div>
+                  )
                   return (
                     <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                       {preview.map((p, i) => (
@@ -6019,7 +6523,7 @@ export default function Bids() {
                   )}
                   <button
                     type="button"
-                    onClick={() => printCostEstimatePage()}
+                    onClick={() => void printCostEstimatePage()}
                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Print
@@ -6382,15 +6886,15 @@ export default function Bids() {
                       )
                     })()}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-<button
-                    type="button"
-                    onClick={saveCostEstimate}
-                    disabled={savingCostEstimate || !costEstimate}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer' }}
-                  >
-                    {savingCostEstimate ? 'Saving…' : 'Save'}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={saveCostEstimate}
+                      disabled={savingCostEstimate || !costEstimate}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer' }}
+                    >
+                      {savingCostEstimate ? 'Saving…' : 'Save'}
+                    </button>
                   </div>
                 </>
               )}
@@ -6772,15 +7276,28 @@ export default function Bids() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
+                {error && (
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                    {error}
+                  </div>
+                )}
                 <form onSubmit={saveLaborEntry}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in *</label>
                   <input
                     type="text"
+                    list="labor-fixture-types"
                     value={laborEntryFixtureName}
                     onChange={(e) => setLaborEntryFixtureName(e.target.value)}
+                    required
+                    placeholder="Type or select fixture type..."
+                    autoComplete="off"
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                    placeholder="e.g. Toilet"
                   />
+                  <datalist id="labor-fixture-types">
+                    {fixtureTypes.map(ft => (
+                      <option key={ft.id} value={ft.name} />
+                    ))}
+                  </datalist>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
                   <input
                     type="text"
@@ -7006,11 +7523,12 @@ export default function Bids() {
                   const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
                   const cost = laborCost + allocatedMaterials
                   const unitPrice = entry ? Number(entry.total_price) : 0
-                  const revenue = count * unitPrice
+                  const isFixedPrice = assignment?.is_fixed_price ?? false
+                  const revenue = isFixedPrice ? unitPrice : count * unitPrice
                   totalRevenue += revenue
                   const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
                   const flag = marginFlag(margin)
-                  return { countRow, entry, laborRow, count, cost, revenue, margin, flag }
+                  return { countRow, entry, laborRow, count, cost, revenue, margin, flag, assignment }
                 })
                 return (
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
@@ -7027,7 +7545,7 @@ export default function Bids() {
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map(({ countRow, entry, count, cost, revenue, margin, flag }) => (
+                        {rows.map(({ countRow, entry, count, cost, revenue, margin, flag, assignment }) => (
                           <tr key={countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.75rem' }}>{countRow.fixture ?? ''}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>{count}</td>
@@ -7035,7 +7553,9 @@ export default function Bids() {
                               <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
                                 <input
                                   type="text"
-                                  value={(pricingAssignmentSearches[countRow.id] ?? entry?.fixture_types?.name) ?? ''}
+                                  value={pricingAssignmentSearches[countRow.id] !== undefined 
+                                    ? pricingAssignmentSearches[countRow.id] 
+                                    : (entry?.fixture_types?.name ?? '')}
                                   onChange={(e) => {
                                     setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: e.target.value }))
                                     setPricingAssignmentDropdownOpen(countRow.id)
@@ -7050,33 +7570,63 @@ export default function Bids() {
                                     borderRadius: 4, 
                                     minWidth: '10rem',
                                     boxSizing: 'border-box',
-                                    paddingRight: entry ? '2rem' : '0.35rem'
+                                    paddingRight: entry ? '5rem' : '0.35rem'
                                   }}
                                 />
                                 {entry && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      removePricingAssignment(countRow.id)
-                                      setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: '' }))
-                                    }}
-                                    style={{
-                                      position: 'absolute',
-                                      right: '0.5rem',
-                                      top: '50%',
-                                      transform: 'translateY(-50%)',
-                                      background: 'none',
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                      color: '#6b7280',
-                                      fontSize: '1.25rem',
-                                      lineHeight: 1,
-                                      padding: 0
-                                    }}
-                                    title="Clear assignment"
-                                  >
-                                    ×
-                                  </button>
+                                  <>
+                                    <label
+                                      style={{
+                                        position: 'absolute',
+                                        right: '2rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem',
+                                        fontSize: '0.75rem',
+                                        color: '#6b7280',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                      }}
+                                      title="Fixed price: don't multiply by count"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={assignment?.is_fixed_price ?? false}
+                                        onChange={() => togglePricingAssignmentFixedPrice(countRow.id)}
+                                        style={{ cursor: 'pointer' }}
+                                      />
+                                      Fixed
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        removePricingAssignment(countRow.id)
+                                        setPricingAssignmentSearches((prev) => {
+                                          const next = { ...prev }
+                                          delete next[countRow.id]
+                                          return next
+                                        })
+                                      }}
+                                      style={{
+                                        position: 'absolute',
+                                        right: '0.5rem',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#6b7280',
+                                        fontSize: '1.25rem',
+                                        lineHeight: 1,
+                                        padding: 0
+                                      }}
+                                      title="Clear assignment"
+                                    >
+                                      ×
+                                    </button>
+                                  </>
                                 )}
                                 {pricingAssignmentDropdownOpen === countRow.id && (() => {
                                   const searchTerm = pricingAssignmentSearches[countRow.id] || ''
@@ -7104,7 +7654,11 @@ export default function Bids() {
                                             key={e.id}
                                             onClick={() => {
                                               savePricingAssignment(countRow.id, e.id)
-                                              setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: '' }))
+                                              setPricingAssignmentSearches((prev) => {
+                                                const next = { ...prev }
+                                                delete next[countRow.id]
+                                                return next
+                                              })
                                               setPricingAssignmentDropdownOpen(null)
                                             }}
                                             style={{
@@ -7563,15 +8117,28 @@ export default function Bids() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 style={{ margin: '0 0 1rem' }}>{editingPricingEntry ? 'Edit entry' : 'New entry'}</h3>
+                {error && (
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                    {error}
+                  </div>
+                )}
                 <form onSubmit={savePricingEntry}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture / Tie-in</label>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture / Tie-in *</label>
                   <input
                     type="text"
+                    list="pricing-fixture-types"
                     value={pricingEntryFixtureName}
                     onChange={(e) => setPricingEntryFixtureName(e.target.value)}
+                    required
+                    placeholder="Type or select fixture type..."
+                    autoComplete="off"
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                    placeholder="e.g. Toilet"
                   />
+                  <datalist id="pricing-fixture-types">
+                    {fixtureTypes.map(ft => (
+                      <option key={ft.id} value={ft.name} />
+                    ))}
+                  </datalist>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
@@ -7678,7 +8245,9 @@ export default function Bids() {
               const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
               const count = Number(countRow.count)
               const unitPrice = entry ? Number(entry.total_price) : 0
-              coverLetterRevenue += count * unitPrice
+              const isFixedPrice = assignment?.is_fixed_price ?? false
+              const revenue = isFixedPrice ? unitPrice : count * unitPrice
+              coverLetterRevenue += revenue
             })
             const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
@@ -7784,23 +8353,30 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</div>
-                    <button
-                      type="button"
-                      onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
-                      disabled={applyingBidValue || coverLetterRevenue === 0}
-                      style={{
-                        padding: '0.25rem 0.75rem',
-                        background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
-                        fontSize: '0.875rem'
-                      }}
-                      title="Apply this amount to Bid Value"
-                    >
-                      {applyingBidValue ? 'Applying...' : 'Apply to Bid Value'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
+                        disabled={applyingBidValue || coverLetterRevenue === 0}
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                        title="Apply this amount to Bid Value"
+                      >
+                        {applyingBidValue ? 'Applying...' : 'Apply to Bid Value'}
+                      </button>
+                      {bidValueAppliedSuccess && (
+                        <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                          ✓ Applied successfully
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div>{revenueWords} ({revenueNumber})</div>
                   {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
@@ -7910,6 +8486,11 @@ export default function Bids() {
                           Add
                         </button>
                       </>
+                    )}
+                    {bidSubmissionQuickAddSuccess === bid.id && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        ✓ Link added successfully
+                      </span>
                     )}
                   </div>
                 </div>
@@ -8948,15 +9529,15 @@ export default function Bids() {
               <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Value</label>
-                  <input type="number" step="0.01" value={bidValue} onChange={(e) => setBidValue(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" step="0.01" value={bidValue} onChange={(e) => setBidValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Agreed Value</label>
-                  <input type="number" step="0.01" value={agreedValue} onChange={(e) => setAgreedValue(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" step="0.01" value={agreedValue} onChange={(e) => setAgreedValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Maximum Profit</label>
-                  <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -8986,7 +9567,7 @@ export default function Bids() {
                     </a>
                   )}
                 </div>
-                <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
@@ -9351,6 +9932,173 @@ export default function Bids() {
             <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
 We saw some structural issues with your plans and I wanted to get clarity...
             </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Part Form Modal */}
+      <PartFormModal
+        isOpen={bidsPartFormOpen}
+        onClose={() => setBidsPartFormOpen(false)}
+        onSave={handleBidsPartCreated}
+        editingPart={null}
+        initialName={bidsPartFormInitialName}
+        selectedServiceTypeId={selectedServiceTypeId}
+        supplyHouses={supplyHouses}
+        partTypes={partTypes}
+        serviceTypes={serviceTypes}
+      />
+
+      {/* Add Parts to Template Modal */}
+      {addPartsToTemplateModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={closeAddPartsToTemplateModal}
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              maxWidth: 500,
+              width: '90%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Add Parts to {addPartsToTemplateName}</h3>
+              <button
+                type="button"
+                onClick={closeAddPartsToTemplateModal}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {error && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Part *</label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={addPartsSelectedPartId ? (takeoffAddTemplateParts.find((p) => p.id === addPartsSelectedPartId)?.name ?? '') : addPartsSearchQuery}
+                    onChange={(e) => setAddPartsSearchQuery(e.target.value)}
+                    onFocus={() => setAddPartsDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setAddPartsDropdownOpen(false), 150)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setAddPartsDropdownOpen(false) }}
+                    readOnly={!!addPartsSelectedPartId}
+                    placeholder="Search parts by name, manufacturer, type, or notes…"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addPartsSelectedPartId ? '#f3f4f6' : undefined }}
+                  />
+                  {addPartsSelectedPartId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddPartsSelectedPartId('')
+                        setAddPartsSearchQuery('')
+                        setAddPartsDropdownOpen(true)
+                      }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {addPartsDropdownOpen && (
+                  <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                    {takeoffAddTemplateParts.length === 0 ? (
+                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li>
+                    ) : filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).length === 0 ? (
+                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                        No parts match.{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBidsPartFormInitialName(addPartsSearchQuery.trim())
+                            setBidsPartFormOpen(true)
+                            setAddPartsDropdownOpen(false)
+                          }}
+                          style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                        >
+                          Add Part
+                        </button>
+                      </li>
+                    ) : (
+                      filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).map((p) => (
+                        <li
+                          key={p.id}
+                          onClick={() => {
+                            setAddPartsSelectedPartId(p.id)
+                            setAddPartsSearchQuery('')
+                            setAddPartsDropdownOpen(false)
+                          }}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                          onMouseEnter={(e) => ((e.target as HTMLElement).style.background = '#f9fafb')}
+                          onMouseLeave={(e) => ((e.target as HTMLElement).style.background = 'transparent')}
+                        >
+                          <div style={{ fontWeight: 500 }}>{p.name}</div>
+                          {p.manufacturer && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{p.manufacturer}</div>}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Quantity *</label>
+              <input
+                type="number"
+                min="1"
+                value={addPartsQuantity}
+                onChange={(e) => setAddPartsQuantity(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={closeAddPartsToTemplateModal}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={savePartsToTemplate}
+                disabled={!addPartsSelectedPartId || savingTemplateParts}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: addPartsSelectedPartId && !savingTemplateParts ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: addPartsSelectedPartId && !savingTemplateParts ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {savingTemplateParts ? 'Adding...' : 'Add to Template'}
+              </button>
+            </div>
           </div>
         </div>
       )}

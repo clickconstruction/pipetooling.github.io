@@ -1166,15 +1166,16 @@ uuid3           | Supply House C    | 0
 - **Key Fields**:
   - `id` (uuid, PK)
   - `version_id` (uuid, FK → `labor_book_versions.id` ON DELETE CASCADE)
-  - `fixture_name` (text, required)
+  - `fixture_type_id` (uuid, FK → `fixture_types.id` ON DELETE CASCADE)
   - `alias_names` (text[], nullable) - Array of alternative names for matching
   - `rough_in_hrs` (numeric(10,2), required)
   - `top_out_hrs` (numeric(10,2), required)
   - `trim_set_hrs` (numeric(10,2), required)
   - `sequence_order` (integer)
   - `created_at` (timestamptz)
-  - **UNIQUE** `(version_id, fixture_name)`
+  - **UNIQUE** `(version_id, fixture_type_id)`
 - **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Entry Creation**: Input field with autocomplete; auto-creates fixture types if they don't exist
 - **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`
 
 #### Price Book Tables
@@ -1193,15 +1194,16 @@ uuid3           | Supply House C    | 0
 - **Key Fields**:
   - `id` (uuid, PK)
   - `version_id` (uuid, FK → `price_book_versions.id` ON DELETE CASCADE)
-  - `fixture_name` (text, required)
+  - `fixture_type_id` (uuid, FK → `fixture_types.id` ON DELETE CASCADE)
   - `rough_in_price` (numeric(10,2), required)
   - `top_out_price` (numeric(10,2), required)
   - `trim_set_price` (numeric(10,2), required)
   - `total_price` (numeric(10,2), required)
   - `sequence_order` (integer)
   - `created_at` (timestamptz)
-  - **UNIQUE** `(version_id, fixture_name)`
+  - **UNIQUE** `(version_id, fixture_type_id)`
 - **RLS**: dev, master_technician, assistant, estimator (full CRUD)
+- **Entry Creation**: Input field with autocomplete; auto-creates fixture types if they don't exist
 - **Migrations**: `create_price_book_versions_and_entries.sql`
 
 ##### `public.bid_pricing_assignments`
@@ -1211,10 +1213,13 @@ uuid3           | Supply House C    | 0
   - `bid_id` (uuid, FK → `bids.id` ON DELETE CASCADE)
   - `count_row_id` (uuid, FK → `bids_count_rows.id` ON DELETE CASCADE)
   - `price_book_entry_id` (uuid, FK → `price_book_entries.id` ON DELETE CASCADE)
+  - `price_book_version_id` (uuid, FK → `price_book_versions.id` ON DELETE CASCADE)
+  - `is_fixed_price` (boolean, default: false) - When true, revenue = price (ignores count)
   - `created_at` (timestamptz)
   - **UNIQUE** `(bid_id, count_row_id)`
 - **RLS**: Access controlled via bid access policies
-- **Migrations**: `create_bid_pricing_assignments.sql`
+- **Fixed Price Feature**: Allows flat-rate pricing without count multiplication (useful for permits, delivery fees)
+- **Migrations**: `create_bid_pricing_assignments.sql`, `add_fixed_price_to_pricing_assignments.sql`
 
 ### Foreign Key Relationships
 ```

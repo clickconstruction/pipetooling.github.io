@@ -92,6 +92,21 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
+#### February 10, 2026
+
+**`add_fixed_price_to_pricing_assignments.sql`**
+- **Purpose**: Add fixed price feature for flat-rate pricing in Bids Pricing tab
+- **Root Cause**: Revenue calculations always multiplied price by count, which doesn't work for flat-rate items (permits, delivery fees, one-time charges)
+- **Changes**:
+  - Added `is_fixed_price` (BOOLEAN, default false) column to `bid_pricing_assignments`
+  - Created index on `is_fixed_price` for query performance
+  - Added column comment explaining behavior
+- **Impact**: Users can now mark pricing assignments as fixed price to bypass count multiplication
+- **Behavior**: 
+  - Unchecked (default): Revenue = Price × Count
+  - Checked: Revenue = Price (ignores count)
+- **Category**: Bids Enhancement / User Feature
+
 #### February 8, 2026
 
 **`restrict_supply_house_deletion_to_devs.sql`**
@@ -424,6 +439,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `add_bid_pricing_assignments_version.sql` (Feb 2, 2026)
 - `add_bids_selected_price_book_version.sql` (Feb 1, 2026)
 - `add_unique_constraint_to_price_book_versions.sql` (Feb 6, 2026)
+- `add_fixed_price_to_pricing_assignments.sql` (Feb 10, 2026) - Fixed price feature for flat-rate items
 
 **Cost Estimate Enhancements**:
 - `create_cost_estimates.sql` - Initial cost estimates

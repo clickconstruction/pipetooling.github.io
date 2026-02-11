@@ -12,12 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.27 → v2.4"
+version_range: "v2.29 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.25)"
-    line: ~1
-    description: "Most recent features and changes"
+  - name: "Latest Version (v2.29)"
+    line: ~82
+    description: "Price/Labor book enhancements and fixed price feature"
   - name: "Bids System Updates"
     versions: "v2.25, v2.24, v2.23, v2.22"
     description: "Book systems, driving costs, pricing features"
@@ -46,10 +46,11 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.28)](#latest-updates-v228)
-2. [Latest Updates (v2.27)](#latest-updates-v227)
-3. [Latest Updates (v2.26)](#latest-updates-v226)
-4. [Latest Updates (v2.25)](#latest-updates-v225)
+1. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+2. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+3. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+4. [Latest Updates (v2.26)](#latest-updates-v226)
+5. [Latest Updates (v2.25)](#latest-updates-v225)
 4. [Latest Updates (v2.24)](#latest-updates-v224)
 3. [Latest Updates (v2.23)](#latest-updates-v223)
 4. [Latest Updates (v2.22)](#latest-updates-v222)
@@ -75,6 +76,163 @@ when_to_read:
 24. [Email Templates](#email-templates)
 25. [Financial Tracking](#financial-tracking)
 26. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.29)
+
+### Bids System: Price/Labor Book Enhancements and Fixed Price Feature
+
+**Date**: 2026-02-10
+
+**Overview**:
+Enhanced the Price and Labor book entry workflows with plain text autocomplete input, automatic fixture type creation, and added a fixed price feature for flat-rate pricing in the Pricing tab. Improved Cost Estimate print output with PO summaries and split cost columns.
+
+#### 1. Plain Text Fixture Input with Auto-Creation
+
+**Problem**: 
+- Pricing and Labor book entry modals used strict dropdowns for fixture types
+- Users couldn't add entries for fixtures not already in the system
+- Save button failed silently when typed names didn't match exactly
+
+**Solution**:
+- Replaced `<select>` dropdowns with `<input>` + `<datalist>` combobox
+- Users can now type freely or select from autocomplete suggestions
+- New fixture types are automatically created when custom names are entered
+- Added error display in modals for better feedback
+
+**Implementation**:
+- Created `getOrCreateFixtureTypeId()` helper function
+- Automatically assigns new fixtures to "Other" category
+- Reloads fixture types after creation so suggestions update immediately
+- Applied to both Pricing and Labor entry modals
+
+**User Flow**:
+1. User opens "Add entry" modal in Pricing or Labor tabs
+2. Types fixture name (e.g., "Water Softener")
+3. If not in system, autocomplete shows existing similar fixtures
+4. On save, new fixture type is created automatically
+5. All future users see the new fixture in suggestions
+
+#### 2. Fixed Price Checkbox in Pricing Tab
+
+**Problem**:
+Revenue calculations always multiplied price book entry by count, which doesn't work for flat-rate items (e.g., permits, delivery fees, one-time charges).
+
+**Solution**:
+Added "Fixed" checkbox next to each pricing assignment that bypasses count multiplication.
+
+**Database Changes**:
+```sql
+-- Migration: 20260210193624_add_fixed_price_to_pricing_assignments.sql
+ALTER TABLE public.bid_pricing_assignments
+ADD COLUMN is_fixed_price BOOLEAN NOT NULL DEFAULT false;
+```
+
+**Behavior**:
+- **Unchecked (default)**: `Revenue = Price × Count`
+- **Checked**: `Revenue = Price` (ignores count)
+
+**Implementation Details**:
+- Added `togglePricingAssignmentFixedPrice()` function
+- Updated revenue calculations in 5 locations:
+  - Main pricing table display
+  - Single price book print
+  - All price books print
+  - Cover letter revenue calculation (2 locations)
+- Checkbox appears inline with assignment input field
+
+**UI Layout**:
+```
+[Search or assign...] [☑ Fixed] [×]
+```
+
+#### 3. Cost Estimate Print Improvements
+
+**A. PO Summaries in Print View**
+
+**Enhancement**: When printing Cost Estimate, each PO stage (Rough In, Top Out, Trim Set) now displays a detailed summary table showing:
+- Part name
+- Quantity (formatted with commas for 1,000+)
+- Price per unit (formatted with commas)
+- Line total (formatted with commas)
+- PO subtotal
+
+**Implementation**:
+- Made `printCostEstimatePage()` async to load PO items
+- Created `loadPOItems()` helper to fetch from `purchase_order_items`
+- Created `generatePOSummary()` to render HTML table
+- Applied `toLocaleString()` formatting for all numbers
+
+**B. Split Cost Columns in Pricing Print**
+
+**Enhancement**: Pricing tab print view now shows separate "Our Labor" and "Our Materials" columns instead of combined "Our cost".
+
+**Before**:
+| Fixture | Count | Entry | Our cost | Revenue | Margin % |
+|---------|-------|-------|----------|---------|----------|
+| Toilet  | 5     | Toilet| $2,000   | $2,500  | 20.0%    |
+
+**After**:
+| Fixture | Count | Entry | Our Labor | Our Materials | Revenue | Margin % |
+|---------|-------|-------|-----------|---------------|---------|----------|
+| Toilet  | 5     | Toilet| $1,250    | $750          | $2,500  | 20.0%    |
+
+**Benefits**:
+- Clear visibility into labor vs materials costs per fixture
+- Separate totals row for each cost type
+- Better cost analysis and margin understanding
+
+#### 4. Cost Estimate UI Improvements
+
+**Changes**:
+- Centered "Materials" and "Labor" section headings in print view
+- Centered Save button at bottom of Cost Estimate tab
+- Changed "Grand total:" to "Our total cost is:" in print summary
+
+#### 5. Settings Documentation Update
+
+Updated Fixture Types description to reflect:
+- Distinction from Part Types (Materials)
+- Auto-creation capability
+- Examples of fixture types (Toilet, Sink, Water Heater)
+- Clarified usage across Bids and book systems
+
+#### 6. Bug Fixes
+
+**Issue**: Pricing assignment input showed blank after selecting entry
+**Fix**: Updated value logic to check for `undefined` instead of using nullish coalescing, properly delete search state keys
+
+#### Summary of Changes
+
+**Database**:
+- `bid_pricing_assignments.is_fixed_price` column added
+- Index on `is_fixed_price` for query performance
+
+**Frontend** (`Bids.tsx`):
+- `getOrCreateFixtureTypeId()` helper function
+- Replaced fixture dropdowns with text input + datalist (2 modals)
+- `togglePricingAssignmentFixedPrice()` function
+- Updated revenue calculations (5 locations)
+- Made `printCostEstimatePage()` async with PO summaries
+- Split cost columns in pricing prints (2 functions)
+- Fixed pricing assignment display bug
+- Centered UI elements in print views
+
+**Settings** (`Settings.tsx`):
+- Updated Fixture Types description
+
+**Files Modified**:
+- `pipetooling.github.io/src/pages/Bids.tsx`
+- `pipetooling.github.io/src/pages/Settings.tsx`
+- `pipetooling.github.io/supabase/migrations/20260210193624_add_fixed_price_to_pricing_assignments.sql` (new)
+
+**User Benefits**:
+- Faster data entry with autocomplete
+- No more blocked workflows from missing fixtures
+- Flexible pricing for flat-rate vs per-unit items
+- Better cost visibility in reports
+- More accurate revenue calculations
 
 ---
 

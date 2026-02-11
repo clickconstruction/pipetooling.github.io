@@ -3588,7 +3588,7 @@ export default function Settings() {
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Fixture Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Manage fixture types for each service type. Fixture types are used in Materials (part categories), Bids (count rows), and book entries (labor, pricing, takeoff).
+            Manage fixture types for each service type. Fixture types represent installed fixtures and tie-ins (e.g., Toilet, Sink, Water Heater). They are used in Bids (count rows) and book entries (labor, pricing, takeoff). New fixture types can also be created automatically when adding book entries. Note: Materials uses Part Types for categorizing parts and supplies.
           </p>
           
           <div style={{ marginBottom: '1.5rem' }}>

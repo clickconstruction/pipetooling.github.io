@@ -494,13 +494,19 @@ The Labor Book provides standardized labor hours for common fixtures across the 
 - Version dropdown in Cost Estimate tab header
 
 **Labor Book Entries**:
-- **Fixture name** - Primary name (e.g., "Toilet", "Sink")
+- **Fixture type** - Foreign key to `fixture_types` table
 - **Additional names (aliases)** - Comma-separated alternatives
 - **Hours per stage**:
   - `rough_in_hrs` - Rough In labor hours
   - `top_out_hrs` - Top Out labor hours
   - `trim_set_hrs` - Trim Set labor hours
 - **Sequence order** - Display order in management UI
+
+**Entry Creation**:
+- Input field with autocomplete from existing fixture types
+- Users can type freely or select from suggestions
+- **Auto-creation**: If fixture type doesn't exist, it's automatically created
+- New fixtures appear in autocomplete for all users immediately
 
 **Alias Matching**:
 - Case-insensitive match against fixture name and all aliases
@@ -519,14 +525,14 @@ created_at (timestamptz)
 ```sql
 id (uuid, PK)
 version_id (uuid, FK → labor_book_versions ON DELETE CASCADE)
-fixture_name (text)
+fixture_type_id (uuid, FK → fixture_types ON DELETE CASCADE)
 alias_names (text[], nullable)
 rough_in_hrs (numeric(10,2))
 top_out_hrs (numeric(10,2))
 trim_set_hrs (numeric(10,2))
 sequence_order (integer)
 created_at (timestamptz)
-UNIQUE (version_id, fixture_name)
+UNIQUE (version_id, fixture_type_id)
 ```
 
 #### Labor Hours Table
@@ -644,9 +650,43 @@ Migration: `add_cost_estimate_driving_cost_fields.sql`
 
 ### Save and Print
 
-**Save**: Persists cost estimate to database
+**Save**: 
+- Persists cost estimate to database
+- Button centered at bottom of tab
 
-**Print**: Opens print-friendly PDF view with all calculations and breakdowns
+**Print**: 
+Opens print-friendly PDF view with comprehensive cost breakdown:
+
+**Materials Section**:
+- Three PO stages (Rough In, Top Out, Trim Set)
+- Each stage displays:
+  - PO creation status
+  - Subtotal cost
+  - **PO Summary Table** (when PO exists):
+    - Part names with quantities
+    - Unit prices (formatted with commas for 1,000+)
+    - Line totals
+    - PO subtotal
+
+**Labor Section**:
+- Fixture breakdown by stage
+- Labor hours and rates
+- Labor subtotals per stage
+
+**Driving Cost Section**:
+- Distance and driving rate calculations
+- Total driving cost
+
+**Summary**:
+- Total materials cost
+- Total labor cost
+- Total driving cost
+- **"Our total cost is:"** grand total
+
+**Formatting**:
+- Section headings centered ("Materials", "Labor")
+- Currency formatted with commas (e.g., $12,345.67)
+- Print-optimized layout
 
 ---
 
@@ -673,13 +713,19 @@ The Price Book provides standardized pricing for fixtures across plumbing stages
 #### Price Book Entries
 
 **Structure**:
-- **Fixture name** - Primary name (must be unique per version)
+- **Fixture type** - Foreign key to `fixture_types` table
 - **Prices per stage**:
   - `rough_in_price` - Rough In stage price
   - `top_out_price` - Top Out stage price
   - `trim_set_price` - Trim Set stage price
   - `total_price` - Total price across all stages
 - **Sequence order** - Display order
+
+**Entry Creation**:
+- Input field with autocomplete from existing fixture types
+- Users can type freely or select from suggestions
+- **Auto-creation**: If fixture type doesn't exist, it's automatically created
+- New fixtures appear in autocomplete for all users immediately
 
 **Database Tables**:
 
@@ -694,14 +740,14 @@ created_at (timestamptz)
 ```sql
 id (uuid, PK)
 version_id (uuid, FK → price_book_versions ON DELETE CASCADE)
-fixture_name (text)
+fixture_type_id (uuid, FK → fixture_types ON DELETE CASCADE)
 rough_in_price (numeric(10,2))
 top_out_price (numeric(10,2))
 trim_set_price (numeric(10,2))
 total_price (numeric(10,2))
 sequence_order (integer)
 created_at (timestamptz)
-UNIQUE (version_id, fixture_name)
+UNIQUE (version_id, fixture_type_id)
 ```
 
 ### Searchable Features
@@ -755,15 +801,22 @@ UNIQUE (version_id, fixture_name)
 **Columns**:
 - **Fixture** - From count rows (read-only)
 - **Count** - Quantity (read-only)
-- **Price Book Entry** - Searchable dropdown for assignment
+- **Price Book Entry** - Searchable dropdown for assignment with "Fixed" checkbox
 - **Our Cost** - Calculated from cost estimate
-- **Revenue** - From assigned price book entry
+- **Revenue** - From assigned price book entry (respects fixed price flag)
 - **Margin %** - `(Revenue - Cost) / Revenue × 100`
 - **Flag** - Color-coded indicator
 
+**Fixed Price Feature**:
+- Checkbox appears when entry is assigned
+- **Unchecked (default)**: `Revenue = Price × Count`
+- **Checked**: `Revenue = Price` (ignores count)
+- Useful for flat-rate items (permits, delivery fees, one-time charges)
+- Stored in `bid_pricing_assignments.is_fixed_price`
+
 **Totals Row**:
 - Sum of all costs
-- Sum of all revenue
+- Sum of all revenue (respects fixed price flags)
 - Overall margin %
 - Overall flag
 
@@ -804,10 +857,45 @@ bid_pricing_assignments:
   bid_id (uuid, FK → bids ON DELETE CASCADE)
   count_row_id (uuid, FK → bids_count_rows ON DELETE CASCADE)
   price_book_entry_id (uuid, FK → price_book_entries ON DELETE CASCADE)
+  price_book_version_id (uuid, FK → price_book_versions ON DELETE CASCADE)
+  is_fixed_price (boolean, default: false) -- When true, revenue = price (ignores count)
   UNIQUE (bid_id, count_row_id)
 ```
 
 **RLS**: Access controlled via bid access policies
+
+### Print Price Book
+
+**Button**: "Print Price Book" or "Print All Price Books"
+
+**Features**:
+- Print single selected price book or all price books
+- Shows comparison table with cost breakdown
+
+**Table Columns**:
+- **Fixture**: From count rows
+- **Count**: Quantity
+- **Price Book Entry**: Assigned entry name
+- **Our Labor**: Labor cost component (separated)
+- **Our Materials**: Material cost component (separated)
+- **Revenue**: Total revenue (respects fixed price flag)
+- **Margin %**: Profit margin percentage
+- **Flag**: Color-coded profitability indicator
+
+**Cost Split**:
+Previously showed combined "Our Cost" column. Now splits into:
+- **Our Labor**: Direct labor costs from Cost Estimate
+- **Our Materials**: Allocated material costs
+
+**Benefits**:
+- Better visibility into cost composition
+- Separate tracking of labor vs materials
+- Improved cost analysis
+
+**Totals Row**:
+- Separate totals for labor and materials
+- Combined revenue total
+- Overall margin calculation
 
 ### Create Cost Estimate Prompt
 

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
+import { PartFormModal } from '../components/PartFormModal'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -81,21 +82,27 @@ export default function Materials() {
   const [sortByPriceCountAsc, setSortByPriceCountAsc] = useState(false)
   const [editingPart, setEditingPart] = useState<MaterialPart | null>(null)
   const [partFormOpen, setPartFormOpen] = useState(false)
-  const [partName, setPartName] = useState('')
-  const [partManufacturer, setPartManufacturer] = useState('')
-  const [partPartTypeId, setPartPartTypeId] = useState('')
-  const [partNotes, setPartNotes] = useState('')
-  const [savingPart, setSavingPart] = useState(false)
+  const [partFormInitialName, setPartFormInitialName] = useState('')
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
   const [expandedPartId, setExpandedPartId] = useState<string | null>(null)
   const [partsPage, setPartsPage] = useState(0)
   const [hasMoreParts, setHasMoreParts] = useState(true)
   const [loadingPartsPage, setLoadingPartsPage] = useState(false)
   const loadingPartsRef = useRef(false)
-  const [globalPriceBookTotalItems, setGlobalPriceBookTotalItems] = useState<number | null>(null)
-  const [globalPriceBookWithPrices, setGlobalPriceBookWithPrices] = useState<number | null>(null)
-  const [globalPriceBookWithMoreThanOne, setGlobalPriceBookWithMoreThanOne] = useState<number | null>(null)
-  const [globalSupplyHousePriceCounts, setGlobalSupplyHousePriceCounts] = useState<Array<{ id: string; name: string; count: number }> | null>(null)
+  const [supplyHouseStatsByServiceType, setSupplyHouseStatsByServiceType] = useState<{
+    serviceTypes: Array<{
+      id: string
+      name: string
+      totalParts: number
+      partsWithPrices: number
+      partsWithMultiplePrices: number
+    }>
+    supplyHouses: Array<{
+      id: string
+      name: string
+      pricesByServiceType: Record<string, number>
+    }>
+  } | null>(null)
 
   // Load All Mode state
   const [loadAllMode, setLoadAllMode] = useState(false)
@@ -533,75 +540,73 @@ export default function Materials() {
     setMaterialTemplates((data as MaterialTemplate[]) ?? [])
   }
 
-  async function loadGlobalPriceBookStats() {
-    // Fetch all part ids
-    const { data: partsData, error: partsError } = await supabase
-      .from('material_parts')
-      .select('id')
-    if (partsError) {
-      console.error('Failed to load global price book parts stats:', partsError)
-      return
-    }
-    const allPartIds = ((partsData as { id: string }[] | null) ?? []).map((p) => p.id)
+  async function loadSupplyHouseStatsByServiceType() {
+    const { data, error } = await supabase
+      .rpc('get_supply_house_stats_by_service_type' as any)
 
-    // Fetch all prices with supply house info
-    const { data: pricesData, error: pricesError } = await supabase
-      .from('material_part_prices')
-      .select('part_id, supply_house_id, supply_houses(name)')
-    if (pricesError) {
-      console.error('Failed to load global price book price stats:', pricesError)
-      return
-    }
-    type PriceRow = {
-      part_id: string | null
-      supply_house_id: string | null
-      supply_houses: { name: string | null } | null
-    }
-    const prices = ((pricesData as unknown as PriceRow[] | null) ?? [])
-
-    // Per-part price counts
-    const partPriceCounts = new Map<string, number>()
-    for (const row of prices) {
-      const pid = row.part_id
-      if (!pid) continue
-      partPriceCounts.set(pid, (partPriceCounts.get(pid) ?? 0) + 1)
-    }
-
-    const totalItems = allPartIds.length
-    let withPrices = 0
-    let withMoreThanOne = 0
-    for (const pid of allPartIds) {
-      const count = partPriceCounts.get(pid) ?? 0
-      if (count >= 1) withPrices += 1
-      if (count >= 2) withMoreThanOne += 1
-    }
-
-    setGlobalPriceBookTotalItems(totalItems)
-    setGlobalPriceBookWithPrices(withPrices)
-    setGlobalPriceBookWithMoreThanOne(withMoreThanOne)
-
-    // Per-supply-house price counts - use RPC for efficiency
-    const { data: shData, error: shError } = await supabase
-      .rpc('get_supply_house_price_counts' as any)
-
-    if (shError) {
-      console.error('Failed to load supply house price counts:', shError)
-      // Fallback: still show the global part stats even if supply house counts fail
+    if (error) {
+      console.error('Failed to load supply house stats:', error)
       return
     }
 
-    type SupplyHouseCount = {
+    type StatsRow = {
+      service_type_id: string
+      service_type_name: string
+      total_parts: number
+      parts_with_prices: number
+      parts_with_multiple_prices: number
       supply_house_id: string
       supply_house_name: string
       price_count: number
     }
-    const shCounts = ((shData as unknown as SupplyHouseCount[] | null) ?? [])
-    const shArray = shCounts.map(row => ({
-      id: row.supply_house_id,
-      name: row.supply_house_name,
-      count: row.price_count,
-    }))
-    setGlobalSupplyHousePriceCounts(shArray)
+    
+    const rows = (data as unknown as StatsRow[] | null) ?? []
+    
+    // Group by service type
+    const serviceTypeMap = new Map<string, {
+      id: string
+      name: string
+      totalParts: number
+      partsWithPrices: number
+      partsWithMultiplePrices: number
+    }>()
+    
+    // Group by supply house
+    const supplyHouseMap = new Map<string, {
+      id: string
+      name: string
+      pricesByServiceType: Record<string, number>
+    }>()
+    
+    for (const row of rows) {
+      // Service type stats (same for all rows with same service_type_id)
+      if (!serviceTypeMap.has(row.service_type_id)) {
+        serviceTypeMap.set(row.service_type_id, {
+          id: row.service_type_id,
+          name: row.service_type_name,
+          totalParts: row.total_parts,
+          partsWithPrices: row.parts_with_prices,
+          partsWithMultiplePrices: row.parts_with_multiple_prices,
+        })
+      }
+      
+      // Supply house prices
+      if (!supplyHouseMap.has(row.supply_house_id)) {
+        supplyHouseMap.set(row.supply_house_id, {
+          id: row.supply_house_id,
+          name: row.supply_house_name,
+          pricesByServiceType: {},
+        })
+      }
+      
+      const sh = supplyHouseMap.get(row.supply_house_id)!
+      sh.pricesByServiceType[row.service_type_id] = row.price_count
+    }
+    
+    setSupplyHouseStatsByServiceType({
+      serviceTypes: Array.from(serviceTypeMap.values()),
+      supplyHouses: Array.from(supplyHouseMap.values()),
+    })
   }
 
   async function reloadPartsFirstPage() {
@@ -755,7 +760,7 @@ export default function Materials() {
           loadAllParts(selectedServiceTypeId),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
-          loadGlobalPriceBookStats(),
+          loadSupplyHouseStatsByServiceType(),
         ])
       }
       loadForServiceType()
@@ -1003,106 +1008,34 @@ export default function Materials() {
   // Price Book Tab Functions
   function openAddPart() {
     setEditingPart(null)
-    setPartName('')
-    setPartManufacturer('')
-    setPartPartTypeId('')
-    setPartNotes('')
+    setPartFormInitialName('')
     setPartFormOpen(true)
     setError(null)
   }
 
   function openAddPartWithName(initialName: string) {
     setEditingPart(null)
-    setPartName((initialName ?? '').trim())
-    setPartManufacturer('')
-    setPartPartTypeId('')
-    setPartNotes('')
+    setPartFormInitialName((initialName ?? '').trim())
     setPartFormOpen(true)
     setError(null)
   }
 
   function openEditPart(part: MaterialPart & { part_type_id?: string }) {
     setEditingPart(part)
-    setPartName(part.name)
-    setPartManufacturer(part.manufacturer || '')
-    setPartPartTypeId(part.part_type_id || '')
-    setPartNotes(part.notes || '')
     setPartFormOpen(true)
     setError(null)
   }
 
-  function closePartForm() {
+  async function handlePartSaved(part: MaterialPart) {
+    await reloadPartsFirstPage()
     setPartFormOpen(false)
   }
 
-  async function savePart(e: React.FormEvent) {
-    e.preventDefault()
-    if (!partName.trim()) {
-      setError('Part name is required')
-      return
-    }
-    if (!partPartTypeId) {
-      setError('Part type is required')
-      return
-    }
-    setSavingPart(true)
-    setError(null)
-
-    if (editingPart) {
-      const { error: e } = await supabase
-        .from('material_parts')
-        .update({
-          name: partName.trim(),
-          manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId,
-          notes: partNotes.trim() || null,
-        })
-        .eq('id', editingPart.id)
-      if (e) {
-        setError(e.message)
-      } else {
-      await reloadPartsFirstPage()
-        closePartForm()
-      }
-    } else {
-      const { error: e } = await supabase
-        .from('material_parts')
-        .insert({
-          name: partName.trim(),
-          manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId,
-          notes: partNotes.trim() || null,
-          service_type_id: selectedServiceTypeId,
-        })
-      if (e) {
-        setError(e.message)
-      } else {
-      await reloadPartsFirstPage()
-        closePartForm()
-      }
-    }
-    setSavingPart(false)
-  }
-
-  async function deletePart(partId: string) {
-    if (!confirm('Delete this part? All prices will also be removed.')) return
-    setError(null)
-    const { error } = await supabase.from('material_parts').delete().eq('id', partId)
-    if (error) {
-      const friendlyMessage =
-        (error as { code?: string }).code === '23503'
-          ? 'Cannot delete this part because it is referenced in templates, purchase orders, or prices. Remove those references first, then try again.'
-          : error.message
-      setError(friendlyMessage)
-    } else {
-      await reloadPartsFirstPage()
-    }
-  }
 
   // Supply House Management Functions
   function openSupplyHousesModal() {
     setViewingSupplyHouses(true)
-    loadGlobalPriceBookStats()
+    loadSupplyHouseStatsByServiceType()
   }
 
   function openAddSupplyHouse() {
@@ -2687,102 +2620,18 @@ export default function Materials() {
       )}
 
       {/* Part Form Modal */}
-      {partFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginBottom: '1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
-            {!editingPart && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeId)?.name}</strong>
-                </span>
-              </div>
-            )}
-            <form onSubmit={savePart}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>
-                <input
-                  type="text"
-                  value={partName}
-                  onChange={(e) => setPartName(e.target.value)}
-                  required
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Manufacturer</label>
-                <input
-                  type="text"
-                  value={partManufacturer}
-                  onChange={(e) => setPartManufacturer(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type</label>
-                <select
-                  value={partPartTypeId}
-                  onChange={(e) => setPartPartTypeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                >
-                  <option value="">Select part type...</option>
-                  {partTypes.map((ft) => (
-                    <option key={ft.id} value={ft.id}>
-                      {ft.name}{ft.category ? ` (${ft.category})` : ''}
-                    </option>
-                  ))}
-                </select>
-                {partTypes.length === 0 && (
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
-                    No part types available. Devs can add them in Settings.
-                  </p>
-                )}
-              </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes (SKU, etc.)</label>
-                <textarea
-                  value={partNotes}
-                  onChange={(e) => setPartNotes(e.target.value)}
-                  rows={3}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                {editingPart && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (editingPart) {
-                        deletePart(editingPart.id)
-                        closePartForm()
-                      }
-                    }}
-                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Delete
-                  </button>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-                  <button
-                    type="button"
-                    onClick={closePartForm}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={savingPart}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    {savingPart ? 'Saving...' : 'Save'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PartFormModal
+        isOpen={partFormOpen}
+        onClose={() => setPartFormOpen(false)}
+        onSave={handlePartSaved}
+        editingPart={editingPart}
+        initialName={partFormInitialName}
+        selectedServiceTypeId={selectedServiceTypeId}
+        supplyHouses={supplyHouses}
+        partTypes={partTypes}
+        serviceTypes={serviceTypes}
+      />
+
 
       {/* Part Prices Modal */}
       {viewingPartPrices && (
@@ -2832,34 +2681,55 @@ export default function Materials() {
             </div>
 
             <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, color: '#6b7280', fontSize: '0.875rem' }}>
-              <p style={{ margin: 0 }}>
-                {(() => {
-                  const total = globalPriceBookTotalItems ?? 0
-                  const withPrices = globalPriceBookWithPrices ?? 0
-                  const withMoreThanOne = globalPriceBookWithMoreThanOne ?? 0
-                  const pctWith = total === 0 ? 0 : Math.round((withPrices / total) * 100)
-                  const pctMore = total === 0 ? 0 : Math.round((withMoreThanOne / total) * 100)
-                  return `${total} items | ${pctWith}% have prices | ${pctMore}% have more than 1 price`
-                })()}
-              </p>
-              <div style={{ marginTop: '0.5rem' }}>
-                <strong>Supply house price coverage</strong>
-                {(() => {
-                  const counts = globalSupplyHousePriceCounts ?? []
-                  if (counts.length === 0) {
-                    return <div>No prices recorded yet for any supply house.</div>
-                  }
-                  return (
-                    <ul style={{ marginTop: '0.25rem', paddingLeft: '1.25rem', marginBottom: 0 }}>
-                      {counts.map(({ id, name, count }) => (
-                        <li key={id}>
-                          {name} – {count} {count === 1 ? 'price' : 'prices'}
-                        </li>
+              {/* Service Type Statistics Headers */}
+              {supplyHouseStatsByServiceType?.serviceTypes.map(st => {
+                const pctWith = st.totalParts === 0 ? 0 : Math.round((st.partsWithPrices / st.totalParts) * 100)
+                const pctMulti = st.totalParts === 0 ? 0 : Math.round((st.partsWithMultiplePrices / st.totalParts) * 100)
+                return (
+                  <div key={st.id} style={{ marginBottom: '0.5rem' }}>
+                    <strong>{st.name}:</strong> {st.totalParts} items | {pctWith}% have prices | {pctMulti}% have more than 1 price
+                  </div>
+                )
+              })}
+              
+              {/* Supply House Table */}
+              <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #d1d5db', fontWeight: 600 }}>
+                        Supply House
+                      </th>
+                      {supplyHouseStatsByServiceType?.serviceTypes.map(st => (
+                        <th key={st.id} style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '2px solid #d1d5db', fontWeight: 600 }}>
+                          {st.name}
+                        </th>
                       ))}
-                    </ul>
-                  )
-                })()}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplyHouseStatsByServiceType?.supplyHouses.map(sh => (
+                      <tr key={sh.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem', fontWeight: 500 }}>{sh.name}</td>
+                        {supplyHouseStatsByServiceType.serviceTypes.map(st => {
+                          const count = sh.pricesByServiceType[st.id] ?? 0
+                          return (
+                            <td key={st.id} style={{ padding: '0.5rem', textAlign: 'right', color: count === 0 ? '#9ca3af' : '#374151' }}>
+                              {count}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+              
+              {(!supplyHouseStatsByServiceType || supplyHouseStatsByServiceType.supplyHouses.length === 0) && (
+                <div style={{ marginTop: '1rem', textAlign: 'center', color: '#6b7280' }}>
+                  No supply houses or service types available.
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
