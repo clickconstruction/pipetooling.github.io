@@ -57,6 +57,10 @@ type PurchaseOrderWithItems = PurchaseOrder & {
 
 const PARTS_PAGE_SIZE = 50
 
+function formatCurrency(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export default function Materials() {
   const { user: authUser } = useAuth()
   const location = useLocation()
@@ -1656,8 +1660,8 @@ export default function Materials() {
         const partName = escapeHtml(item.part.name ?? '')
         const qty = item.quantity
         const sh = item.supply_house?.name ? escapeHtml(item.supply_house.name) : '—'
-        const price = item.price_at_time.toFixed(2)
-        const total = (item.price_at_time * item.quantity).toFixed(2)
+        const price = formatCurrency(item.price_at_time)
+        const total = formatCurrency(item.price_at_time * item.quantity)
         return `<tr><td>${partName}</td><td>${qty}</td><td>${sh}</td><td>$${price}</td><td>$${total}</td></tr>`
       }).join('')
     } else {
@@ -1666,9 +1670,9 @@ export default function Materials() {
         const partName = escapeHtml(item.part.name ?? '')
         const qty = item.quantity
         const prices = allPricesPerItem[i] ?? []
-        const allPricesStr = prices.length === 0 ? '—' : prices.map(p => `${escapeHtml(p.supply_house_name)}: $${p.price.toFixed(2)}`).join('; ')
-        const chosenStr = item.supply_house?.name ? `${escapeHtml(item.supply_house.name)}: $${item.price_at_time.toFixed(2)}` : '—'
-        const total = (item.price_at_time * item.quantity).toFixed(2)
+        const allPricesStr = prices.length === 0 ? '—' : prices.map(p => `${escapeHtml(p.supply_house_name)}: $${formatCurrency(p.price)}`).join('; ')
+        const chosenStr = item.supply_house?.name ? `${escapeHtml(item.supply_house.name)}: $${formatCurrency(item.price_at_time)}` : '—'
+        const total = formatCurrency(item.price_at_time * item.quantity)
         tableRows += `<tr><td>${partName}</td><td>${qty}</td><td>${allPricesStr}</td><td>${chosenStr}</td><td>$${total}</td></tr>`
       })
     }
@@ -1693,7 +1697,7 @@ export default function Materials() {
       <table>
         <thead>${thead}</thead>
         <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="${footerColspan}" style="text-align:right; font-weight:600;">Grand Total</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="${footerColspan}" style="text-align:right; font-weight:600;">Grand Total</td><td style="font-weight:600;">$${formatCurrency(grandTotal)}</td></tr></tfoot>
       </table>
     </body></html>`
     const win = window.open('', '_blank')
@@ -1713,8 +1717,8 @@ export default function Materials() {
     const tableRows = po.items.map(item => {
       const partName = escapeHtml(item.part.name ?? '')
       const qty = item.quantity
-      const price = item.price_at_time.toFixed(2)
-      const total = (item.price_at_time * item.quantity).toFixed(2)
+      const price = formatCurrency(item.price_at_time)
+      const total = formatCurrency(item.price_at_time * item.quantity)
       return `<tr><td>${partName}</td><td>${qty}</td><td>$${price}</td><td>$${total}</td></tr>`
     }).join('')
     const thead = '<tr><th>Part</th><th>Qty</th><th>Price</th><th>Total</th></tr>'
@@ -1729,7 +1733,7 @@ export default function Materials() {
       <table>
         <thead>${thead}</thead>
         <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${formatCurrency(grandTotal)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${formatCurrency(withTaxAmount)}</td></tr></tfoot>
       </table>
     </body></html>`
     const win = window.open('', '_blank')
@@ -3278,7 +3282,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              {po.items.length} items • ${total.toFixed(2)} total
+                              {po.items.length} items • ${formatCurrency(total)} total
                             </div>
                           </div>
                         </div>
@@ -3338,7 +3342,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       </div>
                     )}
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      Status: <strong>{editingPO.status}</strong> • {editingPO.items.length} items • ${editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0).toFixed(2)} total
+                      Status: <strong>{editingPO.status}</strong> • {editingPO.items.length} items • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
                     </div>
                   </div>
                   <button
@@ -3477,20 +3481,20 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                       <>
                                         <option value="">None</option>
                                         {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
-                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
+                                          <option value={item.supply_house.id}>{item.supply_house.name} - ${formatCurrency(item.price_at_time)}</option>
                                         )}
                                         {draftPOSupplyHouseOptions.map(o => (
-                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
+                                          <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${formatCurrency(o.price)}</option>
                                         ))}
                                       </>
                                     )
                                   ) : (
-                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
+                                    <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${formatCurrency(item.price_at_time)}` : 'None'}</option>
                                   )}
                                 </select>
                               </td>
-                              <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                              <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                              <td style={{ padding: '0.75rem' }}>${formatCurrency(item.price_at_time)}</td>
+                              <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                               <td style={{ padding: '0.75rem' }}>
                                 {item.source_template ? (
                                   <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
@@ -3947,7 +3951,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                           return (
                                             <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                               <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
-                                              <td style={{ padding: '0.5rem' }}>${row.price.toFixed(2)}</td>
+                                              <td style={{ padding: '0.5rem' }}>${formatCurrency(row.price)}</td>
                                               <td style={{ padding: '0.5rem' }}>
                                                 <input
                                                   type="number"
@@ -4118,23 +4122,23 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     <>
                                       <option value="">None</option>
                                       {item.supply_house && !draftPOSupplyHouseOptions.some(o => o.supply_house_id === item.supply_house?.id) && (
-                                        <option value={item.supply_house.id}>{item.supply_house.name} - ${item.price_at_time.toFixed(2)}</option>
+                                        <option value={item.supply_house.id}>{item.supply_house.name} - ${formatCurrency(item.price_at_time)}</option>
                                       )}
                                       {draftPOSupplyHouseOptions.map(o => (
-                                        <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${o.price.toFixed(2)}</option>
+                                        <option key={o.supply_house_id} value={o.supply_house_id}>{o.supply_house_name} - ${formatCurrency(o.price)}</option>
                                       ))}
                                     </>
                                   )
                                 ) : (
-                                  <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${item.price_at_time.toFixed(2)}` : 'None'}</option>
+                                  <option value={item.supply_house?.id ?? ''}>{item.supply_house ? `${item.supply_house.name} - $${formatCurrency(item.price_at_time)}` : 'None'}</option>
                                 )}
                               </select>
                             ) : (
                               item.supply_house?.name || '-'
                             )}
                           </td>
-                          <td style={{ padding: '0.75rem' }}>${item.price_at_time.toFixed(2)}</td>
-                          <td style={{ padding: '0.75rem', fontWeight: 600 }}>${(item.price_at_time * item.quantity).toFixed(2)}</td>
+                          <td style={{ padding: '0.75rem' }}>${formatCurrency(item.price_at_time)}</td>
+                          <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {item.source_template ? (
                               <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
@@ -4201,7 +4205,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <tr>
                             <td colSpan={selectedPO.status === 'draft' ? 6 : 5} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                              ${viewedPOGrandTotal.toFixed(2)}
+                              ${formatCurrency(viewedPOGrandTotal)}
                             </td>
                           </tr>
                           <tr>
@@ -4218,7 +4222,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                               %:
                             </td>
                             <td style={{ padding: '0.75rem', fontWeight: 600 }}>
-                              ${withTaxAmount.toFixed(2)}
+                              ${formatCurrency(withTaxAmount)}
                             </td>
                           </tr>
                         </>
@@ -4310,13 +4314,13 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               type="text"
               placeholder="Search purchase orders..."
               value={poSearchQuery}
               onChange={(e) => setPoSearchQuery(e.target.value)}
-              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
             />
             <select
               value={poStatusFilter}
@@ -4327,6 +4331,18 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               <option value="draft">Draft</option>
               <option value="finalized">Finalized</option>
             </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+              Tax %
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.01}
+                value={viewedPOTaxPercent}
+                onChange={(e) => setViewedPOTaxPercent(e.target.value)}
+                style={{ width: '5rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+              />
+            </label>
           </div>
 
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
@@ -4337,6 +4353,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Items</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total with tax</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                 </tr>
@@ -4344,13 +4361,15 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               <tbody>
                 {filteredPOs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {poSearchQuery || poStatusFilter !== 'all' ? 'No purchase orders match your filters' : 'No purchase orders yet.'}
                     </td>
                   </tr>
                 ) : (
                   filteredPOs.map(po => {
                     const total = po.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
+                    const taxPercent = parseFloat(viewedPOTaxPercent) || 8.25
+                    const totalWithTax = total * (1 + taxPercent / 100)
                     return (
                       <tr key={po.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{po.name}</td>
@@ -4367,7 +4386,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           </span>
                         </td>
                         <td style={{ padding: '0.75rem' }}>{po.items.length}</td>
-                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>${total.toFixed(2)}</td>
+                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(total)}</td>
+                        <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(totalWithTax)}</td>
                         <td style={{ padding: '0.75rem' }}>
                           {po.created_at ? new Date(po.created_at).toLocaleDateString() : '-'}
                         </td>

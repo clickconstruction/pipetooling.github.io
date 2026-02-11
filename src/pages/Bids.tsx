@@ -1626,6 +1626,7 @@ export default function Bids() {
             top_out_hrs_per_unit: hours.top_out_hrs,
             trim_set_hrs_per_unit: hours.trim_set_hrs,
             sequence_order: ++seq,
+            is_fixed: false,
           })
           .select('*')
           .single()
@@ -2546,6 +2547,7 @@ export default function Bids() {
           top_out_hrs_per_unit: row.top_out_hrs_per_unit,
           trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
           count: row.count,
+          is_fixed: row.is_fixed ?? false,
         })
         .eq('id', row.id)
     }
@@ -2722,7 +2724,9 @@ export default function Bids() {
         return next
       })
       setAddMissingFixtureModalOpen(false)
-      // Optionally re-apply labor hours to update the row
+      // Reload labor book entries so the new entry appears instantly
+      await loadLaborBookEntries(selectedLaborBookVersionId)
+      // Re-apply labor hours to update the cost estimate row
       await applyLaborBookHoursToEstimate()
     }
     
@@ -2858,8 +2862,9 @@ export default function Bids() {
       loadPOItems(costEstimate?.purchase_order_id_trim_set)
     ])
     
+    const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
     // Generate PO summary HTML
-    const generatePOSummary = (items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }>) => {
+    const generatePOSummary = (items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }>, stageLabel: string) => {
       if (items.length === 0) return '<p style="margin:0.5rem 0; font-size:0.875rem; color:#6b7280;">No items in this PO.</p>'
       const tableRows = items.map(item => {
         const qty = item.quantity.toLocaleString('en-US')
@@ -2867,17 +2872,20 @@ export default function Bids() {
         const itemTotal = (item.quantity * item.price_at_time).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
         return `<tr><td style="padding:0.25rem 0.5rem">${escapeHtml(item.part_name)}</td><td style="padding:0.25rem 0.5rem; text-align:center">${qty}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${price}</td><td style="padding:0.25rem 0.5rem; text-align:right">$${itemTotal}</td></tr>`
       }).join('')
-      const total = items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0)
-      const totalFormatted = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0)
+      const taxAmount = subtotal * (taxPercent / 100)
+      const stageTotal = subtotal + taxAmount
+      const totalFormatted = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const taxFormatted = taxAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      const stageTotalFormatted = stageTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       return `
         <table style="width:100%; border-collapse:collapse; margin:0.5rem 0; font-size:0.875rem">
           <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Price</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
-          <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Subtotal:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${totalFormatted}</td></tr></tbody>
+          <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Subtotal:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${totalFormatted}</td></tr><tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Tax:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${taxFormatted}</td></tr><tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">${stageLabel} Total:</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${stageTotalFormatted}</td></tr></tbody>
         </table>`
     }
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-    const totalHours = costEstimateLaborRows.reduce(
-      (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+    const totalHours = costEstimateLaborRows.reduce((s, r) => s + laborRowHours(r),
       0
     )
     const laborCost = totalHours * rate
@@ -2891,16 +2899,16 @@ export default function Bids() {
               const rough = Number(row.rough_in_hrs_per_unit)
               const top = Number(row.top_out_hrs_per_unit)
               const trim = Number(row.trim_set_hrs_per_unit)
-              const totalHrs = Number(row.count) * (rough + top + trim)
+              const totalHrs = laborRowHours(row)
               return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:center">${rough.toFixed(2)}</td><td style="text-align:center">${top.toFixed(2)}</td><td style="text-align:center">${trim.toFixed(2)}</td><td style="text-align:center; font-weight:600">${totalHrs.toFixed(2)}</td></tr>`
             })
             .join('')
 
     let totalsRowHtml = ''
     if (costEstimateLaborRows.length > 0) {
-      const totalRough = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.rough_in_hrs_per_unit), 0)
-      const totalTop = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.top_out_hrs_per_unit), 0)
-      const totalTrim = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.trim_set_hrs_per_unit), 0)
+      const totalRough = costEstimateLaborRows.reduce((s, r) => s + laborRowRough(r), 0)
+      const totalTop = costEstimateLaborRows.reduce((s, r) => s + laborRowTop(r), 0)
+      const totalTrim = costEstimateLaborRows.reduce((s, r) => s + laborRowTrim(r), 0)
       totalsRowHtml = `<tr style="background:#f9fafb; font-weight:600"><td>Totals</td><td style="text-align:center"></td><td style="text-align:center">${totalRough.toFixed(2)} hrs</td><td style="text-align:center">${totalTop.toFixed(2)} hrs</td><td style="text-align:center">${totalTrim.toFixed(2)} hrs</td><td style="text-align:center">${totalHours.toFixed(2)} hrs</td></tr>`
     }
 
@@ -2920,24 +2928,24 @@ export default function Bids() {
   <h2>Materials</h2>
   <div class="po-section">
     <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Rough In)</strong> ${poRoughName} — $${formatCurrency(matRough)}</p>
-    ${generatePOSummary(roughItems)}
+    ${generatePOSummary(roughItems, 'Rough In')}
   </div>
   <div class="po-section">
     <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Top Out)</strong> ${poTopName} — $${formatCurrency(matTop)}</p>
-    ${generatePOSummary(topItems)}
+    ${generatePOSummary(topItems, 'Top Out')}
   </div>
   <div class="po-section">
     <p style="margin:0 0 0.25rem; font-weight:600"><strong>PO (Trim Set)</strong> ${poTrimName} — $${formatCurrency(matTrim)}</p>
-    ${generatePOSummary(trimItems)}
+    ${generatePOSummary(trimItems, 'Trim Set')}
   </div>
   <p style="font-weight:600; text-align:right;">Materials Total: $${formatCurrency(totalMaterials)}</p>
   <h2>Labor</h2>
   <p>Labor rate: $${formatCurrency(rate)}/hr</p>
   <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:center">Rough In (hrs/unit)</th><th style="text-align:center">Top Out (hrs/unit)</th><th style="text-align:center">Trim Set (hrs/unit)</th><th style="text-align:center">Total hrs</th></tr></thead>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:center">Rough In</th><th style="text-align:center">Top Out</th><th style="text-align:center">Trim Set</th><th style="text-align:center">Total hrs</th></tr></thead>
     <tbody>${laborRowsHtml}${totalsRowHtml}</tbody>
   </table>
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: ${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr = $${formatCurrency(laborCost)}</p>
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>
   <h2>Summary</h2>
   <div class="summary">
     <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
@@ -2975,7 +2983,7 @@ export default function Bids() {
     let totalCost = 0
     if (costEstimateLaborRows.length > 0) {
       totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * Number(row.rough_in_hrs_per_unit) * Number(row.count)
+        return sum + rate * laborRowRough(row)
       }, 0)
     }
 
@@ -3023,7 +3031,7 @@ export default function Bids() {
     let totalCost = 0
     if (costEstimateLaborRows.length > 0) {
       totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * Number(row.top_out_hrs_per_unit) * Number(row.count)
+        return sum + rate * laborRowTop(row)
       }, 0)
     }
 
@@ -3071,7 +3079,7 @@ export default function Bids() {
     let totalCost = 0
     if (costEstimateLaborRows.length > 0) {
       totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * Number(row.trim_set_hrs_per_unit) * Number(row.count)
+        return sum + rate * laborRowTrim(row)
       }, 0)
     }
 
@@ -3119,7 +3127,7 @@ export default function Bids() {
               .join('')
 
       const totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * Number(row[hoursField]) * Number(row.count)
+        return sum + rate * (hoursField === 'rough_in_hrs_per_unit' ? laborRowRough(row) : hoursField === 'top_out_hrs_per_unit' ? laborRowTop(row) : laborRowTrim(row))
       }, 0)
 
       return `
@@ -3174,7 +3182,7 @@ export default function Bids() {
       const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
       const rate = pricingLaborRate ?? 0
       const totalLaborHours = pricingLaborRows.reduce(
-        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        (s, r) => s + laborRowHours(r),
         0
       )
       const totalCost = totalMaterials + totalLaborHours * rate
@@ -3185,9 +3193,7 @@ export default function Bids() {
         const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
         const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
         const count = Number(countRow.count)
-        const laborHrs = laborRow
-          ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
-          : 0
+        const laborHrs = laborRow ? laborRowHours(laborRow) : 0
         const laborCost = laborHrs * rate
         const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
         const cost = laborCost + allocatedMaterials
@@ -3267,7 +3273,7 @@ export default function Bids() {
       const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
       const rate = pricingLaborRate ?? 0
       const totalLaborHours = pricingLaborRows.reduce(
-        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        (s, r) => s + laborRowHours(r),
         0
       )
       const totalCost = totalMaterials + totalLaborHours * rate
@@ -3521,7 +3527,7 @@ export default function Bids() {
       const totalMaterialsR = (roughR ?? 0) + (topR ?? 0) + (trimR ?? 0)
       const rateR = estForReviewData.labor_rate != null ? Number(estForReviewData.labor_rate) : 0
       const totalHoursR = laborRowsR.reduce(
-        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        (s, r) => s + laborRowHours(r),
         0
       )
       const distanceR = parseFloat(b.distance_from_office ?? '0') || 0
@@ -3668,7 +3674,7 @@ export default function Bids() {
       const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
       const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
       const totalHours = laborRows.reduce(
-        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        (s, r) => s + laborRowHours(r),
         0
       )
       const laborCost = totalHours * rate
@@ -3697,7 +3703,7 @@ export default function Bids() {
         const rough = Number(row.rough_in_hrs_per_unit)
         const top = Number(row.top_out_hrs_per_unit)
         const trim = Number(row.trim_set_hrs_per_unit)
-        const totalHrs = Number(row.count) * (rough + top + trim)
+        const totalHrs = laborRowHours(row)
         return [
           row.fixture ?? '',
           String(row.count),
@@ -3709,7 +3715,8 @@ export default function Bids() {
       })
       y = drawTable(y, laborColWidths, ['Fixture', 'Count', 'Rough In', 'Top Out', 'Trim Set', 'Total hrs'], laborTableRows)
       y += lineHeight
-      push(`Labor total: ${totalHours.toFixed(2)} hrs × $${formatCurrency(rate)}/hr = $${formatCurrency(laborCost)}`)
+      push(`Labor total: $${formatCurrency(laborCost)}`)
+      push(`(${totalHours.toFixed(2)} hrs × $${formatCurrency(rate)}/hr)`)
       y += lineHeight
       if (distance > 0 && totalHours > 0) {
         push(`Driving cost: ${numTrips.toFixed(1)} trips × $${drivingRatePerMile.toFixed(2)}/mi × ${distance.toFixed(0)}mi = $${formatCurrency(drivingCost)}`)
@@ -4239,10 +4246,24 @@ export default function Bids() {
     doc.save(filename)
   }
 
-  function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>>) {
+  function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit' | 'is_fixed'>>) {
     setCostEstimateLaborRows((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
     )
+  }
+
+  function laborRowHours(r: CostEstimateLaborRow): number {
+    const hrs = Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)
+    return r.is_fixed ? hrs : Number(r.count) * hrs
+  }
+  function laborRowRough(r: CostEstimateLaborRow): number {
+    return r.is_fixed ? Number(r.rough_in_hrs_per_unit) : Number(r.count) * Number(r.rough_in_hrs_per_unit)
+  }
+  function laborRowTop(r: CostEstimateLaborRow): number {
+    return r.is_fixed ? Number(r.top_out_hrs_per_unit) : Number(r.count) * Number(r.top_out_hrs_per_unit)
+  }
+  function laborRowTrim(r: CostEstimateLaborRow): number {
+    return r.is_fixed ? Number(r.trim_set_hrs_per_unit) : Number(r.count) * Number(r.trim_set_hrs_per_unit)
   }
 
   function setTakeoffMapping(mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) {
@@ -4578,16 +4599,16 @@ export default function Bids() {
         return
       }
       const [laborRes, roughTotal, topTotal, trimTotal] = await Promise.all([
-        supabase.from('cost_estimate_labor_rows').select('count, rough_in_hrs_per_unit, top_out_hrs_per_unit, trim_set_hrs_per_unit').eq('cost_estimate_id', est.id),
+        supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id),
         est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
         est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
         est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
       ])
       if (cancelled) return
-      const laborRows = (laborRes.data as { count: number; rough_in_hrs_per_unit: number; top_out_hrs_per_unit: number; trim_set_hrs_per_unit: number }[]) ?? []
+      const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
       const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
       const totalHours = laborRows.reduce(
-        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+        (s, r) => s + laborRowHours(r),
         0
       )
       const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
@@ -6672,29 +6693,6 @@ export default function Bids() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCostEstimate) || 'Bid'}</h2>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  {costEstimateLaborRows.length > 0 && selectedLaborBookVersionId && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => applyLaborBookHoursToEstimate()}
-                        disabled={applyingLaborBookHours}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: applyingLaborBookHours ? 'wait' : 'pointer',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
-                      </button>
-                      {laborBookApplyMessage && (
-                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
-                      )}
-                    </>
-                  )}
                   <button
                     type="button"
                     onClick={() => void printCostEstimatePage()}
@@ -6733,6 +6731,12 @@ export default function Bids() {
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                           Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${formatCurrency(Number(costEstimateMaterialTotalRoughIn))}` : '—'}
+                          {costEstimateMaterialTotalRoughIn != null && (
+                            <>
+                              <br />
+                              {'\u00A0'.repeat(18)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalRoughIn) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                            </>
+                          )}
                         </p>
                         {costEstimate?.purchase_order_id_rough_in && (
                           <button
@@ -6758,6 +6762,12 @@ export default function Bids() {
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                           Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTopOut))}` : '—'}
+                          {costEstimateMaterialTotalTopOut != null && (
+                            <>
+                              <br />
+                              {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTopOut) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                            </>
+                          )}
                         </p>
                         {costEstimate?.purchase_order_id_top_out && (
                           <button
@@ -6783,6 +6793,12 @@ export default function Bids() {
                         </select>
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
                           Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTrimSet))}` : '—'}
+                          {costEstimateMaterialTotalTrimSet != null && (
+                            <>
+                              <br />
+                              {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTrimSet) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                            </>
+                          )}
                         </p>
                         {costEstimate?.purchase_order_id_trim_set && (
                           <button
@@ -6795,6 +6811,18 @@ export default function Bids() {
                         )}
                       </div>
                     </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        value={costEstimatePOModalTaxPercent}
+                        onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                        style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
+                      />
+                    </div>
                     <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
                       Materials Total: $
                       {formatCurrency(
@@ -6802,26 +6830,77 @@ export default function Bids() {
                         (costEstimateMaterialTotalTopOut ?? 0) +
                         (costEstimateMaterialTotalTrimSet ?? 0)
                       )}
+                      <br />
+                      <span style={{ fontWeight: 400 }}>{'\u00A0'.repeat(11)}With tax: ${formatCurrency(((costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}</span>
                     </p>
                   </div>
                   {/* Labor section */}
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>LABOR</h3>
+                    <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book version</label>
+                        <select
+                          value={selectedLaborBookVersionId ?? ''}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (selectedBidForCostEstimate) {
+                              if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
+                              else {
+                                saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
+                                setSelectedLaborBookVersionId(null)
+                                loadCostEstimateData(selectedBidForCostEstimate.id, null)
+                              }
+                            }
+                          }}
+                          style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                        >
+                          <option value="">— Use defaults —</option>
+                          {laborBookVersions.map((v) => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {costEstimateLaborRows.length > 0 && selectedLaborBookVersionId && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => applyLaborBookHoursToEstimate()}
+                            disabled={applyingLaborBookHours}
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: applyingLaborBookHours ? 'wait' : 'pointer',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
+                          </button>
+                          {laborBookApplyMessage && (
+                            <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead style={{ background: '#f9fafb' }}>
                           <tr>
                             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                             <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs/unit)</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs/unit)</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs/unit)</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>(hrs/unit)</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rough In</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Top Out</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Trim Set</th>
                             <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
                           </tr>
                         </thead>
                         <tbody>
                           {costEstimateLaborRows.map((row) => {
-                            const totalHrs = Number(row.count) * (Number(row.rough_in_hrs_per_unit) + Number(row.top_out_hrs_per_unit) + Number(row.trim_set_hrs_per_unit))
+                            const totalHrs = laborRowHours(row)
                             return (
                               <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                 <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -6851,6 +6930,17 @@ export default function Bids() {
                                   )}
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
+                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                  <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!row.is_fixed}
+                                      onChange={(e) => setCostEstimateLaborRow(row.id, { is_fixed: e.target.checked })}
+                                      style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                    />
+                                    <span style={{ color: '#6b7280' }}>fixed</span>
+                                  </label>
+                                </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                   <input
                                     type="number"
@@ -6889,13 +6979,14 @@ export default function Bids() {
                             )
                           })}
                           {costEstimateLaborRows.length > 0 && (() => {
-                            const totalRough = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.rough_in_hrs_per_unit), 0)
-                            const totalTop = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.top_out_hrs_per_unit), 0)
-                            const totalTrim = costEstimateLaborRows.reduce((s, r) => s + Number(r.count) * Number(r.trim_set_hrs_per_unit), 0)
+                            const totalRough = costEstimateLaborRows.reduce((s, r) => s + laborRowRough(r), 0)
+                            const totalTop = costEstimateLaborRows.reduce((s, r) => s + laborRowTop(r), 0)
+                            const totalTrim = costEstimateLaborRows.reduce((s, r) => s + laborRowTrim(r), 0)
                             const totalHours = totalRough + totalTop + totalTrim
                             return (
                               <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
                                 <td style={{ padding: '0.75rem' }}>Totals</td>
+                                <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalRough.toFixed(2)} hrs</td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalTop.toFixed(2)} hrs</td>
@@ -6953,14 +7044,16 @@ export default function Bids() {
                     </div>
                     {costEstimateLaborRows.length > 0 && (() => {
                       const totalHours = costEstimateLaborRows.reduce(
-                        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                        (s, r) => s + laborRowHours(r),
                         0
                       )
                       const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
                       const laborCost = totalHours * rate
                       return (
                         <p style={{ margin: '0.75rem 0 0', fontWeight: 600, textAlign: 'right' }}>
-                          Labor total: {totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × ${formatCurrency(rate)}/hr = ${formatCurrency(laborCost)}
+                          Labor total: ${formatCurrency(laborCost)}
+                          <br />
+                          <span style={{ fontWeight: 400, fontSize: '0.875rem' }}>({totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × ${formatCurrency(rate)}/hr)</span>
                         </p>
                       )
                     })()}
@@ -7007,7 +7100,7 @@ export default function Bids() {
                       {(() => {
                         const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
                         const totalHours = costEstimateLaborRows.reduce(
-                          (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                          (s, r) => s + laborRowHours(r),
                           0
                         )
                         const ratePerMile = parseFloat(drivingCostRate) || 0.70
@@ -7028,14 +7121,14 @@ export default function Bids() {
                       })()}
                     </div>
                   </div>
-                  {/* Summary */}
-                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', textAlign: 'center' }}>Summary</h3>
+                  {/* Total */}
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', textAlign: 'center' }}>TOTAL</h3>
                     {(() => {
                       const totalMaterials =
                         (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)
                       const totalHours = costEstimateLaborRows.reduce(
-                        (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                        (s, r) => s + laborRowHours(r),
                         0
                       )
                       const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
@@ -7046,11 +7139,12 @@ export default function Bids() {
                       const numTrips = totalHours / hrsPerTrip
                       const drivingCost = numTrips * ratePerMile * distance
                       const laborCostWithDriving = laborCost + drivingCost
-                      const grandTotal = totalMaterials + laborCostWithDriving
+                      const materialsWithTax = totalMaterials * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100)
+                      const grandTotal = materialsWithTax + laborCostWithDriving
                       return (
                         <>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Materials Total: ${formatCurrency(totalMaterials)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Labor: ${formatCurrency(laborCost)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>Materials with tax: ${formatCurrency(materialsWithTax)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Manhours: ${formatCurrency(laborCost)}</p>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Driving: ${formatCurrency(drivingCost)}</p>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>
                             Labor total: ${formatCurrency(laborCostWithDriving)}
@@ -7303,16 +7397,6 @@ export default function Bids() {
                     >
                       ✎
                     </button>
-                    {v.name !== 'Default' && (
-                      <button
-                        type="button"
-                        onClick={() => deleteLaborVersion(v)}
-                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
-                        title="Delete version"
-                      >
-                        ×
-                      </button>
-                    )}
                   </span>
                 ))}
                 <button
@@ -7367,32 +7451,6 @@ export default function Bids() {
                   </button>
                 </>
               )}
-              {selectedBidForCostEstimate && (
-                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book version</label>
-                  <select
-                    value={selectedLaborBookVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
-                      else {
-                        saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
-                        setSelectedLaborBookVersionId(null)
-                        loadCostEstimateData(selectedBidForCostEstimate.id, null)
-                      }
-                    }}
-                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
-                  >
-                    <option value="">— Use defaults —</option>
-                    {laborBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Used to prefill hours when adding new fixtures to the labor matrix. Existing rows are not changed.
-                  </p>
-                </div>
-              )}
               </>
               )}
             </div>
@@ -7424,9 +7482,26 @@ export default function Bids() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                     placeholder="e.g. Default"
                   />
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {editingLaborVersion && editingLaborVersion.name !== 'Default' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`Delete labor book "${editingLaborVersion.name}"? This will delete all entries in this version.`)) return
+                            await deleteLaborVersion(editingLaborVersion)
+                            closeLaborVersionForm()
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Delete version
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -7537,7 +7612,7 @@ export default function Bids() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                        Rough In (hrs/unit)
+                        Rough In
                       </label>
                       <input
                         type="number"
@@ -7552,7 +7627,7 @@ export default function Bids() {
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                        Top Out (hrs/unit)
+                        Top Out
                       </label>
                       <input
                         type="number"
@@ -7566,7 +7641,7 @@ export default function Bids() {
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                        Trim Set (hrs/unit)
+                        Trim Set
                       </label>
                       <input
                         type="number"
@@ -7679,7 +7754,7 @@ export default function Bids() {
                 const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
                 const rate = pricingLaborRate ?? 0
                 const totalLaborHours = pricingLaborRows.reduce(
-                  (s, r) => s + Number(r.count) * (Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)),
+                  (s, r) => s + laborRowHours(r),
                   0
                 )
                 const totalCost = totalMaterials + totalLaborHours * rate
@@ -7690,9 +7765,7 @@ export default function Bids() {
                   const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
                   const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
                   const count = Number(countRow.count)
-                  const laborHrs = laborRow
-                    ? count * (Number(laborRow.rough_in_hrs_per_unit) + Number(laborRow.top_out_hrs_per_unit) + Number(laborRow.trim_set_hrs_per_unit))
-                    : 0
+                  const laborHrs = laborRow ? laborRowHours(laborRow) : 0
                   const laborCost = laborHrs * rate
                   const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
                   const cost = laborCost + allocatedMaterials

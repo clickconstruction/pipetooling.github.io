@@ -424,6 +424,7 @@ export type Database = {
           created_at: string | null
           fixture: string
           id: string
+          is_fixed: boolean
           rough_in_hrs_per_unit: number
           sequence_order: number
           top_out_hrs_per_unit: number
@@ -435,6 +436,7 @@ export type Database = {
           created_at?: string | null
           fixture: string
           id?: string
+          is_fixed?: boolean
           rough_in_hrs_per_unit?: number
           sequence_order?: number
           top_out_hrs_per_unit?: number
@@ -446,6 +448,7 @@ export type Database = {
           created_at?: string | null
           fixture?: string
           id?: string
+          is_fixed?: boolean
           rough_in_hrs_per_unit?: number
           sequence_order?: number
           top_out_hrs_per_unit?: number
