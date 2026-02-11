@@ -797,6 +797,8 @@ export default function Bids() {
   const [priceBookSearchQuery, setPriceBookSearchQuery] = useState('')
   const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
+  const [pricingFixtureMaterialsFromTakeoff, setPricingFixtureMaterialsFromTakeoff] = useState<Record<string, number>>({})
+  const [pricingRowBreakdownModalCountRow, setPricingRowBreakdownModalCountRow] = useState<BidCountRow | null>(null)
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
@@ -1820,6 +1822,7 @@ export default function Bids() {
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
       setPricingLaborRate(null)
+      setPricingFixtureMaterialsFromTakeoff({})
       return
     }
     const countRows = (countData as BidCountRow[]) ?? []
@@ -1836,6 +1839,7 @@ export default function Bids() {
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
       setPricingLaborRate(null)
+      setPricingFixtureMaterialsFromTakeoff({})
       return
     }
     const est = estData as CostEstimate
@@ -1856,9 +1860,54 @@ export default function Bids() {
       .order('sequence_order', { ascending: true })
     if (laborErr) {
       setPricingLaborRows([])
+      setPricingFixtureMaterialsFromTakeoff({})
       return
     }
     setPricingLaborRows((laborData as CostEstimateLaborRow[]) ?? [])
+
+    // Load takeoff mappings for per-fixture materials
+    const { data: mappingsData } = await supabase
+      .from('bids_takeoff_template_mappings')
+      .select('id, count_row_id, template_id, stage, quantity')
+      .eq('bid_id', bidId)
+    // Load PO items for part prices (part_id -> price_at_time per stage)
+    const loadPOItems = async (poId: string | null) => {
+      if (!poId) return []
+      const { data, error } = await supabase
+        .from('purchase_order_items')
+        .select('part_id, quantity, price_at_time')
+        .eq('purchase_order_id', poId)
+      if (error) return []
+      return (data as Array<{ part_id: string; quantity: number; price_at_time: number }>) ?? []
+    }
+    const [roughItems, topItems, trimItems] = await Promise.all([
+      loadPOItems(est.purchase_order_id_rough_in),
+      loadPOItems(est.purchase_order_id_top_out),
+      loadPOItems(est.purchase_order_id_trim_set),
+    ])
+    // Compute per-fixture materials from takeoff (expandTemplate + PO part prices)
+    const partPriceByStage: Record<string, Record<string, number>> = {
+      rough_in: Object.fromEntries(roughItems.map((i) => [i.part_id, i.price_at_time])),
+      top_out: Object.fromEntries(topItems.map((i) => [i.part_id, i.price_at_time])),
+      trim_set: Object.fromEntries(trimItems.map((i) => [i.part_id, i.price_at_time])),
+    }
+    const mappings = (mappingsData as Array<{ id: string; count_row_id: string; template_id: string; stage: string; quantity: number }>) ?? []
+    const fixtureMaterials: Record<string, number> = {}
+    for (const countRow of countRows) {
+      const rowMappings = mappings.filter((m) => m.count_row_id === countRow.id)
+      if (rowMappings.length === 0) continue
+      let sum = 0
+      for (const m of rowMappings) {
+        const parts = await expandTemplate(supabase, m.template_id, m.quantity)
+        const priceMap = partPriceByStage[m.stage] ?? {}
+        for (const { part_id, quantity } of parts) {
+          const price = priceMap[part_id] ?? 0
+          sum += quantity * price
+        }
+      }
+      fixtureMaterials[countRow.id] = sum
+    }
+    setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
   }
 
   async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
@@ -5498,10 +5547,11 @@ export default function Bids() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
         <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
           Bid Board
         </button>
+        <span style={{ color: '#9ca3af', padding: '0 0.25rem', position: 'relative', top: '-1px' }}>|</span>
         <button type="button" onClick={() => setActiveTab('counts')} style={tabStyle(activeTab === 'counts')}>
           Counts
         </button>
@@ -7757,6 +7807,7 @@ export default function Bids() {
                   (s, r) => s + laborRowHours(r),
                   0
                 )
+                const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
                 const totalCost = totalMaterials + totalLaborHours * rate
                 const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
                 let totalRevenue = 0
@@ -7767,15 +7818,37 @@ export default function Bids() {
                   const count = Number(countRow.count)
                   const laborHrs = laborRow ? laborRowHours(laborRow) : 0
                   const laborCost = laborHrs * rate
-                  const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
-                  const cost = laborCost + allocatedMaterials
+                  const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[countRow.id]
+                  const materialsBeforeTax = materialsFromTakeoff != null
+                    ? materialsFromTakeoff
+                    : (totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0)
+                  const materialsWithTax = materialsFromTakeoff != null
+                    ? materialsBeforeTax * (1 + taxPercent / 100)
+                    : materialsBeforeTax
+                  const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
+                  const cost = laborCost + materialsWithTax
                   const unitPrice = entry ? Number(entry.total_price) : 0
                   const isFixedPrice = assignment?.is_fixed_price ?? false
                   const revenue = isFixedPrice ? unitPrice : count * unitPrice
                   totalRevenue += revenue
                   const margin = revenue > 0 ? ((revenue - cost) / revenue) * 100 : null
                   const flag = marginFlag(margin)
-                  return { countRow, entry, laborRow, count, cost, revenue, margin, flag, assignment }
+                  return {
+                    countRow,
+                    entry,
+                    laborRow,
+                    count,
+                    cost,
+                    revenue,
+                    margin,
+                    flag,
+                    assignment,
+                    materialsBeforeTax,
+                    materialsWithTax,
+                    taxAmount,
+                    laborCost,
+                    materialsFromTakeoff: materialsFromTakeoff ?? null,
+                  }
                 })
                 return (
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
@@ -7792,24 +7865,28 @@ export default function Bids() {
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map(({ countRow, entry, count, cost, revenue, margin, flag, assignment }) => (
-                          <tr key={countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>{countRow.fixture ?? ''}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{count}</td>
-                            <td style={{ padding: '0.75rem', position: 'relative' }}>
+                        {rows.map((row) => (
+                          <tr
+                            key={row.countRow.id}
+                            style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                            onClick={() => setPricingRowBreakdownModalCountRow(row.countRow)}
+                          >
+                            <td style={{ padding: '0.75rem' }}>{row.countRow.fixture ?? ''}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
+                            <td style={{ padding: '0.75rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
                               <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
                                 <input
                                   type="text"
-                                  value={pricingAssignmentSearches[countRow.id] !== undefined 
-                                    ? pricingAssignmentSearches[countRow.id] 
-                                    : (entry?.fixture_types?.name ?? '')}
+                                  value={pricingAssignmentSearches[row.countRow.id] !== undefined 
+                                    ? pricingAssignmentSearches[row.countRow.id] 
+                                    : (row.entry?.fixture_types?.name ?? '')}
                                   onChange={(e) => {
-                                    setPricingAssignmentSearches((prev) => ({ ...prev, [countRow.id]: e.target.value }))
-                                    setPricingAssignmentDropdownOpen(countRow.id)
+                                    setPricingAssignmentSearches((prev) => ({ ...prev, [row.countRow.id]: e.target.value }))
+                                    setPricingAssignmentDropdownOpen(row.countRow.id)
                                   }}
-                                  onFocus={() => setPricingAssignmentDropdownOpen(countRow.id)}
+                                  onFocus={() => setPricingAssignmentDropdownOpen(row.countRow.id)}
                                   placeholder="Search or assign..."
-                                  disabled={savingPricingAssignment === countRow.id}
+                                  disabled={savingPricingAssignment === row.countRow.id}
                                   style={{ 
                                     width: '100%',
                                     padding: '0.35rem', 
@@ -7817,10 +7894,10 @@ export default function Bids() {
                                     borderRadius: 4, 
                                     minWidth: '10rem',
                                     boxSizing: 'border-box',
-                                    paddingRight: entry ? '5rem' : '0.35rem'
+                                    paddingRight: row.entry ? '5rem' : '0.35rem'
                                   }}
                                 />
-                                {entry && (
+                                {row.entry && (
                                   <>
                                     <label
                                       style={{
@@ -7840,8 +7917,8 @@ export default function Bids() {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={assignment?.is_fixed_price ?? false}
-                                        onChange={() => togglePricingAssignmentFixedPrice(countRow.id)}
+                                        checked={row.assignment?.is_fixed_price ?? false}
+                                        onChange={() => togglePricingAssignmentFixedPrice(row.countRow.id)}
                                         style={{ cursor: 'pointer' }}
                                       />
                                       Fixed
@@ -7849,10 +7926,10 @@ export default function Bids() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        removePricingAssignment(countRow.id)
+                                        removePricingAssignment(row.countRow.id)
                                         setPricingAssignmentSearches((prev) => {
                                           const next = { ...prev }
-                                          delete next[countRow.id]
+                                          delete next[row.countRow.id]
                                           return next
                                         })
                                       }}
@@ -7875,8 +7952,8 @@ export default function Bids() {
                                     </button>
                                   </>
                                 )}
-                                {pricingAssignmentDropdownOpen === countRow.id && (() => {
-                                  const searchTerm = pricingAssignmentSearches[countRow.id] || ''
+                                {pricingAssignmentDropdownOpen === row.countRow.id && (() => {
+                                  const searchTerm = pricingAssignmentSearches[row.countRow.id] || ''
                                   const filtered = priceBookEntries.filter((e) => 
                                     (e.fixture_types?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
                                   )
@@ -7900,10 +7977,10 @@ export default function Bids() {
                                           <div
                                             key={e.id}
                                             onClick={() => {
-                                              savePricingAssignment(countRow.id, e.id)
+                                              savePricingAssignment(row.countRow.id, e.id)
                                               setPricingAssignmentSearches((prev) => {
                                                 const next = { ...prev }
-                                                delete next[countRow.id]
+                                                delete next[row.countRow.id]
                                                 return next
                                               })
                                               setPricingAssignmentDropdownOpen(null)
@@ -7912,10 +7989,10 @@ export default function Bids() {
                                               padding: '0.5rem',
                                               cursor: 'pointer',
                                               borderBottom: '1px solid #f3f4f6',
-                                              background: entry?.id === e.id ? '#eff6ff' : 'white'
+                                              background: row.entry?.id === e.id ? '#eff6ff' : 'white'
                                             }}
                                             onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
-                                            onMouseLeave={(ev) => { ev.currentTarget.style.background = entry?.id === e.id ? '#eff6ff' : 'white' }}
+                                            onMouseLeave={(ev) => { ev.currentTarget.style.background = row.entry?.id === e.id ? '#eff6ff' : 'white' }}
                                           >
                                             {e.fixture_types?.name ?? ''}
                                           </div>
@@ -7960,21 +8037,21 @@ export default function Bids() {
                                 })()}
                               </div>
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(revenue)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.cost)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.revenue)}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              {margin != null ? `${margin.toFixed(1)}%` : '—'}
+                              {row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                              {flag && (
+                              {row.flag && (
                                 <span
-                                  title={flag === 'red' ? '< 20%' : flag === 'yellow' ? '< 40%' : '≥ 40%'}
+                                  title={row.flag === 'red' ? '< 20%' : row.flag === 'yellow' ? '< 40%' : '≥ 40%'}
                                   style={{
                                     display: 'inline-block',
                                     width: 16,
                                     height: 16,
                                     borderRadius: '50%',
-                                    background: flag === 'red' ? '#dc2626' : flag === 'yellow' ? '#ca8a04' : '#16a34a',
+                                    background: row.flag === 'red' ? '#dc2626' : row.flag === 'yellow' ? '#ca8a04' : '#16a34a',
                                   }}
                                   aria-hidden
                                 />
@@ -8018,6 +8095,80 @@ export default function Bids() {
               })()}
             </div>
           )}
+          {pricingRowBreakdownModalCountRow && selectedBidForPricing && pricingCostEstimate && (() => {
+            const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+            const rate = pricingLaborRate ?? 0
+            const totalLaborHours = pricingLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
+            const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+            const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (pricingRowBreakdownModalCountRow!.fixture ?? '').toLowerCase())
+            const laborHrs = laborRow ? laborRowHours(laborRow) : 0
+            const laborCost = laborHrs * rate
+            const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pricingRowBreakdownModalCountRow!.id]
+            const materialsBeforeTax = materialsFromTakeoff != null
+              ? materialsFromTakeoff
+              : (totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0)
+            const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
+            const ourCost = laborCost + materialsBeforeTax + taxAmount
+            return (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pricing-breakdown-title"
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}
+                onClick={() => setPricingRowBreakdownModalCountRow(null)}
+              >
+                <div
+                  style={{
+                    background: 'white',
+                    borderRadius: 8,
+                    padding: '1.5rem 2rem',
+                    minWidth: 320,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h2 id="pricing-breakdown-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
+                    Cost breakdown: {pricingRowBreakdownModalCountRow.fixture ?? ''}
+                  </h2>
+                  <dl style={{ margin: 0, display: 'grid', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <dt style={{ margin: 0, color: '#6b7280' }}>Materials {materialsFromTakeoff != null ? '(from takeoff)' : '(proportional)'}</dt>
+                      <dd style={{ margin: 0 }}>${formatCurrency(materialsBeforeTax)}</dd>
+                    </div>
+                    {taxAmount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                        <dt style={{ margin: 0, color: '#6b7280' }}>Tax ({taxPercent}%)</dt>
+                        <dd style={{ margin: 0 }}>${formatCurrency(taxAmount)}</dd>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <dt style={{ margin: 0, color: '#6b7280' }}>Labor</dt>
+                      <dd style={{ margin: 0 }}>${formatCurrency(laborCost)}</dd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 600, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+                      <dt style={{ margin: 0 }}>Our cost</dt>
+                      <dd style={{ margin: 0 }}>${formatCurrency(ourCost)}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    onClick={() => setPricingRowBreakdownModalCountRow(null)}
+                    style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )
+          })()}
           {!selectedBidForPricing && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
