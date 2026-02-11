@@ -1342,7 +1342,7 @@ export default function Bids() {
       .order('sequence_order', { ascending: false })
       .limit(1)
 
-    const maxOrder = existingItems && existingItems.length > 0 ? existingItems[0].sequence_order : 0
+    const maxOrder = existingItems && existingItems.length > 0 ? (existingItems[0]?.sequence_order ?? 0) : 0
 
     const { error: insertError } = await supabase
       .from('material_template_items')
@@ -2518,6 +2518,7 @@ export default function Bids() {
               templateId: item.template_id,
               stage: item.stage as TakeoffStage,
               quantity: Number(row.count),
+              isSaved: false,
             })
           }
         }
@@ -4334,8 +4335,9 @@ export default function Bids() {
       setError(`Failed to save template assignment: ${error.message}`)
     } else if (data && !mapping.isSaved) {
       // Update local state with database ID for newly created mappings
+      const savedId = (data as { id: string }).id
       setTakeoffMappings(prev => prev.map(m => 
-        m.id === mapping.id ? { ...m, id: data.id, isSaved: true } : m
+        m.id === mapping.id ? { ...m, id: savedId, isSaved: true } : m
       ))
     }
   }

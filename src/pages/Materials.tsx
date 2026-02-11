@@ -1041,7 +1041,7 @@ export default function Materials() {
     setError(null)
   }
 
-  async function handlePartSaved(part: MaterialPart) {
+  async function handlePartSaved(_part: MaterialPart) {
     await reloadPartsFirstPage()
     setPartFormOpen(false)
   }

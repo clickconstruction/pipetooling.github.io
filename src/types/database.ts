@@ -20,6 +20,7 @@ export type Database = {
           count_row_id: string
           created_at: string | null
           id: string
+          is_fixed_price: boolean
           price_book_entry_id: string
           price_book_version_id: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           count_row_id: string
           created_at?: string | null
           id?: string
+          is_fixed_price?: boolean
           price_book_entry_id: string
           price_book_version_id: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           count_row_id?: string
           created_at?: string | null
           id?: string
+          is_fixed_price?: boolean
           price_book_entry_id?: string
           price_book_version_id?: string
         }
@@ -235,6 +238,64 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids_takeoff_template_mappings: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string | null
+          id: string
+          quantity: number
+          sequence_order: number
+          stage: string
+          template_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string | null
+          id?: string
+          quantity?: number
+          sequence_order?: number
+          stage: string
+          template_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string | null
+          id?: string
+          quantity?: number
+          sequence_order?: number
+          stage?: string
+          template_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "material_templates"
             referencedColumns: ["id"]
           },
         ]
