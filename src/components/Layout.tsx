@@ -13,7 +13,7 @@ const IMPERSONATION_KEY = 'impersonation_original'
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar']
-const ESTIMATOR_PATHS = ['/materials', '/bids']
+const ESTIMATOR_PATHS = ['/materials', '/bids', '/calendar']
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -78,6 +78,7 @@ export default function Layout() {
           <>
             <NavLink to="/materials" style={navStyle}>Materials</NavLink>
             <NavLink to="/bids" style={navStyle}>Bids</NavLink>
+            <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
           </>
         ) : (
           <>

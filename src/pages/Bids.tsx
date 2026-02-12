@@ -4628,10 +4628,39 @@ export default function Bids() {
     const params = new URLSearchParams(location.search)
     if (params.get('new') === 'true') {
       openNewBid()
-      // Remove the parameter from URL without causing a re-render
       navigate('/bids', { replace: true })
+      return
     }
-  }, [location.search])
+    const bidId = params.get('bidId')
+    const tab = params.get('tab')
+    if (bidId && tab === 'submission-followup') {
+      const bid = bids.find((b) => b.id === bidId)
+      if (bid) {
+        setSelectedBidForSubmission(bid)
+        setActiveTab('submission-followup')
+        const sectionKey = (() => {
+          if (bid.outcome === 'won') return 'won'
+          if (bid.outcome === 'started_or_complete') return 'startedOrComplete'
+          if (bid.outcome === 'lost') return 'lost'
+          if (!bid.bid_date_sent) return 'unsent'
+          return 'pending'
+        })()
+        setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
+        setTimeout(() => {
+          document.getElementById(`submission-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 150)
+        navigate('/bids', { replace: true })
+      } else if (serviceTypes.length > 0) {
+        // Bid not in current list - may be different service type; fetch and switch
+        supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
+          const row = data as { service_type_id: string } | null
+          if (row && row.service_type_id !== selectedServiceTypeId) {
+            setSelectedServiceTypeId(row.service_type_id)
+          }
+        })
+      }
+    }
+  }, [location.search, bids, serviceTypes.length, selectedServiceTypeId])
 
   useEffect(() => {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
