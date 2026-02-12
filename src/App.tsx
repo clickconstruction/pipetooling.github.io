@@ -19,6 +19,7 @@ import Templates from './pages/Templates'
 import People from './pages/People'
 import Materials from './pages/Materials'
 import Bids from './pages/Bids'
+import Duplicates from './pages/Duplicates'
 import { Toast, useToast } from './components/Toast'
 
 // Easter egg:
@@ -115,6 +116,7 @@ export default function App() {
           <Route path="calendar" element={<Calendar />} />
           <Route path="templates" element={<Templates />} />
           <Route path="materials" element={<Materials />} />
+          <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
           <Route path="settings" element={<Settings />} />
         </Route>

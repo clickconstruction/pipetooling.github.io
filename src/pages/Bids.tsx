@@ -712,6 +712,15 @@ export default function Bids() {
   const [addPartsDropdownOpen, setAddPartsDropdownOpen] = useState(false)
   const [savingTemplateParts, setSavingTemplateParts] = useState(false)
 
+  // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
+  const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string } | null>(null)
+  const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number }> | 'loading' | null>(null)
+  const [partPricesModalEditing, setPartPricesModalEditing] = useState<Record<string, string>>({})
+  const [partPricesModalUpdating, setPartPricesModalUpdating] = useState<string | null>(null)
+  const [partPricesModalAddSupplyHouseId, setPartPricesModalAddSupplyHouseId] = useState('')
+  const [partPricesModalAddPrice, setPartPricesModalAddPrice] = useState('')
+  const [partPricesModalAdding, setPartPricesModalAdding] = useState(false)
+
   // Edit Template Modal state
   const [editTemplateModalOpen, setEditTemplateModalOpen] = useState(false)
   const [editTemplateModalId, setEditTemplateModalId] = useState<string | null>(null)
@@ -4949,6 +4958,79 @@ export default function Bids() {
   }, [takeoffAddTemplateModalOpen, addPartsToTemplateModalOpen, editTemplateModalOpen, selectedServiceTypeId])
 
   useEffect(() => {
+    if (!partPricesModal) {
+      setPartPricesModalData(null)
+      setPartPricesModalEditing({})
+      setPartPricesModalAddSupplyHouseId('')
+      setPartPricesModalAddPrice('')
+      return
+    }
+    setPartPricesModalData('loading')
+    supabase
+      .from('material_part_prices')
+      .select('id, price, supply_house_id, supply_houses(name)')
+      .eq('part_id', partPricesModal.partId)
+      .order('price', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) {
+          setPartPricesModalData(null)
+          return
+        }
+        const rows = (data ?? []).map((r: { id: string; price: number; supply_house_id: string; supply_houses: { name: string } | null }) => ({
+          price_id: r.id,
+          supply_house_name: (r.supply_houses as { name: string } | null)?.name ?? '—',
+          supply_house_id: r.supply_house_id,
+          price: r.price,
+        }))
+        setPartPricesModalData(rows)
+        setPartPricesModalEditing({})
+      })
+  }, [partPricesModal?.partId])
+
+  async function updatePartPriceInModal(priceId: string, newPrice: number) {
+    if (!partPricesModal) return
+    setPartPricesModalUpdating(priceId)
+    const { error } = await supabase.from('material_part_prices').update({ price: newPrice }).eq('id', priceId)
+    setPartPricesModalUpdating(null)
+    if (error) {
+      setError(`Failed to update price: ${error.message}`)
+      return
+    }
+    setPartPricesModalData((prev) => {
+      if (!prev || prev === 'loading') return prev
+      return prev.map((row) => (row.price_id === priceId ? { ...row, price: newPrice } : row))
+    })
+    setPartPricesModalEditing((prev) => {
+      const next = { ...prev }
+      delete next[priceId]
+      return next
+    })
+  }
+
+  async function addPartPriceInModal(supplyHouseId: string, price: number) {
+    if (!partPricesModal) return
+    setPartPricesModalAdding(true)
+    const { data, error } = await supabase
+      .from('material_part_prices')
+      .insert({ part_id: partPricesModal.partId, supply_house_id: supplyHouseId, price })
+      .select('id, price, supply_house_id, supply_houses(name)')
+      .single()
+    setPartPricesModalAdding(false)
+    if (error) {
+      setError(`Failed to add price: ${error.message}`)
+      return
+    }
+    const raw = data as { id: string; supply_houses?: { name: string } | null } | null
+    const supplyHouseName = raw?.supply_houses?.name ?? supplyHouses.find((sh) => sh.id === supplyHouseId)?.name ?? '—'
+    setPartPricesModalData((prev) => {
+      if (!prev || prev === 'loading') return prev
+      return [...prev, { price_id: raw!.id, supply_house_name: supplyHouseName, supply_house_id: supplyHouseId, price }]
+    })
+    setPartPricesModalAddSupplyHouseId('')
+    setPartPricesModalAddPrice('')
+  }
+
+  useEffect(() => {
     if (activeTab === 'takeoffs') {
       loadMaterialTemplates()
       loadDraftPOs()
@@ -6458,10 +6540,10 @@ export default function Bids() {
                     </div>
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#f9fafb' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th></tr></thead>
+                        <thead style={{ background: '#f9fafb' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Prices</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th></tr></thead>
                         <tbody>
                           {takeoffNewTemplateItems.length === 0 ? (
-                            <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
+                            <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
                           ) : (
                             takeoffNewTemplateItems.map((item, idx) => {
                               const name = item.item_type === 'part' && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : item.item_type === 'template' && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
@@ -6470,6 +6552,11 @@ export default function Bids() {
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    {item.item_type === 'part' && item.part_id ? (
+                                      <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
+                                    ) : '—'}
+                                  </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
                                 </tr>
                               )
@@ -10756,13 +10843,14 @@ We saw some structural issues with your plans and I wanted to get clarity...
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Prices</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {editTemplateItems.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates below.</td>
+                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates below.</td>
                       </tr>
                     ) : (
                       editTemplateItems.map((item) => {
@@ -10776,6 +10864,17 @@ We saw some structural issues with your plans and I wanted to get clarity...
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {item.item_type === 'part' && item.part_id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
+                                  style={{ padding: '0.25rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  Prices
+                                </button>
+                              ) : '—'}
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               <button
                                 type="button"
@@ -10864,6 +10963,107 @@ We saw some structural issues with your plans and I wanted to get clarity...
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={closeEditTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Part Prices modal - check/modify prices for a part from Add/Edit Assembly */}
+      {partPricesModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} onClick={() => setPartPricesModal(null)}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 440, width: '90%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem' }}>Prices: {partPricesModal.partName}</h3>
+              <button type="button" onClick={() => setPartPricesModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+            </div>
+            {partPricesModalData === 'loading' ? (
+              <p style={{ margin: 0, color: '#6b7280' }}>Loading prices…</p>
+            ) : (
+              <>
+                {partPricesModalData && partPricesModalData.length > 0 ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partPricesModalData.map((row) => {
+                        const editVal = partPricesModalEditing[row.price_id] ?? row.price.toString()
+                        const numVal = parseFloat(editVal)
+                        const isValid = !isNaN(numVal) && numVal >= 0
+                        return (
+                          <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={editVal}
+                                onChange={(e) => setPartPricesModalEditing((p) => ({ ...p, [row.price_id]: e.target.value }))}
+                                style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                onClick={() => isValid && updatePartPriceInModal(row.price_id, numVal)}
+                                disabled={!isValid || partPricesModalUpdating === row.price_id}
+                                style={{ padding: '0.25rem 0.5rem', background: isValid ? '#059669' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: isValid ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
+                              >
+                                {partPricesModalUpdating === row.price_id ? 'Updating…' : 'Update'}
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p style={{ margin: 0, marginBottom: '1rem', color: '#6b7280' }}>No prices yet. Add one below.</p>
+                )}
+                {(() => {
+                  const existingSupplyHouseIds = new Set((partPricesModalData ?? []).map((r) => r.supply_house_id))
+                  const supplyHousesWithoutPrice = supplyHouses.filter((sh) => !existingSupplyHouseIds.has(sh.id))
+                  const addPriceNum = parseFloat(partPricesModalAddPrice)
+                  const canAdd = partPricesModalAddSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !partPricesModalAdding && supplyHousesWithoutPrice.length > 0
+                  return supplyHousesWithoutPrice.length > 0 ? (
+                    <div style={{ paddingTop: '1rem', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
+                      <select
+                        value={partPricesModalAddSupplyHouseId}
+                        onChange={(e) => setPartPricesModalAddSupplyHouseId(e.target.value)}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                      >
+                        <option value="">Select supply house</option>
+                        {supplyHousesWithoutPrice.map((sh) => (
+                          <option key={sh.id} value={sh.id}>{sh.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={partPricesModalAddPrice}
+                        onChange={(e) => setPartPricesModalAddPrice(e.target.value)}
+                        placeholder="Price"
+                        style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => canAdd && addPartPriceInModal(partPricesModalAddSupplyHouseId, addPriceNum)}
+                        disabled={!canAdd}
+                        style={{ padding: '0.25rem 0.5rem', background: canAdd ? '#3b82f6' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
+                      >
+                        {partPricesModalAdding ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                  ) : null
+                })()}
+              </>
+            )}
           </div>
         </div>
       )}

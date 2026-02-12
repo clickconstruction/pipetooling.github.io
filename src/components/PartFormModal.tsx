@@ -53,6 +53,8 @@ export function PartFormModal({
   }>>([])
   const [pricesSectionExpanded, setPricesSectionExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = useState('')
 
   // Initialize form when modal opens or editing part changes
   useEffect(() => {
@@ -64,6 +66,8 @@ export function PartFormModal({
         setPartNotes(editingPart.notes || '')
         setPartPrices([])
         setPricesSectionExpanded(false)
+        setDeleteConfirmOpen(false)
+        setDeleteConfirmName('')
       } else {
         setPartName(initialName)
         setPartManufacturer('')
@@ -71,6 +75,8 @@ export function PartFormModal({
         setPartNotes('')
         setPartPrices([])
         setPricesSectionExpanded(false)
+        setDeleteConfirmOpen(false)
+        setDeleteConfirmName('')
       }
       setError(null)
     }
@@ -161,10 +167,8 @@ export function PartFormModal({
     }
   }
 
-  async function handleDelete() {
+  async function performDelete() {
     if (!editingPart) return
-    if (!confirm('Delete this part? All prices will also be removed.')) return
-    
     setError(null)
     const { error } = await supabase.from('material_parts').delete().eq('id', editingPart.id)
     if (error) {
@@ -174,8 +178,19 @@ export function PartFormModal({
           : error.message
       setError(friendlyMessage)
     } else {
+      setDeleteConfirmOpen(false)
+      setDeleteConfirmName('')
       onClose()
     }
+  }
+
+  function handleConfirmDelete() {
+    if (!editingPart) return
+    if (deleteConfirmName.trim() !== editingPart.name.trim()) {
+      setError('Type the part name exactly to confirm deletion.')
+      return
+    }
+    performDelete()
   }
 
   if (!isOpen) return null
@@ -348,15 +363,47 @@ export function PartFormModal({
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-            {editingPart && (
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+            {editingPart && !deleteConfirmOpen && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setDeleteConfirmOpen(true)}
                 style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
               >
                 Delete
               </button>
+            )}
+            {editingPart && deleteConfirmOpen && (
+              <div style={{ flex: '1 1 100%', padding: '0.75rem', background: '#fef2f2', borderRadius: 4, marginBottom: '0.5rem', border: '1px solid #fecaca' }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#991b1b' }}>
+                  Type <strong>{editingPart.name}</strong> to confirm deletion. All prices will also be removed.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={deleteConfirmName}
+                    onChange={(e) => { setDeleteConfirmName(e.target.value); setError(null) }}
+                    placeholder={editingPart.name}
+                    style={{ flex: 1, minWidth: 160, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    disabled={deleteConfirmName.trim() !== editingPart.name.trim()}
+                    style={{ padding: '0.5rem 1rem', background: deleteConfirmName.trim() === editingPart.name.trim() ? '#dc2626' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: deleteConfirmName.trim() === editingPart.name.trim() ? 'pointer' : 'not-allowed' }}
+                  >
+                    Confirm Delete
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDeleteConfirmOpen(false); setDeleteConfirmName(''); setError(null) }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
               <button

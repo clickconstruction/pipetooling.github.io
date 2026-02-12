@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -2476,6 +2476,17 @@ export default function Settings() {
               {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
             </button>
           </div>
+
+          <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>Duplicate Materials</h3>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Find and delete duplicate material parts in the price book (matching names or 80%+ similarity).
+          </p>
+          <Link
+            to="/duplicates"
+            style={{ padding: '0.5rem 1rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, textDecoration: 'none', fontWeight: 500, display: 'inline-block' }}
+          >
+            View Duplicate Materials
+          </Link>
 
           <h3
             style={{
