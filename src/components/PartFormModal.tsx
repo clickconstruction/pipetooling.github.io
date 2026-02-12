@@ -111,7 +111,7 @@ export function PartFormModal({
       } else {
         const { data: updatedPart } = await supabase
           .from('material_parts')
-          .select()
+          .select('*, part_types(*)')
           .eq('id', editingPart.id)
           .single()
         

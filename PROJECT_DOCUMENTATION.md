@@ -843,19 +843,21 @@ uuid2           | Supply House B    | 320
 uuid3           | Supply House C    | 0
 ```
 
-#### `public.get_parts_ordered_by_price_count(ascending_order boolean)`
-- **Returns**: Array of part UUIDs `uuid[]`
-- **Purpose**: Returns all part IDs sorted globally by price count
+#### `public.get_parts_ordered_by_price_count(ascending_order boolean, filter_service_type_id uuid DEFAULT NULL)`
+- **Returns**: Table of `(part_id uuid, price_count bigint)`
+- **Purpose**: Returns part IDs sorted by price count, optionally filtered by service type
 - **Parameters**:
   - `ascending_order`: `true` for fewest prices first, `false` for most prices first
-- **Usage**: Used for server-side sorting in Price Book (click "#" column header)
+  - `filter_service_type_id`: Optional; when provided, only returns parts for that service type (Plumbing, Electrical, HVAC)
+- **Usage**: Used for server-side sorting in Price Book (click "#" column header); respects selected service type
 - **Logic**:
   - LEFT JOIN to include parts with zero prices
+  - When `filter_service_type_id` is set, filters to that service type
   - Counts prices per part
-  - Sorts by price_count according to parameter
-  - Returns ordered array of part IDs
-- **Migration**: `supabase/migrations/create_parts_with_price_count_function.sql`
-- **Frontend Integration**: Frontend fetches parts by ID in correct order for current page
+  - Sorts by price_count according to parameter, then by name
+  - Returns ordered table of part IDs and counts
+- **Migrations**: `create_parts_with_price_count_function.sql`, `20260212170000_add_service_type_filter_to_parts_price_count.sql`
+- **Frontend Integration**: Frontend fetches parts by ID in correct order for current page; passes `filter_service_type_id` from selected service type
 
 ### Service Types Table
 
@@ -1909,6 +1911,7 @@ user_id = auth.uid()
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
+  - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.
   - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
     - "Export materials backup" downloads supply houses, material parts, part prices, material templates, template items
@@ -1950,6 +1953,7 @@ user_id = auth.uid()
 #### Features
 
 **Price Book Tab**:
+- **Filters**: Part Type and Manufacturer dropdowns filter the part list. Filters reset when switching service type (Plumbing/Electrical/HVAC). Work in both paginated and Load All modes.
 - **Best Price column**:
   - Shows the lowest available price for each part in the form `$X.XX (Supply House)`.
   - When a part has **no prices**, the Best Price cell is left **blank** instead of displaying "No prices" to keep the table cleaner.

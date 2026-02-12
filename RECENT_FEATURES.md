@@ -7,17 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-11
+last_updated: 2026-02-12
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.33 → v2.4"
+version_range: "v2.34 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.33)"
-    line: ~82
-    description: "Labor step increment, delete in modals, Template→Assembly, Bid Board changes"
+  - name: "Latest Version (v2.34)"
+    line: ~94
+    description: "Duplicates page enhancements, Materials filter fixes, Part Type category removal"
   - name: "v2.32"
     line: ~116
     description: "Settings renames, Materials Load All, Cost Estimate distance"
@@ -52,40 +52,88 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-2. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-3. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-4. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-5. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-6. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-7. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-8. [Latest Updates (v2.26)](#latest-updates-v226)
-9. [Latest Updates (v2.25)](#latest-updates-v225)
-10. [Latest Updates (v2.24)](#latest-updates-v224)
-11. [Latest Updates (v2.23)](#latest-updates-v223)
-12. [Latest Updates (v2.22)](#latest-updates-v222)
-13. [Latest Updates (v2.21)](#latest-updates-v221)
-14. [Latest Updates (v2.20)](#latest-updates-v220)
-15. [Latest Updates (v2.19)](#latest-updates-v219)
-16. [Latest Updates (v2.18)](#latest-updates-v218)
-17. [Latest Updates (v2.17)](#latest-updates-v217)
-18. [Latest Updates (v2.16)](#latest-updates-v216)
-19. [Latest Updates (v2.15)](#latest-updates-v215)
-20. [Latest Updates (v2.14)](#latest-updates-v214)
-21. [Latest Updates (v2.13)](#latest-updates-v213)
-22. [Latest Updates (v2.12)](#latest-updates-v212)
-23. [Latest Updates (v2.11)](#latest-updates-v211)
-24. [Latest Updates (v2.10)](#latest-updates-v210)
-25. [Latest Updates (v2.9)](#latest-updates-v29)
-26. [Latest Updates (v2.8)](#latest-updates-v28)
-27. [Latest Updates (v2.7)](#latest-updates-v27)
-28. [Latest Updates (v2.6)](#latest-updates-v26)
-29. [Workflow Features](#workflow-features)
-30. [Calendar Updates](#calendar-updates)
-31. [Access Control](#access-control)
-32. [Email Templates](#email-templates)
-33. [Financial Tracking](#financial-tracking)
-34. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+2. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+3. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+4. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+4. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+5. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+6. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+7. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+8. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+9. [Latest Updates (v2.26)](#latest-updates-v226)
+10. [Latest Updates (v2.25)](#latest-updates-v225)
+11. [Latest Updates (v2.24)](#latest-updates-v224)
+12. [Latest Updates (v2.23)](#latest-updates-v223)
+13. [Latest Updates (v2.22)](#latest-updates-v222)
+14. [Latest Updates (v2.21)](#latest-updates-v221)
+15. [Latest Updates (v2.20)](#latest-updates-v220)
+16. [Latest Updates (v2.19)](#latest-updates-v219)
+17. [Latest Updates (v2.18)](#latest-updates-v218)
+18. [Latest Updates (v2.17)](#latest-updates-v217)
+19. [Latest Updates (v2.16)](#latest-updates-v216)
+20. [Latest Updates (v2.15)](#latest-updates-v215)
+21. [Latest Updates (v2.14)](#latest-updates-v214)
+22. [Latest Updates (v2.13)](#latest-updates-v213)
+23. [Latest Updates (v2.12)](#latest-updates-v212)
+24. [Latest Updates (v2.11)](#latest-updates-v211)
+25. [Latest Updates (v2.10)](#latest-updates-v210)
+26. [Latest Updates (v2.9)](#latest-updates-v29)
+27. [Latest Updates (v2.8)](#latest-updates-v28)
+28. [Latest Updates (v2.7)](#latest-updates-v27)
+29. [Latest Updates (v2.6)](#latest-updates-v26)
+30. [Workflow Features](#workflow-features)
+31. [Calendar Updates](#calendar-updates)
+32. [Access Control](#access-control)
+33. [Email Templates](#email-templates)
+34. [Financial Tracking](#financial-tracking)
+35. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.34)
+
+### Duplicate Materials Page Enhancements
+
+**Date**: 2026-02-12
+
+**Overview**:
+The Duplicate Materials page (Settings → Duplicate Materials, dev-only) now includes Best Price and Supply House columns, plus filters for exact name matches and service types.
+
+**Changes**:
+- **Best Price & Supply House columns**: Each duplicate group shows the lowest price and which supply house offers it
+- **"Only show 100% name match"**: Checkbox to filter to groups where all parts have identical names
+- **Service type filter**: Checkboxes (Plumbing, Electrical, HVAC, etc.) to show only duplicates for selected service types
+
+---
+
+### Materials Price Book Filter Fixes
+
+**Date**: 2026-02-12
+
+**Overview**:
+Part Type and Manufacturer filter dropdowns in the Materials Price Book tab now work correctly in both paginated and Load All modes.
+
+**Changes**:
+- **Reset on service type change**: Filters clear when switching between Plumbing, Electrical, HVAC
+- **Load All mode**: Filters apply client-side; dropdowns no longer disabled
+- **Sort by #**: Part type and manufacturer filters work when "Sort by price count" is active (falls back to standard query path)
+- **RPC updated**: `get_parts_ordered_by_price_count` now accepts `filter_service_type_id` so the "#" column sort respects the selected service type
+
+---
+
+### Material Part Type Category Removed
+
+**Date**: 2026-02-12
+
+**Overview**:
+The optional Category field was removed from Edit Material Part Type (Settings → Material Part Types).
+
+**Changes**:
+- Category input and help text removed from the form
+- Category badge removed from the Part Types list
+- Part Type dropdowns (Materials, Add Part modal) no longer show category in parentheses
+- Existing category values in the database are no longer displayed or editable
 
 ---
 
@@ -442,6 +490,135 @@ Updated Fixture Types description to reflect:
 - Flexible pricing for flat-rate vs per-unit items
 - Better cost visibility in reports
 - More accurate revenue calculations
+
+---
+
+## Latest Updates (v2.35)
+
+### Service-Type-Specific Book Systems
+
+**Date**: 2026-02-10
+
+**Overview**:
+Made price books, labor books, and takeoff books service-type-specific so each trade (Plumbing, Electrical, HVAC) has completely separate book libraries.
+
+**Features**:
+- Each service type now has its own isolated set of books
+- Switching service types shows only that type's books
+- Creating new book versions automatically tags them with the current service type
+- All existing books (4 price books, 1 labor book, 1 takeoff book) migrated to Plumbing
+- Electrical and HVAC start with empty book lists for clean setup
+
+**Database Changes**:
+- Added `service_type_id` (UUID, NOT NULL, FK to service_types) to:
+  - `price_book_versions`
+  - `labor_book_versions`
+  - `takeoff_book_versions`
+- All existing books automatically assigned to Plumbing service type
+- Foreign key with CASCADE for data integrity
+- Indexes added for performance
+
+**Frontend Changes**:
+- Load functions filter by `selectedServiceTypeId`:
+  - `loadPriceBookVersions()`
+  - `loadLaborBookVersions()`
+  - `loadTakeoffBookVersions()`
+- Create functions include `service_type_id` in INSERT
+- Books automatically reload when switching service types
+- Empty states for Electrical/HVAC until books are created
+
+**Files Modified**:
+- `src/pages/Bids.tsx` - Book filtering, creation, and reload logic
+- `src/types/database.ts` - Type regeneration with service_type_id
+
+**Migration File**:
+- `supabase/migrations/20260210_add_service_type_to_book_versions.sql`
+
+### Service-Type-Specific Google Docs Templates
+
+**Date**: 2026-02-10
+
+**Overview**:
+Cover Letter "Open in Google Docs" button now uses different proposal templates based on the bid's service type.
+
+**Features**:
+- Electrical bids open Electrical proposal template
+- Plumbing bids open Plumbing proposal template
+- HVAC bids open Plumbing template (until HVAC template available)
+- Document title format: `ClickProposal_YYMMDD_ProjectName`
+
+**Template URLs**:
+- Plumbing: `1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8`
+- Electrical: `1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips`
+- HVAC: Uses Plumbing template (TODO: update when available)
+
+**Implementation**:
+- Dynamically selects template ID based on `bid.service_type_id`
+- Looks up service type name from `serviceTypes` state
+- Falls back to Plumbing template if service type not found
+
+**Files Modified**:
+- `src/pages/Bids.tsx` - Google Docs URL generation (line ~7702)
+
+### Assistant Access to Estimators
+
+**Date**: 2026-02-10
+
+**Overview**:
+Added RLS policy allowing assistants to see estimator users in the Bids estimator and account manager dropdowns.
+
+**Problem Fixed**:
+- Previously, assistants couldn't see estimator users (like "Bryan")
+- RLS policies only allowed viewing own user, assistants, and adopted masters
+- Estimators were blocked from all user queries
+
+**Solution**:
+- Added new RLS policy: "Users can see all estimators"
+- Allows any authenticated user to SELECT users where `role = 'estimator'`
+- Follows same pattern as existing "Masters and devs can see all assistants" policy
+
+**Database Changes**:
+- New RLS policy on `public.users` table
+- Read-only access (SELECT only)
+- Authenticated users only
+
+**Impact**:
+- Assistants can now see and assign estimators to bids
+- Estimators visible in both "Estimator" and "Account Man" dropdowns
+- Enables proper bid assignment workflow for all user roles
+
+**Migration File**:
+- `supabase/migrations/20260210_allow_users_to_see_estimators.sql`
+
+### Bug Fixes
+
+**Materials Service Type Switching**:
+- Fixed race condition where switching service types would show parts from the previous type
+- Root cause: `loadParts()` and `loadAllParts()` captured stale `selectedServiceTypeId` from closure
+- Solution: Pass service type ID as explicit parameter to avoid closure capture
+- Now correctly filters parts immediately when switching between Plumbing/Electrical/HVAC
+
+**Bids Count Rows Invalid Join**:
+- Fixed 5 queries attempting to join `bids_count_rows` with `fixture_types`
+- These joins were invalid after reverting count rows to free text
+- Removed `fixture_types(name)` joins from count row queries
+- Affected: Counts tab, Takeoff tab, Cost Estimate tab, Pricing tab, Submission & Followup
+
+**Price Book Entries Invalid Column**:
+- Fixed queries attempting to order by non-existent `fixture_name` column
+- `price_book_entries` now use `fixture_type_id` FK (no text column)
+- Removed invalid `.order('fixture_name')` clauses
+- Now orders only by `sequence_order`
+
+**Part Type Update Refresh**:
+- Fixed issue where updating a part's part type didn't show immediately
+- PartFormModal now includes `part_types(*)` join when fetching updated part
+- UI updates immediately without requiring page refresh
+
+**Files Modified**:
+- `src/pages/Materials.tsx` - Service type switching fix
+- `src/pages/Bids.tsx` - Count row joins, price book ordering
+- `src/components/PartFormModal.tsx` - Part type join on update
 
 ---
 

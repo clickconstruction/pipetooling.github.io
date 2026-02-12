@@ -530,7 +530,7 @@ Sorting by price count that queries database for global sort order (not just cur
 
 **Column**: "#" column header (price count)
 
-**Function**: `get_parts_ordered_by_price_count(ascending_order)`
+**Function**: `get_parts_ordered_by_price_count(ascending_order, filter_service_type_id)`
 
 **Benefit**: See parts with fewest/most prices across entire catalog
 

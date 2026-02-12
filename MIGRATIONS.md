@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-11
+last_updated: 2026-02-12
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 8, 2026"
+date_range: "Through February 12, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 12, 2026
+
+**`20260212170000_add_service_type_filter_to_parts_price_count.sql`**
+- **Purpose**: Make Price Book "Sort by #" respect the selected service type and enable Part Type/Manufacturer filters
+- **Changes**:
+  - Added optional `filter_service_type_id` (uuid, default NULL) parameter to `get_parts_ordered_by_price_count`
+  - When provided, filters results to parts belonging to that service type
+- **Impact**: Materials Price Book tab correctly filters by Plumbing/Electrical/HVAC when sorting by price count; Part Type and Manufacturer dropdowns now work
+- **Category**: Materials Enhancement / Database
 
 #### February 11, 2026
 
@@ -481,6 +491,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_parts_with_price_count_function.sql` (Feb 5, 2026)
   - Function: `get_parts_ordered_by_price_count(ascending_order)`
   - Returns: Part IDs sorted by price count
+- `20260212170000_add_service_type_filter_to_parts_price_count.sql` (Feb 12, 2026)
+  - Function: Added `filter_service_type_id` parameter to `get_parts_ordered_by_price_count`
+  - Price Book filters by service type when sorting by price count
 
 **Core Materials**:
 - `create_supply_houses.sql` - Supply house management
