@@ -109,8 +109,9 @@ export default function Materials() {
     }>
   } | null>(null)
 
-  // Load All Mode state
-  const [loadAllMode, setLoadAllMode] = useState(false)
+  // Load All Mode state - persisted per user in localStorage, default on
+  const LOAD_ALL_MODE_KEY = (uid: string) => `materials_loadAllMode_${uid}`
+  const [loadAllMode, setLoadAllMode] = useState(true)
   const [allParts, setAllParts] = useState<PartWithPrices[]>([])
   const [loadingAllParts, setLoadingAllParts] = useState(false)
   const [clientSearchQuery, setClientSearchQuery] = useState('')
@@ -763,7 +764,14 @@ export default function Materials() {
       loadInitial()
     }
   }, [myRole, estimatorServiceTypeIds])
-  
+
+  // Restore Load All mode preference from localStorage (per user); default on if no preference
+  useEffect(() => {
+    if (!authUser?.id || typeof window === 'undefined') return
+    const stored = localStorage.getItem(LOAD_ALL_MODE_KEY(authUser.id))
+    setLoadAllMode(stored !== 'false')
+  }, [authUser?.id])
+
   // Reload data when service type changes
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
@@ -2446,11 +2454,13 @@ export default function Materials() {
                 if (!loadAllMode) {
                   setLoadAllMode(true)
                   loadAllParts()
+                  if (authUser?.id) localStorage.setItem(LOAD_ALL_MODE_KEY(authUser.id), 'true')
                 } else {
                   setLoadAllMode(false)
                   setAllParts([])
                   setClientSearchQuery('')
                   reloadPartsFirstPage()
+                  if (authUser?.id) localStorage.setItem(LOAD_ALL_MODE_KEY(authUser.id), 'false')
                 }
               }}
               disabled={loadingAllParts}
@@ -2475,6 +2485,7 @@ export default function Materials() {
                   width: '20px', 
                   height: '20px',
                   fill: loadAllMode ? 'white' : '#6b7280',
+                  pointerEvents: 'none',
                 }}
               >
                 <path d="M320.5 64C335.2 64 348.7 72.1 355.7 85L571.7 485C578.4 497.4 578.1 512.4 570.9 524.5C563.7 536.6 550.6 544 536.6 544L104.6 544C90.5 544 77.5 536.6 70.3 524.5C63.1 512.4 62.8 497.4 69.5 485L285.5 85L288.4 80.4C295.7 70.2 307.6 64 320.5 64zM234.4 313.9L261.2 340.7C267.4 346.9 277.6 346.9 283.8 340.7L327.1 297.4C333.1 291.4 341.2 288 349.7 288L392.5 288L320.4 154.5L234.3 313.9z"/>

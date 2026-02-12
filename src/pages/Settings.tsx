@@ -181,12 +181,12 @@ export default function Settings() {
   const [fixtureTypeFormOpen, setFixtureTypeFormOpen] = useState(false)
   const [editingFixtureType, setEditingFixtureType] = useState<FixtureType | null>(null)
   const [fixtureTypeName, setFixtureTypeName] = useState('')
-  const [fixtureTypeCategory, setFixtureTypeCategory] = useState('')
   const [fixtureTypeSaving, setFixtureTypeSaving] = useState(false)
   const [fixtureTypeError, setFixtureTypeError] = useState<string | null>(null)
   const [fixtureTypePriceBookCounts, setFixtureTypePriceBookCounts] = useState<Record<string, number>>({})
   const [fixtureTypeLaborBookCounts, setFixtureTypeLaborBookCounts] = useState<Record<string, number>>({})
-  const [fixtureTypeCountRowCounts, setFixtureTypeCountRowCounts] = useState<Record<string, number>>({})
+  const [fixtureTypeTakeoffBookCounts, setFixtureTypeTakeoffBookCounts] = useState<Record<string, number>>({})
+  const [removingUnusedFixtureTypes, setRemovingUnusedFixtureTypes] = useState(false)
 
   // Counts Fixtures state (quick-select groups for Bids Counts)
   type CountsFixtureGroup = { id: string; service_type_id: string; label: string; sequence_order: number }
@@ -246,6 +246,7 @@ export default function Settings() {
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
+  const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -1204,7 +1205,7 @@ export default function Settings() {
       .from('fixture_types' as any)
       .select('*')
       .eq('service_type_id', selectedServiceTypeForFixtures)
-      .order('sequence_order', { ascending: true })
+      .order('name', { ascending: true })
     
     if (eFixtureTypes) {
       console.error('Error loading fixture types:', eFixtureTypes)
@@ -1217,7 +1218,7 @@ export default function Settings() {
     if (!selectedServiceTypeForFixtures) {
       setFixtureTypePriceBookCounts({})
       setFixtureTypeLaborBookCounts({})
-      setFixtureTypeCountRowCounts({})
+      setFixtureTypeTakeoffBookCounts({})
       return
     }
     
@@ -1226,12 +1227,12 @@ export default function Settings() {
     if (fixtureTypeIds.length === 0) {
       setFixtureTypePriceBookCounts({})
       setFixtureTypeLaborBookCounts({})
-      setFixtureTypeCountRowCounts({})
+      setFixtureTypeTakeoffBookCounts({})
       return
     }
     
-    // Query all three tables in parallel
-    const [priceBookResult, laborBookResult, countRowResult] = await Promise.all([
+    // Query price book, labor book, and takeoff book in parallel
+    const [priceBookResult, laborBookResult, takeoffVersionsResult] = await Promise.all([
       supabase
         .from('price_book_entries')
         .select('fixture_type_id')
@@ -1241,8 +1242,9 @@ export default function Settings() {
         .select('fixture_type_id')
         .in('fixture_type_id', fixtureTypeIds),
       supabase
-        .from('bids_count_rows')
-        .select('fixture')
+        .from('takeoff_book_versions')
+        .select('id')
+        .eq('service_type_id', selectedServiceTypeForFixtures)
     ])
     
     // Count price book entries
@@ -1265,30 +1267,39 @@ export default function Settings() {
     })
     setFixtureTypeLaborBookCounts(laborBookCounts)
     
-    // Count bids count rows
-    const countRowCounts: Record<string, number> = {}
-    fixtureTypeIds.forEach(id => countRowCounts[id] = 0)
-    // Count rows now use free text 'fixture' field, so we match by name
-    countRowResult.data?.forEach(row => {
-      const matchingFixtureType = fixtureTypes.find(ft => 
-        ft.name.toLowerCase() === (row.fixture ?? '').toLowerCase()
-      )
-      if (matchingFixtureType) {
-        countRowCounts[matchingFixtureType.id] = (countRowCounts[matchingFixtureType.id] || 0) + 1
-      }
-    })
-    setFixtureTypeCountRowCounts(countRowCounts)
+    // Count takeoff book entries (matched by fixture_name or alias_names)
+    const takeoffBookCounts: Record<string, number> = {}
+    fixtureTypeIds.forEach(id => takeoffBookCounts[id] = 0)
+    const versionIds = (takeoffVersionsResult.data ?? []).map(v => v.id)
+    if (versionIds.length > 0) {
+      const takeoffEntriesResult = await supabase
+        .from('takeoff_book_entries')
+        .select('fixture_name, alias_names')
+        .in('version_id', versionIds)
+      takeoffEntriesResult.data?.forEach(row => {
+        const fixtureName = (row.fixture_name ?? '').toLowerCase()
+        const aliasNames = (row.alias_names ?? []).map((a: string) => a.toLowerCase())
+        const matchingFixtureType = fixtureTypes.find(ft => {
+          const ftName = ft.name.toLowerCase()
+          return fixtureName === ftName || aliasNames.includes(ftName)
+        })
+        if (matchingFixtureType) {
+          takeoffBookCounts[matchingFixtureType.id] = (takeoffBookCounts[matchingFixtureType.id] || 0) + 1
+        }
+      })
+      if (takeoffEntriesResult.error) console.error('Error loading takeoff book counts:', takeoffEntriesResult.error)
+    }
+    setFixtureTypeTakeoffBookCounts(takeoffBookCounts)
     
     // Log any errors
     if (priceBookResult.error) console.error('Error loading price book counts:', priceBookResult.error)
     if (laborBookResult.error) console.error('Error loading labor book counts:', laborBookResult.error)
-    if (countRowResult.error) console.error('Error loading count row counts:', countRowResult.error)
+    if (takeoffVersionsResult.error) console.error('Error loading takeoff book versions:', takeoffVersionsResult.error)
   }
 
   function openEditFixtureType(fixtureType: FixtureType | null) {
     setEditingFixtureType(fixtureType)
     setFixtureTypeName(fixtureType?.name || '')
-    setFixtureTypeCategory(fixtureType?.category || '')
     setFixtureTypeError(null)
     setFixtureTypeFormOpen(true)
   }
@@ -1296,7 +1307,6 @@ export default function Settings() {
   function closeEditFixtureType() {
     setEditingFixtureType(null)
     setFixtureTypeName('')
-    setFixtureTypeCategory('')
     setFixtureTypeError(null)
     setFixtureTypeFormOpen(false)
   }
@@ -1324,7 +1334,7 @@ export default function Settings() {
         .from('fixture_types' as any)
         .update({
           name: fixtureTypeName.trim(),
-          category: fixtureTypeCategory.trim() || null,
+          category: null,
         } as any)
         .eq('id', editingFixtureType.id)
       
@@ -1344,7 +1354,7 @@ export default function Settings() {
         .insert({
           service_type_id: selectedServiceTypeForFixtures,
           name: fixtureTypeName.trim(),
-          category: fixtureTypeCategory.trim() || null,
+          category: null,
           sequence_order: maxSeq + 1,
         } as any)
       
@@ -1359,8 +1369,34 @@ export default function Settings() {
     }
   }
 
+  async function removeUnusedFixtureTypes() {
+    const unused = fixtureTypes.filter(ft => {
+      const takeoff = fixtureTypeTakeoffBookCounts[ft.id] ?? 0
+      const labor = fixtureTypeLaborBookCounts[ft.id] ?? 0
+      const price = fixtureTypePriceBookCounts[ft.id] ?? 0
+      return takeoff === 0 && labor === 0 && price === 0
+    })
+    if (unused.length === 0) {
+      setError('No unused book names found. All have at least one takeoff, labor, or price entry.')
+      return
+    }
+    if (!confirm(`Remove ${unused.length} book name${unused.length === 1 ? '' : 's'} with 0 takeoff, 0 labor, 0 price?\n\n${unused.map(ft => ft.name).join(', ')}`)) return
+    setRemovingUnusedFixtureTypes(true)
+    setError(null)
+    for (const ft of unused) {
+      const { error: e } = await supabase.from('fixture_types' as any).delete().eq('id', ft.id)
+      if (e) {
+        setError(`Failed to delete "${ft.name}": ${e.message}`)
+        break
+      }
+    }
+    setRemovingUnusedFixtureTypes(false)
+    await loadFixtureTypes()
+    // Counts will reload via useEffect when fixtureTypes updates
+  }
+
   async function deleteFixtureType(fixtureType: FixtureType) {
-    if (!confirm(`Are you sure you want to delete "${fixtureType.name}"? This will fail if any items are assigned to this fixture type.`)) {
+    if (!confirm(`Are you sure you want to delete "${fixtureType.name}"? This will fail if any items are assigned to this book name.`)) {
       return
     }
     
@@ -1371,37 +1407,13 @@ export default function Settings() {
     
     if (e) {
       if (e.message.includes('violates foreign key constraint')) {
-        setError(`Cannot delete fixture type "${fixtureType.name}" because it has associated items. Please reassign or delete those items first.`)
+        setError(`Cannot delete book name "${fixtureType.name}" because it has associated items. Please reassign or delete those items first.`)
       } else {
         setError(e.message)
       }
     } else {
       await loadFixtureTypes()
     }
-  }
-
-  async function moveFixtureType(fixtureType: FixtureType, direction: 'up' | 'down') {
-    const currentIndex = fixtureTypes.findIndex(ft => ft.id === fixtureType.id)
-    if (currentIndex === -1) return
-    
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (targetIndex < 0 || targetIndex >= fixtureTypes.length) return
-    
-    const targetFixtureType = fixtureTypes[targetIndex]
-    if (!targetFixtureType) return
-    
-    // Swap sequence orders
-    await supabase
-      .from('fixture_types' as any)
-      .update({ sequence_order: targetFixtureType.sequence_order } as any)
-      .eq('id', fixtureType.id)
-    
-    await supabase
-      .from('fixture_types' as any)
-      .update({ sequence_order: fixtureType.sequence_order } as any)
-      .eq('id', targetFixtureType.id)
-    
-    await loadFixtureTypes()
   }
 
   // Counts Fixtures functions
@@ -1710,7 +1722,7 @@ export default function Settings() {
   }
 
   async function deletePartType(partType: PartType) {
-    if (!confirm(`Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this part type.`)) {
+    if (!confirm(`Are you sure you want to delete "${partType.name}"? This will fail if any parts are assigned to this material part type.`)) {
       return
     }
     
@@ -1721,7 +1733,7 @@ export default function Settings() {
     
     if (e) {
       if (e.message.includes('violates foreign key constraint')) {
-        setError(`Cannot delete part type "${partType.name}" because it has associated parts. Please reassign or delete those parts first.`)
+        setError(`Cannot delete material part type "${partType.name}" because it has associated parts. Please reassign or delete those parts first.`)
       } else {
         setError(e.message)
       }
@@ -1735,14 +1747,14 @@ export default function Settings() {
     const unusedPartTypes = partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0)
     
     if (unusedPartTypes.length === 0) {
-      setError('No unused part types to remove')
+      setError('No unused material part types to remove')
       return
     }
     
     // Confirm with user
     const partTypeNames = unusedPartTypes.map(pt => pt.name).join(', ')
     const confirmed = confirm(
-      `This will delete ${unusedPartTypes.length} unused part type(s):\n\n${partTypeNames}\n\nAre you sure?`
+      `This will delete ${unusedPartTypes.length} unused material part type(s):\n\n${partTypeNames}\n\nAre you sure?`
     )
     
     if (!confirmed) return
@@ -1764,7 +1776,7 @@ export default function Settings() {
     setRemovingUnusedPartTypes(false)
     
     if (errors.length > 0) {
-      setError(`Failed to delete ${errors.length} part type(s). They may have parts assigned.`)
+      setError(`Failed to delete ${errors.length} material part type(s). They may have parts assigned.`)
     } else {
       // Success - reload the list
       await loadPartTypes()
@@ -3844,9 +3856,9 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Part Types</h2>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Part Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Manage part types for each service type. Part types are used in the Materials system to categorize material parts (pipes, fittings, valves, etc.). This is separate from Fixture Types which are used in Bids/Books for installed fixtures.
+            Manage material part types for each service type. Material part types are used in the Materials system to categorize material parts (pipes, fittings, valves, etc.). This is separate from Takeoff, Labor, and Price Book Names which are used in Bids/Books for installed fixtures.
           </p>
           
           <div style={{ marginBottom: '1.5rem' }}>
@@ -3873,7 +3885,7 @@ export default function Settings() {
                   onClick={() => openEditPartType(null)}
                   style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
-                  + Add Part Type
+                  + Add Material Part Type
                 </button>
                 
                 <button
@@ -3890,9 +3902,9 @@ export default function Settings() {
                     fontWeight: 500,
                     opacity: partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 0.5 : 1
                   }}
-                  title={partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'No unused part types' : `Remove ${partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length} unused part type(s)`}
+                  title={partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length === 0 ? 'No unused material part types' : `Remove ${partTypes.filter(pt => (partTypePartCounts[pt.id] || 0) === 0).length} unused material part type(s)`}
                 >
-                  {removingUnusedPartTypes ? 'Removing...' : 'Remove All Unused Part Types'}
+                  {removingUnusedPartTypes ? 'Removing...' : 'Remove All Unused Material Part Types'}
                 </button>
               </div>
 
@@ -3976,7 +3988,7 @@ export default function Settings() {
                 </div>
               ) : (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  No part types yet. Click "Add Part Type" to create one.
+                  No material part types yet. Click "Add Material Part Type" to create one.
                 </div>
               )}
             </>
@@ -3985,7 +3997,7 @@ export default function Settings() {
           {partTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
               <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                <h2 style={{ marginBottom: '1rem' }}>{editingPartType ? 'Edit Part Type' : 'Add Part Type'}</h2>
+                <h2 style={{ marginBottom: '1rem' }}>{editingPartType ? 'Edit Material Part Type' : 'Add Material Part Type'}</h2>
                 
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
                   <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
@@ -4065,9 +4077,9 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Fixture Types</h2>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Takeoff, Labor, and Price Book Names</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Manage fixture types for each service type. Fixture types represent installed fixtures and tie-ins (e.g., Toilet, Sink, Water Heater). They are used in Bids (count rows) and book entries (labor, pricing, takeoff). New fixture types can also be created automatically when adding book entries. Note: Materials uses Part Types for categorizing parts and supplies.
+            Book names are the fixture and tie-in names (e.g., Toilet, Kitchen Sink, Water Heater) used across the Takeoff, Labor, and Price books. Each row shows a name with badges indicating how many entries in each book use it. These names appear in Bids Counts and when adding or editing book entries. New names can also be created automatically when adding book entries. Note: Materials uses Material Part Types for categorizing parts and supplies.
           </p>
           
           <div style={{ marginBottom: '1.5rem' }}>
@@ -4088,13 +4100,23 @@ export default function Settings() {
 
           {selectedServiceTypeForFixtures && (
             <>
-              <div style={{ marginBottom: '1rem' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <button
                   type="button"
                   onClick={() => openEditFixtureType(null)}
                   style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
-                  + Add Fixture Type
+                  + Add Book Name
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeUnusedFixtureTypes()}
+                  disabled={removingUnusedFixtureTypes}
+                  title="Remove book names with 0 takeoff, 0 labor, 0 price"
+                  style={{ padding: '0.5rem 1rem', background: removingUnusedFixtureTypes ? '#d1d5db' : '#f3f4f6', color: 'inherit', border: '1px solid #d1d5db', borderRadius: 4, cursor: removingUnusedFixtureTypes ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {removingUnusedFixtureTypes ? 'Removing…' : 'Remove unused book names (0 takeoff, 0 labor, 0 price)'}
                 </button>
               </div>
 
@@ -4106,11 +4128,19 @@ export default function Settings() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{ft.name}</h3>
-                            {ft.category && (
-                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
-                                {ft.category}
-                              </span>
-                            )}
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#ede9fe' : '#f3f4f6',
+                                color: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#5b21b6' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title="Takeoff book entries"
+                            >
+                              {fixtureTypeTakeoffBookCounts[ft.id] || 0} takeoff
+                            </span>
                             <span 
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
@@ -4137,52 +4167,9 @@ export default function Settings() {
                             >
                               {fixtureTypePriceBookCounts[ft.id] || 0} price
                             </span>
-                            <span 
-                              style={{ 
-                                padding: '0.125rem 0.5rem', 
-                                fontSize: '0.75rem', 
-                                background: (fixtureTypeCountRowCounts[ft.id] ?? 0) > 0 ? '#fef3c7' : '#f3f4f6',
-                                color: (fixtureTypeCountRowCounts[ft.id] ?? 0) > 0 ? '#92400e' : '#6b7280',
-                                borderRadius: 4,
-                                fontWeight: 500
-                              }}
-                              title="Bid count rows"
-                            >
-                              {fixtureTypeCountRowCounts[ft.id] || 0} counts
-                            </span>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => moveFixtureType(ft, 'up')}
-                            disabled={idx === 0}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moveFixtureType(ft, 'down')}
-                            disabled={idx === fixtureTypes.length - 1}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              background: idx === fixtureTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              cursor: idx === fixtureTypes.length - 1 ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            ↓
-                          </button>
                           <button
                             type="button"
                             onClick={() => openEditFixtureType(ft)}
@@ -4204,7 +4191,7 @@ export default function Settings() {
                 </div>
               ) : (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                  No fixture types yet. Click "Add Fixture Type" to create one.
+                  No book names yet. Click "Add Book Name" to create one.
                 </div>
               )}
             </>
@@ -4213,7 +4200,7 @@ export default function Settings() {
           {fixtureTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
               <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Fixture Type' : 'Add Fixture Type'}</h2>
+                <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Book Name' : 'Add Book Name'}</h2>
                 
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
                   <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
@@ -4241,22 +4228,6 @@ export default function Settings() {
                       autoFocus
                       placeholder="e.g., Toilet, Kitchen Sink, Water Heater"
                     />
-                  </div>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                      Category (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={fixtureTypeCategory}
-                      onChange={(e) => setFixtureTypeCategory(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      placeholder="e.g., Bathrooms, Kitchen, Parts, Appliances"
-                    />
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
-                      Used for grouping in dropdowns and quick-select buttons
-                    </p>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -4293,7 +4264,7 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Counts Fixtures</h2>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Counts Quick-add Names</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Quick-select fixture groups shown when adding count rows in Bids. Each service type (Plumbing, Electrical, HVAC) has its own set of groups and fixtures.
           </p>
@@ -4397,12 +4368,35 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Email Templates</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
-          </p>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Email Templates - collapsible, collapsed by default */}
+          <div style={{ marginTop: '2rem' }}>
+            <button
+              type="button"
+              onClick={() => setEmailTemplatesSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{emailTemplatesSectionOpen ? '▼' : '▶'}</span>
+              Email Templates
+            </button>
+            {emailTemplatesSectionOpen && (
+              <div style={{ padding: '1rem 0 0 0' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>User Management</h3>
             {[
               { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },
@@ -4602,6 +4596,9 @@ export default function Settings() {
                 </div>
               )
             })}
+                </div>
+              </div>
+            )}
           </div>
 
           {editingTemplate && (

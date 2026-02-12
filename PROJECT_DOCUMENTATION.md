@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-10
+last_updated: 2026-02-11
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -684,7 +684,7 @@ WHERE proname IN (
   - `email` (text, nullable)
   - `phone` (text, nullable)
   - `notes` (text, nullable)
-- **RLS**: Users can only see/manage their own roster entries; devs can see all entries
+- **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`)
 
 #### `public.step_subscriptions`
 - **Purpose**: User subscriptions to step notifications
@@ -880,6 +880,7 @@ uuid3           | Supply House C    | 0
   - Referenced by: `material_templates.service_type_id`
   - Referenced by: `purchase_orders.service_type_id`
   - Referenced by: `bids.service_type_id`
+  - Referenced by: `counts_fixture_groups.service_type_id`
 - **Foreign Key Behavior**: ON DELETE RESTRICT (prevents deletion of service types in use)
 - **Management**: Devs can add, edit, delete (if not in use), and reorder service types in Settings page
 
@@ -1221,6 +1222,29 @@ uuid3           | Supply House C    | 0
 - **Fixed Price Feature**: Allows flat-rate pricing without count multiplication (useful for permits, delivery fees)
 - **Migrations**: `create_bid_pricing_assignments.sql`, `add_fixed_price_to_pricing_assignments.sql`
 
+##### `public.counts_fixture_groups`
+- **Purpose**: Configurable quick-select groups for adding count rows in Bids (Counts tab)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `service_type_id` (uuid, FK → `service_types.id` ON DELETE CASCADE)
+  - `label` (text, required) - Group label (e.g., "Bathrooms", "Kitchen")
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+- **RLS**: All authenticated users can read; only devs can insert/update/delete
+- **Migrations**: `create_counts_fixture_groups.sql`
+- **Usage**: Managed in Settings → Counts Quick-adds; used by NewCountRow in Bids to populate fixture quick-add buttons per service type
+
+##### `public.counts_fixture_group_items`
+- **Purpose**: Individual fixtures within a quick-add group
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `group_id` (uuid, FK → `counts_fixture_groups.id` ON DELETE CASCADE)
+  - `name` (text, required) - Fixture name (e.g., "1/2 Bath", "Kitchen Sink")
+  - `sequence_order` (integer)
+  - `created_at` (timestamptz)
+- **RLS**: All authenticated users can read; only devs can insert/update/delete
+- **Migrations**: `create_counts_fixture_groups.sql`
+
 ### Foreign Key Relationships
 ```
 users (id)
@@ -1323,6 +1347,12 @@ bids_count_rows (id)
 
 price_book_entries (id)
   └── bid_pricing_assignments.price_book_entry_id (ON DELETE CASCADE)
+
+service_types (id)
+  └── counts_fixture_groups.service_type_id (ON DELETE CASCADE)
+
+counts_fixture_groups (id)
+  └── counts_fixture_group_items.group_id (ON DELETE CASCADE)
 ```
 
 **Important**: When deleting, respect foreign key order:
@@ -1339,12 +1369,14 @@ price_book_entries (id)
 11. `material_templates` (no dependencies)
 12. `material_parts` (no dependencies)
 13. `supply_houses` (no dependencies)
-14. `bids_count_rows` (references bids)
-15. `bids_submission_entries` (references bids)
-16. `bids` (references customers, users, bids_gc_builders)
-17. `bids_gc_builders` (references users)
-18. `projects` (references customers)
-19. `customers` (references users)
+14. `counts_fixture_group_items` (references counts_fixture_groups)
+15. `counts_fixture_groups` (references service_types)
+16. `bids_count_rows` (references bids)
+17. `bids_submission_entries` (references bids)
+18. `bids` (references customers, users, bids_gc_builders)
+19. `bids_gc_builders` (references users)
+20. `projects` (references customers)
+21. `customers` (references users)
 
 ---
 
@@ -2332,6 +2364,21 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 - **Purpose**: Allows devs to read all people entries (not just their own)
 - **Location**: `supabase/migrations/allow_devs_read_all_people.sql`
 - **What it does**: Adds a policy allowing devs to see all people entries via `is_dev()` function
+
+##### `allow_devs_update_delete_people`
+- **Purpose**: Allows devs to edit and delete people entries created by other users
+- **Location**: `supabase/migrations/20260211210000_allow_devs_update_delete_people.sql`
+- **What it does**: Adds UPDATE and DELETE policies for `people` using `is_dev()`, enabling devs to manage names, email, phone, notes and delete entries in Settings → People Created by Other Users
+
+##### `create_counts_fixture_groups`
+- **Purpose**: Configurable quick-select groups for adding count rows in Bids
+- **Location**: `supabase/migrations/20260211200000_create_counts_fixture_groups.sql`
+- **What it does**:
+  1. Creates `counts_fixture_groups` (id, service_type_id, label, sequence_order)
+  2. Creates `counts_fixture_group_items` (id, group_id, name, sequence_order)
+  3. RLS: All authenticated users can read; only devs can insert/update/delete
+  4. Seeds Plumbing fixture groups (Bathrooms, Kitchen, Laundry, Plumbing Fixtures, Appliances)
+  5. Managed in Settings → Counts Quick-adds; used by NewCountRow in Bids per service type
 
 ##### `add_finalized_notes_tracking`
 - **Purpose**: Adds ability to add notes to finalized purchase orders (add-only)

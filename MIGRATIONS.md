@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-08
+last_updated: 2026-02-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,26 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 11, 2026
+
+**`20260211200000_create_counts_fixture_groups.sql`**
+- **Purpose**: Configurable quick-select groups for adding count rows in Bids
+- **Changes**:
+  - Created `counts_fixture_groups` (id, service_type_id, label, sequence_order)
+  - Created `counts_fixture_group_items` (id, group_id, name, sequence_order)
+  - RLS: All authenticated users can read; only devs can insert/update/delete
+  - Seeded Plumbing fixture groups (Bathrooms, Kitchen, Laundry, Plumbing Fixtures, Appliances)
+- **Impact**: Fixture quick-adds in Bids Counts are now managed per service type in Settings → Counts Quick-adds
+- **Category**: Bids Enhancement / Settings
+
+**`20260211210000_allow_devs_update_delete_people.sql`**
+- **Purpose**: Allow devs to edit and delete people entries created by other users
+- **Changes**:
+  - Added "Devs can update any people" policy (UPDATE using is_dev())
+  - Added "Devs can delete any people" policy (DELETE using is_dev())
+- **Impact**: Devs can rename, update email/phone/notes, and delete people in Settings → People Created by Other Users
+- **Category**: Access Control / Settings
 
 #### February 10, 2026
 

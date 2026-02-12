@@ -12,12 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.30 → v2.4"
+version_range: "v2.32 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.30)"
+  - name: "Latest Version (v2.32)"
     line: ~82
-    description: "Estimator service type filtering"
+    description: "Settings renames, Materials Load All, Cost Estimate distance"
   - name: "v2.29"
     line: ~110
     description: "Price/Labor book enhancements and fixed price feature"
@@ -32,7 +32,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.25)"
+  - "Latest features at top (v2.32)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -49,37 +49,153 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-2. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-3. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-3. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-4. [Latest Updates (v2.26)](#latest-updates-v226)
-5. [Latest Updates (v2.25)](#latest-updates-v225)
-4. [Latest Updates (v2.24)](#latest-updates-v224)
-3. [Latest Updates (v2.23)](#latest-updates-v223)
-4. [Latest Updates (v2.22)](#latest-updates-v222)
-5. [Latest Updates (v2.21)](#latest-updates-v221)
-6. [Latest Updates (v2.20)](#latest-updates-v220)
-7. [Latest Updates (v2.19)](#latest-updates-v219)
-8. [Latest Updates (v2.18)](#latest-updates-v218)
-9. [Latest Updates (v2.17)](#latest-updates-v217)
-10. [Latest Updates (v2.16)](#latest-updates-v216)
-11. [Latest Updates (v2.15)](#latest-updates-v215)
-12. [Latest Updates (v2.14)](#latest-updates-v214)
-13. [Latest Updates (v2.13)](#latest-updates-v213)
-14. [Latest Updates (v2.12)](#latest-updates-v212)
-15. [Latest Updates (v2.11)](#latest-updates-v211)
-16. [Latest Updates (v2.10)](#latest-updates-v210)
-17. [Latest Updates (v2.9)](#latest-updates-v29)
-18. [Latest Updates (v2.8)](#latest-updates-v28)
-19. [Latest Updates (v2.7)](#latest-updates-v27)
-20. [Latest Updates (v2.6)](#latest-updates-v26)
-21. [Workflow Features](#workflow-features)
-22. [Calendar Updates](#calendar-updates)
-23. [Access Control](#access-control)
-24. [Email Templates](#email-templates)
-25. [Financial Tracking](#financial-tracking)
-26. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+2. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+3. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+4. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+5. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+6. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+7. [Latest Updates (v2.26)](#latest-updates-v226)
+8. [Latest Updates (v2.25)](#latest-updates-v225)
+9. [Latest Updates (v2.24)](#latest-updates-v224)
+10. [Latest Updates (v2.23)](#latest-updates-v223)
+11. [Latest Updates (v2.22)](#latest-updates-v222)
+12. [Latest Updates (v2.21)](#latest-updates-v221)
+13. [Latest Updates (v2.20)](#latest-updates-v220)
+14. [Latest Updates (v2.19)](#latest-updates-v219)
+15. [Latest Updates (v2.18)](#latest-updates-v218)
+16. [Latest Updates (v2.17)](#latest-updates-v217)
+17. [Latest Updates (v2.16)](#latest-updates-v216)
+18. [Latest Updates (v2.15)](#latest-updates-v215)
+19. [Latest Updates (v2.14)](#latest-updates-v214)
+20. [Latest Updates (v2.13)](#latest-updates-v213)
+21. [Latest Updates (v2.12)](#latest-updates-v212)
+22. [Latest Updates (v2.11)](#latest-updates-v211)
+23. [Latest Updates (v2.10)](#latest-updates-v210)
+24. [Latest Updates (v2.9)](#latest-updates-v29)
+25. [Latest Updates (v2.8)](#latest-updates-v28)
+26. [Latest Updates (v2.7)](#latest-updates-v27)
+27. [Latest Updates (v2.6)](#latest-updates-v26)
+28. [Workflow Features](#workflow-features)
+29. [Calendar Updates](#calendar-updates)
+30. [Access Control](#access-control)
+31. [Email Templates](#email-templates)
+32. [Financial Tracking](#financial-tracking)
+33. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.32)
+
+### Settings Renames and Category Removal
+
+**Date**: 2026-02-11
+
+**Overview**:
+Settings section names and labels were clarified for better clarity. The category field was removed from Book Names.
+
+**Changes**:
+- **Fixture Types** → **Takeoff, Labor, and Price Book Names**
+- **Part Types** → **Material Part Types**
+- **Counts Quick-adds** → **Counts Quick-add Names** (label only; section was already named Counts Quick-adds)
+- **Book Names**: Removed category field from form and badge; simplified display
+
+---
+
+### Book Names and Price Book Ordering
+
+**Date**: 2026-02-11
+
+**Overview**:
+Items in Settings and Bids are now sorted alphabetically. Price Book entries are sorted by fixture name with `localeCompare` (alphanumeric). Move up/down buttons were removed from Book Names.
+
+**Implementation**:
+- Settings and Bids: Book names sorted alphabetically by name
+- Price Book: Entries sorted by fixture name using `localeCompare`
+- Removed move up/down buttons from Book Names section
+
+---
+
+### Email Templates Layout
+
+**Date**: 2026-02-11
+
+**Overview**:
+Email Templates section is now collapsible and collapsed by default. Full-width layout with no border for a cleaner appearance.
+
+---
+
+### Materials Price Book – Load All Mode
+
+**Date**: 2026-02-11
+
+**Overview**:
+The mountain icon (Load All) in the Materials Price Book was fixed for clickability and now persists per user. Load All mode is on by default for new users.
+
+**Implementation**:
+- **Clickability fix**: Added `pointerEvents: 'none'` to the SVG to prevent child elements from blocking clicks
+- **Persistence**: Preference saved per user in `localStorage` (`materials_loadAllMode_${userId}`)
+- **Default**: Load All mode is on by default for new users
+
+---
+
+### Cost Estimate – Update Bid Distance
+
+**Date**: 2026-02-11
+
+**Overview**:
+Added a distance input and **Update bid distance** button next to Edit bid in the Driving Cost Parameters section. Users can quickly update the bid distance without leaving the Cost Estimate view.
+
+**Implementation**:
+- Added `[ ___ mi]` distance input and **Update bid distance** button next to Edit bid
+- Shows success message ("✓ Distance updated") for 3 seconds after a successful update
+- Located in the Driving Cost Parameters section of the Cost Estimate view
+
+---
+
+## Latest Updates (v2.31)
+
+### Bids Pricing Tab: Takeoff-Based Our Cost and Row Breakdown
+
+**Date**: 2026-02-11
+
+**Overview**:
+The Pricing tab "Our cost" now uses takeoff parts prices per fixture (with tax) plus labor instead of allocating total materials proportionally by labor hours. Clicking a row opens a modal showing the cost breakdown.
+
+**Implementation**:
+- **Our cost formula**: `(takeoff materials for fixture × (1 + tax%)) + labor`. Falls back to proportional allocation when fixture has no takeoff mappings.
+- **Takeoff integration**: Loads `bids_takeoff_template_mappings` and PO items from Cost Estimate POs; uses `expandTemplate()` to compute per-fixture materials from templates and part prices.
+- **Tax**: Uses `costEstimatePOModalTaxPercent` (default 8.25%) for takeoff-based materials.
+- **Breakdown modal**: Shows Materials (from takeoff or proportional), Tax, Labor, and Our cost. Closes on backdrop click or Close button.
+
+---
+
+### Counts Quick-adds (formerly Counts Fixtures)
+
+**Date**: 2026-02-11
+
+**Overview**:
+The hardcoded fixture quick-select buttons in Bids Counts (when adding a row) are now configurable per service type in Settings. Renamed from "Counts Fixtures" to "Counts Quick-adds."
+
+**Implementation**:
+- **Database**: New tables `counts_fixture_groups` and `counts_fixture_group_items`. Each service type (Plumbing, Electrical, HVAC) has its own groups and fixture names.
+- **Settings**: Devs can add/edit/delete groups and fixtures per service type. One fixture per row for easier organization.
+- **Bids**: NewCountRow loads the appropriate groups from the database based on the bid's service type.
+
+---
+
+### Settings Improvements
+
+**Date**: 2026-02-11
+
+**Overview**:
+Multiple UX and capability improvements in Settings for devs.
+
+**Changes**:
+1. **Convert Master to Assistant/Subcontractor**: Section is now collapsible and collapsed by default.
+2. **User actions**: Edit, Send email to sign in, imitate, Set password buttons display next to each other (horizontal layout).
+3. **People Created by Other Users**: Devs can now edit (rename, email, phone, notes) and delete people entries created by other users. RLS policies added for devs to update/delete any people.
+4. **Fixture Types**: "Remove unused" button next to "+ Add Fixture Type" removes all fixture types with 0 takeoff, 0 labor, 0 price. Useful for cleaning up the labor book fixture list. Counts are unaffected (count rows store fixture as free text).
 
 ---
 

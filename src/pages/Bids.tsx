@@ -760,6 +760,9 @@ export default function Bids() {
   const [addMissingFixtureTrimSet, setAddMissingFixtureTrimSet] = useState('')
   const [savingMissingFixture, setSavingMissingFixture] = useState(false)
   const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(true)
+  const [costEstimateDistanceInput, setCostEstimateDistanceInput] = useState('')
+  const [updatingBidDistance, setUpdatingBidDistance] = useState(false)
+  const [bidDistanceUpdateSuccess, setBidDistanceUpdateSuccess] = useState(false)
 
   // Pricing tab
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
@@ -923,7 +926,7 @@ export default function Bids() {
       .from('fixture_types')
       .select('id, name')
       .eq('service_type_id', selectedServiceTypeId)
-      .order('sequence_order', { ascending: true })
+      .order('name', { ascending: true })
     if (!error && data) {
       setFixtureTypes(data)
     }
@@ -1781,13 +1784,14 @@ export default function Bids() {
       .from('price_book_entries')
       .select('*, fixture_types(name)')
       .eq('version_id', versionId)
-      .order('sequence_order', { ascending: true })
     if (error) {
       setError(`Failed to load price book entries: ${error.message}`)
       setPriceBookEntries([])
       return
     }
-    setPriceBookEntries((data as PriceBookEntryWithFixture[]) ?? [])
+    const entries = (data as PriceBookEntryWithFixture[]) ?? []
+    entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
+    setPriceBookEntries(entries)
   }
 
   async function loadBidPricingAssignments(bidId: string, versionId: string | null) {
@@ -2647,6 +2651,29 @@ export default function Bids() {
     setSavingCostEstimate(false)
   }
 
+  async function updateBidDistanceFromCostEstimate() {
+    if (!selectedBidForCostEstimate?.id) return
+    setUpdatingBidDistance(true)
+    setError(null)
+    const val = costEstimateDistanceInput.trim()
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ distance_from_office: val || null })
+      .eq('id', selectedBidForCostEstimate.id)
+    if (err) {
+      setError(err.message)
+    } else {
+      const fresh = (await loadBids()).find((b) => b.id === selectedBidForCostEstimate.id)
+      if (fresh) {
+        setSelectedBidForCostEstimate(fresh)
+        setCostEstimateDistanceInput(fresh.distance_from_office ?? '')
+      }
+      setBidDistanceUpdateSuccess(true)
+      setTimeout(() => setBidDistanceUpdateSuccess(false), 3000)
+    }
+    setUpdatingBidDistance(false)
+  }
+
   async function applyLaborBookHoursToEstimate() {
     if (!costEstimate?.id || !selectedLaborBookVersionId || costEstimateLaborRows.length === 0) return
     setLaborBookApplyMessage(null)
@@ -3319,6 +3346,9 @@ export default function Bids() {
         list.push(e)
         entriesByVersion.set(e.version_id, list)
       }
+      for (const list of entriesByVersion.values()) {
+        list.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
+      }
       const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
       const rate = pricingLaborRate ?? 0
       const totalLaborHours = pricingLaborRows.reduce(
@@ -3590,10 +3620,11 @@ export default function Bids() {
     const countRowsReview = (countDataReview as BidCountRow[]) ?? []
     for (const v of priceBookVersions) {
       const [entriesResR, assignResR] = await Promise.all([
-        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }),
+        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
       ])
       const entriesR = (entriesResR.data as PriceBookEntryWithFixture[]) ?? []
+      entriesR.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignmentsR = (assignResR.data as BidPricingAssignment[]) ?? []
       const entriesByIdR = new Map(entriesR.map((e) => [e.id, e]))
       let totalRevenueR = 0
@@ -3662,10 +3693,11 @@ export default function Bids() {
     let pricingContent = 'No price book selected or no count rows.'
     if (versionId && countRows.length > 0) {
       const [entriesRes, assignRes] = await Promise.all([
-        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId).order('sequence_order', { ascending: true }),
+        supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
       ])
       const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
+      entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
       const entriesById = new Map(entries.map((e) => [e.id, e]))
       let totalRevenue = 0
@@ -3802,7 +3834,8 @@ export default function Bids() {
     let coverLetterRevenue = 0
     const fixtureRows: { fixture: string; count: number }[] = []
     if (versionId && countRows.length > 0) {
-      const entries = (await supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId)).data as PriceBookEntryWithFixture[] ?? []
+      const entriesRaw = (await supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId)).data as PriceBookEntryWithFixture[] ?? []
+      const entries = [...entriesRaw].sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignments = (await supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidPricingAssignment[] ?? []
       const entriesById = new Map(entries.map((e) => [e.id, e]))
       countRows.forEach((countRow) => {
@@ -4692,10 +4725,11 @@ export default function Bids() {
       const results = await Promise.all(
         versions.map(async (v) => {
           const [entriesRes, assignRes] = await Promise.all([
-            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id).order('sequence_order', { ascending: true }),
+            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
             supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
           ])
           const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
+          entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
           const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
           const entriesById = new Map(entries.map((e) => [e.id, e]))
           let totalRevenue = 0
@@ -4899,9 +4933,11 @@ export default function Bids() {
         setCostEstimateLaborRows([])
         setCostEstimateCountRows([])
         setSelectedLaborBookVersionId(null)
+        setCostEstimateDistanceInput('')
       }
       return
     }
+    setCostEstimateDistanceInput(selectedBidForCostEstimate.distance_from_office ?? '')
     const bidId = selectedBidForCostEstimate.id
     const bidJustChanged = costEstimateBidIdRef.current !== bidId
     if (bidJustChanged) {
@@ -6551,8 +6587,7 @@ export default function Bids() {
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => materialTemplates.find((t) => t.id === i.template_id)?.name ?? i.template_id).join(', ')}</td>
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => STAGE_LABELS[i.stage as TakeoffStage] ?? i.stage).join(', ')}</td>
                             <td style={{ padding: '0.5rem' }}>
-                              <button type="button" onClick={() => openEditTakeoffBookEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                              <button type="button" onClick={() => deleteTakeoffBookEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                              <button type="button" onClick={() => openEditTakeoffBookEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
                             </td>
                           </tr>
                         ))}
@@ -6716,9 +6751,27 @@ export default function Bids() {
                       Add template & stage
                     </button>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryItemRows.some((r) => r.templateId.trim() !== '')} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {editingTakeoffBookEntry && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const n = editingTakeoffBookEntry.items?.length ?? 0
+                            if (!confirm(`Delete "${editingTakeoffBookEntry.fixture_name ?? ''}" and its ${n} template/stage pair(s) from this takeoff book?`)) return
+                            await deleteTakeoffBookEntry(editingTakeoffBookEntry)
+                            closeTakeoffBookEntryForm()
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryItemRows.some((r) => r.templateId.trim() !== '')} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -6996,7 +7049,7 @@ export default function Bids() {
                                   <input
                                     type="number"
                                     min={0}
-                                    step={0.01}
+                                    step={0.25}
                                     value={row.rough_in_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                     onWheel={(e) => e.currentTarget.blur()}
@@ -7007,7 +7060,7 @@ export default function Bids() {
                                   <input
                                     type="number"
                                     min={0}
-                                    step={0.01}
+                                    step={0.25}
                                     value={row.top_out_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                     onWheel={(e) => e.currentTarget.blur()}
@@ -7018,7 +7071,7 @@ export default function Bids() {
                                   <input
                                     type="number"
                                     min={0}
-                                    step={0.01}
+                                    step={0.25}
                                     value={row.trim_set_hrs_per_unit}
                                     onChange={(e) => setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                     onWheel={(e) => e.currentTarget.blur()}
@@ -7110,16 +7163,43 @@ export default function Bids() {
                     })()}
                     {/* Driving Cost Section */}
                     <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                         <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Driving Cost Parameters</h4>
                         {selectedBidForCostEstimate && (
-                          <button
-                            type="button"
-                            onClick={() => openEditBid(selectedBidForCostEstimate)}
-                            style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
-                          >
-                            Edit Bid
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => openEditBid(selectedBidForCostEstimate)}
+                              style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                            >
+                              Edit bid
+                            </button>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
+                              [
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                value={costEstimateDistanceInput}
+                                onChange={(e) => setCostEstimateDistanceInput(e.target.value)}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                placeholder="—"
+                                style={{ width: '4rem', padding: '0.25rem 0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                              />
+                              {' mi]'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={updateBidDistanceFromCostEstimate}
+                              disabled={updatingBidDistance}
+                              style={{ padding: '0.25rem 0.5rem', background: updatingBidDistance ? '#d1d5db' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: updatingBidDistance ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                            >
+                              {updatingBidDistance ? 'Updating…' : 'Update bid distance'}
+                            </button>
+                            {bidDistanceUpdateSuccess && (
+                              <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>✓ Distance updated</span>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
@@ -7485,8 +7565,7 @@ export default function Bids() {
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
                             <td style={{ padding: '0.5rem' }}>
-                              <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                              <button type="button" onClick={() => deleteLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                              <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
                             </td>
                           </tr>
                         ))}
@@ -7621,9 +7700,26 @@ export default function Bids() {
                       <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {editingLaborEntry && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`Delete "${editingLaborEntry.fixture_types?.name ?? ''}" from this labor book?`)) return
+                            await deleteLaborEntry(editingLaborEntry)
+                            closeLaborEntryForm()
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                    </div>
                   </div>
                 </form>
               </div>
@@ -8302,8 +8398,7 @@ export default function Bids() {
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.trim_set_price))}</td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.total_price))}</td>
                             <td style={{ padding: '0.5rem' }}>
-                              <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ marginRight: '0.25rem', padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                              <button type="button" onClick={() => deletePricingEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b' }} title="Delete">×</button>
+                              <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
                             </td>
                           </tr>
                         ))}
@@ -8556,9 +8651,26 @@ export default function Bids() {
                       <input type="number" min={0} step={0.01} value={pricingEntryTotal} onChange={(e) => setPricingEntryTotal(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      {editingPricingEntry && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm(`Delete "${editingPricingEntry.fixture_types?.name ?? ''}" from this price book?`)) return
+                            await deletePricingEntry(editingPricingEntry)
+                            closePricingEntryForm()
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
+                    </div>
                   </div>
                 </form>
               </div>
