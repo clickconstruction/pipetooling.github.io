@@ -99,6 +99,25 @@ export default function Layout() {
           </>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+            <>
+              <button
+                type="button"
+                onClick={() => navigate('/projects/new')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Add Project
+              </button>
+            </>
+          )}
           {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator') && (
             <button
               type="button"
