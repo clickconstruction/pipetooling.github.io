@@ -4122,7 +4122,7 @@ export default function Settings() {
 
               {fixtureTypes.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {fixtureTypes.map((ft, idx) => (
+                  {fixtureTypes.map((ft) => (
                     <div key={ft.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
