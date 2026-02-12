@@ -1282,6 +1282,30 @@ export default function Materials() {
     setAddingItemToTemplate(true)
     setError(null)
 
+    // For parts: if part already exists in template, add to quantity instead of inserting duplicate
+    if (newItemType === 'part' && newItemPartId) {
+      const existing = templateItems.find(
+        (i) => i.item_type === 'part' && i.part_id === newItemPartId
+      )
+      if (existing) {
+        const { error: updateErr } = await supabase
+          .from('material_template_items')
+          .update({ quantity: (existing.quantity ?? 1) + quantity })
+          .eq('id', existing.id)
+        if (updateErr) {
+          setError(updateErr.message)
+        } else {
+          await loadTemplateItems(selectedTemplate.id)
+          setNewItemPartId('')
+          setNewItemTemplateId('')
+          setNewItemQuantity('1')
+          setNewItemNotes('')
+        }
+        setAddingItemToTemplate(false)
+        return
+      }
+    }
+
     const maxOrder = templateItems.length === 0 ? 0 : Math.max(...templateItems.map(i => i.sequence_order))
     const { error } = await supabase
       .from('material_template_items')

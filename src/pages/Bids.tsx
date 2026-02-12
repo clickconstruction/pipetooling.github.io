@@ -1173,8 +1173,23 @@ export default function Bids() {
       return
     }
     const templateId = (templateData as { id: string }).id
-    for (let i = 0; i < takeoffNewTemplateItems.length; i++) {
-      const item = takeoffNewTemplateItems[i]
+    // Merge parts by part_id (unique constraint: one part per template) - nested templates can repeat
+    const merged: Array<{ item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }> = []
+    for (const item of takeoffNewTemplateItems) {
+      if (!item) continue
+      if (item.item_type === 'part' && item.part_id) {
+        const existing = merged.find((m) => m.item_type === 'part' && m.part_id === item.part_id)
+        if (existing) {
+          existing.quantity += item.quantity
+        } else {
+          merged.push({ ...item, quantity: item.quantity })
+        }
+      } else {
+        merged.push({ ...item, quantity: item.quantity })
+      }
+    }
+    for (let i = 0; i < merged.length; i++) {
+      const item = merged[i]
       if (!item) continue
       const { error: itemError } = await supabase.from('material_template_items').insert({
         template_id: templateId,
@@ -1203,15 +1218,28 @@ export default function Bids() {
     if (takeoffNewItemType === 'part' && !takeoffNewItemPartId) return
     if (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId) return
     const qty = Math.max(1, parseInt(takeoffNewItemQuantity, 10) || 1)
-    setTakeoffNewTemplateItems((prev) => [
-      ...prev,
-      {
-        item_type: takeoffNewItemType,
-        part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
-        nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
-        quantity: qty,
-      },
-    ])
+    setTakeoffNewTemplateItems((prev) => {
+      // For parts: merge with existing same part instead of adding duplicate row
+      if (takeoffNewItemType === 'part' && takeoffNewItemPartId) {
+        const idx = prev.findIndex(
+          (p) => p.item_type === 'part' && p.part_id === takeoffNewItemPartId
+        )
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = { ...next[idx]!, quantity: (next[idx]!.quantity ?? 1) + qty }
+          return next
+        }
+      }
+      return [
+        ...prev,
+        {
+          item_type: takeoffNewItemType,
+          part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
+          nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
+          quantity: qty,
+        },
+      ]
+    })
     setTakeoffNewItemPartId('')
     setTakeoffNewItemTemplateId('')
     setTakeoffNewItemQuantity('1')
@@ -1299,6 +1327,36 @@ export default function Bids() {
     }
     setEditTemplateAddingItem(true)
     setError(null)
+
+    // For parts: if part already exists in template, add to quantity instead of inserting duplicate
+    if (editTemplateNewItemType === 'part' && editTemplateNewItemPartId) {
+      const existing = editTemplateItems.find(
+        (i) => i.item_type === 'part' && i.part_id === editTemplateNewItemPartId
+      )
+      if (existing) {
+        const { error: updateErr } = await supabase
+          .from('material_template_items')
+          .update({ quantity: (existing.quantity ?? 1) + quantity })
+          .eq('id', existing.id)
+        if (updateErr) {
+          setError(updateErr.message)
+        } else {
+          await loadEditTemplateItems(editTemplateModalId)
+          setEditTemplateNewItemPartId('')
+          setEditTemplateNewItemTemplateId('')
+          setEditTemplateNewItemQuantity('1')
+          setEditTemplateNewItemPartSearchQuery('')
+          setEditTemplateNewItemTemplateSearchQuery('')
+          setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
+          getTemplatePartsPreview(supabase, editTemplateModalId)
+            .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
+            .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: null })))
+        }
+        setEditTemplateAddingItem(false)
+        return
+      }
+    }
+
     const maxOrder = editTemplateItems.length === 0 ? 0 : Math.max(...editTemplateItems.map((i) => i.sequence_order))
     const { error: insertError } = await supabase.from('material_template_items').insert({
       template_id: editTemplateModalId,
@@ -1350,32 +1408,51 @@ export default function Bids() {
 
     const qty = Math.max(1, parseInt(addPartsQuantity, 10) || 1)
 
-    // Get the current max sequence_order for this template
-    const { data: existingItems } = await supabase
+    // Check if part already exists in template - if so, add to quantity instead of inserting
+    const { data: existingPart } = await supabase
       .from('material_template_items')
-      .select('sequence_order')
+      .select('id, quantity')
       .eq('template_id', addPartsToTemplateId)
-      .order('sequence_order', { ascending: false })
-      .limit(1)
+      .eq('part_id', addPartsSelectedPartId)
+      .eq('item_type', 'part')
+      .maybeSingle()
 
-    const maxOrder = existingItems && existingItems.length > 0 ? (existingItems[0]?.sequence_order ?? 0) : 0
+    if (existingPart) {
+      const { error: updateErr } = await supabase
+        .from('material_template_items')
+        .update({ quantity: (existingPart.quantity ?? 1) + qty })
+        .eq('id', existingPart.id)
+      if (updateErr) {
+        setError(updateErr.message)
+        setSavingTemplateParts(false)
+        return
+      }
+    } else {
+      const { data: seqData } = await supabase
+        .from('material_template_items')
+        .select('sequence_order')
+        .eq('template_id', addPartsToTemplateId)
+        .order('sequence_order', { ascending: false })
+        .limit(1)
+      const maxOrder = seqData && seqData.length > 0 ? (seqData[0]?.sequence_order ?? 0) : 0
 
-    const { error: insertError } = await supabase
-      .from('material_template_items')
-      .insert({
-        template_id: addPartsToTemplateId,
-        item_type: 'part',
-        part_id: addPartsSelectedPartId,
-        nested_template_id: null,
-        quantity: qty,
-        sequence_order: maxOrder + 1,
-        notes: null,
-      })
+      const { error: insertError } = await supabase
+        .from('material_template_items')
+        .insert({
+          template_id: addPartsToTemplateId,
+          item_type: 'part',
+          part_id: addPartsSelectedPartId,
+          nested_template_id: null,
+          quantity: qty,
+          sequence_order: maxOrder + 1,
+          notes: null,
+        })
 
-    if (insertError) {
-      setError(insertError.message)
-      setSavingTemplateParts(false)
-      return
+      if (insertError) {
+        setError(insertError.message)
+        setSavingTemplateParts(false)
+        return
+      }
     }
 
     // Reload template previews
