@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.32 → v2.4"
+version_range: "v2.33 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.32)"
+  - name: "Latest Version (v2.33)"
     line: ~82
+    description: "Labor step increment, delete in modals, Template→Assembly, Bid Board changes"
+  - name: "v2.32"
+    line: ~116
     description: "Settings renames, Materials Load All, Cost Estimate distance"
   - name: "v2.29"
     line: ~110
@@ -49,39 +52,100 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-2. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-3. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-4. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-5. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-6. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-7. [Latest Updates (v2.26)](#latest-updates-v226)
-8. [Latest Updates (v2.25)](#latest-updates-v225)
-9. [Latest Updates (v2.24)](#latest-updates-v224)
-10. [Latest Updates (v2.23)](#latest-updates-v223)
-11. [Latest Updates (v2.22)](#latest-updates-v222)
-12. [Latest Updates (v2.21)](#latest-updates-v221)
-13. [Latest Updates (v2.20)](#latest-updates-v220)
-14. [Latest Updates (v2.19)](#latest-updates-v219)
-15. [Latest Updates (v2.18)](#latest-updates-v218)
-16. [Latest Updates (v2.17)](#latest-updates-v217)
-17. [Latest Updates (v2.16)](#latest-updates-v216)
-18. [Latest Updates (v2.15)](#latest-updates-v215)
-19. [Latest Updates (v2.14)](#latest-updates-v214)
-20. [Latest Updates (v2.13)](#latest-updates-v213)
-21. [Latest Updates (v2.12)](#latest-updates-v212)
-22. [Latest Updates (v2.11)](#latest-updates-v211)
-23. [Latest Updates (v2.10)](#latest-updates-v210)
-24. [Latest Updates (v2.9)](#latest-updates-v29)
-25. [Latest Updates (v2.8)](#latest-updates-v28)
-26. [Latest Updates (v2.7)](#latest-updates-v27)
-27. [Latest Updates (v2.6)](#latest-updates-v26)
-28. [Workflow Features](#workflow-features)
-29. [Calendar Updates](#calendar-updates)
-30. [Access Control](#access-control)
-31. [Email Templates](#email-templates)
-32. [Financial Tracking](#financial-tracking)
-33. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+2. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+3. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+4. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+5. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+6. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+7. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+8. [Latest Updates (v2.26)](#latest-updates-v226)
+9. [Latest Updates (v2.25)](#latest-updates-v225)
+10. [Latest Updates (v2.24)](#latest-updates-v224)
+11. [Latest Updates (v2.23)](#latest-updates-v223)
+12. [Latest Updates (v2.22)](#latest-updates-v222)
+13. [Latest Updates (v2.21)](#latest-updates-v221)
+14. [Latest Updates (v2.20)](#latest-updates-v220)
+15. [Latest Updates (v2.19)](#latest-updates-v219)
+16. [Latest Updates (v2.18)](#latest-updates-v218)
+17. [Latest Updates (v2.17)](#latest-updates-v217)
+18. [Latest Updates (v2.16)](#latest-updates-v216)
+19. [Latest Updates (v2.15)](#latest-updates-v215)
+20. [Latest Updates (v2.14)](#latest-updates-v214)
+21. [Latest Updates (v2.13)](#latest-updates-v213)
+22. [Latest Updates (v2.12)](#latest-updates-v212)
+23. [Latest Updates (v2.11)](#latest-updates-v211)
+24. [Latest Updates (v2.10)](#latest-updates-v210)
+25. [Latest Updates (v2.9)](#latest-updates-v29)
+26. [Latest Updates (v2.8)](#latest-updates-v28)
+27. [Latest Updates (v2.7)](#latest-updates-v27)
+28. [Latest Updates (v2.6)](#latest-updates-v26)
+29. [Workflow Features](#workflow-features)
+30. [Calendar Updates](#calendar-updates)
+31. [Access Control](#access-control)
+32. [Email Templates](#email-templates)
+33. [Financial Tracking](#financial-tracking)
+34. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.33)
+
+### Labor Section Increment Step
+
+**Date**: 2026-02-11
+
+**Overview**:
+Rough In, Top Out, and Trim Set labor hour inputs in the Cost Estimate tab now use a step of 0.25 instead of 0.01 for the up/down arrows, making it easier to adjust labor hours in quarter-hour increments.
+
+---
+
+### Delete Buttons Moved to Edit Modals
+
+**Date**: 2026-02-11
+
+**Overview**:
+In-row delete buttons were removed from Takeoff, Labor, and Pricing books. Delete actions are now only available inside the edit modal for each entry, reducing accidental deletions and keeping the table row layout cleaner.
+
+---
+
+### Template → Assembly Terminology
+
+**Date**: 2026-02-11
+
+**Overview**:
+All user-facing "Template"/"Templates" labels for material templates were renamed to "Assembly"/"Assemblies" across Materials, Bids, and Settings.
+
+**Changes**:
+- **Tab**: "Templates & Purchase Orders" → "Assemblies & Purchase Orders"
+- **Section**: "Material Templates" → "Material Assemblies"
+- Labels, placeholders, error messages, and related copy updated throughout
+- **Note**: Database tables and code still use `material_templates`; only UI text changed
+
+---
+
+### Bid Board Changes
+
+**Date**: 2026-02-11
+
+**Overview**:
+The Bid Board tab was simplified and reorganized for cleaner layout and focused workflow.
+
+**Removed columns**:
+- Notes
+- Win/Loss (W/L)
+- Sent Date
+
+**Lost bids**:
+- Lost bids are now always hidden on the Bid Board (no toggle)
+- Empty state message when all matching bids are lost: "No bids to show (all matching bids are lost)."
+
+**Layout updates**:
+- **Column headers** split across lines: Project/Folder, Job/Plans, Account/Man, Bid/Date, Last/Contact, Distance/to Office
+- **Address**: Line break after first comma (e.g., street on line 1; city/state on line 2)
+- **Last Contact**: Weekday and date on separate lines (e.g., "Wed" / "2/11")
+- **Project Folder**: Folder SVG icon instead of "Link" text
+- **Job Plans**: Document SVG icon instead of "Link" text
 
 ---
 

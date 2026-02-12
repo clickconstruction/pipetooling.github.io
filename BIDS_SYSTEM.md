@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-10
+last_updated: 2026-02-11
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -30,7 +30,7 @@ key_sections:
   - name: "Takeoff Tab"
     line: ~184
     anchor: "#takeoff-tab"
-    description: "Map counts to templates, create POs"
+    description: "Map counts to assemblies, create POs"
   - name: "Cost Estimate Tab"
     line: ~333
     anchor: "#cost-estimate-tab"
@@ -54,7 +54,7 @@ key_sections:
 
 quick_navigation:
   - "[6-Tab Workflow](#overview) - Tab sequence and purpose"
-  - "[Book Systems](#takeoff-tab) - Template libraries"
+  - "[Book Systems](#takeoff-tab) - Assembly libraries"
   - "[Database Tables](#database-schema) - Schema reference"
   - "[Materials Integration](#integration-with-materials) - PO creation"
 
@@ -103,7 +103,7 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 ### Workflow
 1. **Bid Board** - Create and manage bids
 2. **Counts** - Enter fixture/tie-in counts per stage
-3. **Takeoff** - Map counts to material templates
+3. **Takeoff** - Map counts to material assemblies
 4. **Cost Estimate** - Calculate material and labor costs with driving expenses
 5. **Pricing** - Compare costs to price book and analyze margins
 6. **Cover Letter** - Generate proposal documents with inclusions/exclusions
@@ -135,27 +135,29 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **Case-insensitive** matching
 - **Empty state** reflects active search query
 
-#### Hide/Show Lost Bids Toggle
-- **Win/Loss column header** is clickable button
-- Toggles between showing all bids and hiding lost bids
-- When hiding lost bids:
-  - Label shows "(hiding lost)" with underline
-  - Lost bids removed from table
-  - Useful for focusing on active opportunities
+#### Lost Bids
+- **Lost bids are always hidden** on the Bid Board (no toggle)
+- Empty state when all matching bids are lost: "No bids to show (all matching bids are lost)."
 
 #### Table Columns
 
 Column order (left to right):
-1. **Project Name** - Bid identifier
-2. **Address** - Project location
-3. **Win/Loss** - Bid outcome (unsent, won, lost, started_or_complete)
-4. **Bid Value** - Total bid amount
-5. **Estimator** - Assigned estimator
-6. **Bid Date** - Bid due date
-7. **GC/Builder** - Customer name
-8. **Edit** - Gear icon button (header hidden, only icon visible)
+1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
+2. **Job Plans** - Document icon linking to plans (or dash if none)
+3. **GC/Builder** - Customer name (clickable for details)
+4. **Project Name** - Bid identifier
+5. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
+6. **Account Man** - Account manager or estimator name
+7. **Bid** - Total bid amount (short format)
+8. **Bid Date** - Bid due date (date and bracket on separate lines)
+9. **Distance to Office** - Miles (rounded)
+10. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
+11. **Edit** - Gear icon button (header hidden, only icon visible)
 
 **Note**: Removed columns from earlier versions:
+- Notes (removed)
+- Win/Loss (removed)
+- Sent Date (removed)
 - Agreed Value (removed)
 - Maximum Profit (removed)
 
@@ -298,11 +300,11 @@ Both Fixture and Count show:
 ## Takeoff Tab
 
 ### Purpose
-Map fixture counts to material templates, creating purchase orders for the bid. Supports multiple templates per fixture and staged material breakdowns.
+Map fixture counts to material assemblies, creating purchase orders for the bid. Supports multiple assemblies per fixture and staged material breakdowns.
 
 ### Takeoff Book System
 
-The Takeoff Book provides standardized mappings from fixture names to material templates and stages.
+The Takeoff Book provides standardized mappings from fixture names to material assemblies and stages.
 
 #### Takeoff Book Versions
 
@@ -321,7 +323,7 @@ The Takeoff Book provides standardized mappings from fixture names to material t
 **Structure**:
 - **Fixture or Tie-in** - Primary name (e.g., "Toilet", "Sink")
 - **Additional names (aliases)** - Comma-separated alternative names (e.g., "Water Closet, WC")
-- **Multiple (Template, Stage) pairs** - One entry can have multiple template/stage combinations
+- **Multiple (Assembly, Stage) pairs** - One entry can have multiple assembly/stage combinations
 
 **Alias Matching**:
 - Case-insensitive matching
@@ -333,23 +335,23 @@ The Takeoff Book provides standardized mappings from fixture names to material t
 Entry: "Toilet"
 Aliases: "Water Closet, WC, Commode"
 Items:
-  - Template: "Standard Toilet", Stage: "Rough In"
-  - Template: "Standard Toilet", Stage: "Top Out"
-  - Template: "Standard Toilet", Stage: "Trim Set"
+  - Assembly: "Standard Toilet", Stage: "Rough In"
+  - Assembly: "Standard Toilet", Stage: "Top Out"
+  - Assembly: "Standard Toilet", Stage: "Trim Set"
 ```
 
 When applying this entry to a count row with Fixture="WC" and Count=5:
 - Creates 3 takeoff mappings (one per item)
-- Each mapping: Template="Standard Toilet", Quantity=5, Stage varies
+- Each mapping: Assembly="Standard Toilet", Quantity=5, Stage varies
 
 #### Entry Management UI
 
 **Entry Form** (for adding/editing):
 - Fixture or Tie-in (text input)
 - Additional names (textarea, comma-separated)
-- **Multiple Template/Stage Rows**:
+- **Multiple Assembly/Stage Rows**:
   - Add/Remove buttons for rows
-  - Template dropdown
+  - Assembly dropdown
   - Stage dropdown (Rough In, Top Out, Trim Set)
   - Each row stored separately in `takeoff_book_entry_items` table
 
@@ -358,31 +360,33 @@ When applying this entry to a count row with Fixture="WC" and Count=5:
 - Creates mappings for matching count rows
 - Displays success message with count of mappings created
 
+**Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
+
 ### Takeoff Mappings Table
 
 **Columns**:
 - **Fixture** - From count row
 - **Count** - Quantity
-- **Template** - Material template dropdown (searchable)
-- **Quantity** - Number of this template per fixture (default 1)
+- **Assembly** - Material assembly dropdown (searchable)
+- **Quantity** - Number of this assembly per fixture (default 1)
 - **Stage** - Rough In, Top Out, or Trim Set
-- **Actions** - Add Template, Remove
+- **Actions** - Add Assembly, Remove
 
 **Features**:
-- **Multiple templates per fixture**: Click "Add template" to add another row for same fixture
+- **Multiple assemblies per fixture**: Click "Add assembly" to add another row for same fixture
 - Each mapping has unique ID
 - Remove unwanted mappings individually
 
-### Template Search/Filter
+### Assembly Search/Filter
 
 **Location**: Centered above mappings table
 
 **Features**:
 - **360px width** input field
-- Placeholder: "only show templates with these words"
-- Filters template dropdown options in real-time
-- Always includes currently selected templates (even if filtered out)
-- Case-insensitive search across template names
+- Placeholder: "only show assemblies with these words"
+- Filters assembly dropdown options in real-time
+- Always includes currently selected assemblies (even if filtered out)
+- Case-insensitive search across assembly names
 
 ### Purchase Order Creation
 
@@ -401,7 +405,7 @@ When applying this entry to a count row with Fixture="WC" and Count=5:
      - Calculated quantities (Count × Template Quantity × Part Quantity)
 4. Opens Materials page with new PO
 
-**Utility**: Uses `expandTemplate()` from `materialPOUtils.ts`
+**Utility**: Uses `expandTemplate()` from `materialPOUtils.ts` (internal; assemblies are stored as `material_templates` in the database)
 
 #### Add to Selected PO
 
@@ -494,6 +498,7 @@ The Labor Book provides standardized labor hours for common fixtures across the 
 - Version dropdown in Cost Estimate tab header
 
 **Labor Book Entries**:
+- **Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
 - **Fixture type** - Foreign key to `fixture_types` table
 - **Additional names (aliases)** - Comma-separated alternatives
 - **Hours per stage**:
@@ -541,9 +546,9 @@ UNIQUE (version_id, fixture_type_id)
 
 **Columns**:
 - **Fixture** - From Counts tab
-- **Rough In** - Labor hours (editable)
-- **Top Out** - Labor hours (editable)
-- **Trim Set** - Labor hours (editable)
+- **Rough In** - Labor hours (editable; step 0.25 for up/down arrows)
+- **Top Out** - Labor hours (editable; step 0.25 for up/down arrows)
+- **Trim Set** - Labor hours (editable; step 0.25 for up/down arrows)
 
 **Total Row**: Shows sum of hours per stage
 
@@ -583,7 +588,7 @@ When syncing cost estimate labor rows from count rows:
 
 **Benefits**:
 - Faster workflow - one-click application
-- Consistent UX - matches Takeoff "Apply matching Fixture Templates" pattern
+- Consistent UX - matches Takeoff "Apply matching Fixture Assemblies" pattern
 - Safer - preserves non-matching fixture hours
 - More discoverable - prominent header placement
 
@@ -726,6 +731,8 @@ The Price Book provides standardized pricing for fixtures across plumbing stages
 - Users can type freely or select from suggestions
 - **Auto-creation**: If fixture type doesn't exist, it's automatically created
 - New fixtures appear in autocomplete for all users immediately
+
+**Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
 
 **Database Tables**:
 
