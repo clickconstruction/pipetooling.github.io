@@ -220,7 +220,7 @@ export default function CustomerForm() {
         </div>
         {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician') && (
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>Customer Owner (Master)</label>
+            <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
             {mastersLoading ? (
               <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
             ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (

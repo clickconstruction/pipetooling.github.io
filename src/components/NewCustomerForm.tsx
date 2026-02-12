@@ -86,6 +86,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
   const [mastersLoading, setMastersLoading] = useState(false)
   const [quickFillExpanded, setQuickFillExpanded] = useState(false)
+  const [customerMasterExpanded, setCustomerMasterExpanded] = useState(false)
 
   function handleQuickFill() {
     const parsed = parseQuickFill(quickFill)
@@ -138,7 +139,12 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         } else {
           const typedMasters = (masters ?? []) as { id: string; name: string; email: string }[]
           setAvailableMasters(typedMasters)
-          if (typedMasters.length === 1) setMasterUserId(typedMasters[0]!.id)
+          if (typedMasters.length === 1) {
+            setMasterUserId(typedMasters[0]!.id)
+          } else {
+            const malachi = typedMasters.find((m) => (m.name || '').toLowerCase().includes('malachi'))
+            if (malachi) setMasterUserId(malachi.id)
+          }
         }
       } else if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') {
         const { data: masters, error: mastersErr } = await supabase
@@ -149,7 +155,10 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         if (mastersErr) {
           setAvailableMasters([])
         } else {
-          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
+          const typedMasters = (masters as { id: string; name: string; email: string }[]) ?? []
+          setAvailableMasters(typedMasters)
+          const malachi = typedMasters.find((m) => (m.name || '').toLowerCase().includes('malachi'))
+          if (malachi) setMasterUserId(malachi.id)
         }
       }
       setMastersLoading(false)
@@ -308,39 +317,66 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         </div>
         {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') && (
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="ncf-master" style={{ display: 'block', marginBottom: 4 }}>
-              Customer Owner (Master) {(myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
-            </label>
-            {mastersLoading ? (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
-            ) : (myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
-              <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
-                {myRole === 'assistant'
-                  ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
-                  : 'No masters found.'}
-              </p>
-            ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
+              <button
+                type="button"
+                onClick={() => setCustomerMasterExpanded((e) => !e)}
+                style={{
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  lineHeight: 1,
+                  color: '#374151',
+                }}
+                aria-expanded={customerMasterExpanded}
+              >
+                {customerMasterExpanded ? '\u25BC' : '\u25B6'}
+              </button>
+              <label htmlFor="ncf-master" style={{ marginBottom: 0, cursor: 'pointer' }} onClick={() => setCustomerMasterExpanded((e) => !e)}>
+                Customer Master {(myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
+              </label>
+              {masterUserId && !customerMasterExpanded && (
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  ({availableMasters.find((m) => m.id === masterUserId)?.name || availableMasters.find((m) => m.id === masterUserId)?.email || 'Selected'})
+                </span>
+              )}
+            </div>
+            {customerMasterExpanded && (
               <>
-                <select
-                  id="ncf-master"
-                  value={masterUserId}
-                  onChange={(e) => setMasterUserId(e.target.value)}
-                  required={myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator'}
-                  disabled={myRole === 'master_technician'}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select a master...</option>
-                  {availableMasters.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.email}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
-                  {myRole === 'master_technician'
-                    ? 'You are automatically assigned as the customer owner.'
-                    : 'Select which master this customer belongs to.'}
-                </div>
+                {mastersLoading ? (
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+                ) : (myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
+                  <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                    {myRole === 'assistant'
+                      ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
+                      : 'No masters found.'}
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      id="ncf-master"
+                      value={masterUserId}
+                      onChange={(e) => setMasterUserId(e.target.value)}
+                      required={myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator'}
+                      disabled={myRole === 'master_technician'}
+                      style={{ width: '100%', padding: '0.5rem' }}
+                    >
+                      <option value="">Select a master...</option>
+                      {availableMasters.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name || m.email}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                      {myRole === 'master_technician'
+                        ? 'You are automatically assigned as the customer owner.'
+                        : 'Select which master this customer belongs to.'}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
