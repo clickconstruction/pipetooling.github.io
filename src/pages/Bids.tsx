@@ -563,7 +563,6 @@ export default function Bids() {
 
   // Bid Board
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
-  const [bidBoardHideLost, setBidBoardHideLost] = useState(false)
   const [bidFormOpen, setBidFormOpen] = useState(false)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
@@ -5332,9 +5331,7 @@ export default function Bids() {
       )
     : bids
 
-  const bidsForBidBoardDisplay = bidBoardHideLost
-    ? filteredBidsForBidBoard.filter((b) => b.outcome !== 'lost')
-    : filteredBidsForBidBoard
+  const bidsForBidBoardDisplay = filteredBidsForBidBoard.filter((b) => b.outcome !== 'lost')
 
   const filteredBidsForCounts = countsSearchQuery.trim()
     ? bids.filter(
@@ -5640,38 +5637,26 @@ export default function Bids() {
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
-                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Folder</th>
-                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Job Plans</th>
+                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project<br />Folder</th>
+                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Job<br />Plans</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>GC/Builder</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Account<br />Man</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid</th>
-                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
-                    <button
-                      type="button"
-                      onClick={() => setBidBoardHideLost((prev) => !prev)}
-                      title={bidBoardHideLost ? 'Click to show lost bids' : 'Click to hide lost bids'}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 'inherit', color: 'inherit', textDecoration: bidBoardHideLost ? 'underline' : undefined }}
-                    >
-                      W/L{bidBoardHideLost ? ' (hiding lost)' : ''}
-                    </button>
-                  </th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sent Date</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last<br />Contact</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
                 </tr>
               </thead>
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={14} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={11} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New to add one.' : 'No bids match your search.')
-                        : (bidBoardHideLost ? 'No bids to show (lost are hidden).' : 'No bids yet. Click New to add one.')}
+                        : 'No bids to show (all matching bids are lost).'}
                     </td>
                   </tr>
                 ) : (
@@ -5679,8 +5664,10 @@ export default function Bids() {
                     <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: 0, textAlign: 'center' }}>
                         {bid.drive_link ? (
-                          <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                            Link
+                          <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
+                              <path d="M128 464L512 464C520.8 464 528 456.8 528 448L528 208C528 199.2 520.8 192 512 192L362.7 192C345.4 192 328.5 186.4 314.7 176L276.3 147.2C273.5 145.1 270.2 144 266.7 144L128 144C119.2 144 112 151.2 112 160L112 448C112 456.8 119.2 464 128 464zM512 512L128 512C92.7 512 64 483.3 64 448L64 160C64 124.7 92.7 96 128 96L266.7 96C280.5 96 294 100.5 305.1 108.8L343.5 137.6C349 141.8 355.8 144 362.7 144L512 144C547.3 144 576 172.7 576 208L576 448C576 483.3 547.3 512 512 512z"/>
+                            </svg>
                           </a>
                         ) : (
                           '-'
@@ -5688,8 +5675,10 @@ export default function Bids() {
                       </td>
                       <td style={{ padding: 0, textAlign: 'center' }}>
                         {bid.plans_link ? (
-                          <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
-                            Link
+                          <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
+                              <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128z"/>
+                            </svg>
                           </a>
                         ) : (
                           '-'
@@ -5719,7 +5708,12 @@ export default function Bids() {
                             rel="noopener noreferrer"
                             style={{ color: '#3b82f6' }}
                           >
-                            {formatAddressWithoutZip(bid.address)}
+                            {(() => {
+                              const formatted = formatAddressWithoutZip(bid.address)
+                              const lines = addressLines(formatted)
+                              if (lines.length <= 1) return formatted
+                              return <>{lines[0]}<br />{lines[1]}</>
+                            })()}
                           </a>
                         ) : (
                           '-'
@@ -5735,21 +5729,9 @@ export default function Bids() {
                         })()}
                       </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>{formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}</td>
-                      <td style={{ padding: 0, textAlign: 'center' }}>{bid.outcome === 'started_or_complete' ? 'Started or Complete' : (bid.outcome ?? '-')}</td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
                         {(() => {
                           const parts = formatDateYYMMDDParts(bid.bid_due_date)
-                          return parts ? (
-                            <div style={{ lineHeight: 1.2 }}>
-                              <div>{parts.date}</div>
-                              <div>{parts.bracket}</div>
-                            </div>
-                          ) : '—'
-                        })()}
-                      </td>
-                      <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
-                        {(() => {
-                          const parts = formatDateYYMMDDParts(bid.bid_date_sent)
                           return parts ? (
                             <div style={{ lineHeight: 1.2 }}>
                               <div>{parts.date}</div>
@@ -5776,18 +5758,13 @@ export default function Bids() {
                             textDecoration: 'none',
                           }}
                         >
-                          {bid.last_contact ? formatShortDate(bid.last_contact) : '+'}
+                          {bid.last_contact ? (() => {
+                            const s = formatShortDate(bid.last_contact)
+                            const spaceIdx = s.indexOf(' ')
+                            if (spaceIdx < 0) return s
+                            return <>{s.slice(0, spaceIdx)}<br />{s.slice(spaceIdx + 1)}</>
+                          })() : '+'}
                         </button>
-                      </td>
-                      <td
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => { setNotesModalBid(bid); setNotesModalText(bid.notes ?? '') }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setNotesModalBid(bid); setNotesModalText(bid.notes ?? '') } }}
-                        style={{ padding: '0.0625rem', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center', cursor: 'pointer' }}
-                        title={bid.notes ? `${bid.notes} (click to edit)` : 'Click to add notes'}
-                      >
-                        {bid.notes ?? '-'}
                       </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
                         <button
