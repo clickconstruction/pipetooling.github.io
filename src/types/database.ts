@@ -659,6 +659,76 @@ export type Database = {
           },
         ]
       }
+      counts_fixture_groups: {
+        Row: {
+          id: string
+          service_type_id: string
+          label: string
+          sequence_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          service_type_id: string
+          label: string
+          sequence_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          service_type_id?: string
+          label?: string
+          sequence_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counts_fixture_groups_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counts_fixture_group_items: {
+        Row: {
+          id: string
+          group_id: string
+          name: string
+          sequence_order: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          name: string
+          sequence_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          name?: string
+          sequence_order?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counts_fixture_group_items_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "counts_fixture_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_book_entries: {
         Row: {
           alias_names: string[] | null

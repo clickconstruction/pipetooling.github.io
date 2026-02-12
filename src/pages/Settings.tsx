@@ -188,6 +188,24 @@ export default function Settings() {
   const [fixtureTypeLaborBookCounts, setFixtureTypeLaborBookCounts] = useState<Record<string, number>>({})
   const [fixtureTypeCountRowCounts, setFixtureTypeCountRowCounts] = useState<Record<string, number>>({})
 
+  // Counts Fixtures state (quick-select groups for Bids Counts)
+  type CountsFixtureGroup = { id: string; service_type_id: string; label: string; sequence_order: number }
+  type CountsFixtureGroupItem = { id: string; group_id: string; name: string; sequence_order: number }
+  const [countsFixtureGroups, setCountsFixtureGroups] = useState<CountsFixtureGroup[]>([])
+  const [countsFixtureGroupItems, setCountsFixtureGroupItems] = useState<CountsFixtureGroupItem[]>([])
+  const [selectedServiceTypeForCountsFixtures, setSelectedServiceTypeForCountsFixtures] = useState<string>('')
+  const [countsFixtureGroupFormOpen, setCountsFixtureGroupFormOpen] = useState(false)
+  const [editingCountsFixtureGroup, setEditingCountsFixtureGroup] = useState<CountsFixtureGroup | null>(null)
+  const [countsFixtureGroupLabel, setCountsFixtureGroupLabel] = useState('')
+  const [countsFixtureGroupSaving, setCountsFixtureGroupSaving] = useState(false)
+  const [countsFixtureGroupError, setCountsFixtureGroupError] = useState<string | null>(null)
+  const [countsFixtureItemFormOpen, setCountsFixtureItemFormOpen] = useState(false)
+  const [editingCountsFixtureGroupForItem, setEditingCountsFixtureGroupForItem] = useState<CountsFixtureGroup | null>(null)
+  const [editingCountsFixtureItem, setEditingCountsFixtureItem] = useState<CountsFixtureGroupItem | null>(null)
+  const [countsFixtureItemName, setCountsFixtureItemName] = useState('')
+  const [countsFixtureItemSaving, setCountsFixtureItemSaving] = useState(false)
+  const [countsFixtureItemError, setCountsFixtureItemError] = useState<string | null>(null)
+
   // Part Types state (for Materials)
   const [partTypes, setPartTypes] = useState<PartType[]>([])
   const [selectedServiceTypeForParts, setSelectedServiceTypeForParts] = useState<string>('')
@@ -212,6 +230,7 @@ export default function Settings() {
   }
 
   const [viewingOrphanPrices, setViewingOrphanPrices] = useState(false)
+  const [maintenanceMaterialsPricesExpanded, setMaintenanceMaterialsPricesExpanded] = useState(false)
   const [orphanPrices, setOrphanPrices] = useState<OrphanedPriceRow[]>([])
   const [loadingOrphanPrices, setLoadingOrphanPrices] = useState(false)
   const [orphanError, setOrphanError] = useState<string | null>(null)
@@ -226,6 +245,15 @@ export default function Settings() {
   const [convertAutoAdopt, setConvertAutoAdopt] = useState<boolean>(true)
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
+  const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
+  const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
+  const [editPersonName, setEditPersonName] = useState('')
+  const [editPersonEmail, setEditPersonEmail] = useState('')
+  const [editPersonPhone, setEditPersonPhone] = useState('')
+  const [editPersonNotes, setEditPersonNotes] = useState('')
+  const [editPersonSaving, setEditPersonSaving] = useState(false)
+  const [editPersonError, setEditPersonError] = useState<string | null>(null)
+  const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
   const [convertSummary, setConvertSummary] = useState<string | null>(null)
   const [exportProjectsLoading, setExportProjectsLoading] = useState(false)
   const [exportMaterialsLoading, setExportMaterialsLoading] = useState(false)
@@ -555,6 +583,83 @@ export default function Settings() {
     }
     
     setLoading(false)
+  }
+
+  async function loadPeopleForDev() {
+    if (!authUser?.id || myRole !== 'dev') return
+    const { data: list } = await supabase.from('users').select('id, email, name').order('name')
+    const userEmails = new Set((list as UserRow[] | null)?.map(u => u.email?.toLowerCase()).filter(Boolean) ?? [])
+    const { data: allPeople, error: ePeople } = await supabase
+      .from('people')
+      .select('id, master_user_id, kind, name, email, phone, notes')
+      .order('name')
+    if (ePeople) {
+      setAllPeopleCount(0)
+      return
+    }
+    if (!allPeople) {
+      setMyPeople([])
+      setNonUserPeople([])
+      setAllPeopleCount(0)
+      return
+    }
+    setAllPeopleCount(allPeople.length)
+    type PeopleRow = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
+    const peopleFromMe = (allPeople as PeopleRow[]).filter(p => p.master_user_id === authUser.id)
+    const peopleFromOthers = (allPeople as PeopleRow[]).filter(p => p.master_user_id !== authUser.id)
+    setMyPeople(peopleFromMe.map(p => ({
+      ...p,
+      creator_name: null,
+      creator_email: null,
+      is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
+    })))
+    if (peopleFromOthers.length === 0) {
+      setNonUserPeople([])
+      return
+    }
+    const creatorIds = [...new Set(peopleFromOthers.map(p => p.master_user_id))]
+    const { data: creators } = await supabase.from('users').select('id, name, email').in('id', creatorIds)
+    const creatorMap = new Map((creators as Array<{ id: string; name: string; email: string }> | null)?.map(c => [c.id, c]) ?? [])
+    setNonUserPeople(peopleFromOthers.map(p => ({
+      ...p,
+      creator_name: creatorMap.get(p.master_user_id)?.name ?? null,
+      creator_email: creatorMap.get(p.master_user_id)?.email ?? null,
+      is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
+    })))
+  }
+
+  async function saveNonUserPersonEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingNonUserPerson) return
+    const trimmedName = editPersonName.trim()
+    if (!trimmedName) {
+      setEditPersonError('Name is required')
+      return
+    }
+    setEditPersonSaving(true)
+    setEditPersonError(null)
+    const { error: err } = await supabase.from('people').update({
+      name: trimmedName,
+      email: editPersonEmail.trim() || null,
+      phone: editPersonPhone.trim() || null,
+      notes: editPersonNotes.trim() || null,
+    }).eq('id', editingNonUserPerson.id)
+    setEditPersonSaving(false)
+    if (err) setEditPersonError(err.message)
+    else {
+      setEditingNonUserPerson(null)
+      await loadPeopleForDev()
+    }
+  }
+
+  async function deleteNonUserPerson(p: PersonRow) {
+    if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
+    setDeletingPersonId(p.id)
+    setError(null)
+    const { error: err } = await supabase.from('people').delete().eq('id', p.id)
+    setDeletingPersonId(null)
+    if (err) setError(err.message)
+    else await loadPeopleForDev()
   }
 
   async function loadAssistantsAndAdoptions(masterId: string) {
@@ -1297,6 +1402,179 @@ export default function Settings() {
       .eq('id', targetFixtureType.id)
     
     await loadFixtureTypes()
+  }
+
+  // Counts Fixtures functions
+  async function loadCountsFixtureGroups() {
+    if (!selectedServiceTypeForCountsFixtures) {
+      setCountsFixtureGroups([])
+      setCountsFixtureGroupItems([])
+      return
+    }
+    const { data: groupsData, error: eGroups } = await supabase
+      .from('counts_fixture_groups')
+      .select('id, service_type_id, label, sequence_order')
+      .eq('service_type_id', selectedServiceTypeForCountsFixtures)
+      .order('sequence_order', { ascending: true })
+    if (eGroups) {
+      setCountsFixtureGroups([])
+      setCountsFixtureGroupItems([])
+      return
+    }
+    const groups = (groupsData as CountsFixtureGroup[]) ?? []
+    setCountsFixtureGroups(groups)
+    if (groups.length === 0) {
+      setCountsFixtureGroupItems([])
+      return
+    }
+    const groupIds = groups.map((g) => g.id)
+    const { data: itemsData, error: eItems } = await supabase
+      .from('counts_fixture_group_items')
+      .select('id, group_id, name, sequence_order')
+      .in('group_id', groupIds)
+      .order('sequence_order', { ascending: true })
+    if (eItems) {
+      setCountsFixtureGroupItems([])
+      return
+    }
+    setCountsFixtureGroupItems((itemsData as CountsFixtureGroupItem[]) ?? [])
+  }
+
+  useEffect(() => {
+    if (selectedServiceTypeForCountsFixtures) {
+      void loadCountsFixtureGroups()
+    } else {
+      setCountsFixtureGroups([])
+      setCountsFixtureGroupItems([])
+    }
+  }, [selectedServiceTypeForCountsFixtures])
+
+  function openEditCountsFixtureGroup(group: CountsFixtureGroup | null) {
+    setEditingCountsFixtureGroup(group)
+    setCountsFixtureGroupLabel(group?.label ?? '')
+    setCountsFixtureGroupError(null)
+    setCountsFixtureGroupFormOpen(true)
+  }
+
+  function closeEditCountsFixtureGroup() {
+    setEditingCountsFixtureGroup(null)
+    setCountsFixtureGroupLabel('')
+    setCountsFixtureGroupError(null)
+    setCountsFixtureGroupFormOpen(false)
+  }
+
+  async function saveCountsFixtureGroup(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedServiceTypeForCountsFixtures) return
+    setCountsFixtureGroupSaving(true)
+    setCountsFixtureGroupError(null)
+    if (!countsFixtureGroupLabel.trim()) {
+      setCountsFixtureGroupError('Label is required')
+      setCountsFixtureGroupSaving(false)
+      return
+    }
+    if (editingCountsFixtureGroup) {
+      const { error: err } = await supabase
+        .from('counts_fixture_groups')
+        .update({ label: countsFixtureGroupLabel.trim() })
+        .eq('id', editingCountsFixtureGroup.id)
+      setCountsFixtureGroupSaving(false)
+      if (err) setCountsFixtureGroupError(err.message)
+      else { await loadCountsFixtureGroups(); closeEditCountsFixtureGroup() }
+    } else {
+      const maxSeq = countsFixtureGroups.reduce((max, g) => Math.max(max, g.sequence_order), 0)
+      const { error: err } = await supabase
+        .from('counts_fixture_groups')
+        .insert({ service_type_id: selectedServiceTypeForCountsFixtures, label: countsFixtureGroupLabel.trim(), sequence_order: maxSeq + 1 })
+      setCountsFixtureGroupSaving(false)
+      if (err) setCountsFixtureGroupError(err.message)
+      else { await loadCountsFixtureGroups(); closeEditCountsFixtureGroup() }
+    }
+  }
+
+  async function deleteCountsFixtureGroup(group: CountsFixtureGroup) {
+    if (!confirm(`Delete group "${group.label}" and all its fixtures?`)) return
+    const { error: err } = await supabase.from('counts_fixture_groups').delete().eq('id', group.id)
+    if (err) setError(err.message)
+    else await loadCountsFixtureGroups()
+  }
+
+  async function moveCountsFixtureGroup(group: CountsFixtureGroup, direction: 'up' | 'down') {
+    const idx = countsFixtureGroups.findIndex((g) => g.id === group.id)
+    if (idx === -1) return
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= countsFixtureGroups.length) return
+    const target = countsFixtureGroups[targetIdx]
+    if (!target) return
+    await supabase.from('counts_fixture_groups').update({ sequence_order: target.sequence_order }).eq('id', group.id)
+    await supabase.from('counts_fixture_groups').update({ sequence_order: group.sequence_order }).eq('id', target.id)
+    await loadCountsFixtureGroups()
+  }
+
+  function openEditCountsFixtureItem(grp: CountsFixtureGroup, item: CountsFixtureGroupItem | null) {
+    setEditingCountsFixtureGroupForItem(grp)
+    setEditingCountsFixtureItem(item)
+    setCountsFixtureItemName(item?.name ?? '')
+    setCountsFixtureItemError(null)
+    setCountsFixtureItemFormOpen(true)
+  }
+
+  function closeEditCountsFixtureItem() {
+    setEditingCountsFixtureGroupForItem(null)
+    setEditingCountsFixtureItem(null)
+    setCountsFixtureItemName('')
+    setCountsFixtureItemError(null)
+    setCountsFixtureItemFormOpen(false)
+  }
+
+  async function saveCountsFixtureItem(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingCountsFixtureGroupForItem) return
+    setCountsFixtureItemSaving(true)
+    setCountsFixtureItemError(null)
+    if (!countsFixtureItemName.trim()) {
+      setCountsFixtureItemError('Name is required')
+      setCountsFixtureItemSaving(false)
+      return
+    }
+    if (editingCountsFixtureItem) {
+      const { error: err } = await supabase
+        .from('counts_fixture_group_items')
+        .update({ name: countsFixtureItemName.trim() })
+        .eq('id', editingCountsFixtureItem.id)
+      setCountsFixtureItemSaving(false)
+      if (err) setCountsFixtureItemError(err.message)
+      else { await loadCountsFixtureGroups(); closeEditCountsFixtureItem() }
+    } else {
+      const groupItems = countsFixtureGroupItems.filter((i) => i.group_id === editingCountsFixtureGroupForItem.id)
+      const maxSeq = groupItems.reduce((max, i) => Math.max(max, i.sequence_order), 0)
+      const { error: err } = await supabase
+        .from('counts_fixture_group_items')
+        .insert({ group_id: editingCountsFixtureGroupForItem.id, name: countsFixtureItemName.trim(), sequence_order: maxSeq + 1 })
+      setCountsFixtureItemSaving(false)
+      if (err) setCountsFixtureItemError(err.message)
+      else { await loadCountsFixtureGroups(); closeEditCountsFixtureItem() }
+    }
+  }
+
+  async function deleteCountsFixtureItem(item: CountsFixtureGroupItem) {
+    if (!confirm(`Delete "${item.name}"?`)) return
+    const { error: err } = await supabase.from('counts_fixture_group_items').delete().eq('id', item.id)
+    if (err) setError(err.message)
+    else await loadCountsFixtureGroups()
+  }
+
+  async function moveCountsFixtureItem(item: CountsFixtureGroupItem, direction: 'up' | 'down') {
+    const groupItems = countsFixtureGroupItems.filter((i) => i.group_id === item.group_id).sort((a, b) => a.sequence_order - b.sequence_order)
+    const idx = groupItems.findIndex((i) => i.id === item.id)
+    if (idx === -1) return
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= groupItems.length) return
+    const target = groupItems[targetIdx]
+    if (!target) return
+    await supabase.from('counts_fixture_group_items').update({ sequence_order: target.sequence_order }).eq('id', item.id)
+    await supabase.from('counts_fixture_group_items').update({ sequence_order: item.sequence_order }).eq('id', target.id)
+    await loadCountsFixtureGroups()
   }
 
   // Part Types functions (for Materials)
@@ -2153,6 +2431,83 @@ export default function Settings() {
         </div>
       </div>
 
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, templates, template items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS.
+          </p>
+          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={exportProjectsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportMaterialsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
+            </button>
+            <button
+              type="button"
+              onClick={exportBidsBackup}
+              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
+              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
+            </button>
+          </div>
+
+          <h3
+            style={{
+              marginTop: '2rem',
+              marginBottom: maintenanceMaterialsPricesExpanded ? '0.5rem' : 0,
+              cursor: 'pointer',
+              userSelect: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+            onClick={() => setMaintenanceMaterialsPricesExpanded(prev => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setMaintenanceMaterialsPricesExpanded(prev => !prev)
+              }
+            }}
+          >
+            <span style={{ transform: maintenanceMaterialsPricesExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+            Maintenance: Materials prices
+          </h3>
+          {maintenanceMaterialsPricesExpanded && (
+            <>
+              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingOrphanPrices(true)
+                  loadOrphanMaterialPrices()
+                }}
+                style={{ padding: '0.5rem 1rem', background: '#92400e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              >
+                Review orphaned material prices
+              </button>
+            </>
+          )}
+        </>
+      )}
+
       {/* Inline Change Password form - toggled from header button */}
       {passwordChangeOpen && (
         <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
@@ -2304,7 +2659,7 @@ export default function Settings() {
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center' }}>
                         {editingUserId === u.id ? (
                           <>
                             <button
@@ -2408,8 +2763,30 @@ export default function Settings() {
 
           {/* Convert Master to Assistant/Subcontractor */}
           {users.length > 0 && (
-            <div style={{ marginTop: '2rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
-              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Convert Master to Assistant/Subcontractor</h2>
+            <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
+              <button
+                type="button"
+                onClick={() => setConvertMasterSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  padding: '1rem',
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }}>{convertMasterSectionOpen ? '▼' : '▶'}</span>
+                Convert Master to Assistant/Subcontractor
+              </button>
+              {convertMasterSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
               <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
                 Convert an existing master into an assistant or subcontractor. All of their customers, projects, and people
                 will be reassigned to another master.
@@ -2510,6 +2887,8 @@ export default function Settings() {
                   {convertSubmitting ? 'Converting…' : 'Convert master'}
                 </button>
               </form>
+              </div>
+              )}
             </div>
           )}
         </>
@@ -2787,6 +3166,7 @@ export default function Settings() {
                   <th style={{ padding: '0.5rem 0.75rem' }}>Kind</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Status</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Created by</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2835,11 +3215,67 @@ export default function Settings() {
                         'Unknown'
                       )}
                     </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingNonUserPerson(p)
+                            setEditPersonName(p.name)
+                            setEditPersonEmail(p.email ?? '')
+                            setEditPersonPhone(p.phone ?? '')
+                            setEditPersonNotes(p.notes ?? '')
+                            setEditPersonError(null)
+                          }}
+                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteNonUserPerson(p)}
+                          disabled={deletingPersonId === p.id}
+                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          {deletingPersonId === p.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {editingNonUserPerson && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+                <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
+                {editPersonError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{editPersonError}</p>}
+                <form onSubmit={saveNonUserPersonEdit}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4 }}>Name *</label>
+                    <input type="text" value={editPersonName} onChange={(e) => setEditPersonName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4 }}>Email</label>
+                    <input type="email" value={editPersonEmail} onChange={(e) => setEditPersonEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4 }}>Phone</label>
+                    <input type="tel" value={editPersonPhone} onChange={(e) => setEditPersonPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: 4 }}>Notes</label>
+                    <textarea value={editPersonNotes} onChange={(e) => setEditPersonNotes(e.target.value)} style={{ width: '100%', padding: '0.5rem', minHeight: 60, boxSizing: 'border-box' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="submit" disabled={editPersonSaving}>{editPersonSaving ? 'Saving…' : 'Save'}</button>
+                    <button type="button" onClick={() => { setEditingNonUserPerson(null); setEditPersonError(null) }} disabled={editPersonSaving}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
           {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
         </>
       )}
@@ -3226,57 +3662,6 @@ export default function Settings() {
         </div>
         {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
       </form>
-
-      {myRole === 'dev' && (
-        <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Data backup (dev)</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, templates, template items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS.
-          </p>
-          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={exportProjectsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
-              style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportMaterialsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
-              style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
-            </button>
-            <button
-              type="button"
-              onClick={exportBidsBackup}
-              disabled={exportProjectsLoading || exportMaterialsLoading || exportBidsLoading}
-              style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-            >
-              {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
-            </button>
-          </div>
-
-          <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>Maintenance: Materials prices</h3>
-          <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setViewingOrphanPrices(true)
-              loadOrphanMaterialPrices()
-            }}
-            style={{ padding: '0.5rem 1rem', background: '#92400e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-          >
-            Review orphaned material prices
-          </button>
-        </>
-      )}
 
       {myRole === 'dev' && (
         <>
@@ -3898,6 +4283,110 @@ export default function Settings() {
                     >
                       {fixtureTypeSaving ? 'Saving...' : 'Save'}
                     </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Counts Fixtures</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Quick-select fixture groups shown when adding count rows in Bids. Each service type (Plumbing, Electrical, HVAC) has its own set of groups and fixtures.
+          </p>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Select Service Type *</label>
+            <select
+              value={selectedServiceTypeForCountsFixtures}
+              onChange={(e) => setSelectedServiceTypeForCountsFixtures(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+            >
+              <option value="">-- Select a service type --</option>
+              {serviceTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+          {selectedServiceTypeForCountsFixtures && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => openEditCountsFixtureGroup(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  + Add Group
+                </button>
+              </div>
+              {countsFixtureGroups.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {countsFixtureGroups.map((grp, gIdx) => (
+                    <div key={grp.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <span style={{ fontWeight: 600, fontSize: '1rem' }}>{grp.label}</span>
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <button type="button" onClick={() => moveCountsFixtureGroup(grp, 'up')} disabled={gIdx === 0} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>↑</button>
+                          <button type="button" onClick={() => moveCountsFixtureGroup(grp, 'down')} disabled={gIdx === countsFixtureGroups.length - 1} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>↓</button>
+                          <button type="button" onClick={() => openEditCountsFixtureGroup(grp)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}>Edit</button>
+                          <button type="button" onClick={() => openEditCountsFixtureItem(grp, null)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>+ Fixture</button>
+                          <button type="button" onClick={() => deleteCountsFixtureGroup(grp)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        {countsFixtureGroupItems
+                          .filter((i) => i.group_id === grp.id)
+                          .sort((a, b) => a.sequence_order - b.sequence_order)
+                          .map((item, iIdx) => (
+                            <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <button type="button" onClick={() => moveCountsFixtureItem(item, 'up')} disabled={iIdx === 0} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>↑</button>
+                              <button type="button" onClick={() => moveCountsFixtureItem(item, 'down')} disabled={iIdx === countsFixtureGroupItems.filter((x) => x.group_id === grp.id).length - 1} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>↓</button>
+                              <span style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>{item.name}</span>
+                              <button type="button" onClick={() => openEditCountsFixtureItem(grp, item)} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>Edit</button>
+                              <button type="button" onClick={() => deleteCountsFixtureItem(item)} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem', color: '#dc2626' }}>×</button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  No groups yet. Click "Add Group" to create one (e.g. Bathrooms:, Kitchen:).
+                </div>
+              )}
+            </>
+          )}
+          {countsFixtureGroupFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+                <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureGroup ? 'Edit Group' : 'Add Group'}</h3>
+                {countsFixtureGroupError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureGroupError}</div>}
+                <form onSubmit={saveCountsFixtureGroup}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Group label (e.g. Bathrooms:, Kitchen:)</label>
+                  <input type="text" value={countsFixtureGroupLabel} onChange={(e) => setCountsFixtureGroupLabel(e.target.value)} placeholder="Bathrooms:" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }} required />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeEditCountsFixtureGroup} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                    <button type="submit" disabled={countsFixtureGroupSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureGroupSaving ? 'Saving...' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {countsFixtureItemFormOpen && editingCountsFixtureGroupForItem && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+                <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureItem ? 'Edit Fixture' : 'Add Fixture'}</h3>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Group: {editingCountsFixtureGroupForItem.label}</p>
+                {countsFixtureItemError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureItemError}</div>}
+                <form onSubmit={saveCountsFixtureItem}>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture name</label>
+                  <input type="text" value={countsFixtureItemName} onChange={(e) => setCountsFixtureItemName(e.target.value)} placeholder="e.g. Toilets, Kitchen sinks" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }} required />
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeEditCountsFixtureItem} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                    <button type="submit" disabled={countsFixtureItemSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureItemSaving ? 'Saving...' : 'Save'}</button>
                   </div>
                 </form>
               </div>

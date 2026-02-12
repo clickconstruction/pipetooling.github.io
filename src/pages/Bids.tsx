@@ -5815,6 +5815,7 @@ export default function Bids() {
                     {addingCountRow && (
                       <NewCountRow
                         bidId={selectedBidForCounts.id}
+                        serviceTypeId={selectedBidForCounts.service_type_id ?? undefined}
                         onSaved={() => { setAddingCountRow(false); refreshAfterCountsChange() }}
                         onCancel={() => setAddingCountRow(false)}
                         onSavedAndAddAnother={refreshAfterCountsChange}
@@ -10719,11 +10720,48 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
   )
 }
 
-function NewCountRow({ bidId, onSaved, onCancel, onSavedAndAddAnother }: { bidId: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void }) {
+function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void }) {
   const [fixture, setFixture] = useState('')
   const [count, setCount] = useState('')
   const [page, setPage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [countsFixtureGroups, setCountsFixtureGroups] = useState<Array<{ label: string; fixtures: string[] }>>([])
+
+  useEffect(() => {
+    if (!serviceTypeId) {
+      setCountsFixtureGroups([])
+      return
+    }
+    const stId = serviceTypeId
+    let cancelled = false
+    async function load() {
+      const { data: groupsData } = await supabase
+        .from('counts_fixture_groups')
+        .select('id, label, sequence_order')
+        .eq('service_type_id', stId)
+        .order('sequence_order', { ascending: true })
+      if (cancelled || !groupsData?.length) {
+        if (!cancelled) setCountsFixtureGroups([])
+        return
+      }
+      const groupIds = (groupsData as { id: string }[]).map((g) => g.id)
+      const { data: itemsData } = await supabase
+        .from('counts_fixture_group_items')
+        .select('group_id, name, sequence_order')
+        .in('group_id', groupIds)
+        .order('sequence_order', { ascending: true })
+      if (cancelled) return
+      const groups = (groupsData as { id: string; label: string; sequence_order: number }[]).map((g) => ({
+        label: g.label,
+        fixtures: ((itemsData as { group_id: string; name: string }[]) ?? [])
+          .filter((i) => i.group_id === g.id)
+          .map((i) => i.name),
+      }))
+      setCountsFixtureGroups(groups)
+    }
+    void load()
+    return () => { cancelled = true }
+  }, [serviceTypeId])
 
   async function submit() {
     const num = parseFloat(count)
@@ -10747,14 +10785,6 @@ function NewCountRow({ bidId, onSaved, onCancel, onSavedAndAddAnother }: { bidId
     onSavedAndAddAnother?.()
   }
 
-  const fixtureGroups: { label: string; fixtures: string[] }[] = [
-    { label: 'Bathrooms:', fixtures: ['Toilets', 'Bathroom sinks', 'Shower/tub combos', 'Showers no tub', 'Bathtubs', 'Urinals', 'Water closets'] },
-    { label: 'Kitchen:', fixtures: ['Kitchen sinks', 'Garbage disposals', 'Ice makers', 'Pot filler'] },
-    { label: 'Laundry:', fixtures: ['Laundry sinks', 'Washing machine'] },
-    { label: 'Plumbing Fixtures:', fixtures: ['Hose bibs', 'Water fountain', 'Gas drops', 'Floor drains', 'Dog wash'] },
-    { label: 'Appliances:', fixtures: ['Water heaters (gas)', 'Water heaters (electric)', 'Water heaters (tankless)', 'Water softener'] },
-  ]
-
   return (
     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
       <td colSpan={3} style={{ padding: '0.75rem' }}>
@@ -10765,7 +10795,7 @@ function NewCountRow({ bidId, onSaved, onCancel, onSavedAndAddAnother }: { bidId
             <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ flex: 1, minWidth: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            {fixtureGroups.map((group) => (
+            {countsFixtureGroups.map((group) => (
               <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
                 {group.fixtures.map((name) => (
