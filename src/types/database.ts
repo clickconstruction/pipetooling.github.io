@@ -2206,7 +2206,7 @@ export type Database = {
         Returns: Json
       }
       get_parts_ordered_by_price_count: {
-        Args: { ascending_order?: boolean }
+        Args: { ascending_order?: boolean; filter_service_type_id?: string | null }
         Returns: {
           part_id: string
           price_count: number

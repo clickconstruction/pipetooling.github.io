@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
@@ -301,10 +301,10 @@ export default function Materials() {
     const from = page * PARTS_PAGE_SIZE
     const to = from + PARTS_PAGE_SIZE - 1
 
-    // If sorting by price count, use RPC function to get ordered part IDs first
-    if (options?.sortByPriceCount) {
+    // If sorting by price count (and no part/manufacturer filters), use RPC function to get ordered part IDs first
+    if (options?.sortByPriceCount && !options?.partTypeId && !options?.manufacturer) {
       const { data: orderedParts, error: orderError } = await supabase
-        .rpc('get_parts_ordered_by_price_count' as any, { ascending_order: true })
+        .rpc('get_parts_ordered_by_price_count' as any, { ascending_order: true, filter_service_type_id: serviceType })
       
       if (orderError) {
         console.error('Failed to load parts order:', orderError)
@@ -629,7 +629,7 @@ export default function Materials() {
     })
   }
 
-  async function reloadPartsFirstPage() {
+  const reloadPartsFirstPage = useCallback(async () => {
     setPartsPage(0)
     setHasMoreParts(true)
     await loadParts(0, {
@@ -638,7 +638,7 @@ export default function Materials() {
       manufacturer: filterManufacturer,
       sortByPriceCount: sortByPriceCountAsc,
     })
-  }
+  }, [searchQuery, filterPartTypeId, filterManufacturer, sortByPriceCountAsc])
 
   async function loadTemplateItems(templateId: string) {
     const { data: itemsData, error: itemsError } = await supabase
@@ -765,16 +765,18 @@ export default function Materials() {
     }
   }, [myRole, estimatorServiceTypeIds])
 
-  // Restore Load All mode preference from localStorage (per user); default on if no preference
+  // Restore Load All mode preference from localStorage (per user); default off so filter dropdowns work
   useEffect(() => {
     if (!authUser?.id || typeof window === 'undefined') return
     const stored = localStorage.getItem(LOAD_ALL_MODE_KEY(authUser.id))
-    setLoadAllMode(stored !== 'false')
+    setLoadAllMode(stored === 'true')
   }, [authUser?.id])
 
   // Reload data when service type changes
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+      setFilterPartTypeId('')
+      setFilterManufacturer('')
       const loadForServiceType = async () => {
         setPartsPage(0)
         setHasMoreParts(true)
@@ -800,14 +802,15 @@ export default function Materials() {
     reloadPartsFirstPage()
   }, [location.state])
 
-  // Debounced search/filter effect
+  // Debounced search effect (filters apply immediately)
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (loadAllMode) return // loadAllMode filters client-side, no reload needed
       reloadPartsFirstPage()
-    }, 300) // 300ms debounce for search, immediate for filter changes
+    }, 300) // 300ms debounce for search typing
     
     return () => clearTimeout(timer)
-  }, [searchQuery, filterPartTypeId, filterManufacturer, sortByPriceCountAsc])
+  }, [searchQuery, filterPartTypeId, filterManufacturer, sortByPriceCountAsc, loadAllMode])
 
   useEffect(() => {
     if (selectedTemplate) {
@@ -979,25 +982,30 @@ export default function Materials() {
   // Determine which parts to display (load all mode with client-side filtering/sorting)
   const displayParts = loadAllMode 
     ? (() => {
-        // First filter by search query
-        const filtered = allParts.filter(part => {
-          if (!clientSearchQuery) return true
+        // Filter by part type
+        let filtered = allParts
+        if (filterPartTypeId) {
+          filtered = filtered.filter(part => part.part_type_id === filterPartTypeId)
+        }
+        if (filterManufacturer) {
+          filtered = filtered.filter(part => part.manufacturer === filterManufacturer)
+        }
+        // Filter by search query
+        if (clientSearchQuery) {
           const q = clientSearchQuery.toLowerCase()
-          return (
+          filtered = filtered.filter(part =>
             part.name.toLowerCase().includes(q) ||
             part.manufacturer?.toLowerCase().includes(q) ||
             part.part_type?.name?.toLowerCase().includes(q) ||
             part.notes?.toLowerCase().includes(q)
           )
-        })
-        
-        // Then sort by price count if active
+        }
+        // Sort by price count if active
         if (sortByPriceCountAsc) {
           return [...filtered].sort((a, b) => {
             return a.prices.length - b.prices.length || a.name.localeCompare(b.name)
           })
         }
-        
         return filtered
       })()
     : sortedParts
@@ -2452,7 +2460,6 @@ export default function Materials() {
               value={filterPartTypeId}
               onChange={(e) => setFilterPartTypeId(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              disabled={loadAllMode}
             >
               <option value="">All Part Types</option>
               {partTypes.map(ft => (
@@ -2465,7 +2472,6 @@ export default function Materials() {
               value={filterManufacturer}
               onChange={(e) => setFilterManufacturer(e.target.value)}
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              disabled={loadAllMode}
             >
               <option value="">All Manufacturers</option>
               {manufacturers.map(m => (
