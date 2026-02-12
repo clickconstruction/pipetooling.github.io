@@ -1146,7 +1146,7 @@ export default function Bids() {
     e.preventDefault()
     const name = takeoffNewTemplateName.trim()
     if (!name) {
-      setError('Template name is required')
+      setError('Assembly name is required')
       return
     }
     setSavingTakeoffNewTemplate(true)
@@ -1278,12 +1278,12 @@ export default function Bids() {
       return
     }
     if (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId) {
-      setError('Please select a template')
+      setError('Please select an assembly')
       return
     }
     const quantity = Math.max(1, parseInt(editTemplateNewItemQuantity, 10) || 1)
     if (editTemplateNewItemType === 'template' && editTemplateNewItemTemplateId === editTemplateModalId) {
-      setError('Cannot add a template to itself')
+      setError('Cannot add an assembly to itself')
       return
     }
     setEditTemplateAddingItem(true)
@@ -1316,7 +1316,7 @@ export default function Bids() {
   }
 
   async function removeEditTemplateItem(itemId: string) {
-    if (!confirm('Remove this item from the template?')) return
+    if (!confirm('Remove this item from the assembly?')) return
     if (!editTemplateModalId) return
     setError(null)
     const { error: deleteError } = await supabase.from('material_template_items').delete().eq('id', itemId)
@@ -2526,7 +2526,7 @@ export default function Bids() {
       }
       const entriesList = (entriesData as Pick<TakeoffBookEntry, 'id' | 'fixture_name' | 'alias_names'>[]) ?? []
       if (entriesList.length === 0) {
-        setTakeoffBookApplyMessage('No new templates to add.')
+        setTakeoffBookApplyMessage('No new assemblies to add.')
         setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
         setApplyingTakeoffBookTemplates(false)
         return
@@ -2578,7 +2578,7 @@ export default function Bids() {
         }
       }
       if (toAdd.length > 0) setTakeoffMappings((prev) => [...prev, ...toAdd])
-      setTakeoffBookApplyMessage(toAdd.length === 0 ? 'No new templates to add.' : `Applied ${toAdd.length} template(s).`)
+      setTakeoffBookApplyMessage(toAdd.length === 0 ? 'No new assemblies to add.' : `Applied ${toAdd.length} assembly(ies).`)
       setTimeout(() => setTakeoffBookApplyMessage(null), 3000)
     } finally {
       setApplyingTakeoffBookTemplates(false)
@@ -2842,7 +2842,7 @@ export default function Bids() {
       const total = (item.price_at_time * item.quantity).toFixed(2)
       return `<tr><td>${partName}</td><td>${qty}</td><td>${template}</td><td>$${price}</td><td>$${total}</td></tr>`
     }).join('')
-    const thead = '<tr><th>Part</th><th>Qty</th><th>Template</th><th>Cost</th><th>Total</th></tr>'
+    const thead = '<tr><th>Part</th><th>Qty</th><th>Assembly</th><th>Cost</th><th>Total</th></tr>'
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
       body { font-family: sans-serif; margin: 1in; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
@@ -4484,7 +4484,7 @@ export default function Bids() {
     if (!authUser?.id || !selectedBidForTakeoff) return
     const mapped = takeoffMappings.filter((m) => m.templateId.trim())
     if (mapped.length === 0) {
-      setError('Select a template for at least one fixture to create a purchase order.')
+      setError('Select an assembly for at least one fixture to create a purchase order.')
       return
     }
     setTakeoffCreatingPO(true)
@@ -4565,7 +4565,7 @@ export default function Bids() {
     if (!authUser?.id || !takeoffExistingPOId.trim()) return
     const mapped = takeoffMappings.filter((m) => m.templateId.trim())
     if (mapped.length === 0) {
-      setError('Select a template for at least one fixture to add to a purchase order.')
+      setError('Select an assembly for at least one fixture to add to a purchase order.')
       return
     }
     setTakeoffAddingToPO(true)
@@ -5943,7 +5943,7 @@ export default function Bids() {
                           fontSize: '0.875rem',
                         }}
                       >
-                        {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply matching Fixture Templates'}
+                        {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply matching Fixture Assemblies'}
                       </button>
                       {takeoffBookApplyMessage && (
                         <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
@@ -5964,7 +5964,7 @@ export default function Bids() {
               ) : (
                 <>
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                    Select a Template for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
+                    Select an Assembly for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
                   </p>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -5972,7 +5972,7 @@ export default function Bids() {
                         <tr>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
@@ -5993,7 +5993,7 @@ export default function Bids() {
                                     onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
                                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
-                                    Add template
+                                    Add assembly
                                   </button>
                                 </td>
                               </tr>
@@ -6081,7 +6081,7 @@ export default function Bids() {
                                             onBlur={() => setTimeout(() => setTakeoffTemplatePickerOpenMappingId(null), 150)}
                                             onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffTemplatePickerOpenMappingId(null) }}
                                             readOnly={takeoffTemplatePickerOpenMappingId !== mapping.id && !!mapping.templateId}
-                                            placeholder="Search templates by name or description…"
+                                            placeholder="Search assemblies by name or description…"
                                             style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffTemplatePickerOpenMappingId !== mapping.id && mapping.templateId ? '#f3f4f6' : undefined }}
                                           />
                                           {mapping.templateId && takeoffTemplatePickerOpenMappingId !== mapping.id && (
@@ -6135,7 +6135,7 @@ export default function Bids() {
                                                   }}
                                                   style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                                                 >
-                                                  Add template
+                                                  Add assembly
                                                 </button>
                                               </li>
                                             ) : (
@@ -6200,7 +6200,7 @@ export default function Bids() {
                                     onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
                                     style={{ padding: '0.5rem 1rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
-                                    Add template
+                                    Add assembly
                                   </button>
                                 </td>
                               </tr>
@@ -6257,7 +6257,7 @@ export default function Bids() {
                           <thead style={{ background: '#f9fafb' }}>
                             <tr>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
@@ -6310,7 +6310,7 @@ export default function Bids() {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
               <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                  <h2 style={{ margin: 0 }}>Add Template</h2>
+                  <h2 style={{ margin: 0 }}>Add Assembly</h2>
                   <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
                 </div>
                 <form onSubmit={saveTakeoffNewTemplate}>
@@ -6327,7 +6327,7 @@ export default function Bids() {
                     <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4 }}>
                       <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}>
                         <option value="part">Part</option>
-                        <option value="template">Nested Template</option>
+                        <option value="template">Nested Assembly</option>
                       </select>
                       {takeoffNewItemType === 'part' ? (
                         <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
@@ -6344,12 +6344,12 @@ export default function Bids() {
                       ) : (
                         <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                            <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search templates by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemTemplateId ? '#f3f4f6' : undefined }} />
+                            <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search assemblies by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemTemplateId ? '#f3f4f6' : undefined }} />
                             {takeoffNewItemTemplateId && <button type="button" onClick={() => { setTakeoffNewItemTemplateId(''); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
                           </div>
                           {takeoffNewItemTemplateDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No templates match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -6364,13 +6364,13 @@ export default function Bids() {
                         <thead style={{ background: '#f9fafb' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th></tr></thead>
                         <tbody>
                           {takeoffNewTemplateItems.length === 0 ? (
-                            <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates above.</td></tr>
+                            <tr><td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
                           ) : (
                             takeoffNewTemplateItems.map((item, idx) => {
                               const name = item.item_type === 'part' && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : item.item_type === 'template' && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
                               return (
                                 <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Template'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
@@ -6417,7 +6417,7 @@ export default function Bids() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{takeoffPreviewModalTemplateName ?? 'Template parts'}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{takeoffPreviewModalTemplateName ?? 'Assembly parts'}</h3>
                   <button
                     type="button"
                     onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
@@ -6573,7 +6573,7 @@ export default function Bids() {
                       <thead style={{ background: '#f9fafb' }}>
                         <tr>
                           <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
                           <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
                           <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
                         </tr>
@@ -6708,9 +6708,9 @@ export default function Bids() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
                     placeholder="e.g. WC, Commode"
                   />
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, these templates and stages are applied.</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, these assemblies and stages are applied.</p>
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template / Stage</label>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly / Stage</label>
                     {takeoffBookEntryItemRows.map((row, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
                         <select
@@ -6718,7 +6718,7 @@ export default function Bids() {
                           onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, templateId: e.target.value } : r)))}
                           style={{ flex: '1 1 140px', minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
                         >
-                          <option value="">— Select template —</option>
+                          <option value="">— Select assembly —</option>
                           {materialTemplates.map((t) => (
                             <option key={t.id} value={t.id}>{t.name}</option>
                           ))}
@@ -6748,7 +6748,7 @@ export default function Bids() {
                       onClick={() => setTakeoffBookEntryItemRows((prev) => [...prev, { templateId: '', stage: 'rough_in' }])}
                       style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                     >
-                      Add template & stage
+                      Add assembly & stage
                     </button>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -7351,7 +7351,7 @@ export default function Bids() {
                           <tr>
                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
                           </tr>
@@ -10607,7 +10607,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
                   cursor: addPartsSelectedPartId && !savingTemplateParts ? 'pointer' : 'not-allowed'
                 }}
               >
-                {savingTemplateParts ? 'Adding...' : 'Add to Template'}
+                {savingTemplateParts ? 'Adding...' : 'Add to Assembly'}
               </button>
             </div>
           </div>
@@ -10642,7 +10642,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Template: {editTemplateModalName}</h3>
+              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Assembly: {editTemplateModalName}</h3>
               <button type="button" onClick={closeEditTemplateModal} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
             </div>
 
@@ -10678,7 +10678,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
                             : '—'
                         return (
                           <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Template'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -10745,7 +10745,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
                         onBlur={() => setTimeout(() => setEditTemplateNewItemTemplateDropdownOpen(false), 150)}
                         onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemTemplateDropdownOpen(false) }}
                         readOnly={!!editTemplateNewItemTemplateId}
-                        placeholder="Search templates by name or description…"
+                        placeholder="Search assemblies by name or description…"
                         style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editTemplateNewItemTemplateId ? '#f3f4f6' : undefined }}
                       />
                       {editTemplateNewItemTemplateId && (
@@ -10754,7 +10754,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
                     </div>
                     {editTemplateNewItemTemplateDropdownOpen && (
                       <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No templates match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
                       </ul>
                     )}
                   </div>

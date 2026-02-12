@@ -170,7 +170,7 @@ export function PartFormModal({
     if (error) {
       const friendlyMessage =
         (error as { code?: string }).code === '23503'
-          ? 'Cannot delete this part because it is referenced in templates, purchase orders, or prices. Remove those references first, then try again.'
+          ? 'Cannot delete this part because it is referenced in assemblies, purchase orders, or prices. Remove those references first, then try again.'
           : error.message
       setError(friendlyMessage)
     } else {

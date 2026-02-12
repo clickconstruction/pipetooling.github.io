@@ -554,7 +554,7 @@ export default function Materials() {
       .eq('service_type_id', selectedServiceTypeId)
       .order('name')
     if (error) {
-      setError(`Failed to load templates: ${error.message}`)
+      setError(`Failed to load assemblies: ${error.message}`)
       return
     }
     setMaterialTemplates((data as MaterialTemplate[]) ?? [])
@@ -648,7 +648,7 @@ export default function Materials() {
       .order('sequence_order', { ascending: true })
     
     if (itemsError) {
-      setError(`Failed to load template items: ${itemsError.message}`)
+      setError(`Failed to load assembly items: ${itemsError.message}`)
       return
     }
 
@@ -1199,7 +1199,7 @@ export default function Materials() {
   async function saveTemplate(e: React.FormEvent) {
     e.preventDefault()
     if (!templateName.trim()) {
-      setError('Template name is required')
+      setError('Assembly name is required')
       return
     }
     setSavingTemplate(true)
@@ -1238,7 +1238,7 @@ export default function Materials() {
   }
 
   async function deleteTemplate(templateId: string) {
-    if (!confirm('Delete this template? All items will also be removed.')) return
+    if (!confirm('Delete this assembly? All items will also be removed.')) return
     setError(null)
     const { error } = await supabase.from('material_template_items').delete().eq('template_id', templateId)
     if (error) {
@@ -1264,7 +1264,7 @@ export default function Materials() {
       return
     }
     if (newItemType === 'template' && !newItemTemplateId) {
-      setError('Please select a template')
+      setError('Please select an assembly')
       return
     }
     const quantity = parseInt(newItemQuantity) || 1
@@ -1275,7 +1275,7 @@ export default function Materials() {
 
     // Check for circular reference
     if (newItemType === 'template' && newItemTemplateId === selectedTemplate.id) {
-      setError('Cannot add a template to itself')
+      setError('Cannot add an assembly to itself')
       return
     }
 
@@ -1308,7 +1308,7 @@ export default function Materials() {
   }
 
   async function removeItemFromTemplate(itemId: string) {
-    if (!confirm('Remove this item from the template?')) return
+    if (!confirm('Remove this item from the assembly?')) return
     setError(null)
     const { error } = await supabase.from('material_template_items').delete().eq('id', itemId)
     if (error) {
@@ -2163,7 +2163,7 @@ export default function Materials() {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: itemsWithDetails }
         setEditingPO(poWithItems)
         setSelectedPO(null) // Close the view modal
-        setActiveTab('templates-po') // Switch to Templates & Purchase Orders tab
+        setActiveTab('templates-po') // Switch to Assemblies & Purchase Orders tab
       } else {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: [] }
         setEditingPO(poWithItems)
@@ -2376,7 +2376,7 @@ export default function Materials() {
             cursor: 'pointer',
           }}
         >
-          Templates & Purchase Orders
+          Assemblies & Purchase Orders
         </button>
         <button
           type="button"
@@ -2916,19 +2916,19 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Templates & PO Builder Tab */}
+      {/* Assemblies & PO Builder Tab */}
       {activeTab === 'templates-po' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          {/* Left Panel: Material Templates */}
+          {/* Left Panel: Material Assemblies */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2>Material Templates</h2>
+              <h2>Material Assemblies</h2>
               <button
                 type="button"
                 onClick={openAddTemplate}
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
-                Add Template
+                Add Assembly
               </button>
             </div>
 
@@ -2936,18 +2936,18 @@ export default function Materials() {
               type="text"
               value={templateSearchQuery}
               onChange={(e) => setTemplateSearchQuery(e.target.value)}
-              placeholder="Search templates by name or description…"
+              placeholder="Search assemblies by name or description…"
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem' }}
             />
 
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
               {materialTemplates.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                  No templates yet. Create your first template!
+                  No assemblies yet. Create your first assembly!
                 </div>
               ) : filteredTemplates.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                  No templates match
+                  No assemblies match
                 </div>
               ) : (
                 <div>
@@ -3020,7 +3020,7 @@ export default function Materials() {
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
                     >
                       <option value="part">Part</option>
-                      <option value="template">Nested Template</option>
+                      <option value="template">Nested Assembly</option>
                     </select>
                   </div>
                   {newItemType === 'part' ? (
@@ -3114,7 +3114,7 @@ export default function Materials() {
                       onChange={(e) => setNewItemTemplateId(e.target.value)}
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
                     >
-                      <option value="">Select template</option>
+                      <option value="">Select assembly</option>
                       {materialTemplates.filter(t => t.id !== selectedTemplate.id).map(t => (
                         <option key={t.id} value={t.id}>{t.name}</option>
                       ))}
@@ -3159,7 +3159,7 @@ export default function Materials() {
                       {templateItems.length === 0 ? (
                         <tr>
                           <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                            No items yet. Add parts or nested templates.
+                            No items yet. Add parts or nested assemblies.
                           </td>
                         </tr>
                       ) : (
@@ -3169,7 +3169,7 @@ export default function Materials() {
                           const priceIconColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
                           return (
                           <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Template'}</td>
+                            <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                             <td style={{ padding: '0.75rem' }}>
                               {item.item_type === 'part' ? item.part?.name : item.nested_template?.name}
                             </td>
@@ -3205,8 +3205,8 @@ export default function Materials() {
                                 <button
                                   type="button"
                                   onClick={() => removeItemFromTemplate(item.id)}
-                                  title="Remove from template"
-                                  aria-label="Remove from template"
+                                  title="Remove from assembly"
+                                  aria-label="Remove from assembly"
                                   style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
@@ -3225,7 +3225,7 @@ export default function Materials() {
               </div>
             )}
             <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-              {templateStatsTotal} templates | {templateStatsPctWithNoPrice}% of templates have unpriced parts
+              {templateStatsTotal} assemblies | {templateStatsPctWithNoPrice}% of assemblies have unpriced parts
             </p>
           </div>
 
@@ -3245,7 +3245,7 @@ export default function Materials() {
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '300px', overflow: 'auto', marginBottom: '1.5rem' }}>
               {draftPOs.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                  No draft purchase orders. Create one from a template or manually.
+                  No draft purchase orders. Create one from an assembly or manually.
                 </div>
               ) : (
                 <div>
@@ -3383,7 +3383,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From template</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From assembly</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                         </tr>
@@ -3605,7 +3605,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         onChange={(e) => setSelectedTemplateForPO(e.target.value)}
                         style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                       >
-                        <option value="">Select template...</option>
+                        <option value="">Select assembly...</option>
                         {materialTemplates.map(t => (
                           <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
@@ -3774,7 +3774,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       {templateFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
-            <h2 style={{ marginBottom: '1.5rem' }}>{editingTemplate ? 'Edit Template' : 'Add Template'}</h2>
+            <h2 style={{ marginBottom: '1.5rem' }}>{editingTemplate ? 'Edit Assembly' : 'Add Assembly'}</h2>
             <form onSubmit={saveTemplate}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>
@@ -3921,7 +3921,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From template</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From assembly</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
                       {selectedPO.status === 'draft' && (
                         <>
