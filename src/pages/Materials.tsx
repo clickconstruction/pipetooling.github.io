@@ -2457,7 +2457,7 @@ export default function Materials() {
               <option value="">All Part Types</option>
               {partTypes.map(ft => (
                 <option key={ft.id} value={ft.id}>
-                  {ft.name}{ft.category ? ` (${ft.category})` : ''}
+                  {ft.name}
                 </option>
               ))}
             </select>

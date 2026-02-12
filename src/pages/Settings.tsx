@@ -212,7 +212,6 @@ export default function Settings() {
   const [partTypeFormOpen, setPartTypeFormOpen] = useState(false)
   const [editingPartType, setEditingPartType] = useState<PartType | null>(null)
   const [partTypeName, setPartTypeName] = useState('')
-  const [partTypeCategory, setPartTypeCategory] = useState('')
   const [partTypeSaving, setPartTypeSaving] = useState(false)
   const [partTypeError, setPartTypeError] = useState<string | null>(null)
   const [partTypePartCounts, setPartTypePartCounts] = useState<Record<string, number>>({})
@@ -1650,7 +1649,6 @@ export default function Settings() {
   function openEditPartType(partType: PartType | null) {
     setEditingPartType(partType)
     setPartTypeName(partType?.name || '')
-    setPartTypeCategory(partType?.category || '')
     setPartTypeError(null)
     setPartTypeFormOpen(true)
   }
@@ -1658,7 +1656,6 @@ export default function Settings() {
   function closeEditPartType() {
     setEditingPartType(null)
     setPartTypeName('')
-    setPartTypeCategory('')
     setPartTypeError(null)
     setPartTypeFormOpen(false)
   }
@@ -1686,7 +1683,7 @@ export default function Settings() {
         .from('part_types' as any)
         .update({
           name: partTypeName.trim(),
-          category: partTypeCategory.trim() || null,
+          category: null,
         } as any)
         .eq('id', editingPartType.id)
       
@@ -1706,7 +1703,7 @@ export default function Settings() {
         .insert({
           service_type_id: selectedServiceTypeForParts,
           name: partTypeName.trim(),
-          category: partTypeCategory.trim() || null,
+          category: null,
           sequence_order: maxSeq + 1,
         } as any)
       
@@ -3927,11 +3924,6 @@ export default function Settings() {
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{pt.name}</h3>
-                            {pt.category && (
-                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#4338ca', borderRadius: 4 }}>
-                                {pt.category}
-                              </span>
-                            )}
                             <span 
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
@@ -4036,22 +4028,6 @@ export default function Settings() {
                       autoFocus
                       placeholder="e.g., Pipe, Fitting, Valve, Sink, Faucet"
                     />
-                  </div>
-                  
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                      Category (optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={partTypeCategory}
-                      onChange={(e) => setPartTypeCategory(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      placeholder="e.g., Supply, Drain, Fixtures, Connections"
-                    />
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
-                      Used for grouping in dropdowns and quick-select buttons
-                    </p>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
