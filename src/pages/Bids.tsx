@@ -285,7 +285,7 @@ function numberToWords(amount: number): string {
 }
 
 const DEFAULT_TERMS_AND_WARRANTY =
-  'All work to be completed in a workmanlike manner in accordance with uniform code and/or specifications; workmanship warranty of one year for new construction projects considering substantial completion date. All material is guaranteed to be as specified; warranty by manufacturer, labor not included. No liability, no warranty on customer provided materials. All agreements contingent upon strikes, accidents or delays beyond our control. This estimate is subject to acceptance within thirty (30) days and is void thereafter at the option of Click Plumbing. Any alteration or deviation from above specifications involving extra cost, including rock excavation and removal or haul-off of spoils or debris will become an extra charge over and above the estimate.'
+  'All work to be completed in a workmanlike manner in accordance with uniform code and/or specifications; workmanship warranty of one year for new construction projects considering substantial completion date. All material is guaranteed to be as specified; warranty by manufacturer, labor not included. No liability, no warranty on customer provided materials. All agreements contingent upon strikes, accidents or delays beyond our control. This estimate is subject to acceptance within thirty (30) days and is void thereafter at the option of Click Plumbing and Electrical. Any alteration or deviation from above specifications involving extra cost, including rock excavation and removal or haul-off of spoils or debris will become an extra charge over and above the estimate.'
 
 const DEFAULT_EXCLUSIONS = `Concrete cutting, removal, and/or pour back is excluded from this proposal.
 This proposal excludes all impact fees.
@@ -293,6 +293,14 @@ This proposal excludes any work not specifically described within.
 This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
 
 const DEFAULT_INCLUSIONS = 'Permits'
+
+/** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
+function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
+  const name = (serviceTypeName ?? 'Plumbing').toLowerCase()
+  if (name === 'electrical') return 'electrical'
+  if (name === 'hvac') return 'HVAC'
+  return 'plumbing'
+}
 
 /** Split address on first comma into [street, city/state/zip] for combined document. */
 function addressLines(addr: string): string[] {
@@ -323,7 +331,8 @@ function buildCoverLetterHtml(
   inclusions: string,
   exclusions: string,
   terms: string,
-  designDrawingPlanDateFormatted: string | null
+  designDrawingPlanDateFormatted: string | null,
+  serviceTypeName: string
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -337,7 +346,8 @@ function buildCoverLetterHtml(
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const amountBold = `${revenueWords} (${revenueNumber})`
-  const revenueLinePrefix = 'As per plumbing plans and specifications, we propose to do the plumbing in the amount of: '
+  const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
+  const revenueLinePrefix = `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: `
   const br = '<br/>'
   const pStyle = 'margin: 0 0 0.5em 0'
   const paragraphs: string[] = []
@@ -365,8 +375,8 @@ function buildCoverLetterHtml(
   const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
   paragraphs.push(escapeHtml(termsContent).replace(/\n/g, br))
   // Remaining blocks (one paragraph each)
-  paragraphs.push(escapeHtml('No work shall commence until Click Plumbing has received acceptance of the estimate.'))
-  paragraphs.push(escapeHtml('Respectfully submitted by Click Plumbing'))
+  paragraphs.push(escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.'))
+  paragraphs.push(escapeHtml('Respectfully submitted by Click Plumbing and Electrical'))
   paragraphs.push('')
   paragraphs.push(escapeHtml('_______________________________'))
   paragraphs.push(escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'))
@@ -445,7 +455,8 @@ function buildCoverLetterText(
   inclusions: string,
   exclusions: string,
   terms: string,
-  designDrawingPlanDateFormatted: string | null
+  designDrawingPlanDateFormatted: string | null,
+  serviceTypeName: string
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -458,6 +469,7 @@ function buildCoverLetterText(
       ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
+  const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
   const lines: string[] = [
     customerName,
     ...addressLines(customerAddress),
@@ -465,7 +477,7 @@ function buildCoverLetterText(
     projectName,
     ...addressLines(projectAddress),
     '',
-    `As per plumbing plans and specifications, we propose to do the plumbing in the amount of: ${revenueWords} (${revenueNumber})`,
+    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
     '',
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
     'Inclusions:',
@@ -476,8 +488,8 @@ function buildCoverLetterText(
     '',
     terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
     '',
-    'No work shall commence until Click Plumbing has received acceptance of the estimate.',
-    'Respectfully submitted by Click Plumbing',
+    'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
+    'Respectfully submitted by Click Plumbing and Electrical',
     '',
     '_______________________________',
     'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
@@ -3854,7 +3866,9 @@ export default function Bids() {
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
     const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
-    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
+    const bidServiceType = serviceTypes.find((st) => st.id === b.service_type_id)
+    const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
+    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
     const coverLines = coverLetterText.split('\n')
     for (const line of coverLines) {
       if (y > pageH - margin) { doc.addPage(); y = margin }
@@ -8747,8 +8761,10 @@ export default function Bids() {
             const terms = coverLetterTermsByBid[bid.id] ?? ''
             const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
             const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
-            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
-            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted)
+            const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
+            const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
+            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
+            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
             const now = new Date()
             const yy = now.getFullYear() % 100
             const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -8756,10 +8772,6 @@ export default function Bids() {
             const datePart = `${yy}${mm}${dd}`
             const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
             const templateCopyTarget = `ClickProposal_${datePart}_${sanitizedProjectName}`
-            
-            // Get service type name to use appropriate Google Docs template
-            const bidServiceType = serviceTypes.find(st => st.id === bid.service_type_id)
-            const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
             
             // Service-type-specific Google Docs template URLs
             let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8' // Default: Plumbing
