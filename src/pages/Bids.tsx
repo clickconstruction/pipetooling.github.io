@@ -829,6 +829,8 @@ export default function Bids() {
   const [coverLetterExclusionsByBid, setCoverLetterExclusionsByBid] = useState<Record<string, string>>({})
   const [coverLetterTermsByBid, setCoverLetterTermsByBid] = useState<Record<string, string>>({})
   const [coverLetterIncludeDesignDrawingPlanDateByBid, setCoverLetterIncludeDesignDrawingPlanDateByBid] = useState<Record<string, boolean>>({})
+  const [coverLetterCustomAmountByBid, setCoverLetterCustomAmountByBid] = useState<Record<string, string>>({})
+  const [coverLetterUseCustomAmountByBid, setCoverLetterUseCustomAmountByBid] = useState<Record<string, boolean>>({})
   const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
@@ -3977,8 +3979,12 @@ export default function Bids() {
         fixtureRows.push({ fixture: countRow.fixture ?? '', count: count })
       })
     }
-    const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
-    const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
+    const useCustomAmount = coverLetterUseCustomAmountByBid[b.id] === true
+    const customAmountStr = (coverLetterCustomAmountByBid[b.id] ?? '').replace(/,/g, '').trim()
+    const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
+    const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
+    const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
+    const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
     const inclusions = coverLetterInclusionsByBid[b.id] ?? ''
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
@@ -9108,8 +9114,12 @@ export default function Bids() {
               const revenue = isFixedPrice ? unitPrice : count * unitPrice
               coverLetterRevenue += revenue
             })
-            const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
-            const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
+            const useCustomAmount = coverLetterUseCustomAmountByBid[bid.id] === true
+            const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
+            const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
+            const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
+            const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
+            const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
             const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture ?? '', count: Number(r.count) }))
             const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
             const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
@@ -9210,32 +9220,77 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
-                        disabled={applyingBidValue || coverLetterRevenue === 0}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                        title="Apply this amount to Bid Value"
-                      >
-                        {applyingBidValue ? 'Applying...' : 'Apply to Bid Value'}
-                      </button>
-                      {bidValueAppliedSuccess && (
-                        <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
-                          ✓ Applied successfully
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
+                          disabled={applyingBidValue || coverLetterRevenue === 0}
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                          title="Apply proposed amount to Bid Value"
+                        >
+                          {applyingBidValue ? 'Applying...' : 'Apply Proposed amount to Bid Value'}
+                        </button>
+                        {bidValueAppliedSuccess && (
+                          <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                            ✓ Applied successfully
+                          </span>
+                        )}
+                      </div>
+                      {coverLetterUseCustomAmountByBid[bid.id] === true && (() => {
+                        const customStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
+                        const customNum = customStr ? parseFloat(customStr) : NaN
+                        const isValid = !isNaN(customNum) && customNum >= 0
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => isValid && applyProposedAmountToBidValue(bid.id, customNum)}
+                            disabled={applyingBidValue || !isValid}
+                            style={{
+                              padding: '0.25rem 0.75rem',
+                              background: applyingBidValue || !isValid ? '#d1d5db' : '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: applyingBidValue || !isValid ? 'not-allowed' : 'pointer',
+                              fontSize: '0.875rem'
+                            }}
+                            title="Apply custom amount to Bid Value"
+                          >
+                            {applyingBidValue ? 'Applying...' : 'Apply custom amount to Bid Value'}
+                          </button>
+                        )
+                      })()}
                     </div>
                   </div>
                   <div>{revenueWords} ({revenueNumber})</div>
+                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={coverLetterUseCustomAmountByBid[bid.id] === true}
+                        onChange={() => setCoverLetterUseCustomAmountByBid((prev) => ({ ...prev, [bid.id]: !prev[bid.id] }))}
+                      />
+                      Use custom amount in document
+                    </label>
+                    {coverLetterUseCustomAmountByBid[bid.id] === true && (
+                      <input
+                        type="text"
+                        value={coverLetterCustomAmountByBid[bid.id] ?? ''}
+                        onChange={(e) => setCoverLetterCustomAmountByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
+                        placeholder="e.g. 1359800"
+                        style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                      />
+                    )}
+                  </div>
                   {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
                     <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                       Current Bid Value: ${formatCurrency(bid.bid_value)}
@@ -9296,7 +9351,7 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
                   <div
-                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}`}
+                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
                     style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                     dangerouslySetInnerHTML={{ __html: combinedHtml }}
                   />

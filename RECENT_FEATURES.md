@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-13
+last_updated: 2026-02-12
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.34 → v2.4"
+version_range: "v2.37 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.34)"
+  - name: "Latest Version (v2.37)"
     line: ~94
+    description: "Add missing fixtures, driving in pricing, cover letter inclusions/design date, price book default"
+  - name: "v2.34"
+    line: ~220
     description: "Duplicates page enhancements, Materials filter fixes, Part Type category removal"
   - name: "v2.32"
     line: ~116
@@ -35,7 +38,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.32)"
+  - "Latest features at top (v2.37)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -52,43 +55,156 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-2. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-2. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-3. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-4. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-4. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-5. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-6. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-7. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-8. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-9. [Latest Updates (v2.26)](#latest-updates-v226)
-10. [Latest Updates (v2.25)](#latest-updates-v225)
-11. [Latest Updates (v2.24)](#latest-updates-v224)
-12. [Latest Updates (v2.23)](#latest-updates-v223)
-13. [Latest Updates (v2.22)](#latest-updates-v222)
-14. [Latest Updates (v2.21)](#latest-updates-v221)
-15. [Latest Updates (v2.20)](#latest-updates-v220)
-16. [Latest Updates (v2.19)](#latest-updates-v219)
-17. [Latest Updates (v2.18)](#latest-updates-v218)
-18. [Latest Updates (v2.17)](#latest-updates-v217)
-19. [Latest Updates (v2.16)](#latest-updates-v216)
-20. [Latest Updates (v2.15)](#latest-updates-v215)
-21. [Latest Updates (v2.14)](#latest-updates-v214)
-22. [Latest Updates (v2.13)](#latest-updates-v213)
-23. [Latest Updates (v2.12)](#latest-updates-v212)
-24. [Latest Updates (v2.11)](#latest-updates-v211)
-25. [Latest Updates (v2.10)](#latest-updates-v210)
-26. [Latest Updates (v2.9)](#latest-updates-v29)
-27. [Latest Updates (v2.8)](#latest-updates-v28)
-28. [Latest Updates (v2.7)](#latest-updates-v27)
-29. [Latest Updates (v2.6)](#latest-updates-v26)
-30. [Workflow Features](#workflow-features)
-31. [Calendar Updates](#calendar-updates)
-32. [Access Control](#access-control)
-33. [Email Templates](#email-templates)
-34. [Financial Tracking](#financial-tracking)
-35. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+2. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+3. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+4. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+5. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+6. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+7. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+8. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+9. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+10. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+11. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+12. [Latest Updates (v2.26)](#latest-updates-v226)
+13. [Latest Updates (v2.25)](#latest-updates-v225)
+14. [Latest Updates (v2.24)](#latest-updates-v224)
+15. [Latest Updates (v2.23)](#latest-updates-v223)
+16. [Latest Updates (v2.22)](#latest-updates-v222)
+17. [Latest Updates (v2.21)](#latest-updates-v221)
+18. [Latest Updates (v2.20)](#latest-updates-v220)
+19. [Latest Updates (v2.19)](#latest-updates-v219)
+20. [Latest Updates (v2.18)](#latest-updates-v218)
+21. [Latest Updates (v2.17)](#latest-updates-v217)
+22. [Latest Updates (v2.16)](#latest-updates-v216)
+23. [Latest Updates (v2.15)](#latest-updates-v215)
+24. [Latest Updates (v2.14)](#latest-updates-v214)
+25. [Latest Updates (v2.13)](#latest-updates-v213)
+26. [Latest Updates (v2.12)](#latest-updates-v212)
+27. [Latest Updates (v2.11)](#latest-updates-v211)
+28. [Latest Updates (v2.10)](#latest-updates-v210)
+29. [Latest Updates (v2.9)](#latest-updates-v29)
+30. [Latest Updates (v2.8)](#latest-updates-v28)
+31. [Latest Updates (v2.7)](#latest-updates-v27)
+32. [Latest Updates (v2.6)](#latest-updates-v26)
+33. [Workflow Features](#workflow-features)
+34. [Calendar Updates](#calendar-updates)
+35. [Access Control](#access-control)
+36. [Email Templates](#email-templates)
+37. [Financial Tracking](#financial-tracking)
+38. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.37)
+
+### Add Missing Fixture Types to Labor Books
+
+**Date**: 2026-02-12
+
+**Overview**:
+Estimators can now add new fixture types directly when applying labor book hours from the Cost Estimate tab, instead of seeing "fixture type not found" and having to create the fixture in Settings first.
+
+**Changes**:
+- **"Add missing fixture" modal**: When a count row has a free-text fixture (e.g., "Lights") that doesn't exist in `fixture_types`, clicking "Add" creates the fixture type automatically
+- Uses existing `getOrCreateFixtureTypeId` helper: looks up by name, creates with `category: 'Other'` if not found
+- Eliminates the need to switch to Settings to add fixture types before applying labor
+
+---
+
+### Driving Cost in Cost Estimate Print Preview
+
+**Date**: 2026-02-12
+
+**Overview**:
+The cost estimate print preview now includes driving cost in the output, matching the on-screen display.
+
+**Changes**:
+- **Labor section**: Shows Manhours, Driving (with trips × $/mi × distance breakdown when applicable), and Labor total
+- **Summary section**: Materials, Manhours, Driving, Labor total, and Grand total
+- **Grand total**: Now includes driving cost (materials + labor + driving)
+
+---
+
+### Driving Cost in Pricing Tab
+
+**Date**: 2026-02-12
+
+**Overview**:
+The Pricing tab now includes driving cost in the total cost and margin calculation, with a visible cost breakdown.
+
+**Changes**:
+- **Cost breakdown box**: Yellow box (right-aligned, fit-content width) showing Materials, Manhours, Driving, and Total cost
+- **Percentage of total**: Each line shows its share of total cost (e.g., "Manhours: $330.00 | 91.3%")
+- **Driving calculation**: Uses bid distance, cost estimate's driving_cost_rate and hours_per_trip
+- **Margin**: Total cost (including driving) is used for margin % calculation
+- **Print**: Pricing print and Review (all price books) include driving in totals
+
+---
+
+### Price Book Default Selection
+
+**Date**: 2026-02-12
+
+**Overview**:
+When a bid has no saved price book version, the "Default" price book is now auto-selected (or the first version if Default doesn't exist).
+
+**Changes**:
+- **Auto-select on bid change**: When selecting a bid for pricing, Default (or first version) is selected if no version was previously saved
+- **Fixed loading**: Version ID is correctly passed to load functions when auto-selecting (previously used null)
+
+---
+
+### Service Type Switch Closes Price Book Modals
+
+**Date**: 2026-02-12
+
+**Overview**:
+When switching service types, any open price book modals are automatically closed.
+
+**Changes**:
+- **Modals closed**: Version form, entry form, and delete version modal
+- **State reset**: Form fields and editing state cleared when service type changes
+
+---
+
+### Pricing Table Search Dropdown Overflow Fix
+
+**Date**: 2026-02-12
+
+**Overview**:
+The price book entry search dropdown in the Pricing tab no longer gets cut off by the table container.
+
+**Changes**:
+- Table container `overflow` changed from `hidden` to `visible` so the dropdown can extend below the table
+
+---
+
+### Cover Letter: Inclusions Blank Removes Permits
+
+**Date**: 2026-02-12
+
+**Overview**:
+When the Additional Inclusions field is blank, "Permits" no longer appears in the combined document.
+
+**Changes**:
+- **buildCoverLetterHtml / buildCoverLetterText**: When inclusions is blank, no default text is used (previously used "Permits")
+- **PDF export**: Uses empty string when inclusions not set (no DEFAULT_INCLUSIONS fallback)
+- Inclusions section shows "(none)" when both fixtures and inclusions are empty
+
+---
+
+### Cover Letter: Design Drawing Date Selected by Default
+
+**Date**: 2026-02-12
+
+**Overview**:
+The "Include in combined document" checkbox for Design Drawings Plan Date is now checked by default.
+
+**Changes**:
+- **Checkbox default**: Checked when value is undefined or true (only unchecked when explicitly set to false)
+- **Document generation**: Design date included in PDF and combined document when not explicitly unchecked
+- **Toggle**: User can uncheck to exclude; checking again re-includes
 
 ---
 

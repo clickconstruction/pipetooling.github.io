@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-11
+last_updated: 2026-02-12
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -125,6 +125,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **Filters all tabs**: When a service type is selected, all bid-related tabs show only bids of that type
 - **Required field**: All bids must have a service type assigned
 - **Management**: Devs can add/edit/reorder service types in Settings
+- **Price book modals close**: When switching service types, any open price book modals (version form, entry form, delete modal) are automatically closed
 
 #### Search Functionality
 - **Full-width search input** filters bids in real-time
@@ -586,6 +587,12 @@ When syncing cost estimate labor rows from count rows:
 2. Falls back to `fixture_labor_defaults` table (e.g., Toilet: 1/1/1 hrs)
 3. Defaults to 0 only if fixture not found in either source
 
+**Add Missing Fixture**:
+- When a count row has a fixture not in the labor book (e.g., free-text "Lights"), an "Add" button appears
+- Clicking opens a modal to add the fixture to the labor book with hours
+- **Auto-creation**: The fixture type is created in `fixture_types` if it doesn't exist (no need to go to Settings first)
+- After adding, labor hours are applied and the cost estimate updates
+
 **Benefits**:
 - Faster workflow - one-click application
 - Consistent UX - matches Takeoff "Apply matching Fixture Assemblies" pattern
@@ -629,10 +636,10 @@ Driving Cost = (Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance t
 - Incorporated into Grand total
 - Shows $0.00 if distance not set (always visible)
 
-**PDF Export**:
-- Includes in Cost Estimate PDF
+**PDF Export / Print Preview**:
+- Includes in Cost Estimate PDF and print preview
 - Shows breakdown: "Driving cost: 20.0 trips × $0.70/mi × 50mi = $700.00"
-- Appears in summary with Labor and Materials totals
+- Appears in Labor section (Manhours, Driving, Labor total) and Summary with Labor and Materials totals
 
 **Database**:
 ```sql
@@ -714,6 +721,10 @@ The Price Book provides standardized pricing for fixtures across plumbing stages
 **Bid-level persistence**:
 - Selected version stored in `bids.selected_price_book_version_id`
 - Restores selection when reopening Pricing tab
+
+**Default selection**:
+- When a bid has no saved price book version, "Default" is auto-selected if it exists (otherwise first version)
+- Applies when first selecting a bid for pricing
 
 #### Price Book Entries
 
@@ -800,6 +811,7 @@ UNIQUE (version_id, fixture_type_id)
 - Click-outside handler closes dropdowns
 - Hover effects on dropdown items
 - Disabled during save operations
+- Table container uses `overflow: visible` so dropdown is not cut off
 
 ### Bid Pricing Assignments
 
@@ -839,6 +851,14 @@ UNIQUE (version_id, fixture_type_id)
 - Ensures all material costs are distributed
 
 **Total Cost per Fixture**: Labor Cost + Allocated Material Cost
+
+**Driving Cost in Pricing**:
+- Total cost includes driving cost (same formula as Cost Estimate: trips × rate/mi × distance)
+- **Cost breakdown box**: Right-aligned yellow box showing Materials, Manhours, Driving, and Total cost
+- **Percentage of total**: Each line shows its share (e.g., "Manhours: $330.00 | 91.3%")
+- Uses bid's `distance_from_office` and cost estimate's `driving_cost_rate`, `hours_per_trip`
+- Margin % calculated using total cost (materials + labor + driving)
+- Print and Review (all price books) include driving in totals
 
 #### Margin Calculation
 
@@ -926,16 +946,13 @@ Generate professional bid proposal documents with project details, scope, terms,
 
 The Cover Letter provides sensible defaults that can be customized per bid.
 
-#### Default Inclusions
-
-**Constant**: `DEFAULT_INCLUSIONS`
-
-**Value**: `"Permits"`
+#### Additional Inclusions
 
 **Behavior**:
-- Pre-fills Inclusions textarea when empty
-- Appears in combined document preview
-- User can edit or replace
+- User enters custom inclusions (one per line, shown as bullets)
+- **When blank**: No default text (e.g., "Permits") is shown in the combined document
+- Inclusions section displays "(none)" when both fixtures and inclusions are empty
+- User can add any text; each line becomes a bullet in the document
 
 #### Default Exclusions
 
@@ -984,11 +1001,16 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 
 #### Editable Fields
 
-**Inclusions** (textarea):
-- Label: "Inclusions"
-- Pre-filled with default
+**Include in combined document** (checkbox):
+- **Design Drawings Plan Date**: Checkbox to include the bid's design drawing plan date in the document
+- **Selected by default**: Checkbox is checked when not explicitly unchecked
+- User can uncheck to exclude; when bid has no date set, shows "[not set]"
+
+**Additional Inclusions** (textarea):
+- Label: "Additional Inclusions (one per line, shown as bullets)"
 - Editable per bid
-- Appears prominently in document
+- When blank, nothing appears in document (no default "Permits")
+- Appears prominently in document when entered
 
 **Exclusions and Scope** (textarea):
 - Label: "Exclusions and Scope (one per line, shown as bullets)"

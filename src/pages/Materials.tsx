@@ -737,6 +737,35 @@ export default function Materials() {
     setTemplateItems(itemsWithDetails)
   }
 
+  async function loadAllTemplateItemsForStats() {
+    const { data, error } = await supabase
+      .from('material_template_items')
+      .select('template_id, item_type, part_id, nested_template_id, quantity')
+    if (!error && data) {
+      const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
+      setAllTemplateItemsForStats(items)
+      const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
+      if (partIds.length > 0) {
+        const { data: pricesData } = await supabase
+          .from('material_part_prices')
+          .select('part_id, price')
+          .in('part_id', partIds)
+        const map: Record<string, number> = {}
+        for (const row of (pricesData ?? []) as { part_id: string; price: number }[]) {
+          const pid = row.part_id
+          const existing = map[pid]
+          if (existing === undefined || row.price < existing) map[pid] = row.price
+        }
+        setPartIdToLowestPrice(map)
+      } else {
+        setPartIdToLowestPrice({})
+      }
+    } else {
+      setAllTemplateItemsForStats([])
+      setPartIdToLowestPrice({})
+    }
+  }
+
   async function loadPurchaseOrders() {
     if (!selectedServiceTypeId) {
       // No service type selected yet, skip loading
@@ -879,35 +908,7 @@ export default function Materials() {
 
   useEffect(() => {
     if (activeTab === 'templates-po' || activeTab === 'assembly-book') {
-      const load = async () => {
-        const { data, error } = await supabase
-          .from('material_template_items')
-          .select('template_id, item_type, part_id, nested_template_id, quantity')
-        if (!error && data) {
-          const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
-          setAllTemplateItemsForStats(items)
-          const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
-          if (partIds.length > 0) {
-            const { data: pricesData } = await supabase
-              .from('material_part_prices')
-              .select('part_id, price')
-              .in('part_id', partIds)
-            const map: Record<string, number> = {}
-            for (const row of (pricesData ?? []) as { part_id: string; price: number }[]) {
-              const pid = row.part_id
-              const existing = map[pid]
-              if (existing === undefined || row.price < existing) map[pid] = row.price
-            }
-            setPartIdToLowestPrice(map)
-          } else {
-            setPartIdToLowestPrice({})
-          }
-        } else {
-          setAllTemplateItemsForStats([])
-          setPartIdToLowestPrice({})
-        }
-      }
-      load()
+      loadAllTemplateItemsForStats()
     }
   }, [activeTab])
 
@@ -1196,9 +1197,17 @@ export default function Materials() {
     setError(null)
   }
 
-  async function handlePartSaved(_part: MaterialPart) {
+  async function handlePartSaved(part: MaterialPart) {
     await reloadPartsFirstPage()
+    if (loadAllMode) {
+      await loadAllParts()
+    }
     setPartFormOpen(false)
+    if (addItemModalOpen && selectedTemplate && addItemModalType === 'part') {
+      setAddItemModalPartId(part.id)
+      setAddItemModalSearchQuery('')
+      setAddItemModalDropdownOpen(false)
+    }
   }
 
 
@@ -1465,6 +1474,7 @@ export default function Materials() {
           setError(updateErr.message)
         } else {
           await loadTemplateItems(selectedTemplate.id)
+          await loadAllTemplateItemsForStats()
           setNewItemPartId('')
           setNewItemTemplateId('')
           setNewItemQuantity('1')
@@ -1492,6 +1502,7 @@ export default function Materials() {
       setError(error.message)
     } else {
       await loadTemplateItems(selectedTemplate.id)
+      await loadAllTemplateItemsForStats()
       setNewItemPartId('')
       setNewItemTemplateId('')
       setNewItemQuantity('1')
@@ -1549,6 +1560,7 @@ export default function Materials() {
           setError(updateErr.message)
         } else {
           await loadTemplateItems(selectedTemplate.id)
+          await loadAllTemplateItemsForStats()
           closeAddItemModal()
         }
         setAddingItemFromModal(false)
@@ -1573,6 +1585,7 @@ export default function Materials() {
       setAddItemModalError(error.message)
     } else {
       await loadTemplateItems(selectedTemplate.id)
+      await loadAllTemplateItemsForStats()
       closeAddItemModal()
     }
     setAddingItemFromModal(false)
@@ -1581,11 +1594,16 @@ export default function Materials() {
   async function removeItemFromTemplate(itemId: string) {
     if (!confirm('Remove this item from the assembly?')) return
     setError(null)
+    // Optimistic update: remove from UI immediately
+    setTemplateItems(prev => prev.filter(i => i.id !== itemId))
     const { error } = await supabase.from('material_template_items').delete().eq('id', itemId)
     if (error) {
       setError(error.message)
+      if (selectedTemplate) {
+        await loadTemplateItems(selectedTemplate.id)
+      }
     } else if (selectedTemplate) {
-      await loadTemplateItems(selectedTemplate.id)
+      await loadAllTemplateItemsForStats()
     }
   }
 
@@ -4612,7 +4630,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                   <input
                     type="text"
-                    value={addItemModalPartId ? (parts.find(p => p.id === addItemModalPartId)?.name ?? '') : addItemModalSearchQuery}
+                    value={addItemModalPartId ? (parts.find(p => p.id === addItemModalPartId) ?? allParts.find(p => p.id === addItemModalPartId))?.name ?? '' : addItemModalSearchQuery}
                     onChange={(e) => setAddItemModalSearchQuery(e.target.value)}
                     onFocus={() => setAddItemModalDropdownOpen(true)}
                     onBlur={() => setTimeout(() => setAddItemModalDropdownOpen(false), 150)}

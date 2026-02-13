@@ -19,7 +19,20 @@ type CalendarBid = {
   id: string
   project_name: string
   bid_due_date: string
+  bid_date_sent: string | null
   service_type_name: string
+}
+
+function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not sent' {
+  if (!bid.bid_date_sent || !bid.bid_date_sent.trim()) return 'not sent'
+  const dueDate = bid.bid_due_date.slice(0, 10)
+  const sentDate = bid.bid_date_sent.slice(0, 10)
+  if (sentDate < dueDate) return 'early'
+  return 'on time'
+}
+
+function getBidSubmissionStatusColor(status: 'on time' | 'early' | 'not sent'): string {
+  return status === 'not sent' ? '#dc2626' : '#16a34a'
 }
 
 // Helper functions for Central Time (America/Chicago timezone)
@@ -176,7 +189,7 @@ export default function Calendar() {
     // Include bids where outcome is null OR outcome != 'lost' (SQL excludes null from neq)
     let query = supabase
       .from('bids')
-      .select('id, project_name, bid_due_date, service_type_id, service_type:service_types(name)')
+      .select('id, project_name, bid_due_date, bid_date_sent, service_type_id, service_type:service_types(name)')
       .not('bid_due_date', 'is', null)
       .or('outcome.is.null,outcome.neq.lost')
     if (userRole === 'estimator' && estServiceTypeIds && estServiceTypeIds.length > 0) {
@@ -195,12 +208,14 @@ export default function Calendar() {
       id: string
       project_name: string | null
       bid_due_date: string
+      bid_date_sent: string | null
       service_type_id: string
       service_type: { name: string } | null
     }>).map((b) => ({
       id: b.id,
       project_name: b.project_name ?? 'Untitled',
       bid_due_date: b.bid_due_date,
+      bid_date_sent: b.bid_date_sent ?? null,
       service_type_name: b.service_type?.name ?? '',
     }))
     setBids(calendarBids)
@@ -412,7 +427,9 @@ export default function Calendar() {
                         </div>
                       </Link>
                     ))}
-                    {dayBids.map((bid) => (
+                    {dayBids.map((bid) => {
+                      const status = getBidSubmissionStatus(bid)
+                      return (
                       <Link
                         key={bid.id}
                         to={`/bids?bidId=${bid.id}&tab=submission-followup`}
@@ -427,18 +444,23 @@ export default function Calendar() {
                           display: 'flex',
                           flexDirection: 'column',
                         }}
-                        title={`Bid due: ${bid.project_name}${bid.service_type_name ? ` (${bid.service_type_name})` : ''}`}
+                        title={`Bid due: ${bid.project_name}${bid.service_type_name ? ` (${bid.service_type_name})` : ''} — ${status}`}
                       >
                         <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Bid due: {bid.project_name}
                         </div>
-                        {bid.service_type_name && (
-                          <div style={{ fontSize: '0.6875rem', color: '#b45309', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {bid.service_type_name}
-                          </div>
-                        )}
+                        <div style={{ fontSize: '0.6875rem', color: '#b45309', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                          {bid.service_type_name ? (
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.service_type_name}</span>
+                          ) : (
+                            <span />
+                          )}
+                          <span style={{ flexShrink: 0, fontStyle: 'italic', color: getBidSubmissionStatusColor(status) }}>
+                            [{status}]
+                          </span>
+                        </div>
                       </Link>
-                    ))}
+                    )})}
                   </div>
                 </div>
               )
@@ -510,7 +532,9 @@ export default function Calendar() {
                           </Link>
                         </li>
                       ))}
-                      {modalBids.map((bid) => (
+                      {modalBids.map((bid) => {
+                        const status = getBidSubmissionStatus(bid)
+                        return (
                         <li key={bid.id} style={{ marginBottom: '0.5rem' }}>
                           <Link
                             to={`/bids?bidId=${bid.id}&tab=submission-followup`}
@@ -526,12 +550,13 @@ export default function Calendar() {
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>Bid due: {bid.project_name}</div>
-                            {bid.service_type_name && (
-                              <div style={{ fontSize: '0.875rem', color: '#b45309' }}>{bid.service_type_name}</div>
-                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: '#b45309' }}>
+                              {bid.service_type_name ? <span>{bid.service_type_name}</span> : <span />}
+                              <span style={{ fontStyle: 'italic', color: getBidSubmissionStatusColor(status) }}>[{status}]</span>
+                            </div>
                           </Link>
                         </li>
-                      ))}
+                      )})}
                     </ul>
                   )}
                 </div>
@@ -592,6 +617,9 @@ export default function Calendar() {
                         {item.bid.service_type_name && (
                           <span style={{ fontSize: '0.875rem', color: '#b45309' }}>({item.bid.service_type_name})</span>
                         )}
+                        <span style={{ fontSize: '0.875rem', fontStyle: 'italic', marginLeft: 'auto', color: getBidSubmissionStatusColor(getBidSubmissionStatus(item.bid)) }}>
+                          [{getBidSubmissionStatus(item.bid)}]
+                        </span>
                       </Link>
                     ) : null}
                   </li>
