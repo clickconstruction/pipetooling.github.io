@@ -507,6 +507,8 @@ export type Database = {
           bid_id: string
           created_at: string | null
           driving_cost_rate: number | null
+          estimator_cost_flat_amount: number | null
+          estimator_cost_per_count: number | null
           hours_per_trip: number | null
           id: string
           labor_rate: number | null
@@ -519,6 +521,8 @@ export type Database = {
           bid_id: string
           created_at?: string | null
           driving_cost_rate?: number | null
+          estimator_cost_flat_amount?: number | null
+          estimator_cost_per_count?: number | null
           hours_per_trip?: number | null
           id?: string
           labor_rate?: number | null
@@ -531,6 +535,8 @@ export type Database = {
           bid_id?: string
           created_at?: string | null
           driving_cost_rate?: number | null
+          estimator_cost_flat_amount?: number | null
+          estimator_cost_per_count?: number | null
           hours_per_trip?: number | null
           id?: string
           labor_rate?: number | null

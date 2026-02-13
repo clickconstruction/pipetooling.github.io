@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.37 → v2.4"
+version_range: "v2.39 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.37)"
-    line: ~94
+  - name: "Latest Version (v2.39)"
+    line: ~104
+    description: "Takeoff Print Breakdown for master plumber audit"
+  - name: "v2.37"
+    line: ~140
     description: "Add missing fixtures, driving in pricing, cover letter inclusions/design date, price book default"
   - name: "v2.34"
     line: ~220
@@ -55,44 +58,102 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-2. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-3. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-4. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-5. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-6. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-7. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-8. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-9. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-10. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-11. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-12. [Latest Updates (v2.26)](#latest-updates-v226)
-13. [Latest Updates (v2.25)](#latest-updates-v225)
-14. [Latest Updates (v2.24)](#latest-updates-v224)
-15. [Latest Updates (v2.23)](#latest-updates-v223)
-16. [Latest Updates (v2.22)](#latest-updates-v222)
-17. [Latest Updates (v2.21)](#latest-updates-v221)
-18. [Latest Updates (v2.20)](#latest-updates-v220)
-19. [Latest Updates (v2.19)](#latest-updates-v219)
-20. [Latest Updates (v2.18)](#latest-updates-v218)
-21. [Latest Updates (v2.17)](#latest-updates-v217)
-22. [Latest Updates (v2.16)](#latest-updates-v216)
-23. [Latest Updates (v2.15)](#latest-updates-v215)
-24. [Latest Updates (v2.14)](#latest-updates-v214)
-25. [Latest Updates (v2.13)](#latest-updates-v213)
-26. [Latest Updates (v2.12)](#latest-updates-v212)
-27. [Latest Updates (v2.11)](#latest-updates-v211)
-28. [Latest Updates (v2.10)](#latest-updates-v210)
-29. [Latest Updates (v2.9)](#latest-updates-v29)
-30. [Latest Updates (v2.8)](#latest-updates-v28)
-31. [Latest Updates (v2.7)](#latest-updates-v27)
-32. [Latest Updates (v2.6)](#latest-updates-v26)
-33. [Workflow Features](#workflow-features)
-34. [Calendar Updates](#calendar-updates)
-35. [Access Control](#access-control)
-36. [Email Templates](#email-templates)
-37. [Financial Tracking](#financial-tracking)
-38. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+2. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+3. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+4. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+5. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+6. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+7. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+8. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+9. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+10. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+11. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+12. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+13. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+14. [Latest Updates (v2.26)](#latest-updates-v226)
+15. [Latest Updates (v2.25)](#latest-updates-v225)
+16. [Latest Updates (v2.24)](#latest-updates-v224)
+17. [Latest Updates (v2.23)](#latest-updates-v223)
+17. [Latest Updates (v2.22)](#latest-updates-v222)
+18. [Latest Updates (v2.21)](#latest-updates-v221)
+19. [Latest Updates (v2.20)](#latest-updates-v220)
+20. [Latest Updates (v2.19)](#latest-updates-v219)
+21. [Latest Updates (v2.18)](#latest-updates-v218)
+22. [Latest Updates (v2.17)](#latest-updates-v217)
+23. [Latest Updates (v2.16)](#latest-updates-v216)
+24. [Latest Updates (v2.15)](#latest-updates-v215)
+25. [Latest Updates (v2.14)](#latest-updates-v214)
+26. [Latest Updates (v2.13)](#latest-updates-v213)
+27. [Latest Updates (v2.12)](#latest-updates-v212)
+28. [Latest Updates (v2.11)](#latest-updates-v211)
+29. [Latest Updates (v2.10)](#latest-updates-v210)
+30. [Latest Updates (v2.9)](#latest-updates-v29)
+31. [Latest Updates (v2.8)](#latest-updates-v28)
+32. [Latest Updates (v2.7)](#latest-updates-v27)
+33. [Latest Updates (v2.6)](#latest-updates-v26)
+34. [Workflow Features](#workflow-features)
+35. [Calendar Updates](#calendar-updates)
+36. [Access Control](#access-control)
+37. [Email Templates](#email-templates)
+38. [Financial Tracking](#financial-tracking)
+39. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.39)
+
+### Takeoff Tab: Print Breakdown
+
+**Date**: 2026-02-13
+
+**Overview**:
+Added a **Print Breakdown** button on the Takeoff tab that produces a printable report showing what parts and assemblies make up the purchase orders per stage. The report is designed for master plumber audit.
+
+**Location**: Takeoff tab, next to "Create purchase orders for Stages" and "Add to selected PO"
+
+**Report Structure**:
+- **Per stage** (Rough In, Top Out, Trim Set): Only stages with mappings are shown
+- **Per count line item** (fixture + count): Parts are grouped by each fixture/count row
+- **Parts table** for each fixture: Part name | Qty | Assembly (template the part comes from)
+- Parts are not merged across assemblies; each row shows the assembly it belongs to for full traceability
+
+**Features**:
+- Disabled when no assemblies are mapped
+- Shows "Preparing…" while expanding templates
+- Opens print preview in new window; closes after print/cancel
+- Uses same print styling as Cost Estimate (sans-serif, bordered tables, print margins)
+
+**Implementation**: `src/pages/Bids.tsx` – `printTakeoffBreakdown()`, `expandTemplate()` from `materialPOUtils.ts`
+
+---
+
+## Latest Updates (v2.38)
+
+### Estimator Cost Parameters
+
+**Date**: 2026-02-12
+
+**Overview**:
+Added an "Estimator Cost Parameters" section to the Cost Estimate tab, allowing a per-count-type cost (default $10 per Count Type) or a flat amount to be included in Labor Total. This cost is added alongside labor and driving in all cost calculations.
+
+**Changes**:
+- **Location**: Yellow-highlighted section below "Driving Cost Parameters" on Cost Estimate tab
+- **Options**: "Use flat amount" checkbox | Per count row ($) input (default $10) or Flat amount ($) when checked
+- **Display**: "Estimator cost: X Count Types × $Y = $Z" or "Estimator cost: $Z" when using flat amount
+- **Integration**: Included in Labor Total (Labor + Driving + Estimator) everywhere: Cost Estimate tab, Pricing cost breakdown, prints, PDFs, Submission cost
+- **Database**: `estimator_cost_per_count` (default 10), `estimator_cost_flat_amount` (nullable) on `cost_estimates`
+
+**Migration**: `20260212180000_add_estimator_cost_to_cost_estimates.sql`
+
+---
+
+### Pricing Tab: Price Book Section Closed by Default
+
+**Date**: 2026-02-12
+
+**Overview**:
+The collapsible "Price book" section on the Pricing tab (containing version management and entries) is now **closed by default** to reduce visual clutter. Users can click to expand when needed.
 
 ---
 

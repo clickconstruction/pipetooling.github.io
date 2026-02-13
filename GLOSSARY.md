@@ -325,6 +325,8 @@ Process of calculating material quantities from fixture counts. Maps counts to m
 
 **Output**: Purchase orders with calculated quantities
 
+**Print Breakdown**: Printable report (per stage, per fixture) showing parts and assemblies for master plumber audit
+
 ### Takeoff Book
 Template library mapping fixture names to material templates and stages. Standardizes material takeoffs.
 
@@ -353,11 +355,11 @@ Template library mapping fixture types to pricing per stage. Used for margin ana
 **Fields**: fixture_type_id (FK to fixture_types), rough_in_price, top_out_price, trim_set_price, total_price
 
 ### Cost Estimate
-Calculated total project cost including materials, labor, and driving expenses. Created in Cost Estimate tab (4th tab).
+Calculated total project cost including materials, labor, driving, and estimator expenses. Created in Cost Estimate tab (4th tab).
 
 **Database**: `cost_estimates`, `cost_estimate_labor_rows`
 
-**Components**: Material costs (from linked POs), Labor costs (hours × rate), Driving costs (calculated)
+**Components**: Material costs (from linked POs), Labor costs (hours × rate), Driving costs (calculated), Estimator costs (per count type or flat)
 
 ### Driving Cost
 Transportation cost calculated from total labor hours, distance to office, and configurable rates.
@@ -367,6 +369,13 @@ Transportation cost calculated from total labor hours, distance to office, and c
 **Default Rates**: $0.70/mile, 2.0 hours/trip
 
 **Database**: `driving_cost_rate`, `hours_per_trip` fields on `cost_estimates`
+
+### Estimator Cost
+Per-count-type or flat amount added to Labor Total to cover estimator overhead. Default: $10 per Count Type (fixture type row in Counts).
+
+**Options**: Per count row (Count Types × $/count) or flat amount
+
+**Database**: `estimator_cost_per_count`, `estimator_cost_flat_amount` on `cost_estimates`
 
 ### Margin / Margin Percentage
 Profitability metric comparing revenue to cost.

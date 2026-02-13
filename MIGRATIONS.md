@@ -94,6 +94,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 12, 2026
 
+**`20260212180000_add_estimator_cost_to_cost_estimates.sql`**
+- **Purpose**: Add estimator cost parameters to cost estimates (per-count-type or flat amount)
+- **Changes**:
+  - Added `estimator_cost_per_count` (numeric(10,2), default 10) to `cost_estimates`
+  - Added `estimator_cost_flat_amount` (numeric(10,2), nullable) to `cost_estimates`
+- **Impact**: Enables estimator cost in Labor Total on Cost Estimate, Pricing, prints, and PDFs
+
 **`20260212170000_add_service_type_filter_to_parts_price_count.sql`**
 - **Purpose**: Make Price Book "Sort by #" respect the selected service type and enable Part Type/Manufacturer filters
 - **Changes**:

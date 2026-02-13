@@ -652,6 +652,7 @@ export default function Bids() {
   const [takeoffExistingPOId, setTakeoffExistingPOId] = useState('')
   const [takeoffCreatingPO, setTakeoffCreatingPO] = useState(false)
   const [takeoffAddingToPO, setTakeoffAddingToPO] = useState(false)
+  const [takeoffPrinting, setTakeoffPrinting] = useState(false)
   const [takeoffSuccessMessage, setTakeoffSuccessMessage] = useState<string | null>(null)
   const [takeoffTemplatePickerOpenMappingId, setTakeoffTemplatePickerOpenMappingId] = useState<string | null>(null)
   const [takeoffTemplatePickerQuery, setTakeoffTemplatePickerQuery] = useState('')
@@ -784,10 +785,13 @@ export default function Bids() {
   const [costEstimateDistanceInput, setCostEstimateDistanceInput] = useState('')
   const [updatingBidDistance, setUpdatingBidDistance] = useState(false)
   const [bidDistanceUpdateSuccess, setBidDistanceUpdateSuccess] = useState(false)
+  const [estimatorCostUseFlat, setEstimatorCostUseFlat] = useState(false)
+  const [estimatorCostPerCount, setEstimatorCostPerCount] = useState('10')
+  const [estimatorCostFlatAmount, setEstimatorCostFlatAmount] = useState('')
 
   // Pricing tab
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
-  const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(true)
+  const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(false)
   const [selectedBidForPricing, setSelectedBidForPricing] = useState<BidWithBuilder | null>(null)
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
@@ -1648,6 +1652,9 @@ export default function Bids() {
       setLaborRateInput(est.labor_rate != null ? String(est.labor_rate) : '')
       setDrivingCostRate((est as any).driving_cost_rate?.toString() ?? '0.70')
       setHoursPerTrip((est as any).hours_per_trip?.toString() ?? '2')
+      setEstimatorCostPerCount((est as any).estimator_cost_per_count?.toString() ?? '10')
+      setEstimatorCostFlatAmount((est as any).estimator_cost_flat_amount != null ? String((est as any).estimator_cost_flat_amount) : '')
+      setEstimatorCostUseFlat((est as any).estimator_cost_flat_amount != null)
       const rough = est.purchase_order_id_rough_in ? await loadPOTotal(est.purchase_order_id_rough_in) : 0
       const top = est.purchase_order_id_top_out ? await loadPOTotal(est.purchase_order_id_top_out) : 0
       const trim = est.purchase_order_id_trim_set ? await loadPOTotal(est.purchase_order_id_trim_set) : 0
@@ -1658,6 +1665,9 @@ export default function Bids() {
       setLaborRateInput('')
       setDrivingCostRate('0.70')
       setHoursPerTrip('2')
+      setEstimatorCostPerCount('10')
+      setEstimatorCostFlatAmount('')
+      setEstimatorCostUseFlat(false)
       setCostEstimateMaterialTotalRoughIn(null)
       setCostEstimateMaterialTotalTopOut(null)
       setCostEstimateMaterialTotalTrimSet(null)
@@ -2739,6 +2749,18 @@ export default function Bids() {
       setSavingCostEstimate(false)
       return
     }
+    const estimatorCostPerCountNum = estimatorCostUseFlat ? null : (parseFloat(estimatorCostPerCount) || 10)
+    const estimatorCostFlatAmountNum = estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) : null
+    if (estimatorCostUseFlat && (estimatorCostFlatAmount.trim() === '' || isNaN(estimatorCostFlatAmountNum!) || estimatorCostFlatAmountNum! < 0)) {
+      setError('Estimator flat amount must be a non-negative number when using flat amount.')
+      setSavingCostEstimate(false)
+      return
+    }
+    if (!estimatorCostUseFlat && (isNaN(estimatorCostPerCountNum!) || estimatorCostPerCountNum! < 0)) {
+      setError('Estimator cost per count must be a non-negative number.')
+      setSavingCostEstimate(false)
+      return
+    }
     const { error: updateErr } = await supabase
       .from('cost_estimates')
       .update({
@@ -2748,6 +2770,8 @@ export default function Bids() {
         labor_rate: laborRateNum,
         driving_cost_rate: drivingCostRateNum,
         hours_per_trip: hoursPerTripNum,
+        estimator_cost_per_count: estimatorCostPerCountNum,
+        estimator_cost_flat_amount: estimatorCostFlatAmountNum,
       })
       .eq('id', costEstimate.id)
     if (updateErr) {
@@ -2755,7 +2779,7 @@ export default function Bids() {
       setSavingCostEstimate(false)
       return
     }
-    setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum, driving_cost_rate: drivingCostRateNum, hours_per_trip: hoursPerTripNum } as any : null))
+    setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum, driving_cost_rate: drivingCostRateNum, hours_per_trip: hoursPerTripNum, estimator_cost_per_count: estimatorCostPerCountNum, estimator_cost_flat_amount: estimatorCostFlatAmountNum } as any : null))
     await saveLaborRows()
     setSavingCostEstimate(false)
   }
@@ -3080,7 +3104,10 @@ export default function Bids() {
     const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
     const numTrips = totalHours / hrsPerTrip
     const drivingCost = numTrips * ratePerMile * distance
-    const laborCostWithDriving = laborCost + drivingCost
+    const estimatorCost = (costEstimate as any)?.estimator_cost_flat_amount != null
+      ? Number((costEstimate as any).estimator_cost_flat_amount)
+      : costEstimateCountRows.length * (Number((costEstimate as any)?.estimator_cost_per_count) || 10)
+    const laborCostWithDriving = laborCost + drivingCost + estimatorCost
     const grandTotal = totalMaterials + laborCostWithDriving
 
     const laborRowsHtml =
@@ -3138,13 +3165,15 @@ export default function Bids() {
     <tbody>${laborRowsHtml}${totalsRowHtml}</tbody>
   </table>
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Manhours: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>${distance > 0 && totalHours > 0 ? `
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${estimatorCost > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>
   <h2>Summary</h2>
   <div class="summary">
     <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
     <p>Manhours: $${formatCurrency(laborCost)}</p>${distance > 0 && totalHours > 0 ? `
-    <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}
+    <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${estimatorCost > 0 ? `
+    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
     <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>
     <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>
@@ -3386,7 +3415,10 @@ export default function Bids() {
       const ratePerMile = (pricingCostEstimate as any).driving_cost_rate != null ? Number((pricingCostEstimate as any).driving_cost_rate) : 0.70
       const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
       const drivingCost = (totalLaborHours / hrsPerTrip) * ratePerMile * distance
-      const totalCost = totalMaterials + laborCost + drivingCost
+      const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
+        ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
+        : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
+      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
       const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
       let totalRevenue = 0
       const rows = pricingCountRows.map((countRow) => {
@@ -3485,7 +3517,10 @@ export default function Bids() {
       const ratePerMile = (pricingCostEstimate as any).driving_cost_rate != null ? Number((pricingCostEstimate as any).driving_cost_rate) : 0.70
       const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
       const drivingCost = (totalLaborHours / hrsPerTrip) * ratePerMile * distance
-      const totalCost = totalMaterials + laborCost + drivingCost
+      const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
+        ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
+        : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
+      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
       const sections: string[] = []
       for (let i = 0; i < priceBookVersions.length; i++) {
         const version = priceBookVersions[i]!
@@ -3722,6 +3757,8 @@ export default function Bids() {
     let reviewGroupCostEstimateAmount: number | null = null
     let reviewGroupHasCostEstimate = false
     const reviewGroupPricingByVersion: Array<{ versionName: string; revenue: number; margin: number | null; complete: boolean }> = []
+    const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+    const countRowsReview = (countDataReview as BidCountRow[]) ?? []
     const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
     const estForReviewData = estForReview as CostEstimate | null
     if (estForReviewData) {
@@ -3744,10 +3781,11 @@ export default function Bids() {
       const hrsPerTripR = (estForReviewData as any).hours_per_trip ? Number((estForReviewData as any).hours_per_trip) : 2.0
       const numTripsR = totalHoursR / hrsPerTripR
       const drivingCostR = numTripsR * drivingRateR * distanceR
-      reviewGroupCostEstimateAmount = totalMaterialsR + (totalHoursR * rateR) + drivingCostR
+      const estimatorCostR = (estForReviewData as any)?.estimator_cost_flat_amount != null
+        ? Number((estForReviewData as any).estimator_cost_flat_amount)
+        : countRowsReview.length * (Number((estForReviewData as any)?.estimator_cost_per_count) || 10)
+      reviewGroupCostEstimateAmount = totalMaterialsR + (totalHoursR * rateR) + drivingCostR + estimatorCostR
     }
-    const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
-    const countRowsReview = (countDataReview as BidCountRow[]) ?? []
     for (const v of priceBookVersions) {
       const [entriesResR, assignResR] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
@@ -3875,13 +3913,15 @@ export default function Bids() {
     if (!est) {
       push('No cost estimate created.')
     } else {
-      const [laborRes, roughTotal, topTotal, trimTotal] = await Promise.all([
+      const [laborRes, roughTotal, topTotal, trimTotal, countRes] = await Promise.all([
         supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
         est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
         est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
         est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+        supabase.from('bids_count_rows').select('id').eq('bid_id', bidId),
       ])
       const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
+      const countRowsForEst = (countRes.data as { id: string }[]) ?? []
       const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
       const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
       const totalHours = laborRows.reduce(
@@ -3894,7 +3934,10 @@ export default function Bids() {
       const hrsPerTrip = (est as any).hours_per_trip ? Number((est as any).hours_per_trip) : 2.0
       const numTrips = totalHours / hrsPerTrip
       const drivingCost = numTrips * drivingRatePerMile * distance
-      const laborCostWithDriving = laborCost + drivingCost
+      const estimatorCost = (est as any)?.estimator_cost_flat_amount != null
+        ? Number((est as any).estimator_cost_flat_amount)
+        : countRowsForEst.length * (Number((est as any)?.estimator_cost_per_count) || 10)
+      const laborCostWithDriving = laborCost + drivingCost + estimatorCost
       const grandTotal = totalMaterials + laborCostWithDriving
 
       push('Materials')
@@ -3933,6 +3976,10 @@ export default function Bids() {
         push(`Driving cost: ${numTrips.toFixed(1)} trips × $${drivingRatePerMile.toFixed(2)}/mi × ${distance.toFixed(0)}mi = $${formatCurrency(drivingCost)}`)
         y += lineHeight
       }
+      if (estimatorCost > 0) {
+        push(`Estimator cost: $${formatCurrency(estimatorCost)}`)
+        y += lineHeight
+      }
       push('Summary', true)
       const summaryColWidths = [100, 70]
       const summaryRows: [string, string][] = [
@@ -3941,6 +3988,9 @@ export default function Bids() {
       ]
       if (distance > 0 && totalHours > 0) {
         summaryRows.push(['Driving', `$${formatCurrency(drivingCost)}`])
+      }
+      if (estimatorCost > 0) {
+        summaryRows.push(['Estimator', `$${formatCurrency(estimatorCost)}`])
       }
       summaryRows.push(
         ['Labor total', `$${formatCurrency(laborCostWithDriving)}`],
@@ -4743,6 +4793,107 @@ export default function Bids() {
     }
   }
 
+  async function printTakeoffBreakdown() {
+    if (!selectedBidForTakeoff) return
+    const mapped = takeoffMappings.filter((m) => m.templateId.trim())
+    if (mapped.length === 0) {
+      setError('No assemblies mapped. Select an assembly for at least one fixture to print.')
+      return
+    }
+    setTakeoffPrinting(true)
+    setError(null)
+    try {
+      const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+      const title = escapeHtml(bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Takeoff Breakdown'
+      const stages: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
+      const sectionHtmls: string[] = []
+
+      for (const stage of stages) {
+        const mappingsForStage = mapped.filter((m) => m.stage === stage)
+        if (mappingsForStage.length === 0) continue
+
+        const stageLabel = STAGE_LABELS[stage]
+        const countRowIds = Array.from(new Set(mappingsForStage.map((m) => m.countRowId)))
+
+        let stageHtml = `<h2 style="margin-top:1.5rem; margin-bottom:0.75rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem">${stageLabel}</h2>`
+
+        for (const countRowId of countRowIds) {
+          const row = takeoffCountRows.find((r) => r.id === countRowId)
+          const fixture = row?.fixture ?? '—'
+          const count = row ? Number(row.count) : 0
+          const mappingsForRow = mappingsForStage.filter((m) => m.countRowId === countRowId)
+
+          // Parts for this count line item, with template association (don't merge so we keep template per part)
+          const partsWithTemplate: Array<{ part_id: string; quantity: number; template_name: string }> = []
+          for (const m of mappingsForRow) {
+            const qty = Math.max(1, Math.round(Number(m.quantity)) || 1)
+            const parts = await expandTemplate(supabase, m.templateId, qty)
+            const templateName = materialTemplates.find((t) => t.id === m.templateId)?.name ?? '—'
+            for (const { part_id, quantity } of parts) {
+              partsWithTemplate.push({ part_id, quantity, template_name: templateName })
+            }
+          }
+
+          const partIds = Array.from(new Set(partsWithTemplate.map((p) => p.part_id)))
+          const { data: partsData } = await supabase.from('material_parts').select('id, name').in('id', partIds)
+          const nameById = new Map<string, string>()
+          for (const p of partsData ?? []) {
+            if (p?.id) nameById.set(p.id, p.name ?? '')
+          }
+
+          const partRows = partsWithTemplate
+            .sort((a, b) => {
+              const nameCmp = (nameById.get(a.part_id) ?? '').localeCompare(nameById.get(b.part_id) ?? '')
+              if (nameCmp !== 0) return nameCmp
+              return a.template_name.localeCompare(b.template_name)
+            })
+            .map((p) => `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(nameById.get(p.part_id) ?? p.part_id.slice(0, 8))}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${p.quantity}</td><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(p.template_name)}</td></tr>`)
+            .join('')
+
+          stageHtml += `
+          <div style="margin-bottom:1rem">
+            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(fixture)} (Count: ${count})</h3>
+            <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
+              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Assembly</th></tr></thead>
+              <tbody>${partRows}</tbody>
+            </table>
+          </div>`
+        }
+
+        sectionHtmls.push(stageHtml)
+      }
+
+      if (sectionHtmls.length === 0) {
+        setError('No mappings with assemblies to print.')
+        return
+      }
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
+  th { background: #f9fafb; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <p style="font-size:0.875rem; color:#6b7280">Breakdown of parts and assemblies per stage for audit.</p>
+  ${sectionHtmls.join('')}
+</body></html>`
+      const win = window.open('', '_blank')
+      if (!win) {
+        setError('Popup blocked. Allow popups to print.')
+        return
+      }
+      win.document.write(html)
+      win.document.close()
+      win.focus()
+      win.print()
+      win.onafterprint = () => win.close()
+    } finally {
+      setTakeoffPrinting(false)
+    }
+  }
+
   useEffect(() => {
     loadRole()
   }, [authUser?.id])
@@ -4852,7 +5003,7 @@ export default function Bids() {
     ;(async () => {
       const { data: est, error: e } = await supabase
         .from('cost_estimates')
-        .select('id, labor_rate, purchase_order_id_rough_in, purchase_order_id_top_out, purchase_order_id_trim_set')
+        .select('id, labor_rate, purchase_order_id_rough_in, purchase_order_id_top_out, purchase_order_id_trim_set, driving_cost_rate, hours_per_trip, estimator_cost_per_count, estimator_cost_flat_amount')
         .eq('bid_id', bidId)
         .maybeSingle()
       if (e || cancelled) {
@@ -4863,14 +5014,18 @@ export default function Bids() {
         setSubmissionBidHasCostEstimate(false)
         return
       }
-      const [laborRes, roughTotal, topTotal, trimTotal] = await Promise.all([
+      const [laborRes, roughTotal, topTotal, trimTotal, bidRes, countRes] = await Promise.all([
         supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id),
         est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
         est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
         est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+        supabase.from('bids').select('distance_from_office').eq('id', bidId).maybeSingle(),
+        supabase.from('bids_count_rows').select('id').eq('bid_id', bidId),
       ])
       if (cancelled) return
       const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
+      const bidData = bidRes.data as { distance_from_office: string | null } | null
+      const countRowsData = (countRes.data as { id: string }[]) ?? []
       const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
       const totalHours = laborRows.reduce(
         (s, r) => s + laborRowHours(r),
@@ -4878,7 +5033,14 @@ export default function Bids() {
       )
       const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
       const laborCost = totalHours * rate
-      const grandTotal = totalMaterials + laborCost
+      const distance = parseFloat(bidData?.distance_from_office ?? '0') || 0
+      const ratePerMile = (est as any).driving_cost_rate != null ? Number((est as any).driving_cost_rate) : 0.70
+      const hrsPerTrip = (est as any).hours_per_trip != null ? Number((est as any).hours_per_trip) : 2.0
+      const drivingCost = totalHours > 0 ? (totalHours / hrsPerTrip) * ratePerMile * distance : 0
+      const estimatorCost = (est as any)?.estimator_cost_flat_amount != null
+        ? Number((est as any).estimator_cost_flat_amount)
+        : countRowsData.length * (Number((est as any)?.estimator_cost_per_count) || 10)
+      const grandTotal = totalMaterials + laborCost + drivingCost + estimatorCost
       setSubmissionBidHasCostEstimate(true)
       setSubmissionBidCostEstimateAmount(grandTotal)
     })()
@@ -5155,6 +5317,10 @@ export default function Bids() {
       if (laborRateInput.trim() !== '' && (isNaN(laborRateNum!) || laborRateNum! < 0)) return
       if (isNaN(drivingCostRateNum) || drivingCostRateNum < 0) return
       if (isNaN(hoursPerTripNum) || hoursPerTripNum <= 0) return
+      const estimatorCostPerCountNum = estimatorCostUseFlat ? null : (parseFloat(estimatorCostPerCount) || 10)
+      const estimatorCostFlatAmountNum = estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) : null
+      if (estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' && (isNaN(estimatorCostFlatAmountNum!) || estimatorCostFlatAmountNum! < 0)) return
+      if (!estimatorCostUseFlat && (isNaN(estimatorCostPerCountNum!) || estimatorCostPerCountNum! < 0)) return
       
       // Save cost estimate fields
       await supabase
@@ -5166,6 +5332,8 @@ export default function Bids() {
           labor_rate: laborRateNum,
           driving_cost_rate: drivingCostRateNum,
           hours_per_trip: hoursPerTripNum,
+          estimator_cost_per_count: estimatorCostPerCountNum,
+          estimator_cost_flat_amount: estimatorCostFlatAmountNum,
         })
         .eq('id', costEstimate.id)
       
@@ -5188,7 +5356,7 @@ export default function Bids() {
     }, 1500) // 1.5 second debounce
 
     return () => clearTimeout(timer)
-  }, [activeTab, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, costEstimateLaborRows])
+  }, [activeTab, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, costEstimateLaborRows])
 
   // Auto-calculate price book entry total
   useEffect(() => {
@@ -6530,6 +6698,14 @@ export default function Bids() {
                     >
                       {takeoffCreatingPO ? 'Creating…' : 'Create purchase orders for Stages'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={printTakeoffBreakdown}
+                      disabled={takeoffPrinting || takeoffMappedCount === 0}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: takeoffPrinting || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
+                    >
+                      {takeoffPrinting ? 'Preparing…' : 'Print Breakdown'}
+                    </button>
                     <select
                       value={takeoffExistingPOId}
                       onChange={(e) => setTakeoffExistingPOId(e.target.value)}
@@ -7576,6 +7752,59 @@ export default function Bids() {
                       })()}
                     </div>
                   </div>
+                  {/* Estimator Cost Parameters */}
+                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                    <h4 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Estimator Cost Parameters</h4>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={estimatorCostUseFlat}
+                          onChange={(e) => setEstimatorCostUseFlat(e.target.checked)}
+                        />
+                        Use flat amount
+                      </label>
+                      <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>|</span>
+                      {estimatorCostUseFlat ? (
+                        <div>
+                          <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Flat amount ($)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={estimatorCostFlatAmount}
+                            onChange={(e) => setEstimatorCostFlatAmount(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Per count row ($)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={estimatorCostPerCount}
+                            onChange={(e) => setEstimatorCostPerCount(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
+                            style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    {(() => {
+                      const countRows = costEstimateCountRows.length
+                      const estimatorCost = estimatorCostUseFlat
+                        ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
+                        : countRows * (parseFloat(estimatorCostPerCount) || 10)
+                      return (
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem' }}>
+                          Estimator cost: {estimatorCostUseFlat ? `$${formatCurrency(estimatorCost)}` : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = $${formatCurrency(estimatorCost)}`}
+                        </p>
+                      )
+                    })()}
+                  </div>
                   {/* Total */}
                   <div style={{ marginBottom: '1.5rem', padding: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', textAlign: 'center' }}>TOTAL</h3>
@@ -7593,7 +7822,10 @@ export default function Bids() {
                       const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
                       const numTrips = totalHours / hrsPerTrip
                       const drivingCost = numTrips * ratePerMile * distance
-                      const laborCostWithDriving = laborCost + drivingCost
+                      const estimatorCost = estimatorCostUseFlat
+                        ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
+                        : costEstimateCountRows.length * (parseFloat(estimatorCostPerCount) || 10)
+                      const laborCostWithDriving = laborCost + drivingCost + estimatorCost
                       const materialsWithTax = totalMaterials * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100)
                       const grandTotal = materialsWithTax + laborCostWithDriving
                       return (
@@ -7601,6 +7833,7 @@ export default function Bids() {
                           <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>Materials with tax: ${formatCurrency(materialsWithTax)}</p>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Manhours: ${formatCurrency(laborCost)}</p>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Driving: ${formatCurrency(drivingCost)}</p>
+                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Estimator: ${formatCurrency(estimatorCost)}</p>
                           <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>
                             Labor total: ${formatCurrency(laborCostWithDriving)}
                           </p>
@@ -8246,7 +8479,10 @@ export default function Bids() {
                 const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
                 const numTrips = totalLaborHours / hrsPerTrip
                 const drivingCost = numTrips * ratePerMile * distance
-                const totalCost = totalMaterials + laborCost + drivingCost
+                const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
+                  ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
+                  : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
+                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
                 const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
                 let totalRevenue = 0
                 const rows = pricingCountRows.map((countRow) => {
@@ -8297,6 +8533,9 @@ export default function Bids() {
                       <span>Manhours: ${formatCurrency(laborCost)} {totalCost > 0 ? `| ${((laborCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
                       {distance > 0 && totalLaborHours > 0 && (
                         <span>Driving: ${formatCurrency(drivingCost)} <span style={{ color: '#6b7280', fontWeight: 400 }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span> {totalCost > 0 ? `| ${((drivingCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
+                      )}
+                      {estimatorCost > 0 && (
+                        <span>Estimator: ${formatCurrency(estimatorCost)} {totalCost > 0 ? `| ${((estimatorCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
                       )}
                       <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
                     </div>

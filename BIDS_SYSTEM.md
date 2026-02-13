@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -422,6 +422,23 @@ When applying this entry to a count row with Fixture="WC" and Count=5:
 3. Adds parts to existing PO (appends to current items)
 4. Shows success message
 
+#### Print Breakdown
+
+**Button**: "Print Breakdown"
+
+**Purpose**: Produces a printable report for master plumber audit, showing what parts and assemblies make up the POs per stage.
+
+**Report structure**:
+- **Per stage** (Rough In, Top Out, Trim Set): Only stages with mappings are shown
+- **Per count line item** (fixture + count): Parts grouped by each fixture/count row
+- **Parts table** for each fixture: Part | Qty | Assembly (template the part comes from)
+- Parts are not merged across assemblies; each row shows its assembly for full traceability
+
+**Behavior**:
+- Disabled when no assemblies are mapped
+- Opens print preview in new window; closes after print/cancel
+- Uses same print styling as Cost Estimate
+
 #### View Purchase Order Link
 
 After creating or adding to PO:
@@ -632,7 +649,7 @@ Driving Cost = (Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance t
 
 **Integration**:
 - Driving cost appears as separate line in Summary
-- Included in "Labor total" (Labor + Driving)
+- Included in "Labor total" (Labor + Driving + Estimator)
 - Incorporated into Grand total
 - Shows $0.00 if distance not set (always visible)
 
@@ -649,13 +666,40 @@ cost_estimates.hours_per_trip (numeric(10,2), default 2.0)
 
 Migration: `add_cost_estimate_driving_cost_fields.sql`
 
+### Estimator Cost Parameters
+
+**Purpose**: Add a per-count-type cost (e.g., $10 per fixture type) to cover estimator overhead.
+
+**Location**: Yellow-highlighted section "Estimator Cost Parameters" below Driving Cost Parameters.
+
+**Options**:
+- **Per count row** (default): `Estimator cost = Count Types × $ per count` (default $10 per count type)
+- **Use flat amount**: Enter a fixed dollar total instead of per-count calculation
+
+**UI**:
+- Checkbox "Use flat amount" | Per count row ($) input or Flat amount ($) input
+- Display: "Estimator cost: X Count Types × $Y = $Z" or "Estimator cost: $Z" when flat
+
+**Integration**:
+- Added to "Labor total" (Labor + Driving + Estimator)
+- Included in Grand total, Pricing cost breakdown, prints, and PDFs
+
+**Database**:
+```sql
+cost_estimates.estimator_cost_per_count (numeric(10,2), default 10)
+cost_estimates.estimator_cost_flat_amount (numeric(10,2), nullable)
+```
+
+Migration: `20260212180000_add_estimator_cost_to_cost_estimates.sql`
+
 ### Summary Section
 
 **Display**:
 - **Total materials**: Sum from all stages
 - **Labor**: Hours × Rate (excluding driving)
 - **Driving**: Calculated driving cost
-- **Labor total**: Labor + Driving
+- **Estimator**: Per-count-type or flat amount
+- **Labor total**: Labor + Driving + Estimator
 - **Grand total**: Materials + Labor total
 
 **Format**: All amounts with comma formatting for values over $999
@@ -685,7 +729,7 @@ Opens print-friendly PDF view with comprehensive cost breakdown:
 - Labor hours and rates
 - Labor subtotals per stage
 
-**Driving Cost Section**:
+**Driving Cost and Estimator Cost Sections**:
 - Distance and driving rate calculations
 - Total driving cost
 
@@ -710,6 +754,8 @@ Compare estimated costs to price book revenue and analyze profit margins. Helps 
 ### Price Book System
 
 The Price Book provides standardized pricing for fixtures across plumbing stages.
+
+**Price Book section**: Collapsible section (▶/▼) containing version management and entries. **Closed by default** to reduce clutter; click to expand.
 
 #### Price Book Versions
 
@@ -857,8 +903,8 @@ UNIQUE (version_id, fixture_type_id)
 - **Cost breakdown box**: Right-aligned yellow box showing Materials, Manhours, Driving, and Total cost
 - **Percentage of total**: Each line shows its share (e.g., "Manhours: $330.00 | 91.3%")
 - Uses bid's `distance_from_office` and cost estimate's `driving_cost_rate`, `hours_per_trip`
-- Margin % calculated using total cost (materials + labor + driving)
-- Print and Review (all price books) include driving in totals
+- Margin % calculated using total cost (materials + labor + driving + estimator)
+- Print and Review (all price books) include driving and estimator in totals
 
 #### Margin Calculation
 
