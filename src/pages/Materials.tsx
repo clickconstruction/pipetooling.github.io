@@ -166,6 +166,9 @@ export default function Materials() {
   const [templatePartSearchQuery, setTemplatePartSearchQuery] = useState('')
   const [templatePartDropdownOpen, setTemplatePartDropdownOpen] = useState(false)
   const [newItemTemplateId, setNewItemTemplateId] = useState('')
+  const [newItemTemplateSearchQuery, setNewItemTemplateSearchQuery] = useState('')
+  const [newItemTemplateDropdownOpen, setNewItemTemplateDropdownOpen] = useState(false)
+  const [newItemFilterAssemblyTypeId, setNewItemFilterAssemblyTypeId] = useState('')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemNotes, setNewItemNotes] = useState('')
   const [creatingPOFromTemplate, setCreatingPOFromTemplate] = useState(false)
@@ -1054,6 +1057,23 @@ export default function Materials() {
       .slice(0, limit)
   }
 
+  // Filter templates by search query (name, description, assembly type) — used by nested assembly pickers
+  function filterTemplatesByQuery(
+    templateList: MaterialTemplate[],
+    query: string,
+    assemblyTypes: AssemblyType[],
+    limit = 50
+  ): MaterialTemplate[] {
+    const q = (query || '').trim().toLowerCase()
+    return templateList
+      .filter(t => {
+        const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name ?? '' : ''
+        if (!q) return true
+        return [t.name, t.description, typeName].some(f => (f || '').toLowerCase().includes(q))
+      })
+      .slice(0, limit)
+  }
+
   // Parts are already filtered and sorted server-side, so just use them directly
   const sortedParts = parts
 
@@ -1477,6 +1497,8 @@ export default function Materials() {
           await loadAllTemplateItemsForStats()
           setNewItemPartId('')
           setNewItemTemplateId('')
+          setNewItemTemplateSearchQuery('')
+          setNewItemFilterAssemblyTypeId('')
           setNewItemQuantity('1')
           setNewItemNotes('')
         }
@@ -1505,6 +1527,8 @@ export default function Materials() {
       await loadAllTemplateItemsForStats()
       setNewItemPartId('')
       setNewItemTemplateId('')
+      setNewItemTemplateSearchQuery('')
+      setNewItemFilterAssemblyTypeId('')
       setNewItemQuantity('1')
       setNewItemNotes('')
     }
@@ -2898,14 +2922,22 @@ export default function Materials() {
                 reloadPartsFirstPage()
               }}
               onPricesUpdated={(updatedPrices) => {
+                const partId = viewingPartPrices.id
                 setParts(prev =>
                   prev.map(p =>
-                    p.id === viewingPartPrices.id
-                      ? {
-                          ...p,
-                          prices: updatedPrices,
-                        }
-                      : p
+                    p.id === partId ? { ...p, prices: updatedPrices } : p
+                  )
+                )
+                setAllParts(prev =>
+                  prev.map(p =>
+                    p.id === partId ? { ...p, prices: updatedPrices } : p
+                  )
+                )
+                setTemplateItems(prev =>
+                  prev.map(item =>
+                    item.part_id === partId && item.part
+                      ? { ...item, part: { ...item.part, prices: updatedPrices } }
+                      : item
                   )
                 )
               }}
@@ -3961,7 +3993,20 @@ export default function Materials() {
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Add Item</label>
                     <select
                       value={newItemType}
-                      onChange={(e) => setNewItemType(e.target.value as 'part' | 'template')}
+                      onChange={(e) => {
+                        const v = e.target.value as 'part' | 'template'
+                        setNewItemType(v)
+                        if (v === 'part') {
+                          setNewItemTemplateId('')
+                          setNewItemTemplateSearchQuery('')
+                          setNewItemTemplateDropdownOpen(false)
+                          setNewItemFilterAssemblyTypeId('')
+                        } else {
+                          setNewItemPartId('')
+                          setTemplatePartSearchQuery('')
+                          setTemplatePartDropdownOpen(false)
+                        }
+                      }}
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
                     >
                       <option value="part">Part</option>
@@ -3973,7 +4018,7 @@ export default function Materials() {
                       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                         <input
                           type="text"
-                          value={newItemPartId ? (parts.find(p => p.id === newItemPartId)?.name ?? '') : templatePartSearchQuery}
+                          value={newItemPartId ? (parts.find(p => p.id === newItemPartId) ?? allParts.find(p => p.id === newItemPartId))?.name ?? '' : templatePartSearchQuery}
                           onChange={(e) => setTemplatePartSearchQuery(e.target.value)}
                           onFocus={() => setTemplatePartDropdownOpen(true)}
                           onBlur={() => setTimeout(() => setTemplatePartDropdownOpen(false), 150)}
@@ -4012,7 +4057,7 @@ export default function Materials() {
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                           }}
                         >
-                          {filterPartsByQuery(parts, templatePartSearchQuery).length === 0 ? (
+                          {filterPartsByQuery(allParts.length > 0 ? allParts : parts, templatePartSearchQuery).length === 0 ? (
                             <li style={{ padding: '0.75rem', color: '#6b7280' }}>
                               No parts match.{' '}
                               <button
@@ -4027,7 +4072,7 @@ export default function Materials() {
                               </button>
                             </li>
                           ) : (
-                            filterPartsByQuery(parts, templatePartSearchQuery).map(p => (
+                            filterPartsByQuery(allParts.length > 0 ? allParts : parts, templatePartSearchQuery).map(p => (
                               <li
                                 key={p.id}
                                 onClick={() => {
@@ -4054,16 +4099,94 @@ export default function Materials() {
                       )}
                     </div>
                   ) : (
-                    <select
-                      value={newItemTemplateId}
-                      onChange={(e) => setNewItemTemplateId(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
-                    >
-                      <option value="">Select assembly</option>
-                      {materialTemplates.filter(t => t.id !== selectedTemplate.id).map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Filter by type</label>
+                      <select
+                        value={newItemFilterAssemblyTypeId}
+                        onChange={(e) => { setNewItemFilterAssemblyTypeId(e.target.value); setNewItemTemplateDropdownOpen(true) }}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                      >
+                        <option value="">All Assembly Types</option>
+                        {assemblyTypes.map(at => (
+                          <option key={at.id} value={at.id}>{at.name}</option>
+                        ))}
+                      </select>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>Search</label>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            value={newItemTemplateId ? (materialTemplates.find(t => t.id === newItemTemplateId)?.name ?? '') : newItemTemplateSearchQuery}
+                            onChange={(e) => setNewItemTemplateSearchQuery(e.target.value)}
+                            onFocus={() => setNewItemTemplateDropdownOpen(true)}
+                            onBlur={() => setTimeout(() => setNewItemTemplateDropdownOpen(false), 150)}
+                            onKeyDown={(e) => e.key === 'Escape' && setNewItemTemplateDropdownOpen(false)}
+                            readOnly={!!newItemTemplateId}
+                            placeholder="Search assemblies by name, description, or type…"
+                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: newItemTemplateId ? '#f3f4f6' : undefined }}
+                          />
+                          {newItemTemplateId && (
+                            <button
+                              type="button"
+                              onClick={() => { setNewItemTemplateId(''); setNewItemTemplateSearchQuery(''); setNewItemTemplateDropdownOpen(true) }}
+                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                        {newItemTemplateDropdownOpen && (
+                          <ul
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              top: '100%',
+                              margin: 0,
+                              marginTop: 2,
+                              padding: 0,
+                              listStyle: 'none',
+                              maxHeight: 240,
+                              overflowY: 'auto',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: '#fff',
+                              zIndex: 50,
+                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            }}
+                          >
+                            {(() => {
+                              const base = materialTemplates.filter(t => t.id !== selectedTemplate.id)
+                              const filteredByType = newItemFilterAssemblyTypeId ? base.filter(t => t.assembly_type_id === newItemFilterAssemblyTypeId) : base
+                              const filtered = filterTemplatesByQuery(filteredByType, newItemTemplateSearchQuery, assemblyTypes)
+                              return filtered.length === 0 ? (
+                                <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                              ) : (
+                                filtered.map(t => {
+                                  const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name : null
+                                  return (
+                                    <li
+                                      key={t.id}
+                                      onClick={() => {
+                                        setNewItemTemplateId(t.id)
+                                        setNewItemTemplateSearchQuery('')
+                                        setNewItemTemplateDropdownOpen(false)
+                                      }}
+                                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                                    >
+                                      <div style={{ fontWeight: 500 }}>{t.name}</div>
+                                      {typeName && (
+                                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{typeName}</div>
+                                      )}
+                                    </li>
+                                  )
+                                })
+                              )
+                            })()}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
                   )}
                   <input
                     type="number"
@@ -4670,7 +4793,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     }}
                   >
                     {(() => {
-                      const baseParts = loadAllMode ? allParts : parts
+                      const baseParts = allParts.length > 0 ? allParts : parts
                       const filteredByType = addItemModalFilterPartTypeId
                         ? baseParts.filter(p => p.part_type_id === addItemModalFilterPartTypeId)
                         : baseParts
@@ -4691,7 +4814,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   </li>
                 ) : (
                       (() => {
-                        const baseParts = loadAllMode ? allParts : parts
+                        const baseParts = allParts.length > 0 ? allParts : parts
                         const filteredByType = addItemModalFilterPartTypeId
                           ? baseParts.filter(p => p.part_type_id === addItemModalFilterPartTypeId)
                           : baseParts
@@ -4719,21 +4842,80 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 )}
               </div>
             ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly</label>
-                <select
-                  value={addItemModalTemplateId}
-                  onChange={(e) => setAddItemModalTemplateId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                >
-                  <option value="">Select assembly</option>
-                  {materialTemplates
-                    .filter(t => t.id !== selectedTemplate.id)
-                    .filter(t => !addItemModalFilterAssemblyTypeId || t.assembly_type_id === addItemModalFilterAssemblyTypeId)
-                    .map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+              <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Search</label>
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={addItemModalTemplateId ? (materialTemplates.find(t => t.id === addItemModalTemplateId)?.name ?? '') : addItemModalSearchQuery}
+                    onChange={(e) => setAddItemModalSearchQuery(e.target.value)}
+                    onFocus={() => setAddItemModalDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setAddItemModalDropdownOpen(false), 150)}
+                    onKeyDown={(e) => e.key === 'Escape' && setAddItemModalDropdownOpen(false)}
+                    readOnly={!!addItemModalTemplateId}
+                    placeholder="Search assemblies by name, description, or type…"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addItemModalTemplateId ? '#f3f4f6' : undefined }}
+                  />
+                  {addItemModalTemplateId && (
+                    <button
+                      type="button"
+                      onClick={() => { setAddItemModalTemplateId(''); setAddItemModalSearchQuery(''); setAddItemModalDropdownOpen(true) }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {addItemModalDropdownOpen && (
+                  <ul
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: '100%',
+                      margin: 0,
+                      marginTop: 2,
+                      padding: 0,
+                      listStyle: 'none',
+                      maxHeight: 240,
+                      overflowY: 'auto',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: '#fff',
+                      zIndex: 50,
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}
+                  >
+                    {(() => {
+                      const base = materialTemplates.filter(t => t.id !== selectedTemplate.id)
+                      const filteredByType = addItemModalFilterAssemblyTypeId ? base.filter(t => t.assembly_type_id === addItemModalFilterAssemblyTypeId) : base
+                      const filtered = filterTemplatesByQuery(filteredByType, addItemModalSearchQuery, assemblyTypes)
+                      return filtered.length === 0 ? (
+                        <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                      ) : (
+                        filtered.map(t => {
+                          const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name : null
+                          return (
+                            <li
+                              key={t.id}
+                              onClick={() => {
+                                setAddItemModalTemplateId(t.id)
+                                setAddItemModalSearchQuery('')
+                                setAddItemModalDropdownOpen(false)
+                              }}
+                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                            >
+                              <div style={{ fontWeight: 500 }}>{t.name}</div>
+                              {typeName && (
+                                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{typeName}</div>
+                              )}
+                            </li>
+                          )
+                        })
+                      )
+                    })()}
+                  </ul>
+                )}
               </div>
             )}
 

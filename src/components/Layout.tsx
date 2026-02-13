@@ -63,6 +63,12 @@ export default function Layout() {
     navigate('/sign-in', { replace: true })
   }
 
+  function handleHardReload() {
+    const base = window.location.origin + window.location.pathname
+    const hash = window.location.hash || ''
+    window.location.href = base + '?nocache=' + Date.now() + hash
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <nav
@@ -100,6 +106,22 @@ export default function Layout() {
           </>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {/* Temporary: hard reload for cache issues */}
+          <button
+            type="button"
+            onClick={handleHardReload}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            Hard Reload
+          </button>
           {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
             <>
               <button

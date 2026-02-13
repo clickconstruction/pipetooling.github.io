@@ -103,6 +103,7 @@ export default function Settings() {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
+  const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
   const [myPeople, setMyPeople] = useState<PersonRow[]>([])
   const [nonUserPeople, setNonUserPeople] = useState<PersonRow[]>([])
@@ -502,7 +503,7 @@ export default function Settings() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role')
+      .select('role, estimator_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -510,8 +511,14 @@ export default function Settings() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
+    const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     setMyRole(role)
+    if (role === 'estimator' && estIds && estIds.length > 0) {
+      setEstimatorServiceTypeIds(estIds)
+    } else {
+      setEstimatorServiceTypeIds(null)
+    }
     
     // Load assistants and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
@@ -519,12 +526,8 @@ export default function Settings() {
       await loadMastersAndShares(authUser.id)
     }
     
-    if (role !== 'dev') {
-      setLoading(false)
-      return
-    }
-    
-    // Load all users
+    // Load dev-only data (users, people, etc.)
+    if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
       .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids')
@@ -596,11 +599,14 @@ export default function Settings() {
       setMyPeople([])
       setNonUserPeople([])
     }
+    }
     
-    // Load email templates and service types if dev
+    // Load email templates and service types if dev; service types also for estimators (Material Part/Assembly Types)
+    if (role === 'dev' || role === 'estimator') {
+      await loadServiceTypes()
+    }
     if (role === 'dev') {
       await loadEmailTemplates()
-      await loadServiceTypes()
     }
     
     setLoading(false)
@@ -2074,6 +2080,15 @@ export default function Settings() {
     }
   }, [selectedServiceTypeForAssemblies])
 
+  // For estimators: sync selected service types to visible list when it changes
+  useEffect(() => {
+    if (myRole !== 'estimator' || !estimatorServiceTypeIds?.length || serviceTypes.length === 0) return
+    const visibleIds = serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id)).map((st) => st.id)
+    if (visibleIds.length === 0) return
+    setSelectedServiceTypeForParts((prev) => (prev && visibleIds.includes(prev) ? prev : visibleIds[0]))
+    setSelectedServiceTypeForAssemblies((prev) => (prev && visibleIds.includes(prev) ? prev : visibleIds[0]))
+  }, [myRole, estimatorServiceTypeIds, serviceTypes])
+
   useEffect(() => {
     if (assemblyTypes.length > 0) {
       loadAssemblyTypeAssemblyCounts()
@@ -2685,6 +2700,12 @@ export default function Settings() {
 
   if (loading) return <p>Loading…</p>
   if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
+
+  // For estimators with restrictions, only show approved service types in Material Part/Assembly Types
+  const visibleServiceTypesForMaterials = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+    ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
+    : serviceTypes
+  const canDeleteMaterialTypes = myRole === 'dev'
 
   return (
     <div>
@@ -4122,7 +4143,7 @@ export default function Settings() {
         </>
       )}
 
-      {myRole === 'dev' && (
+      {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Part Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -4139,7 +4160,7 @@ export default function Settings() {
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
-              {serviceTypes.map((st) => (
+              {visibleServiceTypesForMaterials.map((st) => (
                 <option key={st.id} value={st.id}>{st.name}</option>
               ))}
             </select>
@@ -4147,6 +4168,11 @@ export default function Settings() {
 
           {selectedServiceTypeForParts && (
             <>
+              {myRole === 'estimator' && visibleServiceTypesForMaterials.length > 1 && (
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Showing part types for <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForParts)?.name ?? 'this service type'}</strong>. Change the service type above to see types for other trades.
+                </p>
+              )}
               <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -4156,6 +4182,7 @@ export default function Settings() {
                   + Add Material Part Type
                 </button>
                 
+                {canDeleteMaterialTypes && (
                 <button
                   type="button"
                   onClick={removeAllUnusedPartTypes}
@@ -4174,6 +4201,7 @@ export default function Settings() {
                 >
                   {removingUnusedPartTypes ? 'Removing...' : 'Remove All Unused Material Part Types'}
                 </button>
+                )}
               </div>
 
               {partTypes.length > 0 ? (
@@ -4237,6 +4265,7 @@ export default function Settings() {
                           >
                             Edit
                           </button>
+                          {canDeleteMaterialTypes && (
                           <button
                             type="button"
                             onClick={() => deletePartType(pt)}
@@ -4244,6 +4273,7 @@ export default function Settings() {
                           >
                             Delete
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -4322,7 +4352,7 @@ export default function Settings() {
         </>
       )}
 
-      {myRole === 'dev' && (
+      {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Assembly Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -4339,7 +4369,7 @@ export default function Settings() {
               style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
-              {serviceTypes.map((st) => (
+              {visibleServiceTypesForMaterials.map((st) => (
                 <option key={st.id} value={st.id}>{st.name}</option>
               ))}
             </select>
@@ -4347,6 +4377,11 @@ export default function Settings() {
 
           {selectedServiceTypeForAssemblies && (
             <>
+              {myRole === 'estimator' && visibleServiceTypesForMaterials.length > 1 && (
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Showing assembly types for <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForAssemblies)?.name ?? 'this service type'}</strong>. Change the service type above to see types for other trades.
+                </p>
+              )}
               <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <button
                   type="button"
@@ -4356,6 +4391,7 @@ export default function Settings() {
                   + Add Assembly Type
                 </button>
                 
+                {canDeleteMaterialTypes && (
                 <button
                   type="button"
                   onClick={removeAllUnusedAssemblyTypes}
@@ -4374,6 +4410,7 @@ export default function Settings() {
                 >
                   {removingUnusedAssemblyTypes ? 'Removing...' : 'Remove All Unused Assembly Types'}
                 </button>
+                )}
               </div>
 
               {assemblyTypes.length > 0 ? (
@@ -4437,6 +4474,7 @@ export default function Settings() {
                           >
                             Edit
                           </button>
+                          {canDeleteMaterialTypes && (
                           <button
                             type="button"
                             onClick={() => deleteAssemblyType(at)}
@@ -4444,6 +4482,7 @@ export default function Settings() {
                           >
                             Delete
                           </button>
+                          )}
                         </div>
                       </div>
                     </div>
