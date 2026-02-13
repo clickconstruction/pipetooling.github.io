@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -52,7 +52,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+1. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+2. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
 2. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
 3. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
 4. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
@@ -490,6 +491,104 @@ Updated Fixture Types description to reflect:
 - Flexible pricing for flat-rate vs per-unit items
 - Better cost visibility in reports
 - More accurate revenue calculations
+
+---
+
+## Latest Updates (v2.36)
+
+**Date**: February 13, 2026
+
+### Assembly Types System
+
+Added comprehensive assembly type categorization system for material assemblies/templates.
+
+**Database Changes**:
+- Created `assembly_types` table with service-type-specific categorization
+- Structure mirrors `part_types`: `id`, `service_type_id`, `name`, `category`, `sequence_order`
+- Added `assembly_type_id` column to `material_templates` (nullable, ON DELETE SET NULL)
+- Unique constraint on `(service_type_id, name)` per assembly type
+- RLS policies for authenticated viewing and authorized management
+- Seeded initial assembly types for Plumbing: Bathroom, Kitchen, Utility, Commercial, Residential, Other
+
+**Settings Page Enhancements**:
+- Added "Material Assembly Types" section (dev-only)
+- Service type selector for managing types per service
+- CRUD operations: Create, Edit, Delete, Reorder (up/down arrows)
+- Assembly count badges showing usage per type
+- "Remove All Unused Assembly Types" bulk action
+- Form modal for adding/editing assembly types
+
+**Materials Page Enhancements**:
+- Assembly type filter dropdown in Assemblies section
+- Search now includes assembly type names
+- Assembly type field in Add/Edit Assembly modal
+- Templates can be categorized and filtered by type
+
+### Assembly Book Tab
+
+Added new dedicated "Assembly Book" tab in Materials for focused assembly management.
+
+**Tab Navigation**:
+- New tab positioned between "Price Book" and "Assemblies & Purchase Orders"
+- Clear separation: Assembly Book for building/checking assemblies, Assemblies & POs for creating purchase orders
+
+**Assembly List View**:
+- Filter by assembly type dropdown
+- Search by name, description, or type
+- Each assembly card displays:
+  - Assembly name and description
+  - Assembly type badge (blue)
+  - Pricing status badge:
+    - Green "All Priced" - All parts have prices
+    - Yellow "X Missing" - Some parts missing prices
+    - Red "No Prices" - No parts have prices
+    - Gray "Empty" - No parts in assembly
+  - Part count and nested assembly count
+  - Total estimated cost
+  - Edit button
+- Click assembly to view details
+
+**Assembly Details Panel**:
+- Appears on right when assembly selected
+- Assembly name, description, and type displayed at top
+
+**Parts Section**:
+- Lists all parts in assembly with:
+  - Part name, manufacturer, and part type
+  - Quantity in assembly with inline edit capability
+  - Current price (lowest available from all supply houses)
+  - Line total (quantity × price)
+  - Price per unit
+- Click any part to expand details showing:
+  - Quantity editor: View and edit quantity in assembly
+  - All prices at different supply houses (sorted low to high)
+  - "LOWEST" badge on cheapest option
+  - "Edit Prices" button (green) - Opens price management
+  - "Edit Part" button (blue) - Opens part editor
+- Missing price warnings highlighted in red
+
+**Nested Assemblies Section**:
+- Lists nested assemblies with:
+  - Assembly name
+  - Quantity
+  - Recursive part counts
+  - Calculated cost (includes all nested parts)
+- Blue background to distinguish from direct parts
+
+**Cost Summary**:
+- Direct parts subtotal
+- Nested assemblies subtotal (if any)
+- Grand total estimated cost (green, bold)
+- Warning badge if any prices missing
+
+**Cost Calculation**:
+- Recursive calculation through nested assemblies
+- Uses lowest available price per part
+- Accounts for quantities at all levels
+- Prevents infinite recursion with visited tracking
+
+**Quick Actions**:
+- "View Price Book" button to jump to pricing tab
 
 ---
 

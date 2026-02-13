@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-02-10
+last_updated: 2026-02-13
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -468,14 +468,52 @@ Trade category (Plumbing, Electrical, HVAC) used to organize materials and bids 
 
 **UI**: Filter buttons above tabs in Materials and Bids sections show only items of selected type
 
-### Template / Material Template
-Reusable list of parts (can include nested templates). Used to quickly add standard part sets to purchase orders.
+### Assembly Type
+Category for organizing material assemblies/templates (Bathroom, Kitchen, Utility, Commercial, Residential, etc.). Service-type-specific categorization for grouping and filtering assemblies.
 
-**Database**: `material_templates`, `material_template_items`
+**Database**: `assembly_types` table
 
-**Features**: Nested templates (templates can contain other templates), quantity per item
+**Fields**: service_type_id (FK), name, category, sequence_order
 
-**Use Case**: "Standard Bathroom", "Kitchen Rough-in", etc.
+**Management**: Settings page, Material Assembly Types section (dev access)
+
+**Usage**: Filter and search assemblies in Materials Assembly Book
+
+**Examples**: 
+- Plumbing: Bathroom, Kitchen, Utility, Commercial
+- Optional field - assemblies can exist without a type
+
+### Template / Material Template / Assembly
+Reusable collection of parts and nested assemblies (e.g., "Bathroom rough-in" might include pipes, fittings, and fixtures). Can be added to purchase orders or used in takeoff books.
+
+**Database**: `material_templates` table (with `material_template_items` for contents)
+
+**Fields**: name, description, service_type_id, assembly_type_id (optional)
+
+**Features**: Nested assemblies (assemblies can contain other assemblies), quantity per item, recursive cost calculation
+
+**Management**: 
+- Assembly Book tab (Materials) - Focused interface for building and checking assemblies
+- Assemblies & Purchase Orders tab - Quick access when building POs
+
+**Use Case**: "Standard Bathroom", "Kitchen Rough-in", "Commercial Restroom", etc.
+
+### Assembly Book
+Dedicated tab in Materials for managing assemblies, their parts, nested assemblies, and pricing.
+
+**Location**: Materials page → Assembly Book tab (between Price Book and Assemblies & POs)
+
+**Features**:
+- Filter by assembly type
+- Search by name, description, or type
+- View detailed assembly breakdown with all parts and costs
+- Edit part quantities within assemblies
+- View all prices at different supply houses
+- Quick access to edit parts and prices
+- Recursive cost calculation for nested assemblies
+- Pricing status indicators (all priced, missing prices, etc.)
+
+**Purpose**: Focused interface for building complete, properly priced assemblies before using them in purchase orders or takeoff books
 
 ### Purchase Order (PO)
 Order for materials from a supply house. Can be draft (editable) or finalized (locked).

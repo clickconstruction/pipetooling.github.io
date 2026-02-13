@@ -232,7 +232,7 @@ export function PartFormModal({
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type *</label>
             <select
               value={partPartTypeId}
               onChange={(e) => setPartPartTypeId(e.target.value)}

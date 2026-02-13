@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      assembly_types: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          name: string
+          sequence_order: number
+          service_type_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          sequence_order?: number
+          service_type_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          sequence_order?: number
+          service_type_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assembly_types_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -242,64 +280,6 @@ export type Database = {
           },
         ]
       }
-      bids_takeoff_template_mappings: {
-        Row: {
-          bid_id: string
-          count_row_id: string
-          created_at: string | null
-          id: string
-          quantity: number
-          sequence_order: number
-          stage: string
-          template_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          bid_id: string
-          count_row_id: string
-          created_at?: string | null
-          id?: string
-          quantity?: number
-          sequence_order?: number
-          stage: string
-          template_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          bid_id?: string
-          count_row_id?: string
-          created_at?: string | null
-          id?: string
-          quantity?: number
-          sequence_order?: number
-          stage?: string
-          template_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bids_takeoff_template_mappings_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_takeoff_template_mappings_count_row_id_fkey"
-            columns: ["count_row_id"]
-            isOneToOne: false
-            referencedRelation: "bids_count_rows"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_takeoff_template_mappings_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "material_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       bids_count_rows: {
         Row: {
           bid_id: string
@@ -417,6 +397,64 @@ export type Database = {
           },
         ]
       }
+      bids_takeoff_template_mappings: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string | null
+          id: string
+          quantity: number
+          sequence_order: number
+          stage: string
+          template_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string | null
+          id?: string
+          quantity?: number
+          sequence_order?: number
+          stage: string
+          template_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string | null
+          id?: string
+          quantity?: number
+          sequence_order?: number
+          stage?: string
+          template_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "material_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_labor_rows: {
         Row: {
           cost_estimate_id: string
@@ -528,6 +566,76 @@ export type Database = {
             columns: ["purchase_order_id_trim_set"]
             isOneToOne: false
             referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counts_fixture_group_items: {
+        Row: {
+          created_at: string | null
+          group_id: string
+          id: string
+          name: string
+          sequence_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_id: string
+          id?: string
+          name: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          name?: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counts_fixture_group_items_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "counts_fixture_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      counts_fixture_groups: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          sequence_order: number
+          service_type_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          sequence_order?: number
+          service_type_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          sequence_order?: number
+          service_type_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counts_fixture_groups_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
@@ -655,76 +763,6 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      counts_fixture_groups: {
-        Row: {
-          id: string
-          service_type_id: string
-          label: string
-          sequence_order: number
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          service_type_id: string
-          label: string
-          sequence_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          service_type_id?: string
-          label?: string
-          sequence_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "counts_fixture_groups_service_type_id_fkey"
-            columns: ["service_type_id"]
-            isOneToOne: false
-            referencedRelation: "service_types"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      counts_fixture_group_items: {
-        Row: {
-          id: string
-          group_id: string
-          name: string
-          sequence_order: number
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          group_id: string
-          name: string
-          sequence_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          group_id?: string
-          name?: string
-          sequence_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "counts_fixture_group_items_group_id_fkey"
-            columns: ["group_id"]
-            isOneToOne: false
-            referencedRelation: "counts_fixture_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -1095,6 +1133,7 @@ export type Database = {
       }
       material_templates: {
         Row: {
+          assembly_type_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -1103,6 +1142,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          assembly_type_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1111,6 +1151,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          assembly_type_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -1119,6 +1160,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "material_templates_assembly_type_id_fkey"
+            columns: ["assembly_type_id"]
+            isOneToOne: false
+            referencedRelation: "assembly_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_templates_service_type_id_fkey"
             columns: ["service_type_id"]
@@ -2205,19 +2253,44 @@ export type Database = {
         Args: { p_created_by: string; p_source_po_id: string }
         Returns: Json
       }
-      get_parts_ordered_by_price_count: {
-        Args: { ascending_order?: boolean; filter_service_type_id?: string | null }
-        Returns: {
-          part_id: string
-          price_count: number
-        }[]
+      estimator_can_access_service_type: {
+        Args: { p_service_type_id: string }
+        Returns: boolean
       }
+      get_parts_ordered_by_price_count:
+        | {
+            Args: { ascending_order?: boolean }
+            Returns: {
+              part_id: string
+              price_count: number
+            }[]
+          }
+        | {
+            Args: { ascending_order?: boolean; filter_service_type_id?: string }
+            Returns: {
+              part_id: string
+              price_count: number
+            }[]
+          }
       get_supply_house_price_counts: {
         Args: never
         Returns: {
           price_count: number
           supply_house_id: string
           supply_house_name: string
+        }[]
+      }
+      get_supply_house_stats_by_service_type: {
+        Args: never
+        Returns: {
+          parts_with_multiple_prices: number
+          parts_with_prices: number
+          price_count: number
+          service_type_id: string
+          service_type_name: string
+          supply_house_id: string
+          supply_house_name: string
+          total_parts: number
         }[]
       }
       is_dev: { Args: never; Returns: boolean }

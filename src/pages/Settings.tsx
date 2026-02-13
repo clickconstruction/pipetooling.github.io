@@ -69,6 +69,16 @@ interface PartType {
   updated_at: string
 }
 
+interface AssemblyType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
@@ -216,6 +226,17 @@ export default function Settings() {
   const [partTypeError, setPartTypeError] = useState<string | null>(null)
   const [partTypePartCounts, setPartTypePartCounts] = useState<Record<string, number>>({})
   const [removingUnusedPartTypes, setRemovingUnusedPartTypes] = useState(false)
+
+  // Assembly Types state (for Materials)
+  const [assemblyTypes, setAssemblyTypes] = useState<AssemblyType[]>([])
+  const [selectedServiceTypeForAssemblies, setSelectedServiceTypeForAssemblies] = useState<string>('')
+  const [assemblyTypeFormOpen, setAssemblyTypeFormOpen] = useState(false)
+  const [editingAssemblyType, setEditingAssemblyType] = useState<AssemblyType | null>(null)
+  const [assemblyTypeName, setAssemblyTypeName] = useState('')
+  const [assemblyTypeSaving, setAssemblyTypeSaving] = useState(false)
+  const [assemblyTypeError, setAssemblyTypeError] = useState<string | null>(null)
+  const [assemblyTypeAssemblyCounts, setAssemblyTypeAssemblyCounts] = useState<Record<string, number>>({})
+  const [removingUnusedAssemblyTypes, setRemovingUnusedAssemblyTypes] = useState(false)
 
   type OrphanedPriceRow = {
     id: string
@@ -1804,6 +1825,221 @@ export default function Settings() {
     await loadPartTypes()
   }
 
+  // Assembly Types functions (for Materials)
+  async function loadAssemblyTypes() {
+    if (!selectedServiceTypeForAssemblies) {
+      setAssemblyTypes([])
+      return
+    }
+    
+    const { data, error: eAssemblyTypes } = await supabase
+      .from('assembly_types' as any)
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeForAssemblies)
+      .order('sequence_order', { ascending: true })
+    
+    if (eAssemblyTypes) {
+      console.error('Error loading assembly types:', eAssemblyTypes)
+    } else {
+      setAssemblyTypes((data as unknown as AssemblyType[]) ?? [])
+    }
+  }
+
+  async function loadAssemblyTypeAssemblyCounts() {
+    if (!selectedServiceTypeForAssemblies) {
+      setAssemblyTypeAssemblyCounts({})
+      return
+    }
+    
+    // Get all assembly types for this service type
+    const assemblyTypeIds = assemblyTypes.map(at => at.id)
+    
+    if (assemblyTypeIds.length === 0) {
+      setAssemblyTypeAssemblyCounts({})
+      return
+    }
+    
+    // Query material_templates grouped by assembly_type_id
+    const { data, error } = await supabase
+      .from('material_templates')
+      .select('assembly_type_id')
+      .in('assembly_type_id', assemblyTypeIds)
+    
+    if (error) {
+      console.error('Error loading assembly counts:', error)
+      return
+    }
+    
+    // Count assemblies per assembly type
+    const counts: Record<string, number> = {}
+    assemblyTypeIds.forEach(id => counts[id] = 0)
+    
+    data?.forEach(row => {
+      if (row.assembly_type_id) {
+        counts[row.assembly_type_id] = (counts[row.assembly_type_id] || 0) + 1
+      }
+    })
+    
+    setAssemblyTypeAssemblyCounts(counts)
+  }
+
+  function openEditAssemblyType(assemblyType: AssemblyType | null) {
+    setEditingAssemblyType(assemblyType)
+    setAssemblyTypeName(assemblyType?.name || '')
+    setAssemblyTypeError(null)
+    setAssemblyTypeFormOpen(true)
+  }
+
+  function closeEditAssemblyType() {
+    setEditingAssemblyType(null)
+    setAssemblyTypeName('')
+    setAssemblyTypeError(null)
+    setAssemblyTypeFormOpen(false)
+  }
+
+  async function saveAssemblyType(e: React.FormEvent) {
+    e.preventDefault()
+    
+    if (!selectedServiceTypeForAssemblies) {
+      setAssemblyTypeError('Please select a service type first')
+      return
+    }
+    
+    setAssemblyTypeSaving(true)
+    setAssemblyTypeError(null)
+    
+    if (!assemblyTypeName.trim()) {
+      setAssemblyTypeError('Name is required')
+      setAssemblyTypeSaving(false)
+      return
+    }
+    
+    if (editingAssemblyType) {
+      // Update existing assembly type
+      const { error: e } = await supabase
+        .from('assembly_types' as any)
+        .update({
+          name: assemblyTypeName.trim(),
+          category: null,
+        } as any)
+        .eq('id', editingAssemblyType.id)
+      
+      setAssemblyTypeSaving(false)
+      
+      if (e) {
+        setAssemblyTypeError(e.message)
+      } else {
+        await loadAssemblyTypes()
+        closeEditAssemblyType()
+      }
+    } else {
+      // Create new assembly type
+      const maxSeq = assemblyTypes.reduce((max, at) => Math.max(max, at.sequence_order), 0)
+      const { error: e } = await supabase
+        .from('assembly_types' as any)
+        .insert({
+          service_type_id: selectedServiceTypeForAssemblies,
+          name: assemblyTypeName.trim(),
+          category: null,
+          sequence_order: maxSeq + 1,
+        } as any)
+      
+      setAssemblyTypeSaving(false)
+      
+      if (e) {
+        setAssemblyTypeError(e.message)
+      } else {
+        await loadAssemblyTypes()
+        closeEditAssemblyType()
+      }
+    }
+  }
+
+  async function deleteAssemblyType(assemblyType: AssemblyType) {
+    if (!confirm(`Are you sure you want to delete "${assemblyType.name}"? This will remove the type from any assemblies using it.`)) {
+      return
+    }
+    
+    const { error: e } = await supabase
+      .from('assembly_types' as any)
+      .delete()
+      .eq('id', assemblyType.id)
+    
+    if (e) {
+      if (e.message.includes('violates foreign key constraint')) {
+        setError(`Cannot delete assembly type "${assemblyType.name}" due to database constraints.`)
+      } else {
+        setError(e.message)
+      }
+    } else {
+      await loadAssemblyTypes()
+    }
+  }
+
+  async function removeAllUnusedAssemblyTypes() {
+    // Filter assembly types with 0 assemblies
+    const unusedAssemblyTypes = assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0)
+    
+    if (unusedAssemblyTypes.length === 0) {
+      setError('No unused assembly types to remove')
+      return
+    }
+    
+    // Confirm with user
+    const assemblyTypeNames = unusedAssemblyTypes.map(at => at.name).join(', ')
+    const confirmed = confirm(
+      `This will delete ${unusedAssemblyTypes.length} unused assembly type(s):\n\n${assemblyTypeNames}\n\nAre you sure?`
+    )
+    
+    if (!confirmed) return
+    
+    setRemovingUnusedAssemblyTypes(true)
+    setError(null)
+    
+    // Delete each unused assembly type
+    const deletePromises = unusedAssemblyTypes.map(at =>
+      supabase
+        .from('assembly_types' as any)
+        .delete()
+        .eq('id', at.id)
+    )
+    
+    const results = await Promise.all(deletePromises)
+    const errors = results.filter(r => r.error)
+    
+    setRemovingUnusedAssemblyTypes(false)
+    
+    if (errors.length > 0) {
+      setError(`Failed to delete ${errors.length} assembly type(s). They may have assemblies assigned.`)
+    } else {
+      await loadAssemblyTypes()
+    }
+  }
+
+  async function moveAssemblyType(assemblyType: AssemblyType, direction: 'up' | 'down') {
+    const currentIndex = assemblyTypes.findIndex(at => at.id === assemblyType.id)
+    if (currentIndex === -1) return
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= assemblyTypes.length) return
+    
+    const targetAssemblyType = assemblyTypes[targetIndex]
+    if (!targetAssemblyType) return
+    
+    // Swap sequence orders
+    await supabase
+      .from('assembly_types' as any)
+      .update({ sequence_order: targetAssemblyType.sequence_order } as any)
+      .eq('id', assemblyType.id)
+    
+    await supabase
+      .from('assembly_types' as any)
+      .update({ sequence_order: assemblyType.sequence_order } as any)
+      .eq('id', targetAssemblyType.id)
+    
+    await loadAssemblyTypes()
+  }
+
   useEffect(() => {
     loadData()
   }, [authUser?.id])
@@ -1819,6 +2055,30 @@ export default function Settings() {
       loadFixtureTypes()
     }
   }, [selectedServiceTypeForFixtures])
+
+  useEffect(() => {
+    if (selectedServiceTypeForParts) {
+      loadPartTypes()
+    }
+  }, [selectedServiceTypeForParts])
+
+  useEffect(() => {
+    if (partTypes.length > 0) {
+      loadPartTypePartCounts()
+    }
+  }, [partTypes])
+
+  useEffect(() => {
+    if (selectedServiceTypeForAssemblies) {
+      loadAssemblyTypes()
+    }
+  }, [selectedServiceTypeForAssemblies])
+
+  useEffect(() => {
+    if (assemblyTypes.length > 0) {
+      loadAssemblyTypeAssemblyCounts()
+    }
+  }, [assemblyTypes])
 
   useEffect(() => {
     if (fixtureTypes.length > 0) {
@@ -2352,10 +2612,10 @@ export default function Settings() {
     }
     
     const body: Record<string, unknown> = {
-      email: manualAddEmail.trim(),
-      password: manualAddPassword,
-      role: manualAddRole,
-      name: trimmedName || undefined,
+        email: manualAddEmail.trim(),
+        password: manualAddPassword,
+        role: manualAddRole,
+        name: trimmedName || undefined,
     }
     if (manualAddRole === 'estimator' && manualAddServiceTypeIds.length > 0) {
       body.service_type_ids = manualAddServiceTypeIds
@@ -4064,6 +4324,206 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Assembly Types</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Manage assembly types for each service type. Assembly types are used in the Materials system to categorize material assemblies/templates (e.g., Bathroom, Kitchen, Utility). This helps organize and filter assemblies.
+          </p>
+          
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Select Service Type *
+            </label>
+            <select
+              value={selectedServiceTypeForAssemblies}
+              onChange={(e) => setSelectedServiceTypeForAssemblies(e.target.value)}
+              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+            >
+              <option value="">-- Select a service type --</option>
+              {serviceTypes.map((st) => (
+                <option key={st.id} value={st.id}>{st.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedServiceTypeForAssemblies && (
+            <>
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => openEditAssemblyType(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  + Add Assembly Type
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={removeAllUnusedAssemblyTypes}
+                  disabled={removingUnusedAssemblyTypes || assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: removingUnusedAssemblyTypes ? '#d1d5db' : '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: removingUnusedAssemblyTypes || assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                    opacity: assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 0.5 : 1
+                  }}
+                  title={assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length === 0 ? 'No unused assembly types' : `Remove ${assemblyTypes.filter(at => (assemblyTypeAssemblyCounts[at.id] || 0) === 0).length} unused assembly type(s)`}
+                >
+                  {removingUnusedAssemblyTypes ? 'Removing...' : 'Remove All Unused Assembly Types'}
+                </button>
+              </div>
+
+              {assemblyTypes.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {assemblyTypes.map((at, idx) => (
+                    <div key={at.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{at.name}</h3>
+                            <span 
+                              style={{ 
+                                padding: '0.125rem 0.5rem', 
+                                fontSize: '0.75rem', 
+                                background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
+                                color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}
+                              title={`${assemblyTypeAssemblyCounts[at.id] || 0} assembl${assemblyTypeAssemblyCounts[at.id] === 1 ? 'y' : 'ies'} assigned`}
+                            >
+                              {assemblyTypeAssemblyCounts[at.id] || 0} assembl{assemblyTypeAssemblyCounts[at.id] === 1 ? 'y' : 'ies'}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => moveAssemblyType(at, 'up')}
+                            disabled={idx === 0}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveAssemblyType(at, 'down')}
+                            disabled={idx === assemblyTypes.length - 1}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              background: idx === assemblyTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: idx === assemblyTypes.length - 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditAssemblyType(at)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteAssemblyType(at)}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  No assembly types yet. Click "Add Assembly Type" to create one.
+                </div>
+              )}
+            </>
+          )}
+
+          {assemblyTypeFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginBottom: '1rem' }}>{editingAssemblyType ? 'Edit Assembly Type' : 'Add Assembly Type'}</h2>
+                
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForAssemblies)?.name}</strong>
+                  </span>
+                </div>
+                
+                {assemblyTypeError && (
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                    {assemblyTypeError}
+                  </div>
+                )}
+                
+                <form onSubmit={saveAssemblyType}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={assemblyTypeName}
+                      onChange={(e) => setAssemblyTypeName(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      required
+                      autoFocus
+                      placeholder="e.g., Bathroom, Kitchen, Utility, Commercial"
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={closeEditAssemblyType}
+                      disabled={assemblyTypeSaving}
+                      style={{ padding: '0.5rem 1rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={assemblyTypeSaving}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: assemblyTypeSaving ? '#d1d5db' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: assemblyTypeSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500
+                      }}
+                    >
+                      {assemblyTypeSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Takeoff, Labor, and Price Book Names</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Book names are the fixture and tie-in names (e.g., Toilet, Kitchen Sink, Water Heater) used across the Takeoff, Labor, and Price books. Each row shows a name with badges indicating how many entries in each book use it. These names appear in Bids Counts and when adding or editing book entries. New names can also be created automatically when adding book entries. Note: Materials uses Material Part Types for categorizing parts and supplies.
@@ -4383,7 +4843,7 @@ export default function Settings() {
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>User Management</h3>
             {[
               { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },

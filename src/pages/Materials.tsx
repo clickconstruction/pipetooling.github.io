@@ -35,13 +35,23 @@ interface PartType {
   updated_at: string
 }
 
+interface AssemblyType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
 type PartWithPrices = MaterialPart & {
   prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
   part_type?: PartType
 }
 
 type TemplateItemWithDetails = MaterialTemplateItem & {
-  part?: MaterialPart
+  part?: MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }
   nested_template?: MaterialTemplate
 }
 
@@ -66,7 +76,7 @@ export default function Materials() {
   const location = useLocation()
   const navigate = useNavigate()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [activeTab, setActiveTab] = useState<'price-book' | 'templates-po' | 'purchase-orders'>('price-book')
+  const [activeTab, setActiveTab] = useState<'price-book' | 'assembly-book' | 'templates-po' | 'purchase-orders'>('price-book')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -90,6 +100,8 @@ export default function Materials() {
   const [partFormInitialName, setPartFormInitialName] = useState('')
   const [viewingPartPrices, setViewingPartPrices] = useState<MaterialPart | null>(null)
   const [expandedPartId, setExpandedPartId] = useState<string | null>(null)
+  const [editingItemQuantityId, setEditingItemQuantityId] = useState<string | null>(null)
+  const [editingItemQuantityValue, setEditingItemQuantityValue] = useState('')
   const [partsPage, setPartsPage] = useState(0)
   const [hasMoreParts, setHasMoreParts] = useState(true)
   const [loadingPartsPage, setLoadingPartsPage] = useState(false)
@@ -132,8 +144,13 @@ export default function Materials() {
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<MaterialTemplate | null>(null)
   const [templateSearchQuery, setTemplateSearchQuery] = useState('')
+  const [filterAssemblyTypeIds, setFilterAssemblyTypeIds] = useState<string[]>([])
+  const [filterIncludeEmpty, setFilterIncludeEmpty] = useState(false)
+  const [filterAssemblyTypeDropdownOpen, setFilterAssemblyTypeDropdownOpen] = useState(false)
+  const [assemblyTypes, setAssemblyTypes] = useState<AssemblyType[]>([])
   const [templateItems, setTemplateItems] = useState<TemplateItemWithDetails[]>([])
-  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null }>>([])
+  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
+  const [partIdToLowestPrice, setPartIdToLowestPrice] = useState<Record<string, number>>({})
   const [draftPOs, setDraftPOs] = useState<PurchaseOrderWithItems[]>([])
   const [selectedPO, setSelectedPO] = useState<PurchaseOrderWithItems | null>(null)
   const [editingPO, setEditingPO] = useState<PurchaseOrderWithItems | null>(null)
@@ -141,6 +158,7 @@ export default function Materials() {
   const [editingTemplate, setEditingTemplate] = useState<MaterialTemplate | null>(null)
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
+  const [templateAssemblyTypeId, setTemplateAssemblyTypeId] = useState('')
   const [savingTemplate, setSavingTemplate] = useState(false)
   const [addingItemToTemplate, setAddingItemToTemplate] = useState(false)
   const [newItemType, setNewItemType] = useState<'part' | 'template'>('part')
@@ -152,12 +170,6 @@ export default function Materials() {
   const [newItemNotes, setNewItemNotes] = useState('')
   const [creatingPOFromTemplate, setCreatingPOFromTemplate] = useState(false)
   const [addingTemplateToPO, setAddingTemplateToPO] = useState(false)
-  const [addingPartToPO, setAddingPartToPO] = useState(false)
-  const [selectedTemplateForPO, setSelectedTemplateForPO] = useState('')
-  const [selectedPartForPO, setSelectedPartForPO] = useState('')
-  const [poPartSearchQuery, setPoPartSearchQuery] = useState('')
-  const [poPartDropdownOpen, setPoPartDropdownOpen] = useState(false)
-  const [partQuantityForPO, setPartQuantityForPO] = useState('1')
   const [editingPOItem, setEditingPOItem] = useState<string | null>(null)
   const [editingPOItemQuantity, setEditingPOItemQuantity] = useState('')
   const [editingPOItemSupplyHouse, setEditingPOItemSupplyHouse] = useState('')
@@ -183,8 +195,21 @@ export default function Materials() {
   const [notesValue, setNotesValue] = useState('')
   const [viewedPOTaxPercent, setViewedPOTaxPercent] = useState('8.25')
 
+  // Add Item Modal (Assembly Book)
+  const [addItemModalOpen, setAddItemModalOpen] = useState(false)
+  const [addItemModalType, setAddItemModalType] = useState<'part' | 'template'>('part')
+  const [addItemModalPartId, setAddItemModalPartId] = useState('')
+  const [addItemModalTemplateId, setAddItemModalTemplateId] = useState('')
+  const [addItemModalSearchQuery, setAddItemModalSearchQuery] = useState('')
+  const [addItemModalQuantity, setAddItemModalQuantity] = useState('1')
+  const [addItemModalDropdownOpen, setAddItemModalDropdownOpen] = useState(false)
+  const [addingItemFromModal, setAddingItemFromModal] = useState(false)
+  const [addItemModalError, setAddItemModalError] = useState<string | null>(null)
+  const [addItemModalFilterPartTypeId, setAddItemModalFilterPartTypeId] = useState('')
+  const [addItemModalFilterAssemblyTypeId, setAddItemModalFilterAssemblyTypeId] = useState('')
+
   const templatePartPickerRef = useRef<HTMLDivElement>(null)
-  const poPartPickerRef = useRef<HTMLDivElement>(null)
+  const filterAssemblyTypeDropdownRef = useRef<HTMLDivElement>(null)
   const templateItemsSectionRef = useRef<HTMLDivElement>(null)
 
   // Purchase Orders state
@@ -270,6 +295,27 @@ export default function Materials() {
     }
     
     setPartTypes((data as unknown as PartType[]) ?? [])
+  }
+
+  async function loadAssemblyTypes() {
+    if (!selectedServiceTypeId) {
+      setAssemblyTypes([])
+      return
+    }
+    
+    const { data, error } = await supabase
+      .from('assembly_types' as any)
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: true })
+    
+    if (error) {
+      console.error('Failed to load assembly types:', error)
+      setAssemblyTypes([])
+      return
+    }
+    
+    setAssemblyTypes((data as unknown as AssemblyType[]) ?? [])
   }
 
   async function loadSupplyHouses() {
@@ -660,10 +706,22 @@ export default function Materials() {
         if (item.item_type === 'part' && item.part_id) {
           const { data: partData } = await supabase
             .from('material_parts')
-            .select('*')
+            .select('*, part_types(*)')
             .eq('id', item.part_id)
             .single()
-          return { ...item, part: partData as MaterialPart | undefined }
+          const rawPart = partData as (MaterialPart & { part_types?: PartType }) | null
+          let part: (MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }) | undefined
+          if (rawPart) {
+            part = { ...rawPart, part_type: rawPart.part_types }
+            const { data: pricesData } = await supabase
+              .from('material_part_prices')
+              .select('*, supply_houses(*)')
+              .eq('part_id', rawPart.id)
+              .order('price', { ascending: true })
+            const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+            part.prices = pricesList.map(p => ({ ...p, supply_house: p.supply_houses }))
+          }
+          return { ...item, part }
         } else if (item.item_type === 'template' && item.nested_template_id) {
           const { data: templateData } = await supabase
             .from('material_templates')
@@ -785,6 +843,7 @@ export default function Materials() {
         await Promise.all([
           loadSupplyHouses(),
           loadPartTypes(),
+          loadAssemblyTypes(),
           loadParts(0, { serviceTypeId: selectedServiceTypeId }),
           loadAllParts(selectedServiceTypeId),
           loadMaterialTemplates(),
@@ -819,15 +878,33 @@ export default function Materials() {
   }, [selectedTemplate])
 
   useEffect(() => {
-    if (activeTab === 'templates-po') {
+    if (activeTab === 'templates-po' || activeTab === 'assembly-book') {
       const load = async () => {
         const { data, error } = await supabase
           .from('material_template_items')
-          .select('template_id, item_type, part_id')
+          .select('template_id, item_type, part_id, nested_template_id, quantity')
         if (!error && data) {
-          setAllTemplateItemsForStats(data as Array<{ template_id: string; item_type: string; part_id: string | null }>)
+          const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
+          setAllTemplateItemsForStats(items)
+          const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
+          if (partIds.length > 0) {
+            const { data: pricesData } = await supabase
+              .from('material_part_prices')
+              .select('part_id, price')
+              .in('part_id', partIds)
+            const map: Record<string, number> = {}
+            for (const row of (pricesData ?? []) as { part_id: string; price: number }[]) {
+              const pid = row.part_id
+              const existing = map[pid]
+              if (existing === undefined || row.price < existing) map[pid] = row.price
+            }
+            setPartIdToLowestPrice(map)
+          } else {
+            setPartIdToLowestPrice({})
+          }
         } else {
           setAllTemplateItemsForStats([])
+          setPartIdToLowestPrice({})
         }
       }
       load()
@@ -915,15 +992,15 @@ export default function Materials() {
   }, [templatePartDropdownOpen])
 
   useEffect(() => {
-    if (!poPartDropdownOpen) return
+    if (!filterAssemblyTypeDropdownOpen) return
     const onMouseDown = (e: MouseEvent) => {
-      if (poPartPickerRef.current && !poPartPickerRef.current.contains(e.target as Node)) {
-        setPoPartDropdownOpen(false)
+      if (filterAssemblyTypeDropdownRef.current && !filterAssemblyTypeDropdownRef.current.contains(e.target as Node)) {
+        setFilterAssemblyTypeDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
-  }, [poPartDropdownOpen])
+  }, [filterAssemblyTypeDropdownOpen])
 
   // Infinite scroll for parts pagination
   useEffect(() => {
@@ -1023,11 +1100,26 @@ export default function Materials() {
     return matchesStatus && matchesSearch
   })
 
+  // Templates with at least one item (part or nested assembly)
+  const templateIdsWithItems = new Set(allTemplateItemsForStats.map(i => i.template_id))
+
   // Filter material templates by search (name, description)
   const filteredTemplates = materialTemplates.filter(t => {
+    const isEmpty = !templateIdsWithItems.has(t.id)
+    const hasActiveFilter = filterIncludeEmpty || filterAssemblyTypeIds.length > 0
+    const matchesEmpty = filterIncludeEmpty && isEmpty
+    const matchesType = filterAssemblyTypeIds.length > 0 && t.assembly_type_id && filterAssemblyTypeIds.includes(t.assembly_type_id)
+    if (hasActiveFilter && !matchesEmpty && !matchesType) return false
+    
+    // Search filter
     const q = templateSearchQuery.trim().toLowerCase()
     if (!q) return true
-    return [t.name, t.description].some(f => (f || '').toLowerCase().includes(q))
+    
+    // Include assembly type name in search
+    const assemblyTypeName = assemblyTypes.find(at => at.id === t.assembly_type_id)?.name || ''
+    return [t.name, t.description, assemblyTypeName].some(f => 
+      (f || '').toLowerCase().includes(q)
+    )
   })
 
   // Template stats: # of templates, % with at least one part item that has no price in price book
@@ -1039,6 +1131,49 @@ export default function Materials() {
   ).length
   const templateStatsTotal = materialTemplates.length
   const templateStatsPctWithNoPrice = templateStatsTotal === 0 ? 0 : Math.round((templatesWithItemsWithNoPrice / templateStatsTotal) * 100)
+
+  // Assembly cost calculation helper
+  function calculateAssemblyCost(
+    templateId: string, 
+    parentQuantity: number = 1,
+    visited: Set<string> = new Set()
+  ): { total: number; missingPrices: number; partCount: number; nestedCount: number } {
+    // Prevent infinite recursion
+    if (visited.has(templateId)) {
+      return { total: 0, missingPrices: 0, partCount: 0, nestedCount: 0 }
+    }
+    visited.add(templateId)
+    
+    const items = allTemplateItemsForStats.filter(i => i.template_id === templateId)
+    let total = 0
+    let missingPrices = 0
+    let partCount = 0
+    let nestedCount = 0
+    
+    for (const item of items) {
+      const itemQuantity = item.quantity || 1
+      const effectiveQuantity = itemQuantity * parentQuantity
+      
+      if (item.item_type === 'part' && item.part_id) {
+        partCount++
+        const lowestPrice = partIdToLowestPrice[item.part_id]
+        if (lowestPrice != null && lowestPrice > 0) {
+          total += lowestPrice * effectiveQuantity
+        } else {
+          missingPrices++
+        }
+      } else if (item.item_type === 'template' && item.nested_template_id) {
+        nestedCount++
+        const nestedResult = calculateAssemblyCost(item.nested_template_id, effectiveQuantity, visited)
+        total += nestedResult.total
+        missingPrices += nestedResult.missingPrices
+        partCount += nestedResult.partCount
+        nestedCount += nestedResult.nestedCount
+      }
+    }
+    
+    return { total, missingPrices, partCount, nestedCount }
+  }
 
   // Price Book Tab Functions
   function openAddPart() {
@@ -1188,6 +1323,7 @@ export default function Materials() {
     setEditingTemplate(null)
     setTemplateName('')
     setTemplateDescription('')
+    setTemplateAssemblyTypeId('')
     setTemplateFormOpen(true)
     setError(null)
   }
@@ -1196,6 +1332,7 @@ export default function Materials() {
     setEditingTemplate(template)
     setTemplateName(template.name)
     setTemplateDescription(template.description || '')
+    setTemplateAssemblyTypeId(template.assembly_type_id || '')
     setTemplateFormOpen(true)
     setError(null)
   }
@@ -1219,6 +1356,7 @@ export default function Materials() {
         .update({
           name: templateName.trim(),
           description: templateDescription.trim() || null,
+          assembly_type_id: templateAssemblyTypeId || null,
         })
         .eq('id', editingTemplate.id)
       if (e) {
@@ -1234,6 +1372,7 @@ export default function Materials() {
           name: templateName.trim(),
           description: templateDescription.trim() || null,
           service_type_id: selectedServiceTypeId,
+          assembly_type_id: templateAssemblyTypeId || null,
         })
       if (e) {
         setError(e.message)
@@ -1262,6 +1401,28 @@ export default function Materials() {
         setSelectedTemplate(null)
         setTemplateItems([])
       }
+    }
+  }
+
+  async function updateItemQuantity(itemId: string, newQuantity: number) {
+    if (newQuantity < 1) {
+      setError('Quantity must be at least 1')
+      return
+    }
+
+    const { error } = await supabase
+      .from('material_template_items')
+      .update({ quantity: newQuantity })
+      .eq('id', itemId)
+
+    if (error) {
+      setError(error.message)
+    } else {
+      if (selectedTemplate) {
+        await loadTemplateItems(selectedTemplate.id)
+      }
+      setEditingItemQuantityId(null)
+      setEditingItemQuantityValue('')
     }
   }
 
@@ -1337,6 +1498,84 @@ export default function Materials() {
       setNewItemNotes('')
     }
     setAddingItemToTemplate(false)
+  }
+
+  function closeAddItemModal() {
+    setAddItemModalOpen(false)
+    setAddItemModalPartId('')
+    setAddItemModalTemplateId('')
+    setAddItemModalSearchQuery('')
+    setAddItemModalQuantity('1')
+    setAddItemModalDropdownOpen(false)
+    setAddItemModalError(null)
+    setAddItemModalFilterPartTypeId('')
+    setAddItemModalFilterAssemblyTypeId('')
+  }
+
+  async function handleAddItemFromModal() {
+    if (!selectedTemplate) return
+    if (addItemModalType === 'part' && !addItemModalPartId) {
+      setAddItemModalError('Please select a part')
+      return
+    }
+    if (addItemModalType === 'template' && !addItemModalTemplateId) {
+      setAddItemModalError('Please select an assembly')
+      return
+    }
+    const quantity = parseInt(addItemModalQuantity) || 1
+    if (quantity < 1) {
+      setAddItemModalError('Quantity must be at least 1')
+      return
+    }
+    if (addItemModalType === 'template' && addItemModalTemplateId === selectedTemplate.id) {
+      setAddItemModalError('Cannot add an assembly to itself')
+      return
+    }
+
+    setAddingItemFromModal(true)
+    setAddItemModalError(null)
+
+    const partId = addItemModalType === 'part' ? addItemModalPartId : null
+    const templateId = addItemModalType === 'template' ? addItemModalTemplateId : null
+
+    if (addItemModalType === 'part' && partId) {
+      const existing = templateItems.find((i) => i.item_type === 'part' && i.part_id === partId)
+      if (existing) {
+        const { error: updateErr } = await supabase
+          .from('material_template_items')
+          .update({ quantity: (existing.quantity ?? 1) + quantity })
+          .eq('id', existing.id)
+        if (updateErr) {
+          setError(updateErr.message)
+        } else {
+          await loadTemplateItems(selectedTemplate.id)
+          closeAddItemModal()
+        }
+        setAddingItemFromModal(false)
+        return
+      }
+    }
+
+    const maxOrder = templateItems.length === 0 ? 0 : Math.max(...templateItems.map(i => i.sequence_order))
+    const { error } = await supabase
+      .from('material_template_items')
+      .insert({
+        template_id: selectedTemplate.id,
+        item_type: addItemModalType,
+        part_id: partId,
+        nested_template_id: templateId,
+        quantity: quantity,
+        sequence_order: maxOrder + 1,
+        notes: null,
+      })
+
+    if (error) {
+      setAddItemModalError(error.message)
+    } else {
+      await loadTemplateItems(selectedTemplate.id)
+      closeAddItemModal()
+    }
+    setAddingItemFromModal(false)
   }
 
   async function removeItemFromTemplate(itemId: string) {
@@ -1435,7 +1674,6 @@ export default function Materials() {
     if (addError) {
       setError(addError)
       setAddingTemplateToPO(false)
-      setSelectedTemplateForPO('')
       return
     }
 
@@ -1468,90 +1706,6 @@ export default function Materials() {
       }
     }
     setAddingTemplateToPO(false)
-    setSelectedTemplateForPO('')
-  }
-
-  async function addPartToPO(poId: string, partId: string, quantity: number) {
-    if (!authUser?.id) return
-    if (quantity <= 0) {
-      setError('Quantity must be greater than 0')
-      return
-    }
-    setAddingPartToPO(true)
-    setError(null)
-
-    // Get best price for the part
-    const { data: prices } = await supabase
-      .from('material_part_prices')
-      .select('*, supply_houses(*)')
-      .eq('part_id', partId)
-      .order('price', { ascending: true })
-      .limit(1)
-    
-    const firstPrice = prices && prices.length > 0 ? prices[0] : undefined
-    const bestPrice = firstPrice != null
-      ? (firstPrice as unknown as MaterialPartPrice & { supply_houses: SupplyHouse })
-      : null
-
-    // Get current max sequence_order for this PO
-    const { data: existingItems } = await supabase
-      .from('purchase_order_items')
-      .select('sequence_order')
-      .eq('purchase_order_id', poId)
-      .order('sequence_order', { ascending: false })
-      .limit(1)
-    
-    const maxOrder = existingItems && existingItems.length > 0 && existingItems[0] ? existingItems[0].sequence_order : 0
-
-    // Add item to PO
-    const { error: itemError } = await supabase
-      .from('purchase_order_items')
-      .insert({
-        purchase_order_id: poId,
-        part_id: partId,
-        quantity: quantity,
-        selected_supply_house_id: bestPrice?.supply_house_id || null,
-        price_at_time: bestPrice?.price || 0,
-        sequence_order: maxOrder + 1,
-      })
-
-    if (itemError) {
-      setError(`Failed to add part: ${itemError.message}`)
-      setAddingPartToPO(false)
-      return
-    }
-
-    await loadPurchaseOrders()
-    // Reload the editing PO
-    if (editingPO) {
-      const { data: poData } = await supabase
-        .from('purchase_orders')
-        .select('*')
-        .eq('id', poId)
-        .single()
-      
-      if (poData) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', poId)
-          .order('sequence_order', { ascending: true })
-        
-        if (!itemsError && itemsData) {
-          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
-          setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
-        }
-      }
-    }
-    setAddingPartToPO(false)
-    setSelectedPartForPO('')
-    setPartQuantityForPO('1')
   }
 
   async function updatePOItem(itemId: string, updates: { quantity?: number; supply_house_id?: string | null; price_at_time?: number; notes?: string | null }) {
@@ -2397,6 +2551,21 @@ export default function Materials() {
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab('assembly-book')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            border: 'none',
+            background: 'none',
+            borderBottom: activeTab === 'assembly-book' ? '2px solid #3b82f6' : '2px solid transparent',
+            color: activeTab === 'assembly-book' ? '#3b82f6' : '#6b7280',
+            fontWeight: activeTab === 'assembly-book' ? 600 : 400,
+            cursor: 'pointer',
+          }}
+        >
+          Assembly Book
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('templates-po')}
           style={{
             padding: '0.75rem 1.5rem',
@@ -2946,6 +3115,564 @@ export default function Materials() {
         </div>
       )}
 
+      {/* Assembly Book Tab */}
+      {activeTab === 'assembly-book' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2>Assembly Book</h2>
+            <button
+              type="button"
+              onClick={openAddTemplate}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              + Add Assembly
+            </button>
+          </div>
+
+          {/* Filter and Search */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <div ref={filterAssemblyTypeDropdownRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setFilterAssemblyTypeDropdownOpen(!filterAssemblyTypeDropdownOpen)}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px', background: 'white', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span>
+                  {!filterIncludeEmpty && filterAssemblyTypeIds.length === 0
+                    ? 'All Assembly Types'
+                    : filterIncludeEmpty && filterAssemblyTypeIds.length === 0
+                      ? 'Empty'
+                      : filterIncludeEmpty && filterAssemblyTypeIds.length === 1
+                        ? `Empty, ${assemblyTypes.find(at => at.id === filterAssemblyTypeIds[0])?.name ?? '1 type'}`
+                        : filterIncludeEmpty && filterAssemblyTypeIds.length > 1
+                          ? `Empty, ${filterAssemblyTypeIds.length} types`
+                          : filterAssemblyTypeIds.length === 1
+                            ? assemblyTypes.find(at => at.id === filterAssemblyTypeIds[0])?.name ?? '1 type'
+                            : `${filterAssemblyTypeIds.length} types selected`}
+                </span>
+                <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>▾</span>
+              </button>
+              {filterAssemblyTypeDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    marginTop: 4,
+                    background: 'white',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    zIndex: 50,
+                    minWidth: '220px',
+                    maxHeight: '280px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  <label
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={filterIncludeEmpty}
+                      onChange={(e) => setFilterIncludeEmpty(e.target.checked)}
+                    />
+                    <span style={{ fontSize: '0.875rem' }}>Empty</span>
+                  </label>
+                  {assemblyTypes.map(at => (
+                    <label
+                      key={at.id}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterAssemblyTypeIds.includes(at.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilterAssemblyTypeIds(prev => [...prev, at.id])
+                          } else {
+                            setFilterAssemblyTypeIds(prev => prev.filter(id => id !== at.id))
+                          }
+                        }}
+                      />
+                      <span style={{ fontSize: '0.875rem' }}>{at.name}</span>
+                    </label>
+                  ))}
+                  {assemblyTypes.length === 0 && (
+                    <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No assembly types</div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            <input
+              type="text"
+              value={templateSearchQuery}
+              onChange={(e) => setTemplateSearchQuery(e.target.value)}
+              placeholder="Search assemblies by name, description, or type..."
+              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            />
+          </div>
+
+          {/* Assembly List */}
+          <div style={{ display: 'grid', gridTemplateColumns: selectedTemplate ? '1fr 1.5fr' : '1fr', gap: '2rem' }}>
+            {/* Left: Assembly List */}
+            <div>
+              {filteredTemplates.length === 0 ? (
+                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                  {materialTemplates.length === 0 ? 'No assemblies yet. Create your first assembly!' : 'No assemblies match your filters.'}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {filteredTemplates.map(template => {
+                    const costData = calculateAssemblyCost(template.id)
+                    const isSelected = selectedTemplate?.id === template.id
+                    const assemblyType = assemblyTypes.find(at => at.id === template.assembly_type_id)
+                    
+                    // Pricing status badge
+                    let statusBg = '#f3f4f6'
+                    let statusColor = '#6b7280'
+                    let statusText = 'Empty'
+                    
+                    if (costData.partCount === 0 && costData.nestedCount === 0) {
+                      statusBg = '#f3f4f6'
+                      statusColor = '#6b7280'
+                      statusText = 'Empty'
+                    } else if (costData.missingPrices === 0) {
+                      statusBg = '#d1fae5'
+                      statusColor = '#065f46'
+                      statusText = 'All Priced'
+                    } else if (costData.missingPrices > 0 && costData.total > 0) {
+                      statusBg = '#fef3c7'
+                      statusColor = '#92400e'
+                      statusText = `${costData.missingPrices} Missing`
+                    } else {
+                      statusBg = '#fee2e2'
+                      statusColor = '#991b1b'
+                      statusText = 'No Prices'
+                    }
+                    
+                    return (
+                      <div
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(isSelected ? null : template)}
+                        style={{
+                          padding: '1rem',
+                          border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                          borderRadius: 8,
+                          background: isSelected ? '#eff6ff' : 'white',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, marginBottom: '0.25rem' }}>{template.name}</h3>
+                            {template.description && (
+                              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>{template.description}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openEditTemplate(template)
+                            }}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {assemblyType && (
+                            <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#3730a3', borderRadius: 4, fontWeight: 500 }}>
+                              {assemblyType.name}
+                            </span>
+                          )}
+                          <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: statusBg, color: statusColor, borderRadius: 4, fontWeight: 500 }}>
+                            {statusText}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            {costData.partCount} part{costData.partCount !== 1 ? 's' : ''}
+                            {costData.nestedCount > 0 && `, ${costData.nestedCount} nested`}
+                          </span>
+                          {costData.total > 0 && (
+                            <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                              ${formatCurrency(costData.total)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Assembly Details */}
+            {selectedTemplate && (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', background: 'white' }}>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h2 style={{ margin: 0, marginBottom: '0.5rem' }}>{selectedTemplate.name}</h2>
+                  {selectedTemplate.description && (
+                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{selectedTemplate.description}</p>
+                  )}
+                </div>
+
+                {/* Parts Section */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Parts</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddItemModalType('part')
+                        setAddItemModalPartId('')
+                        setAddItemModalTemplateId('')
+                        setAddItemModalSearchQuery('')
+                        setAddItemModalQuantity('1')
+                        setAddItemModalDropdownOpen(false)
+                        setAddItemModalError(null)
+                        setAddItemModalFilterPartTypeId('')
+                        setAddItemModalFilterAssemblyTypeId('')
+                        setAddItemModalOpen(true)
+                      }}
+                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Add Parts
+                    </button>
+                  </div>
+                  {templateItems.filter(item => item.item_type === 'part').length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                      No parts in this assembly
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {templateItems.filter(item => item.item_type === 'part').map(item => {
+                        const part = item.part ?? parts.find(p => p.id === item.part_id) ?? (loadAllMode ? allParts.find(p => p.id === item.part_id) : undefined)
+                        const hasPrice = part && part.prices && part.prices.length > 0
+                        const lowestPrice = hasPrice && part.prices ? Math.min(...part.prices.map(pr => pr.price)) : 0
+                        const isExpanded = expandedPartId === part?.id
+                        
+                        return (
+                          <div key={item.id} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                            <div 
+                              onClick={() => setExpandedPartId(isExpanded ? null : (part?.id || null))}
+                              style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                padding: '0.75rem', 
+                                background: isExpanded ? '#eff6ff' : '#f9fafb',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s'
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{part?.name || 'Unknown Part'}</div>
+                                {(part?.manufacturer || part?.part_type?.name) && (
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                    {[part.manufacturer, part.part_type?.name].filter(Boolean).join(' · ')}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                  Qty: {item.quantity}
+                                  {item.notes && ` · ${item.notes}`}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                                {hasPrice ? (
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#059669' }}>
+                                    ${formatCurrency(lowestPrice * item.quantity)}
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>
+                                      ${formatCurrency(lowestPrice)} ea
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>
+                                    No price
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Expanded price details */}
+                            {isExpanded && part && (
+                              <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e5e7eb' }}>
+                                {/* Quantity Editor */}
+                                <div style={{ marginBottom: '0.75rem' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Quantity in Assembly:</span>
+                                    {editingItemQuantityId === item.id ? (
+                                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          value={editingItemQuantityValue}
+                                          onChange={(e) => setEditingItemQuantityValue(e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          autoFocus
+                                          style={{ width: '80px', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            const qty = parseInt(editingItemQuantityValue)
+                                            if (qty >= 1) {
+                                              updateItemQuantity(item.id, qty)
+                                            }
+                                          }}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingItemQuantityId(null)
+                                            setEditingItemQuantityValue('')
+                                          }}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#059669' }}>{item.quantity}</span>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingItemQuantityId(item.id)
+                                            setEditingItemQuantityValue(item.quantity.toString())
+                                          }}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                        >
+                                          Edit
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Prices at Supply Houses</h4>
+                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setViewingPartPrices(part)
+                                        setExpandedPartId(null)
+                                      }}
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                    >
+                                      Edit Prices
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setEditingPart(part)
+                                        setPartFormOpen(true)
+                                        setExpandedPartId(null)
+                                      }}
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                    >
+                                      Edit Part
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        removeItemFromTemplate(item.id)
+                                        setExpandedPartId(null)
+                                      }}
+                                      title="Remove from assembly"
+                                      aria-label="Remove from assembly"
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                                
+                                {(part.prices?.length ?? 0) === 0 ? (
+                                  <div style={{ padding: '0.75rem', textAlign: 'center', color: '#dc2626', background: '#fee2e2', borderRadius: 4, fontSize: '0.75rem' }}>
+                                    No prices available for this part
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                    {(part.prices ?? [])
+                                      .sort((a, b) => a.price - b.price)
+                                      .map(price => {
+                                        const supplyHouse = supplyHouses.find(sh => sh.id === price.supply_house_id)
+                                        const isLowest = price.price === lowestPrice
+                                        
+                                        return (
+                                          <div 
+                                            key={price.id} 
+                                            style={{ 
+                                              display: 'flex', 
+                                              justifyContent: 'space-between', 
+                                              alignItems: 'center',
+                                              padding: '0.5rem',
+                                              background: isLowest ? '#d1fae5' : '#f9fafb',
+                                              borderRadius: 4,
+                                              fontSize: '0.75rem'
+                                            }}
+                                          >
+                                            <span style={{ fontWeight: 500, color: '#374151' }}>
+                                              {supplyHouse?.name || 'Unknown'}
+                                              {isLowest && (
+                                                <span style={{ marginLeft: '0.5rem', padding: '0.125rem 0.375rem', background: '#059669', color: 'white', borderRadius: 3, fontSize: '0.625rem', fontWeight: 600 }}>
+                                                  LOWEST
+                                                </span>
+                                              )}
+                                            </span>
+                                            <span style={{ fontWeight: 600, color: isLowest ? '#059669' : '#6b7280' }}>
+                                              ${formatCurrency(price.price)}
+                                            </span>
+                                          </div>
+                                        )
+                                      })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Nested Assemblies Section */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Nested Assemblies</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddItemModalType('template')
+                        setAddItemModalPartId('')
+                        setAddItemModalTemplateId('')
+                        setAddItemModalSearchQuery('')
+                        setAddItemModalQuantity('1')
+                        setAddItemModalDropdownOpen(false)
+                        setAddItemModalError(null)
+                        setAddItemModalFilterPartTypeId('')
+                        setAddItemModalFilterAssemblyTypeId('')
+                        setAddItemModalOpen(true)
+                      }}
+                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Add Nested Assembly
+                    </button>
+                  </div>
+                  {templateItems.filter(item => item.item_type === 'template').length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                      No nested assemblies
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {templateItems.filter(item => item.item_type === 'template').map(item => {
+                        const nestedTemplate = materialTemplates.find(t => t.id === item.nested_template_id)
+                        const nestedCost = nestedTemplate ? calculateAssemblyCost(nestedTemplate.id, item.quantity) : { total: 0, missingPrices: 0, partCount: 0, nestedCount: 0 }
+                        
+                        return (
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f0f9ff', borderRadius: 4, border: '1px solid #bfdbfe' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{nestedTemplate?.name || 'Unknown Assembly'}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                Qty: {item.quantity} · {nestedCost.partCount} part{nestedCost.partCount !== 1 ? 's' : ''}
+                                {nestedCost.nestedCount > 0 && `, ${nestedCost.nestedCount} nested`}
+                                {item.notes && ` · ${item.notes}`}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                              {nestedCost.total > 0 ? (
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0284c7' }}>
+                                  ${formatCurrency(nestedCost.total)}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>
+                                  {nestedCost.missingPrices > 0 ? `${nestedCost.missingPrices} missing` : 'No prices'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Cost Summary */}
+                {(() => {
+                  const costData = calculateAssemblyCost(selectedTemplate.id)
+                  const partsOnly = templateItems.filter(item => item.item_type === 'part').reduce((sum, item) => {
+                    const part = item.part ?? parts.find(p => p.id === item.part_id) ?? (loadAllMode ? allParts.find(p => p.id === item.part_id) : undefined)
+                    const prices = part?.prices
+                    if (part && prices && prices.length > 0) {
+                      const lowestPrice = Math.min(...prices.map(pr => pr.price))
+                      return sum + (lowestPrice * item.quantity)
+                    }
+                    return sum
+                  }, 0)
+                  const nestedOnly = costData.total - partsOnly
+                  
+                  return (
+                    <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Cost Summary</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#6b7280' }}>Direct Parts:</span>
+                          <span style={{ fontWeight: 500 }}>${formatCurrency(partsOnly)}</span>
+                        </div>
+                        {nestedOnly > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280' }}>Nested Assemblies:</span>
+                            <span style={{ fontWeight: 500 }}>${formatCurrency(nestedOnly)}</span>
+                          </div>
+                        )}
+                        <div style={{ borderTop: '1px solid #d1d5db', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontWeight: 600 }}>Total Estimated Cost:</span>
+                          <span style={{ fontWeight: 700, color: '#059669', fontSize: '1rem' }}>${formatCurrency(costData.total)}</span>
+                        </div>
+                        {costData.missingPrices > 0 && (
+                          <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#fef3c7', borderRadius: 4, color: '#92400e', fontSize: '0.75rem' }}>
+                            ⚠ {costData.missingPrices} part{costData.missingPrices !== 1 ? 's' : ''} missing price{costData.missingPrices !== 1 ? 's' : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Quick Actions */}
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplate(null)
+                      setActiveTab('price-book')
+                    }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    View Price Book
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Assemblies & PO Builder Tab */}
       {activeTab === 'templates-po' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
@@ -2962,13 +3689,89 @@ export default function Materials() {
               </button>
             </div>
 
-            <input
-              type="text"
-              value={templateSearchQuery}
-              onChange={(e) => setTemplateSearchQuery(e.target.value)}
-              placeholder="Search assemblies by name or description…"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem' }}
-            />
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <div ref={filterAssemblyTypeDropdownRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setFilterAssemblyTypeDropdownOpen(!filterAssemblyTypeDropdownOpen)}
+                  style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px', background: 'white', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span>
+                    {!filterIncludeEmpty && filterAssemblyTypeIds.length === 0
+                      ? 'All Assembly Types'
+                      : filterIncludeEmpty && filterAssemblyTypeIds.length === 0
+                        ? 'Empty'
+                        : filterIncludeEmpty && filterAssemblyTypeIds.length === 1
+                          ? `Empty, ${assemblyTypes.find(at => at.id === filterAssemblyTypeIds[0])?.name ?? '1 type'}`
+                          : filterIncludeEmpty && filterAssemblyTypeIds.length > 1
+                            ? `Empty, ${filterAssemblyTypeIds.length} types`
+                            : filterAssemblyTypeIds.length === 1
+                              ? assemblyTypes.find(at => at.id === filterAssemblyTypeIds[0])?.name ?? '1 type'
+                              : `${filterAssemblyTypeIds.length} types selected`}
+                  </span>
+                  <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>▾</span>
+                </button>
+                {filterAssemblyTypeDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      marginTop: 4,
+                      background: 'white',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      zIndex: 50,
+                      minWidth: '220px',
+                      maxHeight: '280px',
+                      overflowY: 'auto',
+                    }}
+                  >
+                    <label
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterIncludeEmpty}
+                        onChange={(e) => setFilterIncludeEmpty(e.target.checked)}
+                      />
+                      <span style={{ fontSize: '0.875rem' }}>Empty</span>
+                    </label>
+                    {assemblyTypes.map(at => (
+                      <label
+                        key={at.id}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filterAssemblyTypeIds.includes(at.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFilterAssemblyTypeIds(prev => [...prev, at.id])
+                            } else {
+                              setFilterAssemblyTypeIds(prev => prev.filter(id => id !== at.id))
+                            }
+                          }}
+                        />
+                        <span style={{ fontSize: '0.875rem' }}>{at.name}</span>
+                      </label>
+                    ))}
+                    {assemblyTypes.length === 0 && (
+                      <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No assembly types</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <input
+                type="text"
+                value={templateSearchQuery}
+                onChange={(e) => setTemplateSearchQuery(e.target.value)}
+                placeholder="Search assemblies by name or description…"
+                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
 
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
               {materialTemplates.length === 0 ? (
@@ -2987,6 +3790,7 @@ export default function Materials() {
                     const unpricedCount = partItems.filter(i => i.part_id !== null && partIdsWithNoPrice.has(i.part_id)).length
                     const partsButtonBackground = partCount === 0 ? '#dc2626' : unpricedCount > 0 ? '#ca8a04' : '#3b82f6'
                     const partsButtonColor = partsButtonBackground === '#ca8a04' ? '#1f2937' : 'white'
+                    const assemblyType = assemblyTypes.find(at => at.id === template.assembly_type_id)
                     return (
                     <div
                       key={template.id}
@@ -3000,7 +3804,14 @@ export default function Materials() {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{template.name}</div>
+                          <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {template.name}
+                            {assemblyType && (
+                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#3730a3', borderRadius: 4, fontWeight: 500 }}>
+                                {assemblyType.name}
+                              </span>
+                            )}
+                          </div>
                           {template.description && (
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{template.description}</div>
                           )}
@@ -3040,8 +3851,94 @@ export default function Materials() {
             {selectedTemplate && (
               <div ref={templateItemsSectionRef} style={{ marginTop: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Items in {selectedTemplate.name}</h3>
-                
-                <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
+
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part/Assembly Type</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {templateItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                            No items yet. Add parts or nested assemblies.
+                          </td>
+                        </tr>
+                      ) : (
+                        (templateItems.map(item => {
+                          const partWithPrices = item.item_type === 'part' && item.part_id ? parts.find(p => p.id === item.part_id) : null
+                          const priceCount = partWithPrices?.prices.length ?? 0
+                          const priceIconColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
+                          const partTypeName = item.item_type === 'part' ? (item.part?.part_type?.name ?? partTypes.find(pt => pt.id === item.part?.part_type_id)?.name) : null
+                          const assemblyTypeName = item.item_type === 'template' && item.nested_template?.assembly_type_id
+                            ? assemblyTypes.find(at => at.id === item.nested_template?.assembly_type_id)?.name
+                            : null
+                          return (
+                          <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
+                            <td style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                              {partTypeName ?? assemblyTypeName ?? '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {item.item_type === 'part' ? item.part?.name : item.nested_template?.name}
+                            </td>
+                            <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                {item.item_type === 'part' && item.part && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setViewingPartPrices(item.part!) }}
+                                      title="Part prices"
+                                      aria-label="Part prices"
+                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: priceIconColor }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                        <path d="M128 128C92.7 128 64 156.7 64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192C576 156.7 547.3 128 512 128L128 128zM320 224C373 224 416 267 416 320C416 373 373 416 320 416C267 416 224 373 224 320C224 267 267 224 320 224zM512 248C512 252.4 508.4 256.1 504 255.5C475 251.9 452.1 228.9 448.5 200C448 195.6 451.6 192 456 192L504 192C508.4 192 512 195.6 512 200L512 248zM128 392C128 387.6 131.6 383.9 136 384.5C165 388.1 187.9 411.1 191.5 440C192 444.4 188.4 448 184 448L136 448C131.6 448 128 444.4 128 440L128 392zM136 255.5C131.6 256 128 252.4 128 248L128 200C128 195.6 131.6 192 136 192L184 192C188.4 192 192.1 195.6 191.5 200C187.9 229 164.9 251.9 136 255.5zM504 384.5C508.4 384 512 387.6 512 392L512 440C512 444.4 508.4 448 504 448L456 448C451.6 448 447.9 444.4 448.5 440C452.1 411 475.1 388.1 504 384.5z" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openEditPart(item.part!) }}
+                                      title="Edit part"
+                                      aria-label="Edit part"
+                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                        <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemFromTemplate(item.id)}
+                                  title="Remove from assembly"
+                                  aria-label="Remove from assembly"
+                                  style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                                    <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          )
+                        }))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
                   <div style={{ marginBottom: '0.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Add Item</label>
                     <select
@@ -3174,84 +4071,6 @@ export default function Materials() {
                     {addingItemToTemplate ? 'Adding...' : 'Add Item'}
                   </button>
                 </div>
-
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {templateItems.length === 0 ? (
-                        <tr>
-                          <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                            No items yet. Add parts or nested assemblies.
-                          </td>
-                        </tr>
-                      ) : (
-                        (templateItems.map(item => {
-                          const partWithPrices = item.item_type === 'part' && item.part_id ? parts.find(p => p.id === item.part_id) : null
-                          const priceCount = partWithPrices?.prices.length ?? 0
-                          const priceIconColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
-                          return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {item.item_type === 'part' ? item.part?.name : item.nested_template?.name}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                {item.item_type === 'part' && item.part && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); setViewingPartPrices(item.part!) }}
-                                      title="Part prices"
-                                      aria-label="Part prices"
-                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: priceIconColor }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
-                                        <path d="M128 128C92.7 128 64 156.7 64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192C576 156.7 547.3 128 512 128L128 128zM320 224C373 224 416 267 416 320C416 373 373 416 320 416C267 416 224 373 224 320C224 267 267 224 320 224zM512 248C512 252.4 508.4 256.1 504 255.5C475 251.9 452.1 228.9 448.5 200C448 195.6 451.6 192 456 192L504 192C508.4 192 512 195.6 512 200L512 248zM128 392C128 387.6 131.6 383.9 136 384.5C165 388.1 187.9 411.1 191.5 440C192 444.4 188.4 448 184 448L136 448C131.6 448 128 444.4 128 440L128 392zM136 255.5C131.6 256 128 252.4 128 248L128 200C128 195.6 131.6 192 136 192L184 192C188.4 192 192.1 195.6 191.5 200C187.9 229 164.9 251.9 136 255.5zM504 384.5C508.4 384 512 387.6 512 392L512 440C512 444.4 508.4 448 504 448L456 448C451.6 448 447.9 444.4 448.5 440C452.1 411 475.1 388.1 504 384.5z" />
-                                      </svg>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); openEditPart(item.part!) }}
-                                      title="Edit part"
-                                      aria-label="Edit part"
-                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={18} height={18} fill="currentColor" aria-hidden="true">
-                                        <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
-                                      </svg>
-                                    </button>
-                                  </>
-                                )}
-                                <button
-                                  type="button"
-                                  onClick={() => removeItemFromTemplate(item.id)}
-                                  title="Remove from assembly"
-                                  aria-label="Remove from assembly"
-                                  style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
-                                    <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                          )
-                        }))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             )}
             <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -3259,8 +4078,37 @@ export default function Materials() {
             </p>
           </div>
 
-          {/* Right Panel: Draft Purchase Orders */}
+          {/* Right Panel: Templates and Purchase Orders */}
           <div>
+            {/* Create PO from Template Button (when no editingPO) */}
+            {selectedTemplate && !editingPO && (
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => createPOFromTemplate(selectedTemplate.id)}
+                  disabled={creatingPOFromTemplate}
+                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  {creatingPOFromTemplate ? 'Creating PO...' : `Create Purchase Order from "${selectedTemplate.name}"`}
+                </button>
+              </div>
+            )}
+
+            {/* Add Template to PO Button (when editingPO is set) */}
+            {selectedTemplate && editingPO && editingPO.status === 'draft' && (
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => addTemplateToPO(editingPO.id, selectedTemplate.id)}
+                  disabled={addingTemplateToPO}
+                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                >
+                  {addingTemplateToPO ? 'Adding Template...' : `Add "${selectedTemplate.name}" Template to PO`}
+                </button>
+              </div>
+            )}
+
+            {/* Draft Purchase Orders */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2>Draft Purchase Orders</h2>
               <button
@@ -3621,179 +4469,6 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     </table>
                   </div>
                 )}
-
-                {/* Add Items Section */}
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem', background: 'white' }}>
-                  <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>Add Items</h4>
-                  
-                  {/* Add Template */}
-                  <div style={{ marginBottom: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Template</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <select
-                        value={selectedTemplateForPO}
-                        onChange={(e) => setSelectedTemplateForPO(e.target.value)}
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      >
-                        <option value="">Select assembly...</option>
-                        {materialTemplates.map(t => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedTemplateForPO) {
-                            addTemplateToPO(editingPO.id, selectedTemplateForPO)
-                          }
-                        }}
-                        disabled={!selectedTemplateForPO || addingTemplateToPO}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        {addingTemplateToPO ? 'Adding...' : 'Add Template'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Add Part */}
-                  <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Part</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <div ref={poPartPickerRef} style={{ position: 'relative', flex: 1 }}>
-                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                          <input
-                            type="text"
-                            value={selectedPartForPO ? (parts.find(p => p.id === selectedPartForPO)?.name ?? '') : poPartSearchQuery}
-                            onChange={(e) => setPoPartSearchQuery(e.target.value)}
-                            onFocus={() => setPoPartDropdownOpen(true)}
-                            onBlur={() => setTimeout(() => setPoPartDropdownOpen(false), 150)}
-                            onKeyDown={(e) => e.key === 'Escape' && setPoPartDropdownOpen(false)}
-                            readOnly={!!selectedPartForPO}
-                            placeholder="Search parts by name, manufacturer, type, or notes…"
-                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: selectedPartForPO ? '#f3f4f6' : undefined }}
-                          />
-                          {selectedPartForPO && (
-                            <button
-                              type="button"
-                              onClick={() => { setSelectedPartForPO(''); setPoPartSearchQuery(''); setPoPartDropdownOpen(true) }}
-                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                            >
-                              Clear
-                            </button>
-                          )}
-                        </div>
-                        {poPartDropdownOpen && (
-                          <ul
-                            style={{
-                              position: 'absolute',
-                              left: 0,
-                              right: 0,
-                              top: '100%',
-                              margin: 0,
-                              marginTop: 2,
-                              padding: 0,
-                              listStyle: 'none',
-                              maxHeight: 240,
-                              overflowY: 'auto',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              background: '#fff',
-                              zIndex: 50,
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                            }}
-                          >
-                            {filterPartsByQuery(parts, poPartSearchQuery).length === 0 ? (
-                              <li style={{ padding: '0.75rem', color: '#6b7280' }}>
-                                No parts match.{' '}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    openAddPartWithName(poPartSearchQuery.trim())
-                                    setPoPartDropdownOpen(false)
-                                  }}
-                                  style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                                >
-                                  Add Part
-                                </button>
-                              </li>
-                            ) : (
-                              filterPartsByQuery(parts, poPartSearchQuery).map(p => (
-                                <li
-                                  key={p.id}
-                                  onClick={() => {
-                                    setSelectedPartForPO(p.id)
-                                    setPoPartSearchQuery('')
-                                    setPoPartDropdownOpen(false)
-                                  }}
-                                  style={{
-                                    padding: '0.5rem 0.75rem',
-                                    cursor: 'pointer',
-                                    borderBottom: '1px solid #f3f4f6',
-                                  }}
-                                >
-                                  <div style={{ fontWeight: 500 }}>{p.name}</div>
-                                  {(p.manufacturer || p.part_type?.name) && (
-                                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                      {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
-                                    </div>
-                                  )}
-                                </li>
-                              ))
-                            )}
-                          </ul>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={partQuantityForPO}
-                        onChange={(e) => setPartQuantityForPO(e.target.value)}
-                        placeholder="Qty"
-                        style={{ width: '80px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (selectedPartForPO && partQuantityForPO) {
-                          addPartToPO(editingPO.id, selectedPartForPO, parseInt(partQuantityForPO) || 1)
-                        }
-                      }}
-                      disabled={!selectedPartForPO || !partQuantityForPO || addingPartToPO}
-                      style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      {addingPartToPO ? 'Adding...' : 'Add Part'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Create PO from Template Button (when no editingPO) */}
-            {selectedTemplate && !editingPO && (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                <button
-                  type="button"
-                  onClick={() => createPOFromTemplate(selectedTemplate.id)}
-                  disabled={creatingPOFromTemplate}
-                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-                >
-                  {creatingPOFromTemplate ? 'Creating PO...' : `Create Purchase Order from "${selectedTemplate.name}"`}
-                </button>
-              </div>
-            )}
-
-            {/* Add Template to PO Button (when editingPO is set) */}
-            {selectedTemplate && editingPO && editingPO.status === 'draft' && (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                <button
-                  type="button"
-                  onClick={() => addTemplateToPO(editingPO.id, selectedTemplate.id)}
-                  disabled={addingTemplateToPO}
-                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-                >
-                  {addingTemplateToPO ? 'Adding Template...' : `Add "${selectedTemplate.name}" Template to PO`}
-                </button>
               </div>
             )}
           </div>
@@ -3816,7 +4491,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Description</label>
                 <textarea
                   value={templateDescription}
@@ -3824,6 +4499,19 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   rows={3}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Assembly Type</label>
+                <select
+                  value={templateAssemblyTypeId}
+                  onChange={(e) => setTemplateAssemblyTypeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">No type</option>
+                  {assemblyTypes.map(at => (
+                    <option key={at.id} value={at.id}>{at.name}</option>
+                  ))}
+                </select>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                 {editingTemplate && (
@@ -3858,6 +4546,220 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Item to Assembly Modal */}
+      {addItemModalOpen && selectedTemplate && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={(e) => e.target === e.currentTarget && closeAddItemModal()}
+        >
+          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '450px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginBottom: '1rem' }}>Add Item to {selectedTemplate.name}</h2>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Type</label>
+              <select
+                value={addItemModalType}
+                onChange={(e) => {
+                  setAddItemModalType(e.target.value as 'part' | 'template')
+                  setAddItemModalPartId('')
+                  setAddItemModalTemplateId('')
+                  setAddItemModalSearchQuery('')
+                  setAddItemModalDropdownOpen(false)
+                  setAddItemModalFilterPartTypeId('')
+                  setAddItemModalFilterAssemblyTypeId('')
+                }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              >
+                <option value="part">Part</option>
+                <option value="template">Nested Assembly</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Filter by type</label>
+              {addItemModalType === 'part' ? (
+                <select
+                  value={addItemModalFilterPartTypeId}
+                  onChange={(e) => setAddItemModalFilterPartTypeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">All Part Types</option>
+                  {partTypes.map(pt => (
+                    <option key={pt.id} value={pt.id}>{pt.name}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={addItemModalFilterAssemblyTypeId}
+                  onChange={(e) => setAddItemModalFilterAssemblyTypeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">All Assembly Types</option>
+                  {assemblyTypes.map(at => (
+                    <option key={at.id} value={at.id}>{at.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {addItemModalType === 'part' ? (
+              <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Search</label>
+                <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={addItemModalPartId ? (parts.find(p => p.id === addItemModalPartId)?.name ?? '') : addItemModalSearchQuery}
+                    onChange={(e) => setAddItemModalSearchQuery(e.target.value)}
+                    onFocus={() => setAddItemModalDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setAddItemModalDropdownOpen(false), 150)}
+                    onKeyDown={(e) => e.key === 'Escape' && setAddItemModalDropdownOpen(false)}
+                    readOnly={!!addItemModalPartId}
+                    placeholder="Search parts by name, manufacturer, type, or notes…"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addItemModalPartId ? '#f3f4f6' : undefined }}
+                  />
+                  {addItemModalPartId && (
+                    <button
+                      type="button"
+                      onClick={() => { setAddItemModalPartId(''); setAddItemModalSearchQuery(''); setAddItemModalDropdownOpen(true) }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {addItemModalDropdownOpen && (
+                  <ul
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: '100%',
+                      margin: 0,
+                      marginTop: 2,
+                      padding: 0,
+                      listStyle: 'none',
+                      maxHeight: 240,
+                      overflowY: 'auto',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: '#fff',
+                      zIndex: 50,
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}
+                  >
+                    {(() => {
+                      const baseParts = loadAllMode ? allParts : parts
+                      const filteredByType = addItemModalFilterPartTypeId
+                        ? baseParts.filter(p => p.part_type_id === addItemModalFilterPartTypeId)
+                        : baseParts
+                      return filterPartsByQuery(filteredByType, addItemModalSearchQuery)
+                    })().length === 0 ? (
+                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                        No parts match.{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            openAddPartWithName(addItemModalSearchQuery.trim())
+                        setAddItemModalDropdownOpen(false)
+                      }}
+                      style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Add Part
+                    </button>
+                  </li>
+                ) : (
+                      (() => {
+                        const baseParts = loadAllMode ? allParts : parts
+                        const filteredByType = addItemModalFilterPartTypeId
+                          ? baseParts.filter(p => p.part_type_id === addItemModalFilterPartTypeId)
+                          : baseParts
+                        return filterPartsByQuery(filteredByType, addItemModalSearchQuery)
+                      })().map(p => (
+                        <li
+                          key={p.id}
+                          onClick={() => {
+                            setAddItemModalPartId(p.id)
+                            setAddItemModalSearchQuery('')
+                            setAddItemModalDropdownOpen(false)
+                          }}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                        >
+                          <div style={{ fontWeight: 500 }}>{p.name}</div>
+                          {(p.manufacturer || p.part_type?.name) && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
+                            </div>
+                          )}
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                )}
+              </div>
+            ) : (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly</label>
+                <select
+                  value={addItemModalTemplateId}
+                  onChange={(e) => setAddItemModalTemplateId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">Select assembly</option>
+                  {materialTemplates
+                    .filter(t => t.id !== selectedTemplate.id)
+                    .filter(t => !addItemModalFilterAssemblyTypeId || t.assembly_type_id === addItemModalFilterAssemblyTypeId)
+                    .map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {addItemModalError && (
+              <div style={{ marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                {addItemModalError}
+              </div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Quantity</label>
+              <input
+                type="number"
+                min={1}
+                value={addItemModalQuantity}
+                onChange={(e) => setAddItemModalQuantity(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={closeAddItemModal}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddItemFromModal}
+                disabled={addingItemFromModal || (addItemModalType === 'part' && !addItemModalPartId) || (addItemModalType === 'template' && !addItemModalTemplateId)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {addingItemFromModal ? 'Adding...' : 'Add Item'}
+              </button>
+            </div>
           </div>
         </div>
       )}

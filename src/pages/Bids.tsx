@@ -336,7 +336,7 @@ function buildCoverLetterHtml(
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
-  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : []
   const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
@@ -460,7 +460,7 @@ function buildCoverLetterText(
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
-  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : DEFAULT_INCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
+  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : []
   const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
@@ -750,6 +750,7 @@ export default function Bids() {
   const [drivingCostRate, setDrivingCostRate] = useState('0.70')
   const [hoursPerTrip, setHoursPerTrip] = useState('2')
   const [savingCostEstimate, setSavingCostEstimate] = useState(false)
+  const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
   const [costEstimatePOModalTaxPercent, setCostEstimatePOModalTaxPercent] = useState('8.25')
@@ -1479,6 +1480,15 @@ export default function Bids() {
 
   function removeTakeoffNewTemplateItem(index: number) {
     setTakeoffNewTemplateItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function updateTakeoffNewTemplateItemQuantity(index: number, newQuantity: number) {
+    const qty = Math.max(1, Math.floor(newQuantity))
+    setTakeoffNewTemplateItems((prev) => {
+      const next = [...prev]
+      if (next[index]) next[index] = { ...next[index]!, quantity: qty }
+      return next
+    })
   }
 
   async function handleBidsPartCreated(part: MaterialPart) {
@@ -2852,14 +2862,15 @@ export default function Bids() {
     e.preventDefault()
     if (!selectedLaborBookVersionId || !addMissingFixtureName.trim()) return
     
-    const fixtureTypeId = getFixtureTypeIdByName(addMissingFixtureName.trim())
-    if (!fixtureTypeId) {
-      setError(`Fixture type "${addMissingFixtureName.trim()}" not found. Please select a valid fixture type.`)
-      return
-    }
-    
     setSavingMissingFixture(true)
     setError(null)
+    
+    const fixtureTypeId = await getOrCreateFixtureTypeId(addMissingFixtureName.trim())
+    if (!fixtureTypeId) {
+      setError(`Failed to create or find fixture type "${addMissingFixtureName.trim()}"`)
+      setSavingMissingFixture(false)
+      return
+    }
     
     const rough = parseFloat(addMissingFixtureRoughIn) || 0
     const top = parseFloat(addMissingFixtureTopOut) || 0
@@ -3062,7 +3073,13 @@ export default function Bids() {
       0
     )
     const laborCost = totalHours * rate
-    const grandTotal = totalMaterials + laborCost
+    const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
+    const ratePerMile = parseFloat(drivingCostRate) || 0.70
+    const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
+    const numTrips = totalHours / hrsPerTrip
+    const drivingCost = numTrips * ratePerMile * distance
+    const laborCostWithDriving = laborCost + drivingCost
+    const grandTotal = totalMaterials + laborCostWithDriving
 
     const laborRowsHtml =
       costEstimateLaborRows.length === 0
@@ -3118,11 +3135,15 @@ export default function Bids() {
     <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:center">Rough In</th><th style="text-align:center">Top Out</th><th style="text-align:center">Trim Set</th><th style="text-align:center">Total hrs</th></tr></thead>
     <tbody>${laborRowsHtml}${totalsRowHtml}</tbody>
   </table>
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Manhours: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>${distance > 0 && totalHours > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>
   <h2>Summary</h2>
   <div class="summary">
     <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
-    <p>Labor total: $${formatCurrency(laborCost)}</p>
+    <p>Manhours: $${formatCurrency(laborCost)}</p>${distance > 0 && totalHours > 0 ? `
+    <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}
+    <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>
     <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>
 </body></html>`
@@ -3358,7 +3379,12 @@ export default function Bids() {
         (s, r) => s + laborRowHours(r),
         0
       )
-      const totalCost = totalMaterials + totalLaborHours * rate
+      const laborCost = totalLaborHours * rate
+      const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+      const ratePerMile = (pricingCostEstimate as any).driving_cost_rate != null ? Number((pricingCostEstimate as any).driving_cost_rate) : 0.70
+      const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
+      const drivingCost = (totalLaborHours / hrsPerTrip) * ratePerMile * distance
+      const totalCost = totalMaterials + laborCost + drivingCost
       const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
       let totalRevenue = 0
       const rows = pricingCountRows.map((countRow) => {
@@ -3452,7 +3478,12 @@ export default function Bids() {
         (s, r) => s + laborRowHours(r),
         0
       )
-      const totalCost = totalMaterials + totalLaborHours * rate
+      const laborCost = totalLaborHours * rate
+      const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+      const ratePerMile = (pricingCostEstimate as any).driving_cost_rate != null ? Number((pricingCostEstimate as any).driving_cost_rate) : 0.70
+      const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
+      const drivingCost = (totalLaborHours / hrsPerTrip) * ratePerMile * distance
+      const totalCost = totalMaterials + laborCost + drivingCost
       const sections: string[] = []
       for (let i = 0; i < priceBookVersions.length; i++) {
         const version = priceBookVersions[i]!
@@ -3948,10 +3979,10 @@ export default function Bids() {
     }
     const revenueWords = numberToWords(coverLetterRevenue).toUpperCase()
     const revenueNumber = `$${formatCurrency(coverLetterRevenue)}`
-    const inclusions = coverLetterInclusionsByBid[b.id] ?? DEFAULT_INCLUSIONS
+    const inclusions = coverLetterInclusionsByBid[b.id] ?? ''
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
-    const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
+    const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
     const bidServiceType = serviceTypes.find((st) => st.id === b.service_type_id)
     const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
     const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
@@ -4773,6 +4804,24 @@ export default function Bids() {
     }
   }, [selectedServiceTypeId])
 
+  // Close price book modals when service type changes
+  useEffect(() => {
+    setPricingVersionFormOpen(false)
+    setPricingEntryFormOpen(false)
+    setDeletePricingVersionModalOpen(false)
+    setEditingPricingVersion(null)
+    setEditingPricingEntry(null)
+    setPricingVersionToDelete(null)
+    setPricingVersionNameInput('')
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
+  }, [selectedServiceTypeId])
+
   useEffect(() => {
     if (selectedBidForCounts?.id) loadCountRows(selectedBidForCounts.id)
     else setCountRows([])
@@ -5085,6 +5134,69 @@ export default function Bids() {
     }
   }, [activeTab])
 
+  // Autosave for Cost Estimate tab
+  useEffect(() => {
+    if (activeTab !== 'cost-estimate' || !costEstimate) return
+
+    const timer = setTimeout(async () => {
+      setCostEstimateAutosaveStatus('saving')
+      
+      const laborRateNum = laborRateInput.trim() === '' ? null : parseFloat(laborRateInput)
+      const drivingCostRateNum = drivingCostRate.trim() === '' ? 0.70 : parseFloat(drivingCostRate)
+      const hoursPerTripNum = hoursPerTrip.trim() === '' ? 2.0 : parseFloat(hoursPerTrip)
+      
+      // Skip autosave if validation fails
+      if (laborRateInput.trim() !== '' && (isNaN(laborRateNum!) || laborRateNum! < 0)) return
+      if (isNaN(drivingCostRateNum) || drivingCostRateNum < 0) return
+      if (isNaN(hoursPerTripNum) || hoursPerTripNum <= 0) return
+      
+      // Save cost estimate fields
+      await supabase
+        .from('cost_estimates')
+        .update({
+          purchase_order_id_rough_in: costEstimate.purchase_order_id_rough_in || null,
+          purchase_order_id_top_out: costEstimate.purchase_order_id_top_out || null,
+          purchase_order_id_trim_set: costEstimate.purchase_order_id_trim_set || null,
+          labor_rate: laborRateNum,
+          driving_cost_rate: drivingCostRateNum,
+          hours_per_trip: hoursPerTripNum,
+        })
+        .eq('id', costEstimate.id)
+      
+      // Save labor rows
+      for (const row of costEstimateLaborRows) {
+        await supabase
+          .from('cost_estimate_labor_rows')
+          .update({
+            rough_in_hrs_per_unit: row.rough_in_hrs_per_unit,
+            top_out_hrs_per_unit: row.top_out_hrs_per_unit,
+            trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
+            count: row.count,
+            is_fixed: row.is_fixed ?? false,
+          })
+          .eq('id', row.id)
+      }
+      
+      setCostEstimateAutosaveStatus('saved')
+      setTimeout(() => setCostEstimateAutosaveStatus('idle'), 2000)
+    }, 1500) // 1.5 second debounce
+
+    return () => clearTimeout(timer)
+  }, [activeTab, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, costEstimateLaborRows])
+
+  // Auto-calculate price book entry total
+  useEffect(() => {
+    const rough = parseFloat(pricingEntryRoughIn) || 0
+    const top = parseFloat(pricingEntryTopOut) || 0
+    const trim = parseFloat(pricingEntryTrimSet) || 0
+    const calculatedTotal = rough + top + trim
+    
+    // Only auto-update if the current total is different (allows manual override)
+    if (calculatedTotal !== (parseFloat(pricingEntryTotal) || 0)) {
+      setPricingEntryTotal(calculatedTotal.toFixed(2))
+    }
+  }, [pricingEntryRoughIn, pricingEntryTopOut, pricingEntryTrimSet])
+
   useEffect(() => {
     if (!laborBookEntriesVersionId) {
       setLaborBookEntries([])
@@ -5175,22 +5287,26 @@ export default function Bids() {
     }
     const bidId = selectedBidForPricing.id
     const bidJustChanged = pricingBidIdRef.current !== bidId
+    let versionId: string | null
     if (bidJustChanged) {
       pricingBidIdRef.current = bidId
       const savedVersionId = selectedBidForPricing.selected_price_book_version_id
-      if (!savedVersionId && priceBookVersions.length > 0) {
-        // Auto-select "Default" if it exists
+      if (savedVersionId) {
+        setSelectedPricingVersionId(savedVersionId)
+        versionId = savedVersionId
+      } else if (priceBookVersions.length > 0) {
+        // Auto-select "Default" if it exists, otherwise first version
         const defaultVersion = priceBookVersions.find((v) => v.name === 'Default')
-        if (defaultVersion) {
-          setSelectedPricingVersionId(defaultVersion.id)
-        } else {
-          setSelectedPricingVersionId(null)
-        }
+        const versionToUse = defaultVersion ?? priceBookVersions[0]
+        setSelectedPricingVersionId(versionToUse?.id ?? null)
+        versionId = versionToUse?.id ?? null
       } else {
-        setSelectedPricingVersionId(savedVersionId ?? null)
+        setSelectedPricingVersionId(null)
+        versionId = null
       }
+    } else {
+      versionId = selectedPricingVersionId
     }
-    const versionId = bidJustChanged ? (selectedBidForPricing.selected_price_book_version_id ?? null) : selectedPricingVersionId
     loadBidPricingAssignments(bidId, versionId)
     loadPricingDataForBid(bidId)
   }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
@@ -5746,12 +5862,22 @@ export default function Bids() {
   }
 
   return (
-    <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      {error && (
-        <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
+    <>
+      <style>{`
+        @media (max-width: 768px) {
+          .pageWrap {
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 0.5rem !important;
+          }
+        }
+      `}</style>
+      <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {error && (
+          <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
+            {error}
+          </div>
+        )}
 
       {/* Service Type Filter - for estimators with restrictions, only show allowed types */}
       {visibleServiceTypes.length > 0 && (
@@ -5782,7 +5908,7 @@ export default function Bids() {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
           Bid Board
         </button>
@@ -6017,10 +6143,10 @@ export default function Bids() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count*</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in*</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count*</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in*</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -6502,7 +6628,7 @@ export default function Bids() {
                     <textarea value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Items (parts or nested templates)</div>
+                    <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Items (parts or assembly)</div>
                     <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4 }}>
                       <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}>
                         <option value="part">Part</option>
@@ -6551,7 +6677,15 @@ export default function Bids() {
                                 <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={item.quantity}
+                                      onChange={(e) => updateTakeoffNewTemplateItemQuantity(idx, parseInt(e.target.value, 10) || 1)}
+                                      style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                    />
+                                  </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     {item.item_type === 'part' && item.part_id ? (
                                       <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
@@ -7469,14 +7603,25 @@ export default function Bids() {
                       )
                     })()}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {costEstimateAutosaveStatus === 'saving' && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Saving...</span>
+                      )}
+                      {costEstimateAutosaveStatus === 'saved' && (
+                        <span style={{ fontSize: '0.875rem', color: '#059669' }}>✓ Saved</span>
+                      )}
+                      {costEstimateAutosaveStatus === 'idle' && (
+                        <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>Autosave enabled</span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       onClick={saveCostEstimate}
                       disabled={savingCostEstimate || !costEstimate}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer' }}
+                      style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer', fontSize: '0.875rem' }}
                     >
-                      {savingCostEstimate ? 'Saving…' : 'Save'}
+                      {savingCostEstimate ? 'Saving…' : 'Save Now'}
                     </button>
                   </div>
                 </>
@@ -8089,7 +8234,13 @@ export default function Bids() {
                   0
                 )
                 const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-                const totalCost = totalMaterials + totalLaborHours * rate
+                const laborCost = totalLaborHours * rate
+                const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+                const ratePerMile = (pricingCostEstimate as any).driving_cost_rate != null ? Number((pricingCostEstimate as any).driving_cost_rate) : 0.70
+                const hrsPerTrip = (pricingCostEstimate as any).hours_per_trip != null ? Number((pricingCostEstimate as any).hours_per_trip) : 2.0
+                const numTrips = totalLaborHours / hrsPerTrip
+                const drivingCost = numTrips * ratePerMile * distance
+                const totalCost = totalMaterials + laborCost + drivingCost
                 const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
                 let totalRevenue = 0
                 const rows = pricingCountRows.map((countRow) => {
@@ -8132,7 +8283,19 @@ export default function Bids() {
                   }
                 })
                 return (
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <>
+                  <div style={{ marginBottom: '1rem', marginLeft: 'auto', padding: '0.75rem 1rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a', width: 'fit-content' }}>
+                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Our cost breakdown</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem' }}>
+                      <span>Materials: ${formatCurrency(totalMaterials)} {totalCost > 0 ? `| ${((totalMaterials / totalCost) * 100).toFixed(1)}%` : ''}</span>
+                      <span>Manhours: ${formatCurrency(laborCost)} {totalCost > 0 ? `| ${((laborCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
+                      {distance > 0 && totalLaborHours > 0 && (
+                        <span>Driving: ${formatCurrency(drivingCost)} <span style={{ color: '#6b7280', fontWeight: 400 }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span> {totalCost > 0 ? `| ${((drivingCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
+                      )}
+                      <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
+                    </div>
+                  </div>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
                         <tr>
@@ -8372,6 +8535,7 @@ export default function Bids() {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )
               })()}
             </div>
@@ -8820,19 +8984,19 @@ export default function Bids() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
-                      <input type="number" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                      <input type="number" min={0} step={10} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out</label>
-                      <input type="number" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                      <input type="number" min={0} step={10} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set</label>
-                      <input type="number" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                      <input type="number" min={0} step={10} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total</label>
-                      <input type="number" min={0} step={0.01} value={pricingEntryTotal} onChange={(e) => setPricingEntryTotal(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total (auto-calculated)</label>
+                      <input type="number" min={0} step={10} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', background: '#f9fafb', cursor: 'not-allowed' }} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -8953,7 +9117,7 @@ export default function Bids() {
             const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
             const terms = coverLetterTermsByBid[bid.id] ?? ''
             const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
-            const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
+            const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
             const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
             const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
             const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
@@ -9083,8 +9247,8 @@ export default function Bids() {
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
-                      checked={!!coverLetterIncludeDesignDrawingPlanDateByBid[bid.id]}
-                      onChange={() => setCoverLetterIncludeDesignDrawingPlanDateByBid((prev) => ({ ...prev, [bid.id]: !prev[bid.id] }))}
+                      checked={coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}
+                      onChange={() => setCoverLetterIncludeDesignDrawingPlanDateByBid((prev) => ({ ...prev, [bid.id]: prev[bid.id] === false }))}
                     />
                     {bid.design_drawing_plan_date
                       ? `Design Drawings Plan Date [${formatDesignDrawingPlanDateLabel(bid.design_drawing_plan_date)}]`
@@ -9132,7 +9296,7 @@ export default function Bids() {
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
                   <div
-                    key={`combined-preview-${bid.id}-${!!coverLetterIncludeDesignDrawingPlanDateByBid[bid.id]}`}
+                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}`}
                     style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                     dangerouslySetInnerHTML={{ __html: combinedHtml }}
                   />
@@ -10020,15 +10184,63 @@ export default function Bids() {
                     [HVAC]
                   </a>
                 </label>
-                <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setDriveLink(text)
+                      } catch (err) {
+                        console.error('Failed to read clipboard:', err)
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                  >
+                    paste<br />clipboard
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
-                <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setPlansLink(text)
+                      } catch (err) {
+                        console.error('Failed to read clipboard:', err)
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                  >
+                    paste<br />clipboard
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
-                <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setBidSubmissionLink(text)
+                      } catch (err) {
+                        console.error('Failed to read clipboard:', err)
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                  >
+                    paste<br />clipboard
+                  </button>
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
@@ -11067,7 +11279,8 @@ We saw some structural issues with your plans and I wanted to get clarity...
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 
@@ -11098,14 +11311,14 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
   if (editing) {
     return (
       <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-        <td style={{ padding: '0.75rem' }}>
-          <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
+          <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }} />
+        </td>
+        <td style={{ padding: '0.75rem', width: '50%' }}>
+          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
-          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem' }}>
-          <input type="text" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+          <input type="text" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
           <button type="button" onClick={save} disabled={saving} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
@@ -11116,7 +11329,7 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
   }
   return (
     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-      <td style={{ padding: '0.75rem' }}>{row.count}</td>
+      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
       <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
@@ -11192,27 +11405,15 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     onSavedAndAddAnother?.()
   }
 
+  const calcWidth = 132
+  const hasFixtureGroups = countsFixtureGroups.length > 0
   return (
-    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-      <td colSpan={3} style={{ padding: '0.75rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ flex: 1, minWidth: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-            <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ flex: 1, minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-            <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ flex: 1, minWidth: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            {countsFixtureGroups.map((group) => (
-              <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
-                {group.fixtures.map((name) => (
-                  <button key={name} type="button" onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
-                ))}
-              </div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.25rem', maxWidth: 160 }}>
+    <>
+      <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid #e5e7eb' }}>
+        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
+            <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.25rem', width: calcWidth, marginTop: hasFixtureGroups ? '1.75rem' : undefined }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
                 <button key={d} type="button" onClick={() => setCount((c) => c + String(d))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{d}</button>
               ))}
@@ -11221,18 +11422,40 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
               <button type="button" onClick={() => setCount((c) => c.slice(0, -1))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} title="Delete">⌫</button>
             </div>
           </div>
-        </div>
-      </td>
-      <td style={{ padding: '0.75rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button type="button" onClick={submit} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-            <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+        </td>
+        <td style={{ padding: '0.75rem', width: '50%', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        </td>
+        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+          <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        </td>
+        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button type="button" onClick={submit} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            </div>
+            <button type="button" onClick={submitAndAdd} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save and Add</button>
           </div>
-          <button type="button" onClick={submitAndAdd} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save and Add</button>
-        </div>
-      </td>
-    </tr>
+        </td>
+      </tr>
+      {hasFixtureGroups && (
+        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+          <td colSpan={2} style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              {countsFixtureGroups.map((group) => (
+                <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
+                  {group.fixtures.map((name) => (
+                    <button key={name} type="button" onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
