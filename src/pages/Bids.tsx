@@ -11870,5 +11870,3 @@ function NewSubmissionEntryRow({ bidId, onSaved, onCancel }: { bidId: string; on
     </tr>
   )
 }
-
-}
