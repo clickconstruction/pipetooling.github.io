@@ -1112,7 +1112,7 @@ export default function Materials() {
   // performance with 10k+ parts, but the current implementation works well for <5000 parts
 
   // Get unique manufacturers for filters
-  const manufacturers = [...new Set((loadAllMode ? allParts : parts).map(p => p.manufacturer).filter(Boolean))].sort()
+  const manufacturers = [...new Set((allParts.length > 0 ? allParts : parts).map(p => p.manufacturer).filter(Boolean))].sort()
 
   // Filter purchase orders
   const filteredPOs = allPOs.filter(po => {
@@ -3400,7 +3400,7 @@ export default function Materials() {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {templateItems.filter(item => item.item_type === 'part').map(item => {
-                        const part = item.part ?? parts.find(p => p.id === item.part_id) ?? (loadAllMode ? allParts.find(p => p.id === item.part_id) : undefined)
+                        const part = item.part ?? parts.find(p => p.id === item.part_id) ?? allParts.find(p => p.id === item.part_id)
                         const hasPrice = part && part.prices && part.prices.length > 0
                         const lowestPrice = hasPrice && part.prices ? Math.min(...part.prices.map(pr => pr.price)) : 0
                         const isExpanded = expandedPartId === part?.id
@@ -3666,7 +3666,7 @@ export default function Materials() {
                 {(() => {
                   const costData = calculateAssemblyCost(selectedTemplate.id)
                   const partsOnly = templateItems.filter(item => item.item_type === 'part').reduce((sum, item) => {
-                    const part = item.part ?? parts.find(p => p.id === item.part_id) ?? (loadAllMode ? allParts.find(p => p.id === item.part_id) : undefined)
+                    const part = item.part ?? parts.find(p => p.id === item.part_id) ?? allParts.find(p => p.id === item.part_id)
                     const prices = part?.prices
                     if (part && prices && prices.length > 0) {
                       const lowestPrice = Math.min(...prices.map(pr => pr.price))
@@ -3922,7 +3922,7 @@ export default function Materials() {
                         </tr>
                       ) : (
                         (templateItems.map(item => {
-                          const partWithPrices = item.item_type === 'part' && item.part_id ? parts.find(p => p.id === item.part_id) : null
+                          const partWithPrices = item.item_type === 'part' && item.part_id ? (parts.find(p => p.id === item.part_id) ?? allParts.find(p => p.id === item.part_id)) : null
                           const priceCount = partWithPrices?.prices.length ?? 0
                           const priceIconColor = priceCount === 0 ? '#dc2626' : priceCount === 1 ? '#ca8a04' : '#6b7280'
                           const partTypeName = item.item_type === 'part' ? (item.part?.part_type?.name ?? partTypes.find(pt => pt.id === item.part?.part_type_id)?.name) : null
