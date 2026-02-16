@@ -1014,7 +1014,7 @@ export default function People() {
                       <button type="button" onClick={() => openEdit(item)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
                         Edit
                       </button>
-                      {item.master_user_id === authUser.id ? (
+                      {item.master_user_id === authUser?.id ? (
                         <button
                           type="button"
                           onClick={() => deletePerson(item.id)}
