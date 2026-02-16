@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { Database } from '../types/database'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
+type ServiceType = { id: string; name: string; description: string | null; color: string | null; sequence_order: number; created_at: string; updated_at: string }
+type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
+type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
+type LaborBookEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
 type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
 
@@ -11,6 +16,18 @@ const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator
 const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
 
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+
+const tabStyle = (active: boolean) => ({
+  padding: '0.75rem 1.5rem',
+  border: 'none',
+  background: 'none',
+  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
+  color: active ? '#3b82f6' : '#6b7280',
+  fontWeight: active ? 600 : 400,
+  cursor: 'pointer' as const,
+})
+
+type PeopleTab = 'users' | 'labor' | 'ledger'
 
 export default function People() {
   const { user: authUser } = useAuth()
@@ -30,6 +47,45 @@ export default function People() {
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
   const [personProjects, setPersonProjects] = useState<Record<string, string[]>>({})
+  const [activeTab, setActiveTab] = useState<PeopleTab>('labor')
+
+  // Service type and labor book state (for Labor tab)
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
+  const [fixtureTypes, setFixtureTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [laborBookVersions, setLaborBookVersions] = useState<LaborBookVersion[]>([])
+  const [selectedLaborBookVersionId, setSelectedLaborBookVersionId] = useState<string | null>(null)
+  const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(false)
+  const [laborBookEntriesVersionId, setLaborBookEntriesVersionId] = useState<string | null>(null)
+  const [laborBookEntries, setLaborBookEntries] = useState<LaborBookEntryWithFixture[]>([])
+  const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
+  const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
+  const [laborVersionFormOpen, setLaborVersionFormOpen] = useState(false)
+  const [editingLaborVersion, setEditingLaborVersion] = useState<LaborBookVersion | null>(null)
+  const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
+  const [savingLaborVersion, setSavingLaborVersion] = useState(false)
+  const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
+  const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntryWithFixture | null>(null)
+  const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
+  const [laborEntryAliasNames, setLaborEntryAliasNames] = useState('')
+  const [laborEntryRoughIn, setLaborEntryRoughIn] = useState('')
+  const [laborEntryTopOut, setLaborEntryTopOut] = useState('')
+  const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
+  const [savingLaborEntry, setSavingLaborEntry] = useState(false)
+
+  // Labor tab state
+  type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean }
+  const [laborAssignedTo, setLaborAssignedTo] = useState('')
+  const [laborAddress, setLaborAddress] = useState('')
+  const [laborRate, setLaborRate] = useState('')
+  const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+  const [laborSaving, setLaborSaving] = useState(false)
+
+  // Ledger tab state
+  type LaborJob = { id: string; assigned_to_name: string; address: string; labor_rate: number | null; created_at: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
+  const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
+  const [laborJobsLoading, setLaborJobsLoading] = useState(false)
+  const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
 
   async function loadPeople() {
     if (!authUser?.id) {
@@ -123,6 +179,316 @@ export default function People() {
   useEffect(() => {
     loadPeople()
   }, [authUser?.id])
+
+  async function loadServiceTypes() {
+    const { data, error } = await supabase
+      .from('service_types' as any)
+      .select('*')
+      .order('sequence_order', { ascending: true })
+    if (error) {
+      setError(`Failed to load service types: ${error.message}`)
+      return
+    }
+    const types = (data as unknown as ServiceType[]) ?? []
+    setServiceTypes(types)
+    const firstId = types[0]?.id
+    if (firstId) {
+      setSelectedServiceTypeId((prev) => {
+        if (!prev || !types.some((st) => st.id === prev)) return firstId
+        return prev
+      })
+    }
+  }
+
+  async function loadFixtureTypes() {
+    if (!selectedServiceTypeId) return
+    const { data, error } = await supabase
+      .from('fixture_types')
+      .select('id, name')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('name', { ascending: true })
+    if (!error && data) setFixtureTypes(data)
+  }
+
+  async function loadLaborBookVersions() {
+    if (!selectedServiceTypeId) return
+    const { data, error } = await supabase
+      .from('labor_book_versions')
+      .select('*')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('name', { ascending: true })
+    if (error) {
+      setError(`Failed to load labor book versions: ${error.message}`)
+      return
+    }
+    const versions = (data as LaborBookVersion[]) ?? []
+    setLaborBookVersions(versions)
+    const defaultVersion = versions.find((v) => v.name === 'Default') ?? versions[0]
+    if (defaultVersion) setSelectedLaborBookVersionId(defaultVersion.id)
+  }
+
+  async function loadLaborBookEntries(versionId: string | null) {
+    if (!versionId) {
+      setLaborBookEntries([])
+      return
+    }
+    const { data, error } = await supabase
+      .from('labor_book_entries')
+      .select('*, fixture_types(name)')
+      .eq('version_id', versionId)
+      .order('sequence_order', { ascending: true })
+      .order('fixture_types(name)', { ascending: true })
+    if (error) {
+      setError(`Failed to load labor book entries: ${error.message}`)
+      setLaborBookEntries([])
+      return
+    }
+    setLaborBookEntries((data as LaborBookEntryWithFixture[]) ?? [])
+  }
+
+  function getFixtureTypeIdByName(name: string): string | null {
+    const normalized = name.trim().toLowerCase()
+    if (!normalized) return null
+    const match = fixtureTypes.find((ft) => ft.name.toLowerCase() === normalized)
+    return match?.id ?? null
+  }
+
+  async function getOrCreateFixtureTypeId(name: string): Promise<string | null> {
+    const trimmedName = name.trim()
+    if (!trimmedName) return null
+    if (!selectedServiceTypeId) return null
+    const existingId = getFixtureTypeIdByName(trimmedName)
+    if (existingId) return existingId
+    const maxSeqResult = await supabase
+      .from('fixture_types')
+      .select('sequence_order')
+      .eq('service_type_id', selectedServiceTypeId)
+      .order('sequence_order', { ascending: false })
+      .limit(1)
+      .single()
+    const nextSeq = (maxSeqResult.data?.sequence_order ?? 0) + 1
+    const { data, error } = await supabase
+      .from('fixture_types')
+      .insert({
+        service_type_id: selectedServiceTypeId,
+        name: trimmedName,
+        category: 'Other',
+        sequence_order: nextSeq,
+      })
+      .select('id')
+      .single()
+    if (error || !data) {
+      console.error('Failed to create fixture type:', error)
+      return null
+    }
+    await loadFixtureTypes()
+    return data.id
+  }
+
+  async function applyLaborBookHoursToPeople() {
+    if (!selectedLaborBookVersionId || laborFixtureRows.length === 0) return
+    setLaborBookApplyMessage(null)
+    setApplyingLaborBookHours(true)
+    setError(null)
+    try {
+      const { data: entries, error: fetchErr } = await supabase
+        .from('labor_book_entries')
+        .select('fixture_type_id, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs, fixture_types(name)')
+        .eq('version_id', selectedLaborBookVersionId)
+        .order('sequence_order', { ascending: true })
+      if (fetchErr) {
+        setError(`Failed to load labor book entries: ${fetchErr.message}`)
+        setApplyingLaborBookHours(false)
+        return
+      }
+      const entriesByFixtureName = new Map<string, number>()
+      for (const e of (entries as LaborBookEntryWithFixture[]) ?? []) {
+        const total = Number(e.rough_in_hrs) + Number(e.top_out_hrs) + Number(e.trim_set_hrs)
+        const primary = (e.fixture_types?.name ?? '').trim().toLowerCase()
+        if (primary && !entriesByFixtureName.has(primary)) entriesByFixtureName.set(primary, total)
+        for (const alias of e.alias_names ?? []) {
+          const key = alias.trim().toLowerCase()
+          if (key && !entriesByFixtureName.has(key)) entriesByFixtureName.set(key, total)
+        }
+      }
+      setLaborFixtureRows((prev) =>
+        prev.map((row) => {
+          const fixtureName = (row.fixture ?? '').trim()
+          if (!fixtureName) return row
+          const matchedTotal = entriesByFixtureName.get(fixtureName.toLowerCase())
+          if (matchedTotal != null) return { ...row, hrs_per_unit: matchedTotal }
+          return row
+        })
+      )
+      setLaborBookApplyMessage('Labor book hours applied.')
+      setTimeout(() => setLaborBookApplyMessage(null), 3000)
+    } finally {
+      setApplyingLaborBookHours(false)
+    }
+  }
+
+  function openEditLaborVersion(v: LaborBookVersion) {
+    setEditingLaborVersion(v)
+    setLaborVersionNameInput(v.name)
+    setLaborVersionFormOpen(true)
+  }
+
+  function closeLaborVersionForm() {
+    setLaborVersionFormOpen(false)
+    setEditingLaborVersion(null)
+    setLaborVersionNameInput('')
+  }
+
+  async function saveLaborVersion(e: React.FormEvent) {
+    e.preventDefault()
+    const name = laborVersionNameInput.trim()
+    if (!name) return
+    setSavingLaborVersion(true)
+    setError(null)
+    if (editingLaborVersion) {
+      const { error: err } = await supabase.from('labor_book_versions').update({ name }).eq('id', editingLaborVersion.id)
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookVersions()
+        closeLaborVersionForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('labor_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookVersions()
+        closeLaborVersionForm()
+      }
+    }
+    setSavingLaborVersion(false)
+  }
+
+  async function deleteLaborVersion(v: LaborBookVersion) {
+    if (!confirm(`Delete labor book "${v.name}"? This will delete all entries in this version.`)) return
+    const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
+    if (err) setError(err.message)
+    else {
+      await loadLaborBookVersions()
+      if (laborBookEntriesVersionId === v.id) {
+        setLaborBookEntriesVersionId(null)
+        setLaborBookEntries([])
+      }
+      if (selectedLaborBookVersionId === v.id) setSelectedLaborBookVersionId(null)
+    }
+  }
+
+  function openNewLaborVersion() {
+    setEditingLaborVersion(null)
+    setLaborVersionNameInput('')
+    setLaborVersionFormOpen(true)
+  }
+
+  function openNewLaborEntry() {
+    setEditingLaborEntry(null)
+    setLaborEntryFixtureName('')
+    setLaborEntryAliasNames('')
+    setLaborEntryRoughIn('')
+    setLaborEntryTopOut('')
+    setLaborEntryTrimSet('')
+    setError(null)
+    setLaborEntryFormOpen(true)
+  }
+
+  function openEditLaborEntry(entry: LaborBookEntryWithFixture) {
+    setEditingLaborEntry(entry)
+    setLaborEntryFixtureName(entry.fixture_types?.name ?? '')
+    setLaborEntryAliasNames((entry.alias_names ?? []).join(', '))
+    setLaborEntryRoughIn(String(entry.rough_in_hrs))
+    setLaborEntryTopOut(String(entry.top_out_hrs))
+    setLaborEntryTrimSet(String(entry.trim_set_hrs))
+    setError(null)
+    setLaborEntryFormOpen(true)
+  }
+
+  function closeLaborEntryForm() {
+    setLaborEntryFormOpen(false)
+    setEditingLaborEntry(null)
+    setLaborEntryFixtureName('')
+    setLaborEntryAliasNames('')
+    setLaborEntryRoughIn('')
+    setLaborEntryTopOut('')
+    setLaborEntryTrimSet('')
+    setError(null)
+  }
+
+  async function saveLaborEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!laborBookEntriesVersionId) {
+      setError('No labor book version selected')
+      return
+    }
+    const fixtureName = laborEntryFixtureName.trim()
+    if (!fixtureName) {
+      setError('Please enter a fixture type')
+      return
+    }
+    setSavingLaborEntry(true)
+    setError(null)
+    const fixtureTypeId = await getOrCreateFixtureTypeId(fixtureName)
+    if (!fixtureTypeId) {
+      setError(`Failed to create or find fixture type "${fixtureName}"`)
+      setSavingLaborEntry(false)
+      return
+    }
+    const aliasNames = laborEntryAliasNames
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const rough = parseFloat(laborEntryRoughIn) || 0
+    const top = parseFloat(laborEntryTopOut) || 0
+    const trim = parseFloat(laborEntryTrimSet) || 0
+    if (editingLaborEntry) {
+      const { error: err } = await supabase
+        .from('labor_book_entries')
+        .update({ fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
+        .eq('id', editingLaborEntry.id)
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookEntries(laborBookEntriesVersionId)
+        closeLaborEntryForm()
+      }
+    } else {
+      const maxSeq = laborBookEntries.length === 0 ? 0 : Math.max(...laborBookEntries.map((e) => e.sequence_order))
+      const { error: err } = await supabase
+        .from('labor_book_entries')
+        .insert({ version_id: laborBookEntriesVersionId, fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
+      if (err) setError(err.message)
+      else {
+        await loadLaborBookEntries(laborBookEntriesVersionId)
+        closeLaborEntryForm()
+      }
+    }
+    setSavingLaborEntry(false)
+  }
+
+  async function deleteLaborEntry(entry: LaborBookEntryWithFixture) {
+    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this labor book?`)) return
+    const { error: err } = await supabase.from('labor_book_entries').delete().eq('id', entry.id)
+    if (err) setError(err.message)
+    else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
+  }
+
+  useEffect(() => {
+    loadServiceTypes()
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (selectedServiceTypeId && authUser?.id) {
+      setLaborBookEntriesVersionId(null)
+      loadFixtureTypes()
+      loadLaborBookVersions()
+    }
+  }, [selectedServiceTypeId, authUser?.id])
+
+  useEffect(() => {
+    if (laborBookEntriesVersionId) loadLaborBookEntries(laborBookEntriesVersionId)
+    else setLaborBookEntries([])
+  }, [laborBookEntriesVersionId])
 
   function openAdd(k: PersonKind) {
     setEditing(null)
@@ -288,16 +654,270 @@ export default function People() {
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
 
+  function allRosterNames(): string[] {
+    const names = new Set<string>()
+    for (const k of KINDS) {
+      for (const item of byKind(k)) {
+        if (item.name?.trim()) names.add(item.name.trim())
+      }
+    }
+    return Array.from(names).sort()
+  }
+
+  async function loadLaborJobs() {
+    if (!authUser?.id) return
+    setLaborJobsLoading(true)
+    setError(null)
+    const { data: jobs, error: jobsErr } = await supabase
+      .from('people_labor_jobs')
+      .select('id, assigned_to_name, address, labor_rate, created_at')
+      .eq('master_user_id', authUser.id)
+      .order('created_at', { ascending: false })
+    if (jobsErr) {
+      setError(jobsErr.message)
+      setLaborJobs([])
+    } else if (jobs && jobs.length > 0) {
+      const jobIds = jobs.map((j) => j.id)
+      const { data: items } = await supabase
+        .from('people_labor_job_items')
+        .select('job_id, fixture, count, hrs_per_unit, is_fixed')
+        .in('job_id', jobIds)
+        .order('sequence_order', { ascending: true })
+      const itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }>>()
+      for (const it of (items ?? []) as Array<{ job_id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }>) {
+        if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
+        itemsByJob.get(it.job_id)!.push({ fixture: it.fixture, count: it.count, hrs_per_unit: it.hrs_per_unit, is_fixed: it.is_fixed })
+      }
+      setLaborJobs(
+        (jobs as LaborJob[]).map((j) => ({
+          ...j,
+          items: itemsByJob.get(j.id) ?? [],
+        }))
+      )
+    } else {
+      setLaborJobs([])
+    }
+    setLaborJobsLoading(false)
+  }
+
+  useEffect(() => {
+    if (activeTab === 'ledger' && authUser?.id) loadLaborJobs()
+  }, [activeTab, authUser?.id])
+
+  function addLaborFixtureRow() {
+    setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+  }
+
+  function removeLaborFixtureRow(id: string) {
+    setLaborFixtureRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev))
+  }
+
+  function updateLaborFixtureRow(id: string, updates: Partial<LaborFixtureRow>) {
+    setLaborFixtureRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+  }
+
+  async function saveLaborJob() {
+    if (!authUser?.id) return
+    const assigned = laborAssignedTo.trim()
+    const address = laborAddress.trim()
+    if (!assigned) {
+      setError('Select a user.')
+      return
+    }
+    if (!address) {
+      setError('Address is required.')
+      return
+    }
+    const validRows = laborFixtureRows.filter((r) => {
+      const hasFixture = (r.fixture ?? '').trim()
+      const isFixed = r.is_fixed ?? false
+      return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
+    })
+    if (validRows.length === 0) {
+      setError('Add at least one fixture or tie-in with count > 0.')
+      return
+    }
+    setLaborSaving(true)
+    setError(null)
+    const laborRateNum = laborRate.trim() === '' ? null : parseFloat(laborRate) || null
+    const { data: job, error: jobErr } = await supabase
+      .from('people_labor_jobs')
+      .insert({
+        master_user_id: authUser.id,
+        assigned_to_name: assigned,
+        address,
+        labor_rate: laborRateNum,
+      })
+      .select('id')
+      .single()
+    if (jobErr) {
+      setError(jobErr.message)
+      setLaborSaving(false)
+      return
+    }
+    for (let i = 0; i < validRows.length; i++) {
+      const r = validRows[i]!
+      const { error: itemErr } = await supabase.from('people_labor_job_items').insert({
+        job_id: job.id,
+        fixture: r.fixture.trim(),
+        count: Number(r.count) || 1,
+        hrs_per_unit: Number(r.hrs_per_unit) || 0,
+        is_fixed: r.is_fixed ?? false,
+        sequence_order: i + 1,
+      })
+      if (itemErr) {
+        setError(itemErr.message)
+        setLaborSaving(false)
+        return
+      }
+    }
+    setLaborAssignedTo('')
+    setLaborAddress('')
+    setLaborRate('')
+    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    setLaborSaving(false)
+    setActiveTab('ledger')
+    await loadLaborJobs()
+  }
+
+  async function deleteLaborJob(id: string) {
+    if (!confirm('Delete this job from the ledger?')) return
+    setLaborJobDeletingId(id)
+    setError(null)
+    const { error: err } = await supabase.from('people_labor_jobs').delete().eq('id', id)
+    if (err) setError(err.message)
+    else await loadLaborJobs()
+    setLaborJobDeletingId(null)
+  }
+
+  function formatCurrency(n: number): string {
+    return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+
+  function printLaborSubSheet() {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const dateStr = new Date().toLocaleDateString()
+    const title = escapeHtml(laborAssignedTo || 'Labor') + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
+    const rate = laborRate.trim() === '' ? 0 : parseFloat(laborRate) || 0
+
+    const validRows = laborFixtureRows.filter((r) => (r.fixture ?? '').trim())
+    const laborRowsHtml =
+      validRows.length === 0
+        ? '<tr><td colspan="4" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : validRows
+            .map((row) => {
+              const hrs = Number(row.hrs_per_unit) || 0
+              const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
+              const totalCost = rate * laborHrs
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+            })
+            .join('')
+
+    let totalCost = 0
+    if (validRows.length > 0) {
+      totalCost = validRows.reduce((sum, row) => {
+        const hrs = Number(row.hrs_per_unit) || 0
+        const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
+        return sum + rate * laborHrs
+      }, 0)
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+  </table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
+  function printJobSubSheet(job: LaborJob) {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const dateStr = job.created_at ? new Date(job.created_at).toLocaleDateString() : new Date().toLocaleDateString()
+    const title = escapeHtml(job.assigned_to_name) + ' — ' + escapeHtml(job.address) + ' — ' + dateStr
+    const rate = job.labor_rate ?? 0
+
+    const items = job.items ?? []
+    const laborRowsHtml =
+      items.length === 0
+        ? '<tr><td colspan="4" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        : items
+            .map((i) => {
+              const hrs = Number(i.hrs_per_unit) || 0
+              const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+              const totalCost = rate * laborHrs
+              return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">${Number(i.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+            })
+            .join('')
+
+    let totalCost = 0
+    if (items.length > 0) {
+      totalCost = items.reduce((sum, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+        return sum + rate * laborHrs
+      }, 0)
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
+  body { font-family: sans-serif; margin: 1in; }
+  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+  th { background: #f5f5f5; }
+  @media print { body { margin: 0.5in; } }
+</style></head><body>
+  <h1>${title}</h1>
+  <table>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+  </table>
+</body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
+  }
+
   if (loading) return <p>Loading...</p>
 
   return (
     <div>
-      <h1 style={{ marginBottom: '1rem' }}>People</h1>
-      <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-        Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
-      </p>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-      {KINDS.map((k) => (
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+        <button type="button" onClick={() => setActiveTab('labor')} style={tabStyle(activeTab === 'labor')}>
+          Labor
+        </button>
+        <button type="button" onClick={() => setActiveTab('ledger')} style={tabStyle(activeTab === 'ledger')}>
+          Ledger
+        </button>
+        <button type="button" onClick={() => setActiveTab('users')} style={tabStyle(activeTab === 'users')}>
+          Users
+        </button>
+      </div>
+      {activeTab === 'users' && (
+        <>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+            Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
+          </p>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {KINDS.map((k) => (
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{KIND_LABELS[k]}</h2>
@@ -396,6 +1016,390 @@ export default function People() {
           )}
         </section>
       ))}
+        </>
+      )}
+      {activeTab === 'labor' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 720 }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
+              <select
+                value={laborAssignedTo}
+                onChange={(e) => setLaborAssignedTo(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              >
+                <option value="">Select a person…</option>
+                {allRosterNames().map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
+              <input
+                type="text"
+                value={laborAddress}
+                onChange={(e) => setLaborAddress(e.target.value)}
+                placeholder="Job address"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              {serviceTypes.length > 1 && (
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
+                  <select
+                    value={selectedServiceTypeId}
+                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  >
+                    {serviceTypes.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={laborRate}
+                  onChange={(e) => setLaborRate(e.target.value)}
+                  placeholder="Optional"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+            </div>
+            <div>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
+                      <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {laborFixtureRows.map((row) => {
+                      const hrsPerUnit = Number(row.hrs_per_unit) || 0
+                      const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
+                      return (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <input
+                              type="text"
+                              value={row.fixture}
+                              onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
+                              placeholder="e.g. Toilet, Sink"
+                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={row.count || ''}
+                              onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.25}
+                              value={row.hrs_per_unit || ''}
+                              onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              <input
+                                type="checkbox"
+                                checked={!!row.is_fixed}
+                                onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
+                                style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                              />
+                              <span style={{ color: '#6b7280' }}>fixed</span>
+                            </label>
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>Totals</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                        {laborFixtureRows.reduce((s, r) => {
+                          const hrs = Number(r.hrs_per_unit) || 0
+                          return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                        }, 0).toFixed(2)} hrs
+                      </td>
+                      <td style={{ padding: '0.5rem' }} />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button type="button" onClick={addLaborFixtureRow} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                  Add additional fixture or tie-in
+                </button>
+              </div>
+              {laborRate.trim() !== '' && !isNaN(parseFloat(laborRate)) && (
+                <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Total labor cost: ${formatCurrency(
+                    laborFixtureRows.reduce((s, r) => {
+                      const hrs = Number(r.hrs_per_unit) || 0
+                      return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                    }, 0) * (parseFloat(laborRate) || 0)
+                  )}
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={saveLaborJob}
+                disabled={laborSaving || !laborAssignedTo.trim() || !laborAddress.trim() || laborFixtureRows.every((r) => {
+                  const hasFixture = (r.fixture ?? '').trim()
+                  const isFixed = r.is_fixed ?? false
+                  return !hasFixture || (!isFixed && Number(r.count) <= 0)
+                })}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: laborSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {laborSaving ? 'Saving…' : 'Save Job'}
+              </button>
+              <button
+                type="button"
+                onClick={printLaborSubSheet}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                Print for sub
+              </button>
+            </div>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setLaborBookSectionOpen((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  margin: 0,
+                  marginBottom: laborBookSectionOpen ? '0.75rem' : 0,
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ fontSize: '0.75rem' }}>{laborBookSectionOpen ? '▼' : '▶'}</span>
+                Labor book
+              </button>
+              {laborBookSectionOpen && (
+                <>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Version</label>
+                      <select
+                        value={selectedLaborBookVersionId ?? ''}
+                        onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
+                        style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                      >
+                        {laborBookVersions.map((v) => (
+                          <option key={v.id} value={v.id}>{v.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && selectedLaborBookVersionId && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={applyLaborBookHoursToPeople}
+                          disabled={applyingLaborBookHours}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: applyingLaborBookHours ? 'wait' : 'pointer',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
+                        </button>
+                        {laborBookApplyMessage && (
+                          <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    {laborBookVersions.map((v) => (
+                      <span
+                        key={v.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.35rem 0.5rem',
+                          background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                          border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                          borderRadius: 4,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => { setLaborBookEntriesVersionId(v.id); loadLaborBookEntries(v.id) }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: laborBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
+                        >
+                          {v.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditLaborVersion(v)}
+                          style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                          title="Edit version name"
+                        >
+                          ✎
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={openNewLaborVersion}
+                      style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Add version
+                    </button>
+                  </div>
+                  {laborBookEntriesVersionId && (
+                    <>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
+                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead style={{ background: '#f9fafb' }}>
+                            <tr>
+                              <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
+                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
+                              <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {laborBookEntries.map((entry) => (
+                              <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '0.5rem' }}>
+                                  {entry.fixture_types?.name ?? ''}
+                                  {entry.alias_names?.length ? (
+                                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                                  ) : null}
+                                </td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
+                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
+                                <td style={{ padding: '0.5rem' }}>
+                                  <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={openNewLaborEntry}
+                        style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Add entry
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'ledger' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {laborJobsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading ledger…</p>
+          ) : laborJobs.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No jobs yet. Add one in the Labor tab.</p>
+          ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Print for sub</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                    <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {laborJobs.map((job) => {
+                    const totalHrs = (job.items ?? []).reduce((s, i) => {
+                      const hrs = Number(i.hrs_per_unit) || 0
+                      return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+                    }, 0)
+                    const rate = job.labor_rate ?? 0
+                    const totalCost = totalHrs * rate
+                    const dateStr = job.created_at ? new Date(job.created_at).toLocaleDateString() : '—'
+                    return (
+                      <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
+                        <td style={{ padding: '0.75rem' }}>{job.address}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{job.labor_rate != null ? `$${formatCurrency(job.labor_rate)}/hr` : '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalHrs.toFixed(2)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{rate > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <button type="button" onClick={() => printJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                            Print for sub
+                          </button>
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>{dateStr}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <button type="button" onClick={() => deleteLaborJob(job.id)} disabled={laborJobDeletingId === job.id} style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborJobDeletingId === job.id ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                            {laborJobDeletingId === job.id ? '…' : 'Delete'}
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
@@ -445,6 +1449,148 @@ export default function People() {
               <button type="button" onClick={confirmAndInvite} style={{ padding: '0.5rem 1rem' }}>Send invite</button>
               <button type="button" onClick={() => setInviteConfirm(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {laborVersionFormOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={closeLaborVersionForm}
+        >
+          <div
+            style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
+            <form onSubmit={saveLaborVersion}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+              <input
+                type="text"
+                value={laborVersionNameInput}
+                onChange={(e) => setLaborVersionNameInput(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                placeholder="e.g. Default"
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {editingLaborVersion && editingLaborVersion.name !== 'Default' && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Delete labor book "${editingLaborVersion.name}"? This will delete all entries in this version.`)) return
+                        await deleteLaborVersion(editingLaborVersion)
+                        closeLaborVersionForm()
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Delete version
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {laborEntryFormOpen && laborBookEntriesVersionId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={closeLaborEntryForm}
+        >
+          <div
+            style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
+            {error && (
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                {error}
+              </div>
+            )}
+            <form onSubmit={saveLaborEntry}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in *</label>
+              <input
+                type="text"
+                list="people-labor-fixture-types"
+                value={laborEntryFixtureName}
+                onChange={(e) => setLaborEntryFixtureName(e.target.value)}
+                required
+                placeholder="Type or select fixture type..."
+                autoComplete="off"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+              />
+              <datalist id="people-labor-fixture-types">
+                {fixtureTypes.map((ft) => (
+                  <option key={ft.id} value={ft.name} />
+                ))}
+              </datalist>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
+              <input
+                type="text"
+                value={laborEntryAliasNames}
+                onChange={(e) => setLaborEntryAliasNames(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
+                placeholder="e.g. WC, Commode"
+              />
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row&apos;s Fixture or Tie-in, this labor rate is applied.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>
+                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out (hrs)</label>
+                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set (hrs)</label>
+                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  {editingLaborEntry && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Delete "${editingLaborEntry.fixture_types?.name ?? ''}" from this labor book?`)) return
+                        await deleteLaborEntry(editingLaborEntry)
+                        closeLaborEntryForm()
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

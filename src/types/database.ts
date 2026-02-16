@@ -1264,6 +1264,82 @@ export type Database = {
           },
         ]
       }
+      people_labor_job_items: {
+        Row: {
+          id: string
+          job_id: string
+          fixture: string
+          count: number
+          hrs_per_unit: number
+          is_fixed: boolean
+          sequence_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          fixture?: string
+          count?: number
+          hrs_per_unit?: number
+          is_fixed?: boolean
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          fixture?: string
+          count?: number
+          hrs_per_unit?: number
+          is_fixed?: boolean
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labor_job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_labor_jobs: {
+        Row: {
+          id: string
+          master_user_id: string
+          assigned_to_name: string
+          address: string
+          labor_rate: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          master_user_id: string
+          assigned_to_name: string
+          address?: string
+          labor_rate?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          master_user_id?: string
+          assigned_to_name?: string
+          address?: string
+          labor_rate?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labor_jobs_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_book_entries: {
         Row: {
           created_at: string | null
