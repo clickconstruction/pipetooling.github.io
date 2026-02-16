@@ -47,6 +47,7 @@ export default function People() {
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
   const [personProjects, setPersonProjects] = useState<Record<string, string[]>>({})
+  const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<PeopleTab>('labor')
 
   // Service type and labor book state (for Labor tab)
@@ -94,13 +95,27 @@ export default function People() {
     }
     setError(null)
     const [peopleRes, usersRes] = await Promise.all([
-      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').eq('master_user_id', authUser.id).order('kind').order('name'),
+      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
       supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
     if (usersRes.error) setError(usersRes.error.message)
     else setUsers((usersRes.data as UserRow[]) ?? [])
+    
+    // Load creator names for shared people (created by others)
+    const peopleData = (peopleRes.data as Person[]) ?? []
+    const creatorIds = [...new Set(peopleData.filter((p) => p.master_user_id !== authUser.id).map((p) => p.master_user_id))]
+    if (creatorIds.length > 0) {
+      const { data: creators } = await supabase.from('users').select('id, name, email').in('id', creatorIds)
+      const map: Record<string, string> = {}
+      for (const c of (creators as Array<{ id: string; name: string | null; email: string | null }>) ?? []) {
+        map[c.id] = c.name ?? c.email ?? 'Unknown'
+      }
+      setCreatorNames(map)
+    } else {
+      setCreatorNames({})
+    }
     
     // Load active projects for all people
     await loadPersonProjects()
@@ -671,7 +686,6 @@ export default function People() {
     const { data: jobs, error: jobsErr } = await supabase
       .from('people_labor_jobs')
       .select('id, assigned_to_name, address, labor_rate, created_at')
-      .eq('master_user_id', authUser.id)
       .order('created_at', { ascending: false })
     if (jobsErr) {
       setError(jobsErr.message)
@@ -1000,14 +1014,20 @@ export default function People() {
                       <button type="button" onClick={() => openEdit(item)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => deletePerson(item.id)}
-                        disabled={deletingId === item.id}
-                        style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
-                      >
-                        {deletingId === item.id ? '...' : 'Remove'}
-                      </button>
+                      {item.master_user_id === authUser.id ? (
+                        <button
+                          type="button"
+                          onClick={() => deletePerson(item.id)}
+                          disabled={deletingId === item.id}
+                          style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
+                        >
+                          {deletingId === item.id ? '...' : 'Remove'}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                          Created by {creatorNames[item.master_user_id] ?? 'Unknown'}
+                        </span>
+                      )}
                     </div>
                   )}
                 </li>
