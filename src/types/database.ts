@@ -1311,7 +1311,9 @@ export type Database = {
           master_user_id: string
           assigned_to_name: string
           address: string
+          job_number: string | null
           labor_rate: number | null
+          job_date: string | null
           created_at: string | null
         }
         Insert: {
@@ -1319,7 +1321,9 @@ export type Database = {
           master_user_id: string
           assigned_to_name: string
           address?: string
+          job_number?: string | null
           labor_rate?: number | null
+          job_date?: string | null
           created_at?: string | null
         }
         Update: {
@@ -1327,7 +1331,9 @@ export type Database = {
           master_user_id?: string
           assigned_to_name?: string
           address?: string
+          job_number?: string | null
           labor_rate?: number | null
+          job_date?: string | null
           created_at?: string | null
         }
         Relationships: [

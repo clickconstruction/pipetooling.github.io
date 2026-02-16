@@ -78,15 +78,25 @@ export default function People() {
   type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean }
   const [laborAssignedTo, setLaborAssignedTo] = useState('')
   const [laborAddress, setLaborAddress] = useState('')
+  const [laborJobNumber, setLaborJobNumber] = useState('')
   const [laborRate, setLaborRate] = useState('')
+  const [laborDate, setLaborDate] = useState('')
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
   const [laborSaving, setLaborSaving] = useState(false)
 
   // Ledger tab state
-  type LaborJob = { id: string; assigned_to_name: string; address: string; labor_rate: number | null; created_at: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
+  type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
+  const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
+  const [editAssignedTo, setEditAssignedTo] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [editJobNumber, setEditJobNumber] = useState('')
+  const [editJobDate, setEditJobDate] = useState('')
+  const [editLaborRate, setEditLaborRate] = useState('')
+  const [editFixtureRows, setEditFixtureRows] = useState<LaborFixtureRow[]>([])
+  const [editLaborSaving, setEditLaborSaving] = useState(false)
 
   async function loadPeople() {
     if (!authUser?.id) {
@@ -685,7 +695,7 @@ export default function People() {
     setError(null)
     const { data: jobs, error: jobsErr } = await supabase
       .from('people_labor_jobs')
-      .select('id, assigned_to_name, address, labor_rate, created_at')
+      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at')
       .order('created_at', { ascending: false })
     if (jobsErr) {
       setError(jobsErr.message)
@@ -760,7 +770,9 @@ export default function People() {
         master_user_id: authUser.id,
         assigned_to_name: assigned,
         address,
+        job_number: laborJobNumber.trim().slice(0, 10) || null,
         labor_rate: laborRateNum,
+        job_date: laborDate.trim() ? laborDate.trim() : null,
       })
       .select('id')
       .single()
@@ -787,7 +799,9 @@ export default function People() {
     }
     setLaborAssignedTo('')
     setLaborAddress('')
+    setLaborJobNumber('')
     setLaborRate('')
+    setLaborDate('')
     setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
     setLaborSaving(false)
     setActiveTab('ledger')
@@ -802,6 +816,122 @@ export default function People() {
     if (err) setError(err.message)
     else await loadLaborJobs()
     setLaborJobDeletingId(null)
+  }
+
+  async function updateLaborJobDate(jobId: string, jobDate: string | null) {
+    setError(null)
+    const { error: err } = await supabase.from('people_labor_jobs').update({ job_date: jobDate || null }).eq('id', jobId)
+    if (err) setError(err.message)
+    else {
+      setLaborJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, job_date: jobDate } : j)))
+    }
+  }
+
+  function openEditLaborJob(job: LaborJob) {
+    setEditingLaborJob(job)
+    setEditAssignedTo(job.assigned_to_name)
+    setEditAddress(job.address)
+    setEditJobNumber(job.job_number ?? '')
+    setEditJobDate(job.job_date ?? '')
+    setEditLaborRate(job.labor_rate != null ? String(job.labor_rate) : '')
+    const rows = (job.items ?? []).map((i) => ({
+      id: crypto.randomUUID(),
+      fixture: i.fixture ?? '',
+      count: Number(i.count) || 1,
+      hrs_per_unit: Number(i.hrs_per_unit) || 0,
+      is_fixed: i.is_fixed ?? false,
+    }))
+    setEditFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    setError(null)
+  }
+
+  function closeEditLaborJob() {
+    setEditingLaborJob(null)
+    setEditAssignedTo('')
+    setEditAddress('')
+    setEditJobNumber('')
+    setEditJobDate('')
+    setEditLaborRate('')
+    setEditFixtureRows([])
+  }
+
+  function addEditFixtureRow() {
+    setEditFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+  }
+
+  function removeEditFixtureRow(id: string) {
+    setEditFixtureRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev))
+  }
+
+  function updateEditFixtureRow(id: string, updates: Partial<LaborFixtureRow>) {
+    setEditFixtureRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+  }
+
+  async function saveEditedLaborJob(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingLaborJob) return
+    const assigned = editAssignedTo.trim()
+    const address = editAddress.trim()
+    if (!assigned) {
+      setError('Select a user.')
+      return
+    }
+    if (!address) {
+      setError('Address is required.')
+      return
+    }
+    const validRows = editFixtureRows.filter((r) => {
+      const hasFixture = (r.fixture ?? '').trim()
+      const isFixed = r.is_fixed ?? false
+      return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
+    })
+    if (validRows.length === 0) {
+      setError('Add at least one fixture or tie-in with count > 0.')
+      return
+    }
+    setEditLaborSaving(true)
+    setError(null)
+    const laborRateNum = editLaborRate.trim() === '' ? null : parseFloat(editLaborRate) || null
+    const { error: jobErr } = await supabase
+      .from('people_labor_jobs')
+      .update({
+        assigned_to_name: assigned,
+        address,
+        job_number: editJobNumber.trim().slice(0, 10) || null,
+        labor_rate: laborRateNum,
+        job_date: editJobDate.trim() ? editJobDate.trim() : null,
+      })
+      .eq('id', editingLaborJob.id)
+    if (jobErr) {
+      setError(jobErr.message)
+      setEditLaborSaving(false)
+      return
+    }
+    const { error: delErr } = await supabase.from('people_labor_job_items').delete().eq('job_id', editingLaborJob.id)
+    if (delErr) {
+      setError(delErr.message)
+      setEditLaborSaving(false)
+      return
+    }
+    for (let i = 0; i < validRows.length; i++) {
+      const r = validRows[i]!
+      const { error: itemErr } = await supabase.from('people_labor_job_items').insert({
+        job_id: editingLaborJob.id,
+        fixture: r.fixture.trim(),
+        count: Number(r.count) || 1,
+        hrs_per_unit: Number(r.hrs_per_unit) || 0,
+        is_fixed: r.is_fixed ?? false,
+        sequence_order: i + 1,
+      })
+      if (itemErr) {
+        setError(itemErr.message)
+        setEditLaborSaving(false)
+        return
+      }
+    }
+    setEditLaborSaving(false)
+    closeEditLaborJob()
+    await loadLaborJobs()
   }
 
   function formatCurrency(n: number): string {
@@ -861,8 +991,9 @@ export default function People() {
 
   function printJobSubSheet(job: LaborJob) {
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const dateStr = job.created_at ? new Date(job.created_at).toLocaleDateString() : new Date().toLocaleDateString()
-    const title = escapeHtml(job.assigned_to_name) + ' — ' + escapeHtml(job.address) + ' — ' + dateStr
+    const dateStr = job.job_date ? new Date(job.job_date + 'T12:00:00').toLocaleDateString() : (job.created_at ? new Date(job.created_at).toLocaleDateString() : new Date().toLocaleDateString())
+    const jobNumPart = job.job_number ? escapeHtml(job.job_number) + ' — ' : ''
+    const title = escapeHtml(job.assigned_to_name) + ' — ' + jobNumPart + escapeHtml(job.address) + ' — ' + dateStr
     const rate = job.labor_rate ?? 0
 
     const items = job.items ?? []
@@ -1055,15 +1186,28 @@ export default function People() {
                 ))}
               </select>
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
-              <input
-                type="text"
-                value={laborAddress}
-                onChange={(e) => setLaborAddress(e.target.value)}
-                placeholder="Job address"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              />
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
+                <input
+                  type="text"
+                  value={laborAddress}
+                  onChange={(e) => setLaborAddress(e.target.value)}
+                  placeholder="Job address"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ flex: '0 0 120px' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
+                <input
+                  type="text"
+                  value={laborJobNumber}
+                  onChange={(e) => setLaborJobNumber(e.target.value)}
+                  maxLength={10}
+                  placeholder="Optional"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               {serviceTypes.length > 1 && (
@@ -1089,6 +1233,15 @@ export default function People() {
                   value={laborRate}
                   onChange={(e) => setLaborRate(e.target.value)}
                   placeholder="Optional"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+                <input
+                  type="date"
+                  value={laborDate}
+                  onChange={(e) => setLaborDate(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
@@ -1375,6 +1528,7 @@ export default function People() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
@@ -1392,10 +1546,11 @@ export default function People() {
                     }, 0)
                     const rate = job.labor_rate ?? 0
                     const totalCost = totalHrs * rate
-                    const dateStr = job.created_at ? new Date(job.created_at).toLocaleDateString() : '—'
+                    const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                     return (
                       <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
+                        <td style={{ padding: '0.75rem' }}>{job.job_number ?? '—'}</td>
                         <td style={{ padding: '0.75rem' }}>{job.address}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{job.labor_rate != null ? `$${formatCurrency(job.labor_rate)}/hr` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalHrs.toFixed(2)}</td>
@@ -1405,8 +1560,18 @@ export default function People() {
                             Print for sub
                           </button>
                         </td>
-                        <td style={{ padding: '0.75rem' }}>{dateStr}</td>
                         <td style={{ padding: '0.75rem' }}>
+                          <input
+                            type="date"
+                            value={dateInputValue}
+                            onChange={(e) => updateLaborJobDate(job.id, e.target.value || null)}
+                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.75rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <button type="button" onClick={() => openEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                            Edit
+                          </button>
                           <button type="button" onClick={() => deleteLaborJob(job.id)} disabled={laborJobDeletingId === job.id} style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborJobDeletingId === job.id ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
                             {laborJobDeletingId === job.id ? '…' : 'Delete'}
                           </button>
@@ -1418,6 +1583,149 @@ export default function People() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {editingLaborJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+            <h2 style={{ marginTop: 0 }}>Edit job</h2>
+            <form onSubmit={saveEditedLaborJob}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
+                <input
+                  type="text"
+                  value={editAssignedTo}
+                  onChange={(e) => setEditAssignedTo(e.target.value)}
+                  list="edit-roster-names"
+                  placeholder="Person name"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+                <datalist id="edit-roster-names">
+                  {allRosterNames().map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
+                  <input
+                    type="text"
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: '0 0 100px' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
+                  <input
+                    type="text"
+                    value={editJobNumber}
+                    onChange={(e) => setEditJobNumber(e.target.value)}
+                    maxLength={10}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <div style={{ flex: '1 1 120px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={editLaborRate}
+                    onChange={(e) => setEditLaborRate(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+                  <input
+                    type="date"
+                    value={editJobDate}
+                    onChange={(e) => setEditJobDate(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>fixed</th>
+                        <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {editFixtureRows.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <input
+                              type="text"
+                              value={row.fixture}
+                              onChange={(e) => updateEditFixtureRow(row.id, { fixture: e.target.value })}
+                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              value={row.count || ''}
+                              onChange={(e) => updateEditFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.25}
+                              value={row.hrs_per_unit || ''}
+                              onChange={(e) => updateEditFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={!!row.is_fixed}
+                              onChange={(e) => updateEditFixtureRow(row.id, { is_fixed: e.target.checked })}
+                              style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <button type="button" onClick={() => removeEditFixtureRow(row.id)} disabled={editFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" onClick={addEditFixtureRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                  Add fixture or tie-in
+                </button>
+              </div>
+              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" disabled={editLaborSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: editLaborSaving ? 'not-allowed' : 'pointer' }}>
+                  {editLaborSaving ? 'Saving…' : 'Save'}
+                </button>
+                <button type="button" onClick={closeEditLaborJob} disabled={editLaborSaving} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
