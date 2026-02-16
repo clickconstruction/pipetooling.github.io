@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-11
+last_updated: 2026-02-12
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -146,7 +146,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Create people in roster
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
-- View people they created
+- View people they created and people shared with them (via master_shares)
+- Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
+- Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 
 **Bids**:
 - Full access to all bids features
@@ -209,8 +211,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Cannot see Ledger Total or Total Left on Job
 
 **People**:
-- View people they created
-- Limited people management
+- View people they created and people shared with their master (via master_shares)
+- Labor tab: Add labor jobs per person
+- Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 
 **Bids**:
 - Full access to all bids features (same as master/dev)
@@ -294,7 +297,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Track submissions and outcomes
 - Can see all customers in GC/Builder dropdown (RLS SELECT permission)
 - **Can create new customers** via "+ Add new customer" modal:
-  - Must assign Customer Owner (Master) - sees all masters
+  - Must assign Customer Owner (Master) - sees all masters and devs in dropdown (RLS policy `allow_estimators_see_masters`)
   - Cannot access `/customers` page directly
   - RLS allows INSERT when `master_user_id` set to valid master
 
@@ -376,6 +379,17 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ |
 | Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ |
 | View stage summary | ✅ | ✅ | ✅ | ❌ | ❌ |
+
+### People Management
+
+| Feature | dev | master | assistant | sub | estimator |
+|---------|-----|--------|-----------|-----|-----------|
+| View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
+| Create people | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
+| Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
+| Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
 
 ### Workflow Management
 
@@ -497,6 +511,7 @@ EXISTS (
 
 **Tables Using This Pattern**:
 - Same as master-assistant adoption
+- `people`, `people_labor_jobs`, `people_labor_job_items` (viewing master and their assistants see shared people and labor jobs; shared people show "Created by [name]")
 - Shared masters have same restrictions as assistants
 
 **Use Cases**:
@@ -521,6 +536,7 @@ master_user_id = auth.uid()
 - `projects` (master_user_id)
 - `purchase_orders` (created_by)
 - `people` (master_user_id)
+- `people_labor_jobs` (master_user_id)
 
 **Cascade Behavior**:
 - Projects inherit customer owner (automatic)

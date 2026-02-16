@@ -94,6 +94,56 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 12, 2026
 
+**`20260212260000_add_job_date_to_people_labor_jobs.sql`**
+- **Purpose**: Add optional job date to labor jobs
+- **Changes**: Added `job_date` (DATE, nullable) to `people_labor_jobs`
+- **Impact**: When set, used for display in Ledger and print for sub; otherwise `created_at` is used
+- **Category**: People / Labor
+
+**`20260212250000_add_job_number_to_people_labor_jobs.sql`**
+- **Purpose**: Add optional job number to labor jobs
+- **Changes**: Added `job_number` (VARCHAR(10), nullable) to `people_labor_jobs`
+- **Impact**: Shown in Labor form, Ledger, and print for sub
+- **Category**: People / Labor
+
+**`20260212240000_allow_estimators_see_masters.sql`**
+- **Purpose**: Allow estimators to see masters in Customer Owner dropdown
+- **Root Cause**: RLS blocked estimators from reading master_technician/dev users, causing "No masters found"
+- **Changes**: Created `is_estimator()` SECURITY DEFINER function; added SELECT policy for estimators on users where role IN ('master_technician', 'dev')
+- **Impact**: Estimators can add customers via Bids modal and select a master as owner
+- **Category**: Access Control / RLS
+
+**`20260212230000_allow_viewing_masters_see_sharing_masters.sql`**
+- **Purpose**: Allow viewing masters and their assistants to see sharing masters' user rows
+- **Root Cause**: "Created by [name]" showed "Unknown" when viewing shared people because users table RLS blocked reading dev/master rows
+- **Changes**: Created `can_see_sharing_master()` SECURITY DEFINER function; added SELECT policy on users
+- **Impact**: Creator names display correctly for shared people
+- **Category**: Access Control / RLS
+
+**`20260212220000_allow_assistants_read_master_shares_for_viewing.sql`**
+- **Purpose**: Allow assistants to read master_shares where they assist the viewing master
+- **Changes**: Added SELECT policy on `master_shares` for assistants whose master is the viewing_master_id
+- **Impact**: Assistants (e.g., Taunya) can see people and labor jobs shared with their master (e.g., Malachi)
+- **Category**: Access Control / RLS
+
+**`20260212210000_add_master_shares_to_people.sql`**
+- **Purpose**: Add master_shares support to people, people_labor_jobs, people_labor_job_items
+- **Changes**: Added SELECT policies for shared access via master_shares and master_assistants; when Dev shares with another Master, both that Master and their assistants can see shared people and labor jobs
+- **Impact**: Shared people and ledger visible to viewing master and their assistants
+- **Category**: Access Control / People
+
+**`20260212200000_add_is_fixed_to_people_labor_job_items.sql`**
+- **Purpose**: Support fixed labor hours (like cost_estimate_labor_rows)
+- **Changes**: Added `is_fixed` (BOOLEAN, default false) to `people_labor_job_items`; when true, labor hours = hrs_per_unit (count ignored)
+- **Impact**: Labor form supports fixed-rate items
+- **Category**: People / Labor
+
+**`20260212190000_create_people_labor_jobs.sql`**
+- **Purpose**: Create People Labor and Ledger tables
+- **Changes**: Created `people_labor_jobs` (assigned_to_name, address, labor_rate) and `people_labor_job_items` (fixture, count, hrs_per_unit, sequence_order); RLS for dev, master, assistant, estimator
+- **Impact**: Labor tab and Ledger tab on People page
+- **Category**: People / Labor
+
 **`20260212180000_add_estimator_cost_to_cost_estimates.sql`**
 - **Purpose**: Add estimator cost parameters to cost estimates (per-count-type or flat amount)
 - **Changes**:
@@ -561,6 +611,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `allow_masters_see_other_masters.sql` (Feb 7, 2026) - Masters can view other masters for sharing
 - `allow_estimators_access_bids.sql` - Estimators full bids access
 - `allow_estimators_select_customers.sql` (Feb 4, 2026) - Estimators SELECT/INSERT customers
+- `20260212220000_allow_assistants_read_master_shares_for_viewing.sql` (Feb 12, 2026) - Assistants read master_shares
+- `20260212230000_allow_viewing_masters_see_sharing_masters.sql` (Feb 12, 2026) - Creator names for shared people
+- `20260212240000_allow_estimators_see_masters.sql` (Feb 12, 2026) - Estimators see masters in dropdown
 - `verify_projects_rls_for_assistants.sql` - Assistants see all stages
 - `fix_cost_estimates_rls_for_assistants.sql` (Feb 7, 2026) - Simplified RLS for cost estimates
 
@@ -588,6 +641,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_people_table.sql` - People without user accounts
 - `update_people_kind_constraint.sql` (Feb 5, 2026) - Kind enum validation
 - `allow_devs_read_all_people.sql` - Devs see all roster entries
+- `20260212190000_create_people_labor_jobs.sql` (Feb 12, 2026) - Labor jobs and items tables
+- `20260212200000_add_is_fixed_to_people_labor_job_items.sql` (Feb 12, 2026) - Fixed labor hours
+- `20260212250000_add_job_number_to_people_labor_jobs.sql` (Feb 12, 2026) - Job number field
+- `20260212260000_add_job_date_to_people_labor_jobs.sql` (Feb 12, 2026) - Job date field
+- `20260212210000_add_master_shares_to_people.sql` (Feb 12, 2026) - Master shares for people/labor
 
 ---
 

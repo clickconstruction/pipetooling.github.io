@@ -525,10 +525,14 @@ WHERE proname IN (
   - Users can read their own record
   - Masters/devs can see all assistants
   - Users can see masters who have adopted them (via `master_adopted_current_user()` function)
-  - Uses `SECURITY DEFINER` function to avoid recursion in RLS policies
+  - Viewing masters and their assistants can see sharing masters (via `can_see_sharing_master()` - enables "Created by [name]" for shared people)
+  - Estimators can see master_technician and dev users (for Customer Owner dropdown in Add Customer modal)
+  - Uses `SECURITY DEFINER` functions to avoid recursion in RLS policies
 - **Helper Functions**:
   - `public.is_dev()` - Checks if current user has dev role (avoids recursion)
   - `public.master_adopted_current_user(master_user_id UUID)` - Checks if master adopted current user (avoids recursion)
+  - `public.can_see_sharing_master(sharing_master_id UUID)` - True if current user (or their master) is viewing_master for that sharing_master
+  - `public.is_estimator()` - Checks if current user has estimator role
 
 #### `public.customers`
 - **Purpose**: Customer information
@@ -684,7 +688,32 @@ WHERE proname IN (
   - `email` (text, nullable)
   - `phone` (text, nullable)
   - `notes` (text, nullable)
-- **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`)
+- **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
+
+#### `public.people_labor_jobs`
+- **Purpose**: Labor jobs from People Labor tab; displayed in Ledger
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `master_user_id` (uuid, FK → `users.id` ON DELETE CASCADE)
+  - `assigned_to_name` (text, required)
+  - `address` (text, default '')
+  - `job_number` (varchar(10), nullable)
+  - `job_date` (date, nullable)
+  - `labor_rate` (numeric(10,2), nullable)
+  - `created_at` (timestamptz)
+- **RLS**: Dev, master, assistant, estimator can read/insert/update/delete own jobs; dev can manage any; shared access via `master_shares` for SELECT
+
+#### `public.people_labor_job_items`
+- **Purpose**: Fixture rows per labor job; labor hours = count × hrs_per_unit (or hrs_per_unit when is_fixed)
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `job_id` (uuid, FK → `people_labor_jobs.id` ON DELETE CASCADE)
+  - `fixture` (text, default '')
+  - `count` (numeric(12,2), default 1)
+  - `hrs_per_unit` (numeric(8,2), default 0)
+  - `is_fixed` (boolean, default false) - when true, labor hours = hrs_per_unit
+  - `sequence_order` (integer, default 0)
+- **RLS**: Follows job access (owner or dev or shared)
 
 #### `public.step_subscriptions`
 - **Purpose**: User subscriptions to step notifications
@@ -1830,7 +1859,10 @@ user_id = auth.uid()
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts
-- **Data**: Name, email, phone, notes, kind
+  - **Labor Tab**: Add labor jobs per person; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate; fixture rows (Fixture, Count, hrs/unit, Fixed); Add Row, Save
+  - **Ledger Tab**: Table of all labor jobs (User, Address, Job #, Date, Labor rate, Total hrs); Edit button opens modal to update job and fixture items; Delete button removes job; Print for sub uses job_date when set
+  - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people and labor jobs; shared people show "Created by [name]" instead of Remove
+- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed)
 
 ### 6. Calendar View
 - **Page**: `Calendar.tsx`

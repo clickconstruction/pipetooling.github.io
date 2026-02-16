@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-13
+last_updated: 2026-02-12
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.39 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.39)"
+  - name: "Latest Version (v2.40)"
     line: ~104
-    description: "Takeoff Print Breakdown for master plumber audit"
+    description: "People Labor/Ledger, Master Shares, Edit button, Estimators see masters"
   - name: "v2.37"
     line: ~140
     description: "Add missing fixtures, driving in pricing, cover letter inclusions/design date, price book default"
@@ -58,7 +58,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+1. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+2. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
 2. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
 3. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
 4. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
@@ -98,6 +99,68 @@ when_to_read:
 37. [Email Templates](#email-templates)
 38. [Financial Tracking](#financial-tracking)
 39. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.40)
+
+### People Page: Labor Tab and Ledger
+
+**Date**: 2026-02-12
+
+**Overview**:
+The People page now includes a **Labor** tab and **Ledger** tab for tracking labor jobs per person. Masters and assistants can add labor jobs with fixture rows (fixture, count, hrs/unit, fixed), and the Ledger displays all jobs in a table with Edit and Delete actions.
+
+**Labor Tab**:
+- Select a person from roster; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate
+- Fixture rows table: Fixture, Count, hrs/unit, Fixed checkbox, Remove
+- Add Row and Save create a new labor job with items
+- Validation: assigned and address required; at least one valid fixture row
+
+**Ledger Tab**:
+- Table: User, Address, Job #, Date, Labor rate, Total hrs, Actions (Edit, Delete)
+- **Edit button**: Opens modal with same form structure; Save updates the job and replaces all fixture items
+- **Delete button**: Removes job and its items
+- Print for sub: Uses job_date when set, otherwise created_at; includes Job # in output
+
+**Database**: `people_labor_jobs` (assigned_to_name, address, job_number, job_date, labor_rate), `people_labor_job_items` (fixture, count, hrs_per_unit, is_fixed)
+
+**Migrations**: `20260212190000_create_people_labor_jobs.sql`, `20260212200000_add_is_fixed_to_people_labor_job_items.sql`, `20260212250000_add_job_number_to_people_labor_jobs.sql`, `20260212260000_add_job_date_to_people_labor_jobs.sql`
+
+---
+
+### People: Master Shares RLS
+
+**Date**: 2026-02-12
+
+**Overview**:
+When a Dev shares with another Master (e.g., Malachi), Malachi and his assistants can now see the shared people (including subs) and their labor jobs/ledger.
+
+**Changes**:
+- **people**: New SELECT policy for shared access via `master_shares` and `master_assistants`
+- **people_labor_jobs** / **people_labor_job_items**: Updated SELECT policies to include shared access
+- **master_shares**: Assistants can read shares where they assist the viewing master
+- **users**: Viewing masters and their assistants can see sharing masters' user rows (enables "Created by [name]" instead of "Unknown")
+- Uses `can_see_sharing_master()` SECURITY DEFINER function to avoid RLS recursion
+
+**UI**: Shared people show "Created by [name]" instead of Remove button; creator names resolve correctly
+
+**Migrations**: `20260212210000_add_master_shares_to_people.sql`, `20260212220000_allow_assistants_read_master_shares_for_viewing.sql`, `20260212230000_allow_viewing_masters_see_sharing_masters.sql`
+
+---
+
+### Estimators: See Masters for Customer Owner Dropdown
+
+**Date**: 2026-02-12
+
+**Overview**:
+Estimators can now see master_technician and dev users in the Customer Owner dropdown when adding a new customer (Add Customer modal from Bids). Previously this showed "No masters found" due to RLS.
+
+**Changes**:
+- New `is_estimator()` SECURITY DEFINER function
+- New policy: Estimators can SELECT users where role IN ('master_technician', 'dev')
+
+**Migration**: `20260212240000_allow_estimators_see_masters.sql`
 
 ---
 
