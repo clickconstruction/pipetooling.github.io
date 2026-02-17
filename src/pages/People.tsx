@@ -104,6 +104,7 @@ export default function People() {
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [isDev, setIsDev] = useState(false)
+  const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
@@ -283,22 +284,27 @@ export default function People() {
         setCanAccessPay(true)
         setCanAccessHours(true)
         setIsDev(true)
+        setCanSeePushStatus(true)
         return
       }
       if (role === 'assistant') {
         setCanAccessHours(true)
+        setCanSeePushStatus(true)
         return
       }
-      if (role === 'master_technician' && approvedIds.has(authUser.id)) {
-        setCanAccessPay(true)
-        setCanAccessHours(true)
+      if (role === 'master_technician') {
+        setCanSeePushStatus(true)
+        if (approvedIds.has(authUser.id)) {
+          setCanAccessPay(true)
+          setCanAccessHours(true)
+        }
       }
     }
     loadPayAccess()
   }, [authUser?.id])
 
   useEffect(() => {
-    if (!isDev) return
+    if (!canSeePushStatus) return
     supabase
       .from('push_subscriptions')
       .select('user_id')
@@ -306,7 +312,7 @@ export default function People() {
         const ids = new Set((data ?? []).map((r: { user_id: string }) => r.user_id))
         setPushEnabledUserIds(ids)
       })
-  }, [isDev])
+  }, [canSeePushStatus])
 
   async function loadServiceTypes() {
     const { data, error } = await supabase
@@ -1472,7 +1478,7 @@ export default function People() {
                 >
                   <div style={{ flex: 1 }}>
                     <div>
-                      {item.source === 'user' && isDev && pushEnabledUserIds.has(item.id) && (
+                      {item.source === 'user' && canSeePushStatus && pushEnabledUserIds.has(item.id) && (
                         <span
                           title="Push notifications enabled"
                           style={{

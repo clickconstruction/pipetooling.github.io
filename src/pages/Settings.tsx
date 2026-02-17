@@ -362,6 +362,7 @@ export default function Settings() {
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
+  const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
   const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
   const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
   const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
@@ -4406,25 +4407,53 @@ export default function Settings() {
         </div>
       )}
 
-      <form onSubmit={handleClaimCode} style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
-        <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            id="code"
-            type="text"
-            value={code}
-            onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
-            disabled={codeSubmitting}
-            placeholder="Admin code"
-            style={{ padding: '0.5rem', minWidth: 160 }}
-            autoComplete="one-time-code"
-          />
-          <button type="submit" disabled={codeSubmitting || !code.trim()}>
-            {codeSubmitting ? 'Checking…' : 'Submit'}
-          </button>
-        </div>
-        {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
-      </form>
+      <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+        <button
+          type="button"
+          onClick={() => setAdvancedSectionOpen((prev) => !prev)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            margin: 0,
+            padding: '1rem',
+            width: '100%',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.9375rem',
+            fontWeight: 500,
+            textAlign: 'left',
+            color: '#6b7280',
+          }}
+        >
+          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
+          Advanced
+        </button>
+        {advancedSectionOpen && (
+          <div style={{ padding: '1rem 0 0 0' }}>
+            <form onSubmit={handleClaimCode}>
+              <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  id="code"
+                  type="text"
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
+                  disabled={codeSubmitting}
+                  placeholder="Admin code"
+                  style={{ padding: '0.5rem', minWidth: 160 }}
+                  autoComplete="one-time-code"
+                />
+                <button type="submit" disabled={codeSubmitting || !code.trim()}>
+                  {codeSubmitting ? 'Checking…' : 'Submit'}
+                </button>
+              </div>
+              {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
+            </form>
+          </div>
+        )}
+      </div>
 
       {myRole === 'dev' && (
         <>
