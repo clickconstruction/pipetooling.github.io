@@ -938,15 +938,15 @@ export default function Settings() {
       // Create new template with defaults
       const defaults: Record<EmailTemplate['template_type'], { subject: string; body: string }> = {
         invitation: {
-          subject: 'Invitation to join Pipetooling',
-          body: 'Hi {{name}},\n\nYou\'ve been invited to join Pipetooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
+          subject: 'Invitation to join PipeTooling',
+          body: 'Hi {{name}},\n\nYou\'ve been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
         },
         sign_in: {
-          subject: 'Sign in to Pipetooling',
-          body: 'Hi {{name}},\n\nClick the link below to sign in to your Pipetooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
+          subject: 'Sign in to PipeTooling',
+          body: 'Hi {{name}},\n\nClick the link below to sign in to your PipeTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
         },
         login_as: {
-          subject: 'Sign in to Pipetooling',
+          subject: 'Sign in to PipeTooling',
           body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
         },
         stage_assigned_started: {
@@ -5318,7 +5318,7 @@ export default function Settings() {
                       onChange={(e) => { setTemplateSubject(e.target.value); setTemplateError(null) }}
                       required
                       disabled={templateSaving}
-                      placeholder="e.g., Welcome to Pipetooling"
+                      placeholder="e.g., Welcome to PipeTooling"
                       style={{ width: '100%', padding: '0.5rem' }}
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -5338,7 +5338,7 @@ export default function Settings() {
                       required
                       disabled={templateSaving}
                       rows={12}
-                      placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join Pipetooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
+                      placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
                       style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>

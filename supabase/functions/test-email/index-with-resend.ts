@@ -94,7 +94,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Pipetooling <onboarding@resend.dev>', // Change to your verified domain
+        from: 'PipeTooling <onboarding@resend.dev>', // Change to your verified domain
         to: [to],
         subject,
         html: htmlBody,

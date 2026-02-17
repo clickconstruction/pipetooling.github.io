@@ -24,8 +24,8 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Pipetooling',
-        short_name: 'Pipetooling',
+        name: 'PipeTooling',
+        short_name: 'PipeTooling',
         description: 'Construction workflow and bid management',
         theme_color: '#f97316',
         background_color: '#ffffff',

@@ -44,7 +44,7 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'Pipetooling <team@noreply.pipetooling.com>',
+      from: 'PipeTooling <team@noreply.pipetooling.com>',
       to: [to],
       subject,
       html: htmlBody,
