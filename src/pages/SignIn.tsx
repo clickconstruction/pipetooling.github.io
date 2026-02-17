@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function SignIn() {
@@ -8,7 +8,6 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [sessionMessage, setSessionMessage] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   useEffect(() => {
     // Check for session expiry message
@@ -30,7 +29,14 @@ export default function SignIn() {
       return
     }
     void supabase.rpc('touch_last_sign_in')
-    navigate('/', { replace: true })
+    // Hard reload to clear cache (avoids stale data, service worker cache)
+    const reload = () => { location.reload() }
+    if (typeof caches !== 'undefined') {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(reload, reload)
+    } else {
+      reload()
+    }
   }
 
   return (

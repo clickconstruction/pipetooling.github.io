@@ -16,6 +16,8 @@ export function useAuth(): UseAuthReturn {
   const warningShownRef = useRef(false)
   const lastActivityRef = useRef(Date.now())
   const refreshTimeoutRef = useRef<NodeJS.Timeout>()
+  const sessionExpiresAtRef = useRef<number | null>(null)
+  sessionExpiresAtRef.current = sessionExpiresAt
 
   // Check if session is valid
   const checkSession = useCallback(async () => {
@@ -32,33 +34,27 @@ export function useAuth(): UseAuthReturn {
     return true
   }, [])
 
-  // Handle user activity and refresh session if needed
+  // Handle user activity and refresh session if needed (reads from ref to avoid effect re-runs)
   const handleActivity = useCallback(() => {
     lastActivityRef.current = Date.now()
+    const expiresAt = sessionExpiresAtRef.current
+    if (!expiresAt) return
     
-    // If we have a session and it's within 10 minutes of expiry, refresh it
-    if (sessionExpiresAt) {
-      const timeUntilExpiry = sessionExpiresAt - Date.now()
-      
-      // Refresh if within 10 minutes of expiry
-      if (timeUntilExpiry > 0 && timeUntilExpiry < 10 * 60 * 1000) {
-        // Debounce: only refresh once per minute
-        if (refreshTimeoutRef.current) return
-        
-        refreshTimeoutRef.current = setTimeout(() => {
-          refreshTimeoutRef.current = undefined
-        }, 60 * 1000)
-        
-        // Refresh the session
-        supabase.auth.refreshSession().then(({ data, error }) => {
-          if (!error && data.session) {
-            setSessionExpiresAt(data.session.expires_at ? data.session.expires_at * 1000 : null)
-            warningShownRef.current = false // Reset warning flag
-          }
-        })
+    const timeUntilExpiry = expiresAt - Date.now()
+    if (timeUntilExpiry <= 0 || timeUntilExpiry >= 10 * 60 * 1000) return
+    
+    if (refreshTimeoutRef.current) return
+    refreshTimeoutRef.current = setTimeout(() => {
+      refreshTimeoutRef.current = undefined
+    }, 60 * 1000)
+    
+    supabase.auth.refreshSession().then(({ data, error }) => {
+      if (!error && data.session) {
+        setSessionExpiresAt(data.session.expires_at ? data.session.expires_at * 1000 : null)
+        warningShownRef.current = false
       }
-    }
-  }, [sessionExpiresAt])
+    })
+  }, [])
 
   useEffect(() => {
     // Initial session check
@@ -82,16 +78,8 @@ export function useAuth(): UseAuthReturn {
       setUser(session?.user ?? null)
       setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
 
-      // On sign-in: hard reload to clear cache (avoids stale data, service worker cache)
-      if (event === 'SIGNED_IN') {
-        const reload = () => { location.reload() }
-        if (typeof caches !== 'undefined') {
-          caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            .then(reload, reload)
-        } else {
-          reload()
-        }
-      }
+      // Skip reload: SIGNED_IN fires on session restore and token refresh too, causing reload loops.
+      // Cache clearing after explicit sign-in can be done in SignIn.tsx after successful login if needed.
     })
 
     // Track user activity to refresh session
@@ -107,11 +95,12 @@ export function useAuth(): UseAuthReturn {
       }
     }, 5 * 60 * 1000)
 
-    // Check session expiry every minute
+    // Check session expiry every minute (reads from ref)
     const expiryCheckInterval = setInterval(() => {
-      if (!sessionExpiresAt) return
+      const expiresAt = sessionExpiresAtRef.current
+      if (!expiresAt) return
 
-      const timeUntilExpiry = sessionExpiresAt - Date.now()
+      const timeUntilExpiry = expiresAt - Date.now()
       
       // Session expired - sign out
       if (timeUntilExpiry <= 0) {
@@ -150,7 +139,7 @@ export function useAuth(): UseAuthReturn {
         clearTimeout(refreshTimeoutRef.current)
       }
     }
-  }, [checkSession, sessionExpiresAt, handleActivity])
+  }, [checkSession])
 
   return { user, loading, checkSession, sessionExpiresAt }
 }

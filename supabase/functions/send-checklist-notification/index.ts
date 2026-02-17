@@ -112,6 +112,25 @@ serve(async (req) => {
       }
     }
 
+    // Log to notification_history when push was sent
+    if (pushSent > 0) {
+      const templateType =
+        tag === 'test-notification'
+          ? 'test_notification'
+          : tag?.startsWith('checklist-')
+            ? 'checklist_completed'
+            : tag || 'checklist'
+      const checklistInstanceId = tag?.startsWith('checklist-') ? tag.slice('checklist-'.length) : null
+      await adminClient.from('notification_history').insert({
+        recipient_user_id,
+        template_type: templateType,
+        title: push_title,
+        body_preview: push_body.substring(0, 200),
+        channel: 'push',
+        checklist_instance_id: checklistInstanceId || null,
+      })
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -205,19 +205,13 @@ export default function Projects() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1>Projects</h1>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <Link to="/projects/new" style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 6, textDecoration: 'none' }}>
-            Add project
+      {myRole === 'dev' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
+            Edit templates
           </Link>
-          {myRole === 'dev' && (
-            <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
-              Edit templates
-            </Link>
-          )}
         </div>
-      </div>
+      )}
       {customerId && (
         <p style={{ marginBottom: '1rem' }}>
           <Link to="/projects">Show all projects</Link>

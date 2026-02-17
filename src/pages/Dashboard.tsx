@@ -74,6 +74,50 @@ type ChecklistInstance = {
   checklist_items?: { title: string } | null
 }
 
+type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
+
+const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
+
+function ChecklistSkeleton() {
+  return (
+    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      {[1, 2, 3].map((i) => (
+        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <div style={{ ...skeletonStyle, width: 18, height: 18, flexShrink: 0 }} />
+          <div style={{ ...skeletonStyle, flex: 1, height: 20 }} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function AssignedSkeleton() {
+  return (
+    <div>
+      {[1, 2].map((i) => (
+        <div key={i} style={{ padding: '1rem', marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ ...skeletonStyle, height: 18, width: '60%', marginBottom: 8 }} />
+          <div style={{ ...skeletonStyle, height: 14, width: '40%', marginBottom: 8 }} />
+          <div style={{ ...skeletonStyle, height: 14, width: '30%' }} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SubscribedSkeleton() {
+  return (
+    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+      {[1, 2].map((i) => (
+        <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+          <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export default function Dashboard() {
   const { user: authUser } = useAuth()
   const [role, setRole] = useState<UserRole | null>(null)
@@ -81,164 +125,212 @@ export default function Dashboard() {
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
   const [completingChecklistId, setCompletingChecklistId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [userError, setUserError] = useState<string | null>(null)
+  const [userLoading, setUserLoading] = useState(true)
+  const [checklistLoading, setChecklistLoading] = useState(true)
+  const [assignedLoading, setAssignedLoading] = useState(true)
+  const [subscribedLoading, setSubscribedLoading] = useState(true)
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
   const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
+  const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
+  const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
+  const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
 
   useEffect(() => {
     if (!authUser?.id) {
-      setLoading(false)
+      setUserLoading(false)
       return
     }
-    ;(async () => {
-      const { data: userData, error: e } = await supabase
-        .from('users')
-        .select('role, name')
-        .eq('id', authUser.id)
-        .single()
-      if (e) {
-        setError(e.message)
-        setLoading(false)
-        return
-      }
-      const user = userData as { role: UserRole | 'subcontractor' | 'estimator'; name: string | null } | null
-      setRole((user?.role === 'subcontractor' || user?.role === 'estimator' ? null : (user?.role ?? null)) as UserRole | null)
-      const name = user?.name ?? null
-      
-      // Load all users to check if assigned names are users (case-insensitive comparison)
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('name')
-      const userNamesSet = new Set<string>()
-      if (allUsers) {
-        allUsers.forEach((u) => {
-          if (u.name) {
-            userNamesSet.add(u.name.trim().toLowerCase())
-          }
-        })
-      }
-      setUserNames(userNamesSet)
-      
-      // Load subscribed steps
-      const { data: subs } = await supabase
+    let cancelled = false
+    setUserError(null)
+    setUserLoading(true)
+    setChecklistLoading(true)
+    setAssignedLoading(true)
+    setSubscribedLoading(true)
+
+    const today = toLocalDateString(new Date())
+
+    // Phase 1: Parallel fetch user, allUsers, subs, checklist
+    Promise.all([
+      supabase.from('users').select('role, name').eq('id', authUser.id).single(),
+      supabase.from('users').select('name'),
+      supabase
         .from('step_subscriptions')
         .select('step_id, notify_when_started, notify_when_complete, notify_when_reopened')
         .eq('user_id', authUser.id)
-        .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true')
-      
-      if (!subs || subs.length === 0) {
-        setSubscribedSteps([])
-      } else if (subs && subs.length > 0) {
+        .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true'),
+      supabase
+        .from('checklist_instances')
+        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
+        .eq('assigned_to_user_id', authUser.id)
+        .eq('scheduled_date', today)
+        .order('created_at', { ascending: true }),
+    ]).then(([userRes, allUsersRes, subsRes, checklistRes]) => {
+      if (cancelled) return
+
+      const { data: userData, error: userErr } = userRes
+      if (userErr) {
+        setUserError(userErr.message)
+        setUserLoading(false)
+        setChecklistLoading(false)
+        setAssignedLoading(false)
+        setSubscribedLoading(false)
+        return
+      }
+
+      const user = userData as { role: UserRole | 'subcontractor' | 'estimator'; name: string | null } | null
+      setRole((user?.role === 'subcontractor' || user?.role === 'estimator' ? null : (user?.role ?? null)) as UserRole | null)
+      setUserLoading(false)
+
+      const userNamesSet = new Set<string>()
+      const allUsers = allUsersRes.data ?? []
+      allUsers.forEach((u) => {
+        if (u.name) userNamesSet.add(u.name.trim().toLowerCase())
+      })
+      setUserNames(userNamesSet)
+
+      if (!cancelled) {
+        setTodayChecklist((checklistRes.data ?? []) as ChecklistInstance[])
+        setChecklistLoading(false)
+      }
+
+      const subs = subsRes.data ?? []
+      const name = user?.name ?? null
+
+      // Phase 2: Load subscribed and assigned in parallel
+      const loadSubscribed = async () => {
+        if (!subs || subs.length === 0) {
+          if (!cancelled) setSubscribedSteps([])
+          if (!cancelled) setSubscribedLoading(false)
+          return
+        }
         const stepIds = subs.map((s) => s.step_id)
         const { data: steps } = await supabase
           .from('project_workflow_steps')
           .select('id, name, workflow_id')
           .in('id', stepIds)
-        
-        if (steps && steps.length > 0) {
-          const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
-          const { data: workflows } = await supabase
-            .from('project_workflows')
-            .select('id, project_id')
-            .in('id', workflowIds)
-          
-          if (workflows) {
-            const projectIds = [...new Set(workflows.map((w) => w.project_id))]
-            const { data: projects } = await supabase
-              .from('projects')
-              .select('id, name')
-              .in('id', projectIds)
-            
-            if (projects) {
-              const workflowToProject = new Map<string, string>()
-              workflows.forEach((w) => workflowToProject.set(w.id, w.project_id))
-              const projectMap = new Map<string, string>()
-              projects.forEach((p) => projectMap.set(p.id, p.name))
-              
-              const subscribed: SubscribedStep[] = []
-              steps.forEach((step) => {
-                const sub = subs.find((s) => s.step_id === step.id)
-                const projectId = workflowToProject.get(step.workflow_id)
-                const projectName = projectId ? projectMap.get(projectId) : null
-                if (sub && projectId && projectName) {
-                  subscribed.push({
-                    step_id: step.id,
-                    step_name: step.name,
-                    project_id: projectId,
-                    project_name: projectName,
-                    notify_when_started: sub.notify_when_started ?? false,
-                    notify_when_complete: sub.notify_when_complete ?? false,
-                    notify_when_reopened: sub.notify_when_reopened ?? false,
-                  })
-                }
-              })
-              setSubscribedSteps(subscribed)
-            }
+        if (cancelled || !steps?.length) {
+          if (!cancelled) setSubscribedLoading(false)
+          return
+        }
+        const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
+        const { data: workflows } = await supabase
+          .from('project_workflows')
+          .select('id, project_id')
+          .in('id', workflowIds)
+        if (cancelled || !workflows?.length) {
+          if (!cancelled) setSubscribedLoading(false)
+          return
+        }
+        const projectIds = [...new Set(workflows.map((w) => w.project_id))]
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name')
+          .in('id', projectIds)
+        if (cancelled || !projects?.length) {
+          if (!cancelled) setSubscribedLoading(false)
+          return
+        }
+        const workflowToProject = new Map(workflows.map((w) => [w.id, w.project_id]))
+        const projectMap = new Map(projects.map((p) => [p.id, p.name]))
+        const subscribed: SubscribedStep[] = []
+        steps.forEach((step) => {
+          const sub = subs.find((s) => s.step_id === step.id)
+          const projectId = workflowToProject.get(step.workflow_id)
+          const projectName = projectId ? projectMap.get(projectId) : null
+          if (sub && projectId && projectName) {
+            subscribed.push({
+              step_id: step.id,
+              step_name: step.name,
+              project_id: projectId,
+              project_name: projectName,
+              notify_when_started: sub.notify_when_started ?? false,
+              notify_when_complete: sub.notify_when_complete ?? false,
+              notify_when_reopened: sub.notify_when_reopened ?? false,
+            })
           }
+        })
+        if (!cancelled) {
+          setSubscribedSteps(subscribed)
+          setSubscribedLoading(false)
         }
       }
-      
-      // Load assigned steps
-      if (name) {
+
+      const loadAssigned = async () => {
+        if (!name) {
+          if (!cancelled) setAssignedLoading(false)
+          return
+        }
         const { data: stepsData } = await supabase
           .from('project_workflow_steps')
           .select('*')
           .eq('assigned_to_name', name)
           .order('created_at', { ascending: false })
         const steps = (stepsData ?? []) as Step[]
-        if (steps.length > 0) {
-          const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
-          const { data: workflows } = await supabase
-            .from('project_workflows')
-            .select('id, project_id')
-            .in('id', workflowIds)
-          
-          if (workflows) {
-            const projectIds = [...new Set(workflows.map((w) => w.project_id))]
-            const { data: projects } = await supabase
-              .from('projects')
-              .select('id, name, address, plans_link')
-              .in('id', projectIds)
-            
-            if (projects) {
-              const workflowToProject = new Map<string, string>()
-              workflows.forEach((w) => workflowToProject.set(w.id, w.project_id))
-              const projectMap = new Map<string, { name: string; address: string | null; plans_link: string | null }>()
-              projects.forEach((p) => projectMap.set(p.id, { name: p.name, address: p.address, plans_link: p.plans_link }))
-              
-              const assigned: AssignedStep[] = steps.map((step) => {
-                const projectId = workflowToProject.get(step.workflow_id) ?? ''
-                const project = projectId ? (projectMap.get(projectId) ?? null) : null
-                return {
-                  ...step,
-                  project_id: projectId,
-                  project_name: project?.name ?? '',
-                  project_address: project?.address ?? null,
-                  project_plans_link: project?.plans_link ?? null,
-                  workflow_id: step.workflow_id,
-                }
-              })
-              setAssignedSteps(assigned)
-            }
+        if (cancelled || steps.length === 0) {
+          if (!cancelled) setAssignedLoading(false)
+          return
+        }
+        const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
+        const { data: workflows } = await supabase
+          .from('project_workflows')
+          .select('id, project_id')
+          .in('id', workflowIds)
+        if (cancelled || !workflows?.length) {
+          if (!cancelled) setAssignedLoading(false)
+          return
+        }
+        const projectIds = [...new Set(workflows.map((w) => w.project_id))]
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name, address, plans_link')
+          .in('id', projectIds)
+        if (cancelled || !projects?.length) {
+          if (!cancelled) setAssignedLoading(false)
+          return
+        }
+        const workflowToProject = new Map(workflows.map((w) => [w.id, w.project_id]))
+        const projectMap = new Map(projects.map((p) => [p.id, { name: p.name, address: p.address, plans_link: p.plans_link }]))
+        const assigned: AssignedStep[] = steps.map((step) => {
+          const projectId = workflowToProject.get(step.workflow_id) ?? ''
+          const project = projectId ? projectMap.get(projectId) : null
+          return {
+            ...step,
+            project_id: projectId,
+            project_name: project?.name ?? '',
+            project_address: project?.address ?? null,
+            project_plans_link: project?.plans_link ?? null,
+            workflow_id: step.workflow_id,
           }
+        })
+        if (!cancelled) {
+          setAssignedSteps(assigned)
+          setAssignedLoading(false)
         }
       }
-      
-      // Load today's checklist items
-      const today = toLocalDateString(new Date())
-      const { data: checklistData } = await supabase
-        .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-        .eq('assigned_to_user_id', authUser.id)
-        .eq('scheduled_date', today)
-        .order('created_at', { ascending: true })
-      setTodayChecklist((checklistData ?? []) as ChecklistInstance[])
-      
-      setLoading(false)
-    })()
+
+      void loadSubscribed()
+      void loadAssigned()
+    })
+    return () => { cancelled = true }
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!notificationHistoryOpen || !authUser?.id) return
+    setNotificationHistoryLoading(true)
+    supabase
+      .from('notification_history')
+      .select('*')
+      .eq('recipient_user_id', authUser.id)
+      .order('sent_at', { ascending: false })
+      .limit(100)
+      .then(({ data, error }) => {
+        setNotificationHistoryLoading(false)
+        if (error) return
+        setNotificationHistory((data ?? []) as NotificationHistoryRow[])
+      })
+  }, [notificationHistoryOpen, authUser?.id])
 
   async function loadAssignedSteps() {
     if (!authUser?.id) return
@@ -614,13 +706,15 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
-  if (loading) return <p>Loading…</p>
-  if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  const showChecklist = checklistLoading || todayChecklist.length > 0
+  const showAssigned = assignedLoading || assignedSteps.length > 0
+  const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
   return (
     <div>
       <h1>Dashboard</h1>
-      {todayChecklist.length > 0 && (
+      {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
+      {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Checklist items due today
@@ -628,7 +722,10 @@ export default function Dashboard() {
               View all →
             </Link>
           </h2>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {checklistLoading && todayChecklist.length === 0 ? (
+            <ChecklistSkeleton />
+          ) : todayChecklist.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayChecklist.map((inst) => {
               const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
               const isCompleted = !!inst.completed_at
@@ -664,11 +761,15 @@ export default function Dashboard() {
               )
             })}
           </ul>
+          ) : null}
         </div>
       )}
-      {assignedSteps.length > 0 && (
+      {(userLoading || showAssigned) && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Assigned Stages</h2>
+          {assignedLoading && assignedSteps.length === 0 ? (
+            <AssignedSkeleton />
+          ) : (
           <div>
             {assignedSteps.map((s) => (
               <div
@@ -772,6 +873,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -817,10 +919,12 @@ export default function Dashboard() {
         </div>
       )}
       
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+      {showSubscribed && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Subscribed Stages</h2>
-          {subscribedSteps.length === 0 ? (
+          {subscribedLoading && subscribedSteps.length === 0 ? (
+            <SubscribedSkeleton />
+          ) : subscribedSteps.length === 0 ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
               No subscribed stages. Go to a workflow and enable &quot;Notify when started&quot;, &quot;Notify when complete&quot;, or &quot;Notify when re-opened&quot; for steps you want to track here.
             </p>
@@ -859,6 +963,82 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      <div style={{ marginTop: '2rem' }}>
+        <h2
+          style={{
+            fontSize: '1.125rem',
+            marginBottom: notificationHistoryOpen ? '0.75rem' : 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+          }}
+          onClick={() => setNotificationHistoryOpen((o) => !o)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && setNotificationHistoryOpen((o) => !o)}
+        >
+          {notificationHistoryOpen ? '▼' : '▶'} Notification history
+        </h2>
+        {notificationHistoryOpen && (
+          <>
+            {notificationHistoryLoading ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+            ) : notificationHistory.length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {notificationHistory.map((row) => {
+                  const channelLabel = row.channel === 'both' ? 'Email + Push' : row.channel === 'email' ? 'Email' : 'Push'
+                  const link =
+                    row.project_id && row.step_id
+                      ? `/workflows/${row.project_id}#step-${row.step_id}`
+                      : row.checklist_instance_id
+                        ? '/checklist'
+                        : null
+                  return (
+                    <li
+                      key={row.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        marginBottom: '0.5rem',
+                        background: '#fff',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140 }}>
+                        {formatDatetime(row.sent_at)}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 500 }}>{row.title}</span>
+                      <span
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: '#f3f4f6',
+                          color: '#374151',
+                        }}
+                      >
+                        {channelLabel}
+                      </span>
+                      {link && (
+                        <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb' }}>
+                          View →
+                        </Link>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

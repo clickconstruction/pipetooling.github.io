@@ -56,9 +56,15 @@ function AuthHandler() {
             console.error('Failed to set session from magic link:', error)
             navigate('/sign-in', { replace: true })
           } else {
-            // Clear the hash and redirect to dashboard
+            // Clear the hash, clear cache, and hard reload
             window.history.replaceState(null, '', window.location.pathname + window.location.search)
-            navigate('/dashboard', { replace: true })
+            const reload = () => { location.reload() }
+            if (typeof caches !== 'undefined') {
+              caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+                .then(reload, reload)
+            } else {
+              reload()
+            }
           }
         })
       }

@@ -1307,6 +1307,48 @@ export type Database = {
           },
         ]
       }
+      notification_history: {
+        Row: {
+          id: string
+          recipient_user_id: string
+          template_type: string
+          title: string
+          body_preview: string | null
+          channel: string
+          step_id: string | null
+          workflow_id: string | null
+          project_id: string | null
+          checklist_instance_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          id?: string
+          recipient_user_id: string
+          template_type: string
+          title: string
+          body_preview?: string | null
+          channel: string
+          step_id?: string | null
+          workflow_id?: string | null
+          project_id?: string | null
+          checklist_instance_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          id?: string
+          recipient_user_id?: string
+          template_type?: string
+          title?: string
+          body_preview?: string | null
+          channel?: string
+          step_id?: string | null
+          workflow_id?: string | null
+          project_id?: string | null
+          checklist_instance_id?: string | null
+          sent_at?: string
+        }
+        Relationships: []
+      }
       notification_templates: {
         Row: {
           id: string

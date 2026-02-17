@@ -182,47 +182,77 @@ serve(async (req) => {
 
     // Send Web Push if recipient_user_id provided and VAPID keys configured
     let pushSent = 0
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    const adminClient = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey) : null
+
     if (recipient_user_id) {
       const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
       const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-      if (vapidPublicKey && vapidPrivateKey) {
-        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-        if (serviceRoleKey) {
-          const adminClient = createClient(supabaseUrl, serviceRoleKey)
-          const { data: subscriptions } = await adminClient
-            .from('push_subscriptions')
-            .select('endpoint, p256dh_key, auth_key')
-            .eq('user_id', recipient_user_id)
+      if (vapidPublicKey && vapidPrivateKey && adminClient) {
+        const { data: subscriptions } = await adminClient
+          .from('push_subscriptions')
+          .select('endpoint, p256dh_key, auth_key')
+          .eq('user_id', recipient_user_id)
 
-          if (subscriptions && subscriptions.length > 0) {
-            const pushPayload = JSON.stringify({
-              title: push_title || subject,
-              body: push_body || body.substring(0, 200),
-              url: push_url || variables.workflow_link || '/',
-              tag: `workflow-${step_id}`,
-            })
+        if (subscriptions && subscriptions.length > 0) {
+          const pushPayload = JSON.stringify({
+            title: push_title || subject,
+            body: push_body || body.substring(0, 200),
+            url: push_url || variables.workflow_link || '/',
+            tag: `workflow-${step_id}`,
+          })
 
-            webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
+          webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
 
-            for (const sub of subscriptions) {
-              try {
-                await webpush.sendNotification(
-                  {
-                    endpoint: sub.endpoint,
-                    keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-                  },
-                  pushPayload,
-                  { TTL: 86400 }
-                )
-                pushSent++
-              } catch (pushErr) {
-                console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
-                // If subscription is invalid (410 Gone), we could delete it - for now just log
-              }
+          for (const sub of subscriptions) {
+            try {
+              await webpush.sendNotification(
+                {
+                  endpoint: sub.endpoint,
+                  keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
+                },
+                pushPayload,
+                { TTL: 86400 }
+              )
+              pushSent++
+            } catch (pushErr) {
+              console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
+              // If subscription is invalid (410 Gone), we could delete it - for now just log
             }
           }
         }
       }
+    }
+
+    // Log to notification_history when recipient has a user account
+    if (recipient_user_id && adminClient) {
+      let workflowId: string | null = null
+      let projectId: string | null = null
+      const { data: stepRow } = await adminClient
+        .from('project_workflow_steps')
+        .select('workflow_id')
+        .eq('id', step_id)
+        .single()
+      if (stepRow?.workflow_id) {
+        workflowId = stepRow.workflow_id
+        const { data: wfRow } = await adminClient
+          .from('project_workflows')
+          .select('project_id')
+          .eq('id', stepRow.workflow_id)
+          .single()
+        if (wfRow?.project_id) projectId = wfRow.project_id
+      }
+      const channel = pushSent > 0 ? 'both' : 'email'
+      await adminClient.from('notification_history').insert({
+        recipient_user_id,
+        template_type,
+        title: subject,
+        body_preview: body.substring(0, 200),
+        channel,
+        step_id,
+        workflow_id: workflowId,
+        project_id: projectId,
+      })
     }
 
     return new Response(
