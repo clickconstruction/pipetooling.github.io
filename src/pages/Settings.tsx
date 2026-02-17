@@ -123,6 +123,7 @@ export default function Settings() {
   const [testError, setTestError] = useState<string | null>(null)
   const [testNotificationSending, setTestNotificationSending] = useState(false)
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
+  const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -272,6 +273,7 @@ export default function Settings() {
   async function handleTestNotification() {
     if (!authUser?.id) return
     setTestNotificationError(null)
+    setTestNotificationSuccess(null)
     setTestNotificationSending(true)
     try {
       const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
@@ -284,8 +286,14 @@ export default function Settings() {
         },
       })
       if (error) throw error
-      const res = data as { error?: string } | null
+      const res = data as { error?: string; push_sent?: number } | null
       if (res?.error) throw new Error(res.error)
+      const sent = res?.push_sent ?? 0
+      setTestNotificationSuccess(
+        sent > 0
+          ? `Notification sent to ${sent} device(s).`
+          : 'Notification sent. (On iOS with the app open, the system notification may not appear—try backgrounding the app.)'
+      )
     } catch (err) {
       setTestNotificationError(err instanceof Error ? err.message : 'Failed to send test notification')
     } finally {
@@ -2849,6 +2857,9 @@ export default function Settings() {
                 <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
               )}
             </div>
+            {testNotificationSuccess && (
+              <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
+            )}
             {testNotificationError && (
               <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
             )}
