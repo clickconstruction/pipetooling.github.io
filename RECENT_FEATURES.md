@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.39 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.40)"
-    line: ~104
+  - name: "Latest Version (v2.41)"
+    line: ~106
+    description: "People Pay/Hours tabs, Cost matrix, Hours totals, People pay config collapsible"
+  - name: "v2.40"
+    line: ~140
     description: "People Labor/Ledger, Master Shares, Edit button, Estimators see masters"
   - name: "v2.37"
     line: ~140
@@ -58,47 +61,73 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-2. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-2. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-3. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-4. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-5. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-6. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-7. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-8. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-9. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-10. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-11. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-12. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-13. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-14. [Latest Updates (v2.26)](#latest-updates-v226)
-15. [Latest Updates (v2.25)](#latest-updates-v225)
-16. [Latest Updates (v2.24)](#latest-updates-v224)
-17. [Latest Updates (v2.23)](#latest-updates-v223)
-17. [Latest Updates (v2.22)](#latest-updates-v222)
-18. [Latest Updates (v2.21)](#latest-updates-v221)
-19. [Latest Updates (v2.20)](#latest-updates-v220)
-20. [Latest Updates (v2.19)](#latest-updates-v219)
-21. [Latest Updates (v2.18)](#latest-updates-v218)
-22. [Latest Updates (v2.17)](#latest-updates-v217)
-23. [Latest Updates (v2.16)](#latest-updates-v216)
-24. [Latest Updates (v2.15)](#latest-updates-v215)
-25. [Latest Updates (v2.14)](#latest-updates-v214)
-26. [Latest Updates (v2.13)](#latest-updates-v213)
-27. [Latest Updates (v2.12)](#latest-updates-v212)
-28. [Latest Updates (v2.11)](#latest-updates-v211)
-29. [Latest Updates (v2.10)](#latest-updates-v210)
-30. [Latest Updates (v2.9)](#latest-updates-v29)
-31. [Latest Updates (v2.8)](#latest-updates-v28)
-32. [Latest Updates (v2.7)](#latest-updates-v27)
-33. [Latest Updates (v2.6)](#latest-updates-v26)
-34. [Workflow Features](#workflow-features)
-35. [Calendar Updates](#calendar-updates)
-36. [Access Control](#access-control)
-37. [Email Templates](#email-templates)
-38. [Financial Tracking](#financial-tracking)
-39. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+2. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+3. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+4. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+5. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+6. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+7. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+8. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+9. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+10. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+11. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+12. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+13. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+14. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+15. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+16. [Latest Updates (v2.26)](#latest-updates-v226)
+17. [Latest Updates (v2.25)](#latest-updates-v225)
+18. [Latest Updates (v2.24)](#latest-updates-v224)
+19. [Latest Updates (v2.23)](#latest-updates-v223)
+20. [Latest Updates (v2.22)](#latest-updates-v222)
+21. [Latest Updates (v2.21)](#latest-updates-v221)
+22. [Latest Updates (v2.20)](#latest-updates-v220)
+23. [Latest Updates (v2.19)](#latest-updates-v219)
+24. [Latest Updates (v2.18)](#latest-updates-v218)
+25. [Latest Updates (v2.17)](#latest-updates-v217)
+26. [Latest Updates (v2.16)](#latest-updates-v216)
+27. [Latest Updates (v2.15)](#latest-updates-v215)
+28. [Latest Updates (v2.14)](#latest-updates-v214)
+29. [Latest Updates (v2.13)](#latest-updates-v213)
+30. [Latest Updates (v2.12)](#latest-updates-v212)
+31. [Latest Updates (v2.11)](#latest-updates-v211)
+32. [Latest Updates (v2.10)](#latest-updates-v210)
+33. [Latest Updates (v2.9)](#latest-updates-v29)
+34. [Latest Updates (v2.8)](#latest-updates-v28)
+35. [Latest Updates (v2.7)](#latest-updates-v27)
+36. [Latest Updates (v2.6)](#latest-updates-v26)
+37. [Workflow Features](#workflow-features)
+38. [Calendar Updates](#calendar-updates)
+39. [Access Control](#access-control)
+40. [Email Templates](#email-templates)
+41. [Financial Tracking](#financial-tracking)
+42. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.41)
+
+### People Page: Pay and Hours Tabs
+
+**Date**: 2026-02-13
+
+**Overview**:
+The People page now includes **Pay** and **Hours** tabs for wage configuration, cost tracking, and timesheet entry. Access is controlled via Pay Approved Masters (dev and approved masters only).
+
+**Pay Tab**:
+- **People pay config** (collapsible): Set hourly wage, Salary (8 hrs/day), Show in Hours, and Show in Cost Matrix per person. Click the header to collapse/expand.
+- **Cost matrix**: Date-range table showing daily cost per person (hours × wage). First column shows `Person | $periodTotal`; bottom row shows `Total | $cumulative` with per-day sums and grand total.
+- **Teams**: Add teams and assign people; view combined cost for a date range.
+
+**Hours Tab**:
+- Timesheet table: Person column, day columns (editable HH:MM:SS), two total columns (HH:MM:SS and Decimal) per person.
+- Footer: Two rows—"Total (HH:MM:SS):" and "Total (Decimal):"—with per-day sums and grand total in the final column.
+- Salary people show read-only hours (8 hrs/day default); hourly people can edit.
+
+**Database**: `pay_approved_masters`, `people_pay_config`, `people_hours`, `people_hours_display_order`, `people_teams`, `people_team_members`
+
+**Migrations**: `20260213000000_create_pay_approved_masters.sql` through `20260213000007_create_people_hours_display_order.sql`
 
 ---
 

@@ -1861,8 +1861,10 @@ user_id = auth.uid()
   - Display shows "(account)" next to people who have user accounts
   - **Labor Tab**: Add labor jobs per person; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate; fixture rows (Fixture, Count, hrs/unit, Fixed); Add Row, Save
   - **Ledger Tab**: Table of all labor jobs (User, Address, Job #, Date, Labor rate, Total hrs); Edit button opens modal to update job and fixture items; Delete button removes job; Print for sub uses job_date when set
+  - **Pay Tab** (dev and approved masters): People pay config (collapsible) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Cost matrix with date range showing daily cost per person (first column: Person | $periodTotal; bottom row: Total | $cumulative); Teams for combined cost by date range
+  - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people and labor jobs; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed)
+- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed); people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams
 
 ### 6. Calendar View
 - **Page**: `Calendar.tsx`

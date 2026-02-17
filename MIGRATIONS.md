@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 12, 2026"
+date_range: "Through February 13, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,56 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 13, 2026
+
+**`20260213000007_create_people_hours_display_order.sql`**
+- **Purpose**: Custom order for people in Hours tab
+- **Changes**: Created `people_hours_display_order` (person_name, sequence_order); RLS for pay-access users
+- **Impact**: Users can reorder people in Hours timesheet via up/down buttons
+- **Category**: People / Pay
+
+**`20260213000006_restrict_show_in_hours_to_dev.sql`**
+- **Purpose**: Restrict Show in Hours toggle to dev only
+- **Changes**: Added trigger on `people_pay_config` to reject show_in_hours updates from non-dev users
+- **Impact**: Only dev can control who appears in Hours tab; defense in depth
+- **Category**: People / Pay
+
+**`20260213000005_allow_all_assistants_hours.sql`**
+- **Purpose**: Allow all assistants of approved masters to read/write people hours
+- **Changes**: Updated people_hours RLS to use `is_assistant_of_pay_approved_master()`
+- **Impact**: Assistants of Pay Approved Masters can enter timesheet hours
+- **Category**: People / Pay
+
+**`20260213000004_add_show_in_cost_matrix.sql`**
+- **Purpose**: Control who appears in Cost matrix and Teams
+- **Changes**: Added `show_in_cost_matrix` (BOOLEAN, default false) to `people_pay_config`
+- **Impact**: Per-person toggle to include/exclude from Cost matrix and Teams
+- **Category**: People / Pay
+
+**`20260213000003_create_people_teams.sql`**
+- **Purpose**: Create teams for combined cost tracking
+- **Changes**: Created `people_teams` (id, name) and `people_team_members` (team_id, person_name); RLS for pay-access users
+- **Impact**: Pay tab Teams section; add teams, assign people, view combined cost for date range
+- **Category**: People / Pay
+
+**`20260213000002_create_people_hours.sql`**
+- **Purpose**: Store hours worked per person per day
+- **Changes**: Created `people_hours` (person_name, work_date, hours, entered_by); RLS for dev, approved masters, assistants
+- **Impact**: Hours tab timesheet; editable for hourly people, read-only for salary (8 hrs/day)
+- **Category**: People / Pay
+
+**`20260213000001_create_people_pay_config.sql`**
+- **Purpose**: Per-person pay configuration
+- **Changes**: Created `people_pay_config` (person_name, hourly_wage, is_salary, show_in_hours); RLS for dev and approved masters
+- **Impact**: Pay tab People pay config; wage, salary flag, Show in Hours toggle
+- **Category**: People / Pay
+
+**`20260213000000_create_pay_approved_masters.sql`**
+- **Purpose**: Control access to Pay and Hours tabs
+- **Changes**: Created `pay_approved_masters` (user_id); `is_pay_approved_master()` and `is_assistant_of_pay_approved_master()` functions; Settings section to manage approved masters
+- **Impact**: Only dev and approved masters see Pay/Hours; assistants of approved masters see Hours
+- **Category**: People / Pay
 
 #### February 12, 2026
 

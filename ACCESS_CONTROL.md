@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-12
+last_updated: 2026-02-13
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -104,6 +104,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Delete any resource
 - Export all data
 - Claim dev role with code `'admin1234'`
+- Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
 
 **Use Cases**:
 - System maintenance and troubleshooting
@@ -149,6 +150,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View people they created and people shared with them (via master_shares)
 - Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
+- Pay tab (dev and Pay Approved Masters only): People pay config, Cost matrix, Teams
+- Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
 **Bids**:
 - Full access to all bids features
@@ -214,6 +217,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View people they created and people shared with their master (via master_shares)
 - Labor tab: Add labor jobs per person
 - Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
+- Hours tab (if master is Pay Approved): Timesheet entry for people in roster
 
 **Bids**:
 - Full access to all bids features (same as master/dev)
@@ -390,6 +394,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
 | Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
+| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ |
+| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ |
 
 ### Workflow Management
 
