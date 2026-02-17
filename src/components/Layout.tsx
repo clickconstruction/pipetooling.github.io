@@ -9,6 +9,15 @@ const navStyle = ({ isActive }: { isActive: boolean }) => ({
   textDecoration: isActive ? 'underline' : undefined,
 })
 
+const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
+  display: 'block' as const,
+  padding: '0.5rem 1rem',
+  textDecoration: isActive ? 'underline' : 'none',
+  color: 'inherit',
+  fontWeight: isActive ? 600 : undefined,
+  borderBottom: '1px solid #e5e7eb',
+})
+
 const IMPERSONATION_KEY = 'impersonation_original'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
@@ -26,19 +35,35 @@ export default function Layout() {
   )
   const [gearOpen, setGearOpen] = useState(false)
   const gearRef = useRef<HTMLDivElement>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
+  )
   const forceReload = useForceReload()
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 640px)')
+    const handler = () => setIsMobile(mql.matches)
+    handler()
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (gearRef.current && !gearRef.current.contains(e.target as Node)) {
         setGearOpen(false)
       }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
     }
-    if (gearOpen) {
+    if (gearOpen || menuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [gearOpen])
+  }, [gearOpen, menuOpen])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -74,6 +99,40 @@ export default function Layout() {
     }
   }
 
+  function renderNavLinks(onNavClick?: () => void) {
+    const linkStyle = onNavClick ? dropdownLinkStyle : navStyle
+    if (role === 'estimator') {
+      return (
+        <>
+          <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+          <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+          <NavLink to="/calendar" style={linkStyle} onClick={onNavClick}>Calendar</NavLink>
+          <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
+        </>
+      )
+    }
+    return (
+      <>
+        <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
+        {role !== 'subcontractor' && (
+          <>
+            <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
+            <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
+            <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink>
+            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+              <>
+                <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+                <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+              </>
+            )}
+          </>
+        )}
+        <NavLink to="/calendar" style={linkStyle} onClick={onNavClick}>Calendar</NavLink>
+        <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
+      </>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <nav
@@ -85,32 +144,48 @@ export default function Layout() {
           alignItems: 'center',
         }}
       >
-        {role === 'estimator' ? (
-          <>
-            <NavLink to="/materials" style={navStyle}>Materials</NavLink>
-            <NavLink to="/bids" style={navStyle}>Bids</NavLink>
-            <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-            <NavLink to="/checklist" style={navStyle}>Checklist</NavLink>
-          </>
-        ) : (
-          <>
-            <NavLink to="/dashboard" style={navStyle} end>Dashboard</NavLink>
-            {role !== 'subcontractor' && (
-              <>
-                <NavLink to="/customers" style={navStyle}>Customers</NavLink>
-                <NavLink to="/projects" style={navStyle}>Projects</NavLink>
-                <NavLink to="/people" style={navStyle}>People</NavLink>
-                {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-                  <>
-                    <NavLink to="/materials" style={navStyle}>Materials</NavLink>
-                    <NavLink to="/bids" style={navStyle}>Bids</NavLink>
-                  </>
-                )}
-              </>
+        {isMobile ? (
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              title="Menu"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'inherit',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24" fill="currentColor" aria-hidden="true">
+                <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7 529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3 448 128 448L512 448C529.7 448 544 462.3 544 480z" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: '100%',
+                  marginTop: 4,
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+                  minWidth: 160,
+                  zIndex: 50,
+                }}
+              >
+                {renderNavLinks(() => setMenuOpen(false))}
+              </div>
             )}
-            <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-            <NavLink to="/checklist" style={navStyle}>Checklist</NavLink>
-          </>
+          </div>
+        ) : (
+          renderNavLinks()
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
