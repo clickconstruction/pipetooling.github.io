@@ -78,9 +78,20 @@ export function useAuth(): UseAuthReturn {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
       setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
+
+      // On sign-in: hard reload to clear cache (avoids stale data, service worker cache)
+      if (event === 'SIGNED_IN') {
+        const reload = () => { location.reload() }
+        if (typeof caches !== 'undefined') {
+          caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            .then(reload, reload)
+        } else {
+          reload()
+        }
+      }
     })
 
     // Track user activity to refresh session
