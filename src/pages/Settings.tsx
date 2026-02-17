@@ -170,6 +170,10 @@ export default function Settings() {
   const [sharedMasterIds, setSharedMasterIds] = useState<Set<string>>(new Set())
   const [sharingSaving, setSharingSaving] = useState(false)
   const [sharingError, setSharingError] = useState<string | null>(null)
+  const [payApprovedMasterIds, setPayApprovedMasterIds] = useState<Set<string>>(new Set())
+  const [payApprovedMasters, setPayApprovedMasters] = useState<UserRow[]>([])
+  const [payApprovedSaving, setPayApprovedSaving] = useState(false)
+  const [payApprovedError, setPayApprovedError] = useState<string | null>(null)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [editEmail, setEditEmail] = useState('')
   const [editName, setEditName] = useState('')
@@ -607,6 +611,7 @@ export default function Settings() {
     }
     if (role === 'dev') {
       await loadEmailTemplates()
+      await loadPayApprovedMasters()
     }
     
     setLoading(false)
@@ -834,6 +839,43 @@ export default function Settings() {
     }
     
     setSharingSaving(false)
+  }
+
+  async function loadPayApprovedMasters() {
+    const { data: approvedData, error: approvedErr } = await supabase
+      .from('pay_approved_masters')
+      .select('master_id')
+    if (approvedErr) {
+      setPayApprovedError(approvedErr.message)
+      return
+    }
+    setPayApprovedMasterIds(new Set((approvedData ?? []).map((r: { master_id: string }) => r.master_id)))
+    const { data: mastersData, error: mastersErr } = await supabase
+      .from('users')
+      .select('id, email, name, role')
+      .in('role', ['master_technician', 'dev'])
+      .order('name')
+    if (mastersErr) {
+      setPayApprovedError(mastersErr.message)
+    } else {
+      setPayApprovedMasters((mastersData as UserRow[]) ?? [])
+    }
+  }
+
+  async function togglePayApproved(masterId: string, isApproved: boolean) {
+    if (myRole !== 'dev') return
+    setPayApprovedSaving(true)
+    setPayApprovedError(null)
+    if (isApproved) {
+      const { error } = await supabase.from('pay_approved_masters').delete().eq('master_id', masterId)
+      if (error) setPayApprovedError(error.message)
+      else setPayApprovedMasterIds((prev) => { const n = new Set(prev); n.delete(masterId); return n })
+    } else {
+      const { error } = await supabase.from('pay_approved_masters').insert({ master_id: masterId })
+      if (error) setPayApprovedError(error.message)
+      else setPayApprovedMasterIds((prev) => new Set(prev).add(masterId))
+    }
+    setPayApprovedSaving(false)
   }
 
   async function loadEmailTemplates() {
@@ -3380,6 +3422,64 @@ export default function Settings() {
                     {isShared && (
                       <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
                         Shared
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {myRole === 'dev' && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
+          </p>
+          {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
+          {payApprovedMasters.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+              {payApprovedMasters.map((m) => {
+                const isApproved = payApprovedMasterIds.has(m.id)
+                return (
+                  <label
+                    key={m.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
+                      background: isApproved ? '#f0fdf4' : 'white',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isApproved}
+                      onChange={() => togglePayApproved(m.id, isApproved)}
+                      disabled={payApprovedSaving}
+                      style={{ cursor: payApprovedSaving ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
+                      {m.email && m.name && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({m.email})
+                        </span>
+                      )}
+                      {m.role === 'dev' && (
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
+                      )}
+                    </span>
+                    {isApproved && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        Approved
                       </span>
                     )}
                   </label>

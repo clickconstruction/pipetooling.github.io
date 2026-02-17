@@ -27,7 +27,7 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'labor' | 'ledger'
+type PeopleTab = 'users' | 'labor' | 'ledger' | 'pay' | 'hours'
 
 export default function People() {
   const { user: authUser } = useAuth()
@@ -97,6 +97,57 @@ export default function People() {
   const [editLaborRate, setEditLaborRate] = useState('')
   const [editFixtureRows, setEditFixtureRows] = useState<LaborFixtureRow[]>([])
   const [editLaborSaving, setEditLaborSaving] = useState(false)
+
+  // Pay/Hours tab state
+  const [canAccessPay, setCanAccessPay] = useState(false)
+  const [canAccessHours, setCanAccessHours] = useState(false)
+  const [isDev, setIsDev] = useState(false)
+  type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
+  const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  const [payConfigSaving, setPayConfigSaving] = useState(false)
+  const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(true)
+  type HoursRow = { person_name: string; work_date: string; hours: number }
+  const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
+  const [matrixStartDate, setMatrixStartDate] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day)
+    return start.toISOString().slice(0, 10)
+  })
+  const [matrixEndDate, setMatrixEndDate] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day + 6)
+    return start.toISOString().slice(0, 10)
+  })
+  type PeopleTeam = { id: string; name: string; members: string[] }
+  const [teams, setTeams] = useState<PeopleTeam[]>([])
+  const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
+  const [teamPeriodStart, setTeamPeriodStart] = useState(() => {
+    const d = new Date()
+    const start = new Date(d)
+    start.setDate(d.getDate() - 6)
+    return start.toISOString().slice(0, 10)
+  })
+  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10))
+  const [hoursDateStart, setHoursDateStart] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day)
+    return start.toISOString().slice(0, 10)
+  })
+  const [hoursDateEnd, setHoursDateEnd] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day + 6)
+    return start.toISOString().slice(0, 10)
+  })
+  const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
+  const [editingHoursValue, setEditingHoursValue] = useState('')
 
   async function loadPeople() {
     if (!authUser?.id) {
@@ -203,6 +254,31 @@ export default function People() {
 
   useEffect(() => {
     loadPeople()
+  }, [authUser?.id])
+
+  useEffect(() => {
+    async function loadPayAccess() {
+      if (!authUser?.id) return
+      const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
+      const role = (me as { role?: string } | null)?.role ?? null
+      if (role === 'dev') {
+        setCanAccessPay(true)
+        setCanAccessHours(true)
+        setIsDev(true)
+        return
+      }
+      if (role === 'assistant') {
+        setCanAccessHours(true)
+        return
+      }
+      const { data: approved } = await supabase.from('pay_approved_masters').select('master_id')
+      const approvedIds = new Set((approved ?? []).map((r: { master_id: string }) => r.master_id))
+      if (role === 'master_technician' && approvedIds.has(authUser.id)) {
+        setCanAccessPay(true)
+        setCanAccessHours(true)
+      }
+    }
+    loadPayAccess()
   }, [authUser?.id])
 
   async function loadServiceTypes() {
@@ -728,6 +804,213 @@ export default function People() {
     if (activeTab === 'ledger' && authUser?.id) loadLaborJobs()
   }, [activeTab, authUser?.id])
 
+  async function loadPayConfig() {
+    if (!canAccessPay && !canAccessHours) return
+    const { data, error } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+    if (error) {
+      setError(error.message)
+      return
+    }
+    // Temporary: log for assistants when RLS may be blocking
+    if (!canAccessPay && (data ?? []).length === 0) {
+      console.warn('loadPayConfig: assistant got empty data', { error, rowCount: (data ?? []).length })
+    }
+    const map: Record<string, PayConfigRow> = {}
+    for (const r of (data ?? []) as PayConfigRow[]) {
+      map[r.person_name] = r
+    }
+    setPayConfig(map)
+  }
+
+  async function loadPeopleHours(start: string, end: string) {
+    if (!canAccessHours && !canAccessPay) return
+    const { data, error } = await supabase
+      .from('people_hours')
+      .select('person_name, work_date, hours')
+      .gte('work_date', start)
+      .lte('work_date', end)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setPeopleHours((data ?? []) as HoursRow[])
+  }
+
+  async function loadTeams() {
+    if (!canAccessPay) return
+    const { data: teamsData, error: teamsErr } = await supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true })
+    if (teamsErr) return
+    const teamList = (teamsData ?? []) as Array<{ id: string; name: string; sequence_order: number }>
+    const { data: membersData } = await supabase.from('people_team_members').select('team_id, person_name')
+    const membersByTeam = new Map<string, string[]>()
+    for (const m of (membersData ?? []) as Array<{ team_id: string; person_name: string }>) {
+      if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, [])
+      membersByTeam.get(m.team_id)!.push(m.person_name)
+    }
+    setTeams(teamList.map((t) => ({ id: t.id, name: t.name, members: membersByTeam.get(t.id) ?? [] })))
+  }
+
+  useEffect(() => {
+    if (activeTab === 'pay' && canAccessPay) {
+      loadPayConfig()
+      loadPeopleHours(matrixStartDate, matrixEndDate)
+      loadTeams()
+    }
+  }, [activeTab, canAccessPay, matrixStartDate, matrixEndDate])
+
+  async function loadHoursDisplayOrder() {
+    if (!canAccessHours && !canAccessPay) return
+    const { data } = await supabase.from('people_hours_display_order').select('person_name, sequence_order')
+    const map: Record<string, number> = {}
+    for (const r of (data ?? []) as { person_name: string; sequence_order: number }[]) {
+      map[r.person_name] = r.sequence_order
+    }
+    setHoursDisplayOrder(map)
+  }
+
+  async function moveHoursRow(personName: string, direction: 'up' | 'down') {
+    const idx = showPeopleForHours.indexOf(personName)
+    if (idx < 0) return
+    const otherIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (otherIdx < 0 || otherIdx >= showPeopleForHours.length) return
+    const otherName = showPeopleForHours[otherIdx]
+    const newOrderA = otherIdx
+    const newOrderB = idx
+    setHoursDisplayOrder((prev) => ({
+      ...prev,
+      [personName]: newOrderA,
+      [otherName]: newOrderB,
+    }))
+    await Promise.all([
+      supabase.from('people_hours_display_order').upsert({ person_name: personName, sequence_order: newOrderA }, { onConflict: 'person_name' }),
+      supabase.from('people_hours_display_order').upsert({ person_name: otherName, sequence_order: newOrderB }, { onConflict: 'person_name' }),
+    ])
+  }
+
+  useEffect(() => {
+    if (activeTab === 'hours' && canAccessHours) {
+      loadPayConfig()
+      loadPeopleHours(hoursDateStart, hoursDateEnd)
+      loadHoursDisplayOrder()
+    }
+  }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
+
+  async function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
+    if (!canAccessPay) return
+    setPayConfigSaving(true)
+    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
+    const full = { person_name: personName, hourly_wage: row.hourly_wage ?? cur.hourly_wage, is_salary: row.is_salary ?? cur.is_salary, show_in_hours: row.show_in_hours ?? cur.show_in_hours, show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix }
+    const { error } = await supabase.from('people_pay_config').upsert(full, { onConflict: 'person_name' })
+    if (error) setError(error.message)
+    else setPayConfig((prev) => ({ ...prev, [personName]: full }))
+    setPayConfigSaving(false)
+  }
+
+  async function saveHours(personName: string, workDate: string, hours: number) {
+    if (!canAccessHours && !canAccessPay) return
+    // Optimistic update: show new value immediately
+    setPeopleHours((prev) => {
+      const rest = prev.filter((h) => !(h.person_name === personName && h.work_date === workDate))
+      return [...rest, { person_name: personName, work_date: workDate, hours }]
+    })
+    const { error } = await supabase.from('people_hours').upsert(
+      { person_name: personName, work_date: workDate, hours, entered_by: authUser?.id ?? null },
+      { onConflict: 'person_name,work_date' }
+    )
+    if (error) setError(error.message)
+  }
+
+  async function addTeam() {
+    if (!canAccessPay) return
+    const { data, error } = await supabase.from('people_teams').insert({ name: 'New Team', sequence_order: teams.length }).select('id').single()
+    if (error) setError(error.message)
+    else if (data) setTeams((prev) => [...prev, { id: (data as { id: string }).id, name: 'New Team', members: [] }])
+  }
+
+  async function updateTeamName(teamId: string, name: string) {
+    if (!canAccessPay) return
+    const { error } = await supabase.from('people_teams').update({ name }).eq('id', teamId)
+    if (error) setError(error.message)
+    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name } : t)))
+  }
+
+  async function addTeamMember(teamId: string, personName: string) {
+    if (!canAccessPay) return
+    const { error } = await supabase.from('people_team_members').insert({ team_id: teamId, person_name: personName })
+    if (error) setError(error.message)
+    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: [...t.members, personName] } : t)))
+  }
+
+  async function removeTeamMember(teamId: string, personName: string) {
+    if (!canAccessPay) return
+    const { error } = await supabase.from('people_team_members').delete().eq('team_id', teamId).eq('person_name', personName)
+    if (error) setError(error.message)
+    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: t.members.filter((m) => m !== personName) } : t)))
+  }
+
+  function getHoursForPersonDate(personName: string, workDate: string): number {
+    const row = peopleHours.find((h) => h.person_name === personName && h.work_date === workDate)
+    return row?.hours ?? 0
+  }
+
+  function getEffectiveHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary) {
+      const day = new Date(workDate + 'T12:00:00').getDay()
+      if (day === 0 || day === 6) return 0
+      return 8
+    }
+    return getHoursForPersonDate(personName, workDate)
+  }
+
+  function getCostForPersonDate(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    const wage = cfg?.hourly_wage ?? 0
+    const hrs = getEffectiveHours(personName, workDate)
+    return wage * hrs
+  }
+
+  function getDaysInRange(start: string, end: string): string[] {
+    const days: string[] = []
+    const d = new Date(start + 'T12:00:00')
+    const endD = new Date(end + 'T12:00:00')
+    while (d <= endD) {
+      days.push(d.toISOString().slice(0, 10))
+      d.setDate(d.getDate() + 1)
+    }
+    return days
+  }
+
+  function decimalToHms(decimal: number): string {
+    if (!decimal || decimal <= 0) return ''
+    const h = Math.floor(decimal)
+    const m = Math.floor((decimal - h) * 60)
+    const s = Math.round(((decimal - h) * 60 - m) * 60)
+    if (s > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    return `${h}:${String(m).padStart(2, '0')}:00`
+  }
+
+  function hmsToDecimal(str: string): number {
+    const trimmed = str.trim()
+    if (!trimmed) return 0
+    const normalized = trimmed.replace(/\./g, ':').replace(/\s+/g, ':')
+    const parts = normalized.split(':').map((p) => parseInt(p, 10) || 0)
+    const [h = 0, m = 0, s = 0] = parts
+    return h + m / 60 + s / 3600
+  }
+
+  const showPeopleForHours = Object.keys(payConfig)
+    .filter((n) => payConfig[n]?.show_in_hours ?? false)
+    .sort((a, b) => {
+      const orderA = hoursDisplayOrder[a] ?? 999999
+      const orderB = hoursDisplayOrder[b] ?? 999999
+      return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
+    })
+  const showPeopleForMatrix = allRosterNames().filter((n) => {
+    const c = payConfig[n]
+    return c?.show_in_cost_matrix ?? false
+  })
+
   function addLaborFixtureRow() {
     setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
   }
@@ -1055,6 +1338,16 @@ export default function People() {
         <button type="button" onClick={() => setActiveTab('users')} style={tabStyle(activeTab === 'users')}>
           Users
         </button>
+        {canAccessPay && (
+          <button type="button" onClick={() => setActiveTab('pay')} style={tabStyle(activeTab === 'pay')}>
+            Pay
+          </button>
+        )}
+        {(canAccessPay || canAccessHours) && (
+          <button type="button" onClick={() => setActiveTab('hours')} style={tabStyle(activeTab === 'hours')}>
+            Hours
+          </button>
+        )}
       </div>
       {activeTab === 'users' && (
         <>
@@ -1580,6 +1873,438 @@ export default function People() {
                     )
                   })}
                 </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'pay' && canAccessPay && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <section>
+            <button
+              type="button"
+              onClick={() => setPayConfigSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                marginBottom: payConfigSectionOpen ? '0.75rem' : 0,
+                padding: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{payConfigSectionOpen ? '▼' : '▶'}</span>
+              People pay config
+            </button>
+            {payConfigSectionOpen && (
+              <>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                  Set hourly wage, Salary (8 hrs/day), Show in Hours (include in Hours tab), and Show in Cost Matrix (include in cost matrix and teams).
+                </p>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', maxHeight: 320 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hourly wage ($)</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Salary</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Hours</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Cost Matrix</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allRosterNames().map((n) => {
+                    const c = payConfig[n] ?? { person_name: n, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
+                    return (
+                      <tr key={n} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{n}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={c.hourly_wage ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value === '' ? null : parseFloat(e.target.value) || null
+                              setPayConfig((prev) => ({ ...prev, [n]: { person_name: n, hourly_wage: v, is_salary: (prev[n] ?? c).is_salary, show_in_hours: (prev[n] ?? c).show_in_hours, show_in_cost_matrix: (prev[n] ?? c).show_in_cost_matrix } }))
+                            }}
+                            onBlur={(e) => {
+                              const v = e.target.value === '' ? null : parseFloat(e.target.value) || null
+                              upsertPayConfig(n, { ...(payConfig[n] ?? c), hourly_wage: v })
+                            }}
+                            disabled={payConfigSaving}
+                            style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={c.is_salary}
+                            onChange={(e) => upsertPayConfig(n, { ...c, is_salary: e.target.checked })}
+                            disabled={payConfigSaving}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={c.show_in_hours}
+                            onChange={(e) => upsertPayConfig(n, { ...c, show_in_hours: e.target.checked })}
+                            disabled={payConfigSaving || !isDev}
+                            title={!isDev ? 'Only dev can change this' : undefined}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={c.show_in_cost_matrix}
+                            onChange={(e) => upsertPayConfig(n, { ...c, show_in_cost_matrix: e.target.checked })}
+                            disabled={payConfigSaving}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+              </>
+            )}
+          </section>
+          <section>
+            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Cost matrix</h2>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+            </div>
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Person</th>
+                    {getDaysInRange(matrixStartDate, matrixEndDate).map((d) => (
+                      <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
+                        {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {showPeopleForMatrix.map((personName) => {
+                    const cfg = payConfig[personName]
+                    const wage = cfg?.hourly_wage ?? 0
+                    const periodTotal = getDaysInRange(matrixStartDate, matrixEndDate).reduce((s, d) => s + getCostForPersonDate(personName, d), 0)
+                    return (
+                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white' }}>
+                          {personName} | {wage > 0 ? `$${Math.round(periodTotal)}` : '—'}
+                        </td>
+                        {getDaysInRange(matrixStartDate, matrixEndDate).map((d) => {
+                          const cost = getCostForPersonDate(personName, d)
+                          return (
+                            <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                              {wage > 0 ? `$${Math.round(cost)}` : '—'}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                  <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                      Total | ${Math.round(
+                        getDaysInRange(matrixStartDate, matrixEndDate).reduce(
+                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDate(p, d), 0),
+                          0
+                        )
+                      )}
+                    </td>
+                    {getDaysInRange(matrixStartDate, matrixEndDate).map((d) => {
+                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDate(p, d), 0)
+                      return (
+                        <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                          ${Math.round(dayTotal)}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section>
+            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Teams</h2>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+              Add people to teams to see combined cost for a date range (default: last 7 days).
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
+                Add team
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {teams.map((team) => {
+                const costForRange = (start: string, end: string) =>
+                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDate(p, d), 0), 0)
+                const today = new Date().toISOString().slice(0, 10)
+                const yesterday = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 1)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const last7Start = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 6)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const last3Start = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 2)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
+                const last7Cost = costForRange(last7Start, today)
+                const last3Cost = costForRange(last3Start, today)
+                const yesterdayCost = costForRange(yesterday, yesterday)
+                return (
+                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={team.name}
+                        onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
+                        onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
+                        style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 120 }}
+                      />
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem' }}>
+                        <span style={{ fontWeight: 600 }}>Total for Period: ${Math.round(periodCost)}</span>
+                        <span style={{ color: '#6b7280' }}>Last 7 days: ${Math.round(last7Cost)}</span>
+                        <span style={{ color: '#6b7280' }}>Last 3 days: ${Math.round(last3Cost)}</span>
+                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost)}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                      {team.members.map((m) => (
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.8125rem' }}>
+                          {m}
+                          <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
+                        </span>
+                      ))}
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (v) { addTeamMember(team.id, v); e.target.value = '' }
+                        }}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.8125rem' }}
+                      >
+                        <option value="">+ Add person</option>
+                        {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {activeTab === 'hours' && canAccessHours && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+            <label>
+              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+              <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            </label>
+            <label>
+              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+              <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const s = new Date(hoursDateStart + 'T12:00:00')
+                const e = new Date(hoursDateEnd + 'T12:00:00')
+                s.setDate(s.getDate() - 7)
+                e.setDate(e.getDate() - 7)
+                setHoursDateStart(s.toISOString().slice(0, 10))
+                setHoursDateEnd(e.toISOString().slice(0, 10))
+              }}
+              style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              ← last week
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const s = new Date(hoursDateStart + 'T12:00:00')
+                const e = new Date(hoursDateEnd + 'T12:00:00')
+                s.setDate(s.getDate() + 7)
+                e.setDate(e.getDate() + 7)
+                setHoursDateStart(s.toISOString().slice(0, 10))
+                setHoursDateEnd(e.toISOString().slice(0, 10))
+              }}
+              style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              next week →
+            </button>
+          </div>
+          {showPeopleForHours.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 200 }} />
+                  {getDaysInRange(hoursDateStart, hoursDateEnd).map((d) => (
+                    <col key={d} style={{ width: 72 }} />
+                  ))}
+                  <col style={{ width: 90 }} />
+                  <col style={{ width: 90 }} />
+                </colgroup>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                    {getDaysInRange(hoursDateStart, hoursDateEnd).map((d) => (
+                      <th key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                        {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
+                      </th>
+                    ))}
+                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>HH:MM:SS</th>
+                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Decimal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {showPeopleForHours.map((personName, idx) => {
+                    const cfg = payConfig[personName]
+                    const isSalary = cfg?.is_salary ?? false
+                    return (
+                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => moveHoursRow(personName, 'up')}
+                              disabled={idx === 0}
+                              title="Move up"
+                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveHoursRow(personName, 'down')}
+                              disabled={idx === showPeopleForHours.length - 1}
+                              title="Move down"
+                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                            >
+                              ▼
+                            </button>
+                          </span>
+                          {personName}{isSalary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
+                        </td>
+                        {getDaysInRange(hoursDateStart, hoursDateEnd).map((d) => (
+                          <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
+                            {isSalary ? (
+                              <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
+                            ) : (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
+                                placeholder="-"
+                                onFocus={(e) => {
+                                  setEditingHoursCell({ personName, workDate: d })
+                                  setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
+                                  e.target.select()
+                                }}
+                                onChange={(e) => setEditingHoursValue(e.target.value)}
+                                onBlur={() => {
+                                  const v = hmsToDecimal(editingHoursValue)
+                                  saveHours(personName, d, v)
+                                  setEditingHoursCell(null)
+                                }}
+                                style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                              />
+                            )}
+                          </td>
+                        ))}
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
+                          {decimalToHms(getDaysInRange(hoursDateStart, hoursDateEnd).reduce((s, d) => s + getEffectiveHours(personName, d), 0)) || '-'}
+                        </td>
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
+                          {(
+                            getDaysInRange(hoursDateStart, hoursDateEnd).reduce((s, d) => s + getEffectiveHours(personName, d), 0)
+                          ).toFixed(2)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+                <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                  {(() => {
+                    const grandTotal = showPeopleForHours.reduce((s, p) => s + getDaysInRange(hoursDateStart, hoursDateEnd).reduce((ds, d) => ds + getEffectiveHours(p, d), 0), 0)
+                    return (
+                      <>
+                        <tr>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (HH:MM:SS):</td>
+                          {getDaysInRange(hoursDateStart, hoursDateEnd).map((d) => {
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            return (
+                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                                {decimalToHms(daySum) || '-'}
+                              </td>
+                            )
+                          })}
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                            {decimalToHms(grandTotal) || '-'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (Decimal):</td>
+                          {getDaysInRange(hoursDateStart, hoursDateEnd).map((d) => {
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            return (
+                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                                {daySum.toFixed(2)}
+                              </td>
+                            )
+                          })}
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                            {grandTotal.toFixed(2)}
+                          </td>
+                        </tr>
+                      </>
+                    )
+                  })()}
+                </tfoot>
               </table>
             </div>
           )}

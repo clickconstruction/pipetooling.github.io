@@ -1346,6 +1346,120 @@ export type Database = {
           },
         ]
       }
+      pay_approved_masters: {
+        Row: { master_id: string }
+        Insert: { master_id: string }
+        Update: { master_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "pay_approved_masters_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_pay_config: {
+        Row: {
+          person_name: string
+          hourly_wage: number | null
+          is_salary: boolean
+          show_in_hours: boolean
+          show_in_cost_matrix: boolean
+        }
+        Insert: {
+          person_name: string
+          hourly_wage?: number | null
+          is_salary?: boolean
+          show_in_hours?: boolean
+          show_in_cost_matrix?: boolean
+        }
+        Update: {
+          person_name?: string
+          hourly_wage?: number | null
+          is_salary?: boolean
+          show_in_hours?: boolean
+          show_in_cost_matrix?: boolean
+        }
+        Relationships: []
+      }
+      people_hours: {
+        Row: {
+          id: string
+          person_name: string
+          work_date: string
+          hours: number
+          entered_by: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          person_name: string
+          work_date: string
+          hours?: number
+          entered_by?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          person_name?: string
+          work_date?: string
+          hours?: number
+          entered_by?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_hours_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_teams: {
+        Row: {
+          id: string
+          name: string
+          sequence_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      people_team_members: {
+        Row: { team_id: string; person_name: string }
+        Insert: { team_id: string; person_name: string }
+        Update: { team_id?: string; person_name?: string }
+        Relationships: [
+          {
+            foreignKeyName: "people_team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "people_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_hours_display_order: {
+        Row: { person_name: string; sequence_order: number }
+        Insert: { person_name: string; sequence_order?: number }
+        Update: { person_name?: string; sequence_order?: number }
+        Relationships: []
+      }
       price_book_entries: {
         Row: {
           created_at: string | null

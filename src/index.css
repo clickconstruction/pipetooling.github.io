@@ -32,6 +32,16 @@ input, select, textarea, button {
   font: inherit;
 }
 
+/* Hide number input spinners (e.g. Hours tab) */
+input.no-spinner[type="number"]::-webkit-inner-spin-button,
+input.no-spinner[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input.no-spinner[type="number"] {
+  -moz-appearance: textfield;
+}
+
 button {
   cursor: pointer;
 }
