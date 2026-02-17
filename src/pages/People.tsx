@@ -874,6 +874,7 @@ export default function People() {
     const otherIdx = direction === 'up' ? idx - 1 : idx + 1
     if (otherIdx < 0 || otherIdx >= showPeopleForHours.length) return
     const otherName = showPeopleForHours[otherIdx]
+    if (!otherName) return
     const newOrderA = otherIdx
     const newOrderB = idx
     setHoursDisplayOrder((prev) => ({
