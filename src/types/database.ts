@@ -1307,6 +1307,33 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          id: string
+          template_type: string
+          push_title: string
+          push_body: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          template_type: string
+          push_title: string
+          push_body: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          template_type?: string
+          push_title?: string
+          push_body?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       part_types: {
         Row: {
           category: string | null
