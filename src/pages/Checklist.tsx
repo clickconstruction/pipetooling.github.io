@@ -20,13 +20,14 @@ type ChecklistInstance = {
 
 function tabStyle(active: boolean) {
   return {
-    padding: '0.75rem 1.5rem' as const,
+    padding: '0.5rem 0.6rem' as const,
     border: 'none' as const,
     background: 'none' as const,
     borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
     color: active ? '#3b82f6' : '#6b7280',
     fontWeight: active ? 600 : 400,
     cursor: 'pointer' as const,
+    fontSize: '0.9375rem',
   }
 }
 
@@ -71,7 +72,7 @@ export default function Checklist() {
 
   return (
     <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setActiveTab('today')} style={tabStyle(activeTab === 'today')}>
           Today
         </button>
