@@ -121,6 +121,8 @@ export default function Settings() {
   const [testingTemplate, setTestingTemplate] = useState<EmailTemplate | null>(null)
   const [testSending, setTestSending] = useState(false)
   const [testError, setTestError] = useState<string | null>(null)
+  const [testNotificationSending, setTestNotificationSending] = useState(false)
+  const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -266,6 +268,31 @@ export default function Settings() {
     await supabase.auth.signOut()
     navigate('/sign-in', { replace: true })
   }
+
+  async function handleTestNotification() {
+    if (!authUser?.id) return
+    setTestNotificationError(null)
+    setTestNotificationSending(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
+        body: {
+          recipient_user_id: authUser.id,
+          push_title: 'Test notification',
+          push_body: 'If you see this, push notifications are working!',
+          push_url: '/settings',
+          tag: 'test-notification',
+        },
+      })
+      if (error) throw error
+      const res = data as { error?: string } | null
+      if (res?.error) throw new Error(res.error)
+    } catch (err) {
+      setTestNotificationError(err instanceof Error ? err.message : 'Failed to send test notification')
+    } finally {
+      setTestNotificationSending(false)
+    }
+  }
+
   const [convertMasterId, setConvertMasterId] = useState<string>('')
   const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
   const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
@@ -2784,28 +2811,46 @@ export default function Settings() {
           </p>
         )}
         {pushNotifications.supported && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {pushNotifications.isSubscribed ? (
-              <>
-                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {pushNotifications.isSubscribed ? (
+                <>
+                  <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
+                  <button
+                    type="button"
+                    onClick={() => pushNotifications.disable()}
+                    disabled={pushNotifications.loading}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                  >
+                    {pushNotifications.loading ? 'Disabling…' : 'Disable'}
+                  </button>
+                </>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => pushNotifications.disable()}
-                  disabled={pushNotifications.loading}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                  onClick={() => pushNotifications.enable()}
+                  disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  {pushNotifications.loading ? 'Disabling…' : 'Disable'}
+                  {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
                 </button>
-              </>
-            ) : (
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => pushNotifications.enable()}
-                disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                onClick={handleTestNotification}
+                disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
               >
-                {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
+                {testNotificationSending ? 'Sending…' : 'Test notification'}
               </button>
+              {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
+                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
+              )}
+            </div>
+            {testNotificationError && (
+              <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
             )}
           </div>
         )}

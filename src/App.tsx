@@ -20,6 +20,7 @@ import People from './pages/People'
 import Materials from './pages/Materials'
 import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
+import Checklist from './pages/Checklist'
 import { Toast, useToast } from './components/Toast'
 
 // Easter egg:
@@ -118,6 +119,7 @@ export default function App() {
           <Route path="materials" element={<Materials />} />
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
+          <Route path="checklist" element={<Checklist />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

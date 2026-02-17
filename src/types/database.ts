@@ -455,6 +455,131 @@ export type Database = {
           },
         ]
       }
+      checklist_instances: {
+        Row: {
+          id: string
+          checklist_item_id: string
+          scheduled_date: string
+          assigned_to_user_id: string
+          completed_at: string | null
+          notes: string | null
+          completed_by_user_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          checklist_item_id: string
+          scheduled_date: string
+          assigned_to_user_id: string
+          completed_at?: string | null
+          notes?: string | null
+          completed_by_user_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          checklist_item_id?: string
+          scheduled_date?: string
+          assigned_to_user_id?: string
+          completed_at?: string | null
+          notes?: string | null
+          completed_by_user_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instances_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instances_assigned_to_user_id_fkey"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instances_completed_by_user_id_fkey"
+            columns: ["completed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_items: {
+        Row: {
+          id: string
+          title: string
+          assigned_to_user_id: string
+          created_by_user_id: string
+          repeat_type: string
+          repeat_days_of_week: number[] | null
+          repeat_days_after: number | null
+          repeat_end_date: string | null
+          start_date: string
+          notify_on_complete_user_id: string | null
+          notify_creator_on_complete: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          assigned_to_user_id: string
+          created_by_user_id: string
+          repeat_type: string
+          repeat_days_of_week?: number[] | null
+          repeat_days_after?: number | null
+          repeat_end_date?: string | null
+          start_date: string
+          notify_on_complete_user_id?: string | null
+          notify_creator_on_complete?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          assigned_to_user_id?: string
+          created_by_user_id?: string
+          repeat_type?: string
+          repeat_days_of_week?: number[] | null
+          repeat_days_after?: number | null
+          repeat_end_date?: string | null
+          start_date?: string
+          notify_on_complete_user_id?: string | null
+          notify_creator_on_complete?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_items_assigned_to_user_id_fkey"
+            columns: ["assigned_to_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_items_notify_on_complete_user_id_fkey"
+            columns: ["notify_on_complete_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_labor_rows: {
         Row: {
           cost_estimate_id: string
