@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
-type ChecklistTab = 'today' | 'history' | 'checklists'
+type ChecklistTab = 'today' | 'history' | 'manage' | 'checklists'
 
 type ChecklistInstance = {
   id: string
@@ -68,9 +68,14 @@ export default function Checklist() {
           History
         </button>
         {canManageChecklists && (
-          <button type="button" onClick={() => setActiveTab('checklists')} style={tabStyle(activeTab === 'checklists')}>
-            Checklists
-          </button>
+          <>
+            <button type="button" onClick={() => setActiveTab('manage')} style={tabStyle(activeTab === 'manage')}>
+              Manage
+            </button>
+            <button type="button" onClick={() => setActiveTab('checklists')} style={tabStyle(activeTab === 'checklists')}>
+              Checklists
+            </button>
+          </>
         )}
       </div>
 
@@ -79,6 +84,9 @@ export default function Checklist() {
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} />
+      )}
+      {activeTab === 'manage' && canManageChecklists && (
+        <ChecklistOutstandingTab setError={setError} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} setError={setError} />
@@ -453,6 +461,107 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
         </table>
       </div>
       {byItem.size === 0 && <p style={{ color: '#6b7280' }}>No checklist history in this range.</p>}
+    </div>
+  )
+}
+
+type OutstandingInstance = {
+  id: string
+  scheduled_date: string
+  assigned_to_user_id: string
+  checklist_items?: { title: string } | null
+  users?: { name: string; email: string } | null
+}
+
+function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) => void }) {
+  const [loading, setLoading] = useState(true)
+  const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadOutstanding()
+  }, [])
+
+  async function loadOutstanding() {
+    setLoading(true)
+    setError(null)
+    const { data, error } = await supabase
+      .from('checklist_instances')
+      .select('id, scheduled_date, assigned_to_user_id, checklist_items(title), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
+      .is('completed_at', null)
+      .order('scheduled_date', { ascending: true })
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+    const instances = (data ?? []) as OutstandingInstance[]
+    const map = new Map<string, OutstandingInstance[]>()
+    for (const inst of instances) {
+      const list = map.get(inst.assigned_to_user_id) ?? []
+      list.push(inst)
+      map.set(inst.assigned_to_user_id, list)
+    }
+    const rows = Array.from(map.entries()).map(([userId, list]) => {
+      const first = list[0]
+      const name = first
+        ? ((first.users as { name?: string; email?: string } | null)?.name || (first.users as { email?: string } | null)?.email || 'Unknown')
+        : 'Unknown'
+      return { userId, name, count: list.length, instances: list }
+    })
+    rows.sort((a, b) => b.count - a.count)
+    setByUser(rows)
+    setLoading(false)
+  }
+
+  if (loading) return <p>Loading…</p>
+
+  return (
+    <div>
+      <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Outstanding by person</h3>
+      {byUser.length === 0 ? (
+        <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
+              <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
+              <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {byUser.map(({ userId, name, count, instances }) => (
+              <Fragment key={userId}>
+                <tr
+                  key={userId}
+                  style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                  onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
+                >
+                  <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
+                  <td style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>{count}</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                    {expandedUserId === userId ? '▼' : '▶'}
+                  </td>
+                </tr>
+                {expandedUserId === userId && (
+                  <tr key={`${userId}-detail`}>
+                    <td colSpan={3} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                      <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
+                        {instances.map((inst) => (
+                          <li key={inst.id} style={{ marginBottom: '0.25rem' }}>
+                            {inst.checklist_items?.title ?? '—'} <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   )
 }

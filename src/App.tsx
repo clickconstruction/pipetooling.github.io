@@ -35,6 +35,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function SignInRoute() {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+  if (user) return <Navigate to="/dashboard" replace />
+  return <SignIn />
+}
+
 // Component to handle magic link authentication from hash fragments
 function AuthHandler() {
   const location = useLocation()
@@ -101,7 +108,7 @@ export default function App() {
       <UpdatePrompt />
       <AuthHandler />
       <Routes>
-        <Route path="/sign-in" element={<SignIn />} />
+        <Route path="/sign-in" element={<SignInRoute />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
