@@ -1,13 +1,13 @@
 # Recent Features and Updates
 
-This document summarizes all recent features and improvements added to Pipetooling.
+This document summarizes all recent features and improvements added to PipeTooling.
 
 ---
 file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-13
+last_updated: 2026-02-17
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.39 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.41)"
+  - name: "Latest Version (v2.42)"
     line: ~106
+    description: "Checklist enhancements, Dashboard checklist, Settings/UI updates, PipeTooling rebrand"
+  - name: "v2.41"
+    line: ~140
     description: "People Pay/Hours tabs, Cost matrix, Hours totals, People pay config collapsible"
   - name: "v2.40"
     line: ~140
@@ -61,8 +64,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-2. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+1. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+2. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+3. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
 3. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
 4. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
 5. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
@@ -103,6 +107,42 @@ when_to_read:
 40. [Email Templates](#email-templates)
 41. [Financial Tracking](#financial-tracking)
 42. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.42)
+
+### Checklist, Dashboard, Settings, and UI Updates
+
+**Date**: 2026-02-17
+
+**Overview**:
+Checklist enhancements, Dashboard integration, Settings reorganization, app rebrand to PipeTooling, and various UI improvements.
+
+**Checklist**:
+- **Multiple days of week**: Add/Edit checklist item now supports selecting multiple days (checkboxes for Sun–Sat) for weekly repeats instead of a single day
+- **Database**: `repeat_day_of_week` migrated to `repeat_days_of_week` (integer array)
+- **Removed page title**: "Checklist" heading removed from `/checklist` page
+- **Nav**: Checklist changed from button to NavLink in header (matches Bids, Calendar styling)
+
+**Dashboard**:
+- **Checklist items due today**: New section at top showing user's checklist items due today with checkboxes (complete/uncomplete), link to full checklist
+- **Subscribed Stages**: Section now always visible for devs/masters/assistants; shows empty-state message when no subscriptions ("Go to a workflow and enable Notify when...")
+- **Moved to Settings**: "Your role" and "How It Works" (PipeTooling helps Masters...) text moved from Dashboard to Settings
+
+**Settings**:
+- **Your role**: Now displayed under Settings heading
+- **How It Works**: PipeTooling intro, Sharing, Subcontractors info moved here (visible to masters/devs)
+- **Test notification**: Success feedback when test succeeds; note about iOS foreground behavior
+
+**App**:
+- **Rebrand**: Pipetooling → PipeTooling (title, PWA manifest, push notifications, email sender name)
+- **Favicon**: White wrench overlay on orange gear icon
+
+**Edge Functions**:
+- **send-checklist-notification**: Deployed with `verify_jwt: false` (matches other functions; fixes 401 on test)
+
+**Migrations**: `20260217070000_checklist_repeat_days_of_week_array.sql` (adds `repeat_days_of_week`, migrates from `repeat_day_of_week`)
 
 ---
 

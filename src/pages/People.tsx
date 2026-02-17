@@ -102,6 +102,7 @@ export default function People() {
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [isDev, setIsDev] = useState(false)
+  const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
@@ -155,14 +156,25 @@ export default function People() {
       return
     }
     setError(null)
-    const [peopleRes, usersRes] = await Promise.all([
+    const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
       supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
+      supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
+    let usersList = (usersRes.data as UserRow[]) ?? []
+    const myRole = (meRes.data as { role?: string } | null)?.role
+    if (myRole === 'dev') {
+      const { data: devUsers } = await supabase.from('users').select('id, email, name, role').eq('role', 'dev')
+      if (devUsers && devUsers.length > 0) {
+        const existingIds = new Set(usersList.map((u) => u.id))
+        const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
+        usersList = [...usersList, ...newDevs]
+      }
+    }
     if (usersRes.error) setError(usersRes.error.message)
-    else setUsers((usersRes.data as UserRow[]) ?? [])
+    setUsers(usersList)
     
     // Load creator names for shared people (created by others)
     const peopleData = (peopleRes.data as Person[]) ?? []
@@ -280,6 +292,17 @@ export default function People() {
     }
     loadPayAccess()
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!isDev) return
+    supabase
+      .from('push_subscriptions')
+      .select('user_id')
+      .then(({ data }) => {
+        const ids = new Set((data ?? []).map((r: { user_id: string }) => r.user_id))
+        setPushEnabledUserIds(ids)
+      })
+  }, [isDev])
 
   async function loadServiceTypes() {
     const { data, error } = await supabase
@@ -1356,6 +1379,61 @@ export default function People() {
             Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
           </p>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {isDev && (
+            <section style={{ marginBottom: '2rem' }}>
+              <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Devs</h2>
+              {users.filter((u) => u.role === 'dev').length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {users
+                    .filter((u) => u.role === 'dev')
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((u) => (
+                      <li
+                        key={u.id}
+                        style={{
+                          padding: '0.5rem 0',
+                          borderBottom: '1px solid #e5e7eb',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div>
+                            {pushEnabledUserIds.has(u.id) && (
+                              <span
+                                title="Push notifications enabled"
+                                style={{
+                                  display: 'inline-block',
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: '50%',
+                                  backgroundColor: '#22c55e',
+                                  marginRight: '0.35rem',
+                                  verticalAlign: 'middle',
+                                }}
+                              />
+                            )}
+                            <span style={{ fontWeight: 500 }}>{u.name}</span>
+                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+                            {u.email && (
+                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                  {u.email}
+                                </a>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+          )}
           {KINDS.map((k) => (
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -1382,6 +1460,20 @@ export default function People() {
                 >
                   <div style={{ flex: 1 }}>
                     <div>
+                      {item.source === 'user' && isDev && pushEnabledUserIds.has(item.id) && (
+                        <span
+                          title="Push notifications enabled"
+                          style={{
+                            display: 'inline-block',
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: '#22c55e',
+                            marginRight: '0.35rem',
+                            verticalAlign: 'middle',
+                          }}
+                        />
+                      )}
                       <span style={{ fontWeight: 500 }}>{item.name}</span>
                       {item.source === 'user' && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>

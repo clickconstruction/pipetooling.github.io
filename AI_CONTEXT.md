@@ -1,21 +1,22 @@
 # AI Context - Quick Project Overview
 
-> **Purpose**: This file provides a 30-second overview of Pipetooling for AI agents and new developers. Read this first, then consult specialized documentation as needed.
+> **Purpose**: This file provides a 30-second overview of PipeTooling for AI agents and new developers. Read this first, then consult specialized documentation as needed.
 
 ---
 
 ## Project in 30 Seconds
 
-**Pipetooling** is a workflow management system for master plumbers to track work across multiple projects and crews.
+**PipeTooling** is a workflow management system for master plumbers to track work across multiple projects and crews.
 
 - **Domain**: Commercial/residential plumbing project management + bid estimation
 - **Stack**: React + TypeScript + Supabase (PostgreSQL + Auth + RLS + Edge Functions)
 - **Deployment**: GitHub Pages (static hosting)
 - **Users**: 5 roles with complex access control (dev, master, assistant, subcontractor, estimator)
-- **3 Major Systems**: 
+- **4 Major Systems**: 
   1. Projects/Workflows (ongoing work tracking)
   2. Bids (6-tab estimation system with book templates)
   3. Materials (price book, templates, purchase orders)
+  4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
 
 ---
 
@@ -97,7 +98,7 @@ Customer (has master_user_id)
 ```
 pipetooling.github.io/
 ├── src/
-│   ├── pages/              # Main UI pages (Customers, Projects, Workflow, Bids, Materials, etc.)
+│   ├── pages/              # Main UI pages (Customers, Projects, Workflow, Bids, Materials, Checklist, etc.)
 │   ├── components/         # Reusable UI components
 │   ├── contexts/           # React contexts (AuthContext, etc.)
 │   ├── lib/               # Utilities (supabaseClient, errorHandling, etc.)
@@ -118,6 +119,7 @@ pipetooling.github.io/
 - **`src/pages/Workflow.tsx`** (~1500 lines) - Most complex component, manages project workflow
 - **`src/pages/Bids.tsx`** (~1200 lines) - 6-tab bid estimation system
 - **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
+- **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/contexts/AuthContext.tsx`** - Authentication state and user role
 - **`src/lib/supabaseClient.ts`** - Supabase client configuration
 - **`src/lib/errorHandling.ts`** - Retry wrappers and error utilities

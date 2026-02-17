@@ -1,4 +1,4 @@
-# Pipetooling
+# PipeTooling
 
 A web application for Master Plumbers to track plumbing work across multiple projects and crews.
 

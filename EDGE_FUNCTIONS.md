@@ -5,13 +5,13 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 6 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-02-07
+last_updated: 2026-02-17
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "Manual JWT validation"
-total_functions: 6
+total_functions: 7
 
 key_sections:
   - name: "create-user"
@@ -84,6 +84,7 @@ when_to_read:
    - [delete-user](#delete-user)
    - [login-as-user](#login-as-user)
    - [send-workflow-notification](#send-workflow-notification)
+   - [send-checklist-notification](#send-checklist-notification)
    - [set-user-password](#set-user-password)
    - [test-email](#test-email)
 4. [Error Handling](#error-handling)
@@ -93,7 +94,7 @@ when_to_read:
 
 ## Overview
 
-Pipetooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. All functions use manual JWT validation with gateway verification disabled.
+PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. All functions use manual JWT validation with gateway verification disabled.
 
 ### Key Characteristics
 - **Runtime**: Deno (TypeScript)
@@ -608,6 +609,87 @@ const response = await supabase.functions.invoke('send-workflow-notification', {
 - [EMAIL_TESTING.md](./EMAIL_TESTING.md)
 
 **Deployment**: See [`supabase/functions/send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
+
+---
+
+### send-checklist-notification
+
+**Purpose**: Send Web Push notifications for checklist events (completion, test)
+
+**Endpoint**: `POST /functions/v1/send-checklist-notification`
+
+**Required Role**: Authenticated user (any role)
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VAPID_PUBLIC_KEY` - Web Push VAPID public key
+- `VAPID_PRIVATE_KEY` - Web Push VAPID private key
+
+**Verify JWT**: `false` (manual JWT validation in function body; matches other functions)
+
+#### Request Parameters
+
+```typescript
+interface ChecklistNotificationRequest {
+  recipient_user_id: string  // User to receive the push
+  push_title: string         // Notification title
+  push_body: string          // Notification body
+  push_url?: string          // URL to open on click (default: /checklist)
+  tag?: string               // Notification tag for grouping (default: checklist)
+}
+```
+
+#### Example Request
+
+```typescript
+const response = await supabase.functions.invoke('send-checklist-notification', {
+  body: {
+    recipient_user_id: authUser.id,
+    push_title: 'Checklist completed',
+    push_body: 'John completed: Weekly inspection',
+    push_url: '/checklist',
+    tag: 'checklist-abc123'
+  }
+})
+```
+
+#### Success Response
+
+**Status**: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Checklist notification sent",
+  "push_sent": 1
+}
+```
+
+#### Error Responses
+
+**400 Bad Request** - Missing fields:
+```json
+{
+  "error": "Missing required fields: recipient_user_id, push_title, push_body"
+}
+```
+
+**500 Internal Server Error** - VAPID keys not configured:
+```json
+{
+  "error": "VAPID keys not configured. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY."
+}
+```
+
+#### Implementation Details
+
+1. Validates JWT from Authorization header
+2. Fetches push subscriptions for recipient from `push_subscriptions` table
+3. Sends Web Push via `web-push` library using VAPID keys
+4. Returns count of notifications sent (0 if no subscriptions)
+5. Used by: Checklist completion flow, Settings "Test notification" button
 
 ---
 

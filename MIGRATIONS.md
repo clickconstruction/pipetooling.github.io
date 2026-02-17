@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-13
+last_updated: 2026-02-17
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 13, 2026"
+date_range: "Through February 17, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -70,7 +70,7 @@ when_to_read:
 
 ## Overview
 
-This document tracks all database migrations in the Pipetooling project. Migrations are located in `supabase/migrations/` and are applied automatically by Supabase.
+This document tracks all database migrations in the PipeTooling project. Migrations are located in `supabase/migrations/` and are applied automatically by Supabase.
 
 ### Migration Naming Convention
 
@@ -91,6 +91,32 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 17, 2026
+
+**`20260217070000_checklist_repeat_days_of_week_array.sql`**
+- **Purpose**: Support multiple days per week for weekly checklist repeats
+- **Changes**: Added `repeat_days_of_week` (integer[]); migrated from `repeat_day_of_week`; dropped `repeat_day_of_week`
+- **Impact**: Add/Edit checklist item shows 7 checkboxes (Sun–Sat) instead of single dropdown
+- **Category**: Checklist
+
+**`20260217060000_allow_assignees_read_checklist_items.sql`**
+- **Purpose**: Allow assignees to read checklist items (for Today/History views)
+- **Changes**: RLS policy for checklist_items allowing assigned users to read
+- **Impact**: Users can see their checklist items in Today and History tabs
+- **Category**: Checklist
+
+**`20260217041500_create_push_subscriptions.sql`**
+- **Purpose**: Store Web Push subscriptions for checklist and workflow notifications
+- **Changes**: Created `push_subscriptions` (user_id, endpoint, p256dh_key, auth_key); RLS for own subscriptions
+- **Impact**: Settings push notifications; send-checklist-notification Edge Function
+- **Category**: Notifications
+
+**`20260217050000_create_checklist.sql`**
+- **Purpose**: Checklist system for recurring tasks
+- **Changes**: Created `checklist_items`, `checklist_instances`; `is_dev_or_master_or_assistant()`; RLS for dev/master/assistant manage, assignees read/update own instances
+- **Impact**: Checklist page (Today, History, Manage tabs); repeat types: day_of_week, days_after_completion, once
+- **Category**: Checklist
 
 #### February 13, 2026
 

@@ -40,6 +40,19 @@ type EmailTemplate = {
   updated_at: string | null
 }
 
+type NotificationTemplateType = 'checklist_completed' | 'test_notification' |
+  'stage_assigned_started' | 'stage_assigned_complete' | 'stage_assigned_reopened' |
+  'stage_me_started' | 'stage_me_complete' | 'stage_me_reopened' |
+  'stage_next_complete_or_approved' | 'stage_prior_rejected'
+
+type NotificationTemplate = {
+  id: string
+  template_type: NotificationTemplateType
+  push_title: string
+  push_body: string
+  updated_at: string | null
+}
+
 interface ServiceType {
   id: string
   name: string
@@ -83,6 +96,35 @@ interface AssemblyType {
 const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator']
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
+const NOTIFICATION_VARIABLE_HINT = '{{assignee_name}}, {{item_title}}, {{name}}, {{stage_name}}, {{project_name}}, {{assigned_to_name}}, {{next_stage_name}}, {{rejection_reason}}'
+
+function substituteNotificationVariables(
+  template: NotificationTemplate,
+  targetUser: UserRow
+): { title: string; body: string } {
+  const displayName = targetUser.name?.trim() || targetUser.email || 'Test User'
+  const replacements: Record<string, string> = {
+    '{{assignee_name}}': displayName,
+    '{{name}}': displayName,
+    '{{assigned_to_name}}': displayName,
+    '{{item_title}}': 'Sample checklist item',
+    '{{stage_name}}': 'Sample stage',
+    '{{project_name}}': 'Sample project',
+    '{{next_stage_name}}': 'Next stage',
+    '{{rejection_reason}}': 'Sample rejection reason',
+  }
+  const replaceAll = (s: string) => {
+    let out = s
+    for (const [key, val] of Object.entries(replacements)) {
+      out = out.split(key).join(val)
+    }
+    return out
+  }
+  return {
+    title: replaceAll(template.push_title),
+    body: replaceAll(template.push_body),
+  }
+}
 
 function timeSinceAgo(iso: string | null): string {
   if (!iso) return '—'
@@ -276,6 +318,11 @@ export default function Settings() {
     setTestNotificationSuccess(null)
     setTestNotificationSending(true)
     try {
+      const { error: refreshErr } = await supabase.auth.refreshSession()
+      if (refreshErr) {
+        setTestNotificationError('Session expired. Please sign out and sign back in.')
+        return
+      }
       const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
         body: {
           recipient_user_id: authUser.id,
@@ -295,7 +342,14 @@ export default function Settings() {
           : 'Notification sent. (On iOS with the app open, the system notification may not appear—try backgrounding the app.)'
       )
     } catch (err) {
-      setTestNotificationError(err instanceof Error ? err.message : 'Failed to send test notification')
+      let msg = err instanceof Error ? err.message : 'Failed to send test notification'
+      if (err instanceof FunctionsHttpError && err.context?.json) {
+        try {
+          const body = (await err.context.json()) as { error?: string } | null
+          if (body?.error) msg = body.error
+        } catch { /* ignore */ }
+      }
+      setTestNotificationError(msg)
     } finally {
       setTestNotificationSending(false)
     }
@@ -309,6 +363,17 @@ export default function Settings() {
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
   const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
+  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
+  const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
+  const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
+  const [notificationTemplateTitle, setNotificationTemplateTitle] = useState('')
+  const [notificationTemplateBody, setNotificationTemplateBody] = useState('')
+  const [notificationTemplateSaving, setNotificationTemplateSaving] = useState(false)
+  const [notificationTemplateError, setNotificationTemplateError] = useState<string | null>(null)
+  const [notificationTestTargetUserId, setNotificationTestTargetUserId] = useState('')
+  const [notificationTestSending, setNotificationTestSending] = useState<string | null>(null)
+  const [notificationTestError, setNotificationTestError] = useState<string | null>(null)
+  const [notificationTestSuccess, setNotificationTestSuccess] = useState<string | null>(null)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -647,6 +712,7 @@ export default function Settings() {
       await loadServiceTypes()
     }
     if (role === 'dev') {
+      await loadNotificationTemplates()
       await loadEmailTemplates()
       await loadPayApprovedMasters()
     }
@@ -915,6 +981,18 @@ export default function Settings() {
     setPayApprovedSaving(false)
   }
 
+  async function loadNotificationTemplates() {
+    const { data, error: e } = await supabase
+      .from('notification_templates')
+      .select('id, template_type, push_title, push_body, updated_at')
+      .order('template_type')
+    if (e) {
+      console.error('Error loading notification templates:', e)
+    } else {
+      setNotificationTemplates((data as NotificationTemplate[]) ?? [])
+    }
+  }
+
   async function loadEmailTemplates() {
     const { data, error: eTemplates } = await supabase
       .from('email_templates')
@@ -926,6 +1004,106 @@ export default function Settings() {
       // Don't set error here - templates might not exist yet
     } else {
       setEmailTemplates((data as EmailTemplate[]) ?? [])
+    }
+  }
+
+  function openEditNotificationTemplate(template: NotificationTemplate | null) {
+    if (template) {
+      setEditingNotificationTemplate(template)
+      setNotificationTemplateTitle(template.push_title)
+      setNotificationTemplateBody(template.push_body)
+    } else {
+      setEditingNotificationTemplate(null)
+    }
+    setNotificationTemplateError(null)
+  }
+
+  function closeEditNotificationTemplate() {
+    setEditingNotificationTemplate(null)
+    setNotificationTemplateTitle('')
+    setNotificationTemplateBody('')
+    setNotificationTemplateError(null)
+  }
+
+  async function saveNotificationTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingNotificationTemplate) return
+    if (!notificationTemplateTitle.trim() || !notificationTemplateBody.trim()) {
+      setNotificationTemplateError('Title and body are required')
+      return
+    }
+    setNotificationTemplateSaving(true)
+    setNotificationTemplateError(null)
+    const { error: err } = await supabase
+      .from('notification_templates')
+      .update({
+        push_title: notificationTemplateTitle.trim(),
+        push_body: notificationTemplateBody.trim(),
+      })
+      .eq('id', editingNotificationTemplate.id)
+    setNotificationTemplateSaving(false)
+    if (err) setNotificationTemplateError(err.message)
+    else {
+      await loadNotificationTemplates()
+      closeEditNotificationTemplate()
+    }
+  }
+
+  async function sendTestNotificationTemplate(template: NotificationTemplate) {
+    if (!notificationTestTargetUserId) {
+      setNotificationTestError('Select a test target first')
+      return
+    }
+    const targetUser = users.find((u) => u.id === notificationTestTargetUserId)
+    if (!targetUser) {
+      setNotificationTestError('Target user not found')
+      return
+    }
+    setNotificationTestSending(template.template_type)
+    setNotificationTestError(null)
+    setNotificationTestSuccess(null)
+    try {
+      const { error: refreshErr } = await supabase.auth.refreshSession()
+      if (refreshErr) {
+        setNotificationTestError('Session expired. Please sign out and sign back in.')
+        return
+      }
+      const { title, body } = substituteNotificationVariables(template, targetUser)
+      const pushUrl =
+        template.template_type === 'checklist_completed'
+          ? '/checklist'
+          : template.template_type === 'test_notification'
+            ? '/settings'
+            : '/workflow'
+      const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
+        body: {
+          recipient_user_id: notificationTestTargetUserId,
+          push_title: title,
+          push_body: body,
+          push_url: pushUrl,
+          tag: template.template_type,
+        },
+      })
+      if (error) throw error
+      const res = data as { error?: string; push_sent?: number } | null
+      if (res?.error) throw new Error(res.error)
+      const sent = res?.push_sent ?? 0
+      setNotificationTestSuccess(
+        sent > 0
+          ? `Sent to ${sent} device(s).`
+          : 'Sent. (Target may have no push subscriptions, or on iOS with app open the system notification may not appear.)'
+      )
+    } catch (err) {
+      let msg = err instanceof Error ? err.message : 'Failed to send test notification'
+      if (err instanceof FunctionsHttpError && err.context?.json) {
+        try {
+          const body = (await err.context.json()) as { error?: string } | null
+          if (body?.error) msg = body.error
+        } catch { /* ignore */ }
+      }
+      setNotificationTestError(msg)
+    } finally {
+      setNotificationTestSending(null)
     }
   }
 
@@ -2128,6 +2306,16 @@ export default function Settings() {
   useEffect(() => {
     loadData()
   }, [authUser?.id])
+
+  // Default notification test target: current user if in list, else first user
+  useEffect(() => {
+    if (myRole !== 'dev' || users.length === 0) return
+    setNotificationTestTargetUserId((prev) => {
+      if (prev) return prev
+      const meInList = authUser?.id && users.some((u) => u.id === authUser.id)
+      return meInList ? authUser!.id : users[0]!.id
+    })
+  }, [myRole, users, authUser?.id])
 
   useEffect(() => {
     if (deleteReassignUserId) {
@@ -5109,6 +5297,123 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
+          {/* Notification Templates - collapsible, above Email Templates */}
+          <div style={{ marginTop: '2rem' }}>
+            <button
+              type="button"
+              onClick={() => setNotificationTemplatesSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{notificationTemplatesSectionOpen ? '▼' : '▶'}</span>
+              Notification Templates
+            </button>
+            {notificationTemplatesSectionOpen && (
+              <div style={{ padding: '1rem 0 0 0' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Customize push notification title and body shown to users. Use variables like {NOTIFICATION_VARIABLE_HINT}.
+                </p>
+                <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <label htmlFor="notification-test-target" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Test target:
+                  </label>
+                  <select
+                    id="notification-test-target"
+                    value={notificationTestTargetUserId}
+                    onChange={(e) => {
+                      setNotificationTestTargetUserId(e.target.value)
+                      setNotificationTestError(null)
+                      setNotificationTestSuccess(null)
+                    }}
+                    style={{ padding: '0.35rem 0.5rem', minWidth: 200 }}
+                  >
+                    <option value="">Select user…</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.id === authUser?.id ? `${u.name || u.email} (Me)` : u.name || u.email}
+                      </option>
+                    ))}
+                  </select>
+                  {notificationTestSuccess && (
+                    <span style={{ color: '#059669', fontSize: '0.875rem' }}>{notificationTestSuccess}</span>
+                  )}
+                  {notificationTestError && (
+                    <span style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{notificationTestError}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {[
+                    { type: 'checklist_completed' as const, label: 'Checklist completed', description: 'When a checklist item is completed' },
+                    { type: 'test_notification' as const, label: 'Test notification', description: 'Settings test notification' },
+                    { type: 'stage_assigned_started' as const, label: 'Stage started (assigned)', description: 'Workflow stage started, sent to assigned person' },
+                    { type: 'stage_assigned_complete' as const, label: 'Stage completed (assigned)', description: 'Workflow stage completed, sent to assigned person' },
+                    { type: 'stage_assigned_reopened' as const, label: 'Stage re-opened (assigned)', description: 'Workflow stage re-opened, sent to assigned person' },
+                    { type: 'stage_me_started' as const, label: 'Stage started (ME)', description: 'Subscribed stage started' },
+                    { type: 'stage_me_complete' as const, label: 'Stage completed (ME)', description: 'Subscribed stage completed' },
+                    { type: 'stage_me_reopened' as const, label: 'Stage re-opened (ME)', description: 'Subscribed stage re-opened' },
+                    { type: 'stage_next_complete_or_approved' as const, label: 'Your turn', description: 'Next stage ready after previous completed/approved' },
+                    { type: 'stage_prior_rejected' as const, label: 'Stage rejected', description: 'Stage rejected, sent to prior assignee' },
+                  ].map(({ type, label, description }) => {
+                    const template = notificationTemplates.find(t => t.template_type === type)
+                    return (
+                      <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => template && sendTestNotificationTemplate(template)}
+                              disabled={!template || !notificationTestTargetUserId || !!notificationTestSending}
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                            >
+                              {notificationTestSending === type ? 'Sending…' : 'Test'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => template && openEditNotificationTemplate(template)}
+                              disabled={!template}
+                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                        {template && (
+                          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                            <div><strong>Title:</strong> {template.push_title}</div>
+                            <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                              <strong>Body:</strong> {template.push_body.substring(0, 100)}{template.push_body.length > 100 ? '...' : ''}
+                            </div>
+                            {template.updated_at && (
+                              <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                                Last updated: {new Date(template.updated_at).toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Email Templates - collapsible, collapsed by default */}
           <div style={{ marginTop: '2rem' }}>
             <button
@@ -5414,6 +5719,54 @@ export default function Settings() {
                       Test Email
                     </button>
                     <button type="button" onClick={closeEditTemplate} disabled={templateSaving}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {editingNotificationTemplate && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ marginTop: 0 }}>
+                  Edit Notification: {editingNotificationTemplate.template_type.replace(/_/g, ' ')}
+                </h2>
+                <form onSubmit={saveNotificationTemplate}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="notification-template-title" style={{ display: 'block', marginBottom: 4 }}>Push Title *</label>
+                    <input
+                      id="notification-template-title"
+                      type="text"
+                      value={notificationTemplateTitle}
+                      onChange={(e) => { setNotificationTemplateTitle(e.target.value); setNotificationTemplateError(null) }}
+                      required
+                      disabled={notificationTemplateSaving}
+                      placeholder="e.g., Checklist completed"
+                      style={{ width: '100%', padding: '0.5rem' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label htmlFor="notification-template-body" style={{ display: 'block', marginBottom: 4 }}>Push Body *</label>
+                    <textarea
+                      id="notification-template-body"
+                      value={notificationTemplateBody}
+                      onChange={(e) => { setNotificationTemplateBody(e.target.value); setNotificationTemplateError(null) }}
+                      required
+                      disabled={notificationTemplateSaving}
+                      rows={6}
+                      placeholder="e.g., {{assignee_name}} completed {{item_title}}"
+                      style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
+                    />
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Variables: {NOTIFICATION_VARIABLE_HINT}
+                    </p>
+                  </div>
+                  {notificationTemplateError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{notificationTemplateError}</p>}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={notificationTemplateSaving}>
+                      {notificationTemplateSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button type="button" onClick={closeEditNotificationTemplate} disabled={notificationTemplateSaving}>Cancel</button>
                   </div>
                 </form>
               </div>

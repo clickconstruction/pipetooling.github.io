@@ -1,4 +1,4 @@
-# Pipetooling Project Documentation
+# PipeTooling Project Documentation
 
 > **New to this project?** Start with [AI_CONTEXT.md](./AI_CONTEXT.md) for a 30-second overview, then return here for deep technical details.
 
@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-11
+last_updated: 2026-02-17
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -84,7 +84,7 @@ when_to_read:
 
 ## Project Overview
 
-**Pipetooling** is a web application designed for Master Plumbers to track plumbing work across multiple projects and crews. The key innovation is that it allows tracking work for crews that don't have direct access to the site.
+**PipeTooling** is a web application designed for Master Plumbers to track plumbing work across multiple projects and crews. The key innovation is that it allows tracking work for crews that don't have direct access to the site.
 
 ### Core Use Case
 A Master Plumber can:
@@ -103,6 +103,7 @@ A Master Plumber can:
 - **Template system**: Reusable workflow templates for common job types
 - **Notification subscriptions**: Users can subscribe to stage notifications
 - **Calendar view**: Visual calendar showing assigned work
+- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard
 
 ---
 
@@ -2227,7 +2228,7 @@ pipetooling.github.io/
 │       └── deploy.yml          # GitHub Actions deployment
 ├── public/
 │   ├── .nojekyll               # Prevents Jekyll processing
-│   └── favicon.svg             # Site favicon (orange gear icon)
+│   └── favicon.svg             # Site favicon (orange gear + white wrench)
 ├── src/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
@@ -2239,6 +2240,7 @@ pipetooling.github.io/
 │   │   └── materialPOUtils.ts # Shared PO helpers (expandTemplate, addExpandedPartsToPO; Materials & Bids Takeoff)
 │   ├── pages/
 │   │   ├── Calendar.tsx        # Calendar view
+│   │   ├── Checklist.tsx       # Checklist (Today, History, Manage tabs)
 │   │   ├── CustomerForm.tsx    # Create/edit customer
 │   │   ├── Customers.tsx       # List customers
 │   │   ├── Dashboard.tsx       # User dashboard
