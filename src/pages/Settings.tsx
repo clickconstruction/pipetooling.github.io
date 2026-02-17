@@ -2789,7 +2789,12 @@ export default function Settings() {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0 }}>Settings</h1>
+        <div>
+          <h1 style={{ margin: 0 }}>Settings</h1>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Your role: <strong>{myRole == null ? '—' : myRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</strong>
+          </p>
+        </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
             Change password
@@ -2799,6 +2804,52 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {(myRole === 'master_technician' || myRole === 'dev') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            PipeTooling helps Masters better manage Projects with Subs.
+            <br />
+            Three types of People: Masters, Assistants, Subs
+          </div>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
+          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
+            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
+            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
+            <li>When People complete Stages, Masters are updated</li>
+          </ol>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Sharing</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li style={{ marginBottom: '0.5rem' }}>
+                Masters can choose to adopt assistants in Settings
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they can manage stages but not see financials or private notes
+                </div>
+              </li>
+              <li>
+                Masters can choose to share with other Masters
+                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
+                  → they have the same permissions as assistants
+                </div>
+              </li>
+            </ul>
+          </div>
+          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <strong>Subcontractors</strong>:
+            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
+              <li>Only see a stage when it is assigned to them</li>
+              <li>Can only Start and Complete their stages</li>
+              <li>Cannot see private notes or financials</li>
+              <li>Cannot add, edit, delete, or assign stages</li>
+            </ul>
+            <div style={{ marginTop: '0.5rem' }}>
+              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages on the Dashboard.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>

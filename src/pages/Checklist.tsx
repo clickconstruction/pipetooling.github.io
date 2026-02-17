@@ -60,8 +60,6 @@ export default function Checklist() {
 
   return (
     <div style={{ padding: '1.5rem' }}>
-      <h1 style={{ marginTop: 0, marginBottom: '1.5rem' }}>Checklist</h1>
-
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setActiveTab('today')} style={tabStyle(activeTab === 'today')}>
           Today

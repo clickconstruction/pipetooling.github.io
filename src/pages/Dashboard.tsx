@@ -55,11 +55,32 @@ function personDisplay(name: string | null, userNames: Set<string>): string {
   return isUser ? trimmedName : `${trimmedName} (not a user)`
 }
 
+function toLocalDateString(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+type ChecklistInstance = {
+  id: string
+  checklist_item_id: string
+  scheduled_date: string
+  assigned_to_user_id: string
+  completed_at: string | null
+  notes: string | null
+  completed_by_user_id: string | null
+  created_at: string | null
+  checklist_items?: { title: string } | null
+}
+
 export default function Dashboard() {
   const { user: authUser } = useAuth()
   const [role, setRole] = useState<UserRole | null>(null)
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
+  const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
+  const [completingChecklistId, setCompletingChecklistId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
@@ -107,7 +128,9 @@ export default function Dashboard() {
         .eq('user_id', authUser.id)
         .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true')
       
-      if (subs && subs.length > 0) {
+      if (!subs || subs.length === 0) {
+        setSubscribedSteps([])
+      } else if (subs && subs.length > 0) {
         const stepIds = subs.map((s) => s.step_id)
         const { data: steps } = await supabase
           .from('project_workflow_steps')
@@ -203,6 +226,16 @@ export default function Dashboard() {
         }
       }
       
+      // Load today's checklist items
+      const today = toLocalDateString(new Date())
+      const { data: checklistData } = await supabase
+        .from('checklist_instances')
+        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
+        .eq('assigned_to_user_id', authUser.id)
+        .eq('scheduled_date', today)
+        .order('created_at', { ascending: true })
+      setTodayChecklist((checklistData ?? []) as ChecklistInstance[])
+      
       setLoading(false)
     })()
   }, [authUser?.id])
@@ -262,6 +295,101 @@ export default function Dashboard() {
         setAssignedSteps([])
       }
     }
+  }
+
+  async function loadTodayChecklist() {
+    if (!authUser?.id) return
+    const today = toLocalDateString(new Date())
+    const { data } = await supabase
+      .from('checklist_instances')
+      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
+      .eq('assigned_to_user_id', authUser.id)
+      .eq('scheduled_date', today)
+      .order('created_at', { ascending: true })
+    setTodayChecklist((data ?? []) as ChecklistInstance[])
+  }
+
+  async function toggleChecklistComplete(inst: ChecklistInstance) {
+    if (!authUser?.id || completingChecklistId) return
+    setCompletingChecklistId(inst.id)
+    const isCompleted = !!inst.completed_at
+    const { error: e } = await supabase
+      .from('checklist_instances')
+      .update({
+        completed_at: isCompleted ? null : new Date().toISOString(),
+        completed_by_user_id: isCompleted ? null : authUser.id,
+      })
+      .eq('id', inst.id)
+    setCompletingChecklistId(null)
+    if (e) return
+    await loadTodayChecklist()
+    if (!isCompleted) {
+      await sendChecklistCompletionNotifications(inst)
+      await maybeCreateNextChecklistInstance(inst)
+    }
+  }
+
+  async function sendChecklistCompletionNotifications(inst: ChecklistInstance) {
+    const { data: item } = await supabase
+      .from('checklist_items')
+      .select('notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, title')
+      .eq('id', inst.checklist_item_id)
+      .single()
+    if (!item) return
+    const title = (item as { title: string }).title
+    const assigneeName = await getCurrentUserName()
+    const body = `${assigneeName} completed: ${title}`
+    const recipients: string[] = []
+    const notifyUserId = (item as { notify_on_complete_user_id: string | null }).notify_on_complete_user_id
+    if (notifyUserId) recipients.push(notifyUserId)
+    const notifyCreator = (item as { notify_creator_on_complete: boolean }).notify_creator_on_complete
+    const creatorId = (item as { created_by_user_id: string }).created_by_user_id
+    if (notifyCreator && creatorId && !recipients.includes(creatorId)) recipients.push(creatorId)
+    for (const uid of recipients) {
+      try {
+        await supabase.functions.invoke('send-checklist-notification', {
+          body: {
+            recipient_user_id: uid,
+            push_title: 'Checklist completed',
+            push_body: body,
+            push_url: '/checklist',
+            tag: `checklist-${inst.id}`,
+          },
+        })
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  async function maybeCreateNextChecklistInstance(inst: ChecklistInstance) {
+    const { data: item } = await supabase
+      .from('checklist_items')
+      .select('repeat_type, repeat_days_after, repeat_end_date')
+      .eq('id', inst.checklist_item_id)
+      .single()
+    if (!item) return
+    const rt = (item as { repeat_type: string }).repeat_type
+    if (rt !== 'days_after_completion') return
+    const daysAfter = (item as { repeat_days_after: number | null }).repeat_days_after
+    if (!daysAfter) return
+    const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
+    const nextDate = new Date(inst.scheduled_date)
+    nextDate.setDate(nextDate.getDate() + daysAfter)
+    const nextDateStr = toLocalDateString(nextDate)
+    if (endDate && nextDateStr > endDate) return
+    const existing = await supabase
+      .from('checklist_instances')
+      .select('id')
+      .eq('checklist_item_id', inst.checklist_item_id)
+      .eq('scheduled_date', nextDateStr)
+      .single()
+    if (existing.data) return
+    await supabase.from('checklist_instances').insert({
+      checklist_item_id: inst.checklist_item_id,
+      scheduled_date: nextDateStr,
+      assigned_to_user_id: inst.assigned_to_user_id,
+    })
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -492,55 +620,52 @@ export default function Dashboard() {
   return (
     <div>
       <h1>Dashboard</h1>
-      <p>Your role: <strong>{role == null ? '—' : role.charAt(0).toUpperCase() + role.slice(1)}</strong></p>
-      
-      {(role === 'master_technician' || role === 'dev') && (
-        <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            PipeTooling helps Masters better manage Projects with Subs.
-            <br />
-            Three types of People: Masters, Assistants, Subs
-          </div>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
-          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
-            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
-            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
-            <li>When People complete Stages, Masters are updated</li>
-          </ol>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Sharing</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li style={{ marginBottom: '0.5rem' }}>
-                Masters can choose to adopt assistants in Settings
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they can manage stages but not see financials or private notes
-                </div>
-              </li>
-              <li>
-                Masters can choose to share with other Masters
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they have the same permissions as assistants
-                </div>
-              </li>
-            </ul>
-          </div>
-
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Subcontractors</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li>Only see a stage when it is assigned to them</li>
-              <li>Can only Start and Complete their stages</li>
-              <li>Cannot see private notes or financials</li>
-              <li>Cannot add, edit, delete, or assign stages</li>
-            </ul>
-            <div style={{ marginTop: '0.5rem' }}>
-              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages below:
-            </div>
-          </div>
+      {todayChecklist.length > 0 && (
+        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
+            Checklist items due today
+            <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+              View all →
+            </Link>
+          </h2>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {todayChecklist.map((inst) => {
+              const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+              const isCompleted = !!inst.completed_at
+              return (
+                <li
+                  key={inst.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    marginBottom: '0.5rem',
+                    background: isCompleted ? '#f0fdf4' : '#fff',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isCompleted}
+                    onChange={() => toggleChecklistComplete(inst)}
+                    disabled={!!completingChecklistId}
+                  />
+                  <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#6b7280' : 'inherit' }}>
+                    {title}
+                  </span>
+                  {inst.completed_at && (
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {new Date(inst.completed_at).toLocaleString()}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
         </div>
       )}
-      
       {assignedSteps.length > 0 && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Assigned Stages</h2>
@@ -692,9 +817,14 @@ export default function Dashboard() {
         </div>
       )}
       
-      {subscribedSteps.length > 0 && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Subscribed Stages</h2>
+          {subscribedSteps.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+              No subscribed stages. Go to a workflow and enable &quot;Notify when started&quot;, &quot;Notify when complete&quot;, or &quot;Notify when re-opened&quot; for steps you want to track here.
+            </p>
+          ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {subscribedSteps.map((sub) => {
               const notifications = []
@@ -726,6 +856,7 @@ export default function Dashboard() {
               )
             })}
           </ul>
+          )}
         </div>
       )}
     </div>

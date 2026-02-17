@@ -85,9 +85,7 @@ export default function Layout() {
             <NavLink to="/materials" style={navStyle}>Materials</NavLink>
             <NavLink to="/bids" style={navStyle}>Bids</NavLink>
             <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-            <button type="button" onClick={() => navigate('/checklist')} style={{ ...navStyle({ isActive: location.pathname === '/checklist' }), background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}>
-            Checklist
-          </button>
+            <NavLink to="/checklist" style={navStyle}>Checklist</NavLink>
           </>
         ) : (
           <>
@@ -106,9 +104,7 @@ export default function Layout() {
               </>
             )}
             <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-            <button type="button" onClick={() => navigate('/checklist')} style={{ ...navStyle({ isActive: location.pathname === '/checklist' }), background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}>
-              Checklist
-            </button>
+            <NavLink to="/checklist" style={navStyle}>Checklist</NavLink>
           </>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
