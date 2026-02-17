@@ -33,33 +33,18 @@ export default function Customers() {
   async function fetchCustomers() {
     const { data, error: err } = await supabase
       .from('customers')
-      .select('*')
+      .select('*, users!customers_master_user_id_fkey(id, name, email)')
       .order('name')
     if (err) {
       setError(err.message)
       setLoading(false)
       return
     }
-    const customersData = (data as Customer[]) ?? []
-    
-    // Load master information for customers that have master_user_id
-    const customersWithMasters = await Promise.all(
-      customersData.map(async (c) => {
-        if (c.master_user_id) {
-          const { data: masterData } = await supabase
-            .from('users')
-            .select('id, name, email')
-            .eq('id', c.master_user_id)
-            .single()
-          return {
-            ...c,
-            master_user: masterData as { id: string; name: string | null; email: string | null } | null,
-          }
-        }
-        return { ...c, master_user: null }
-      })
-    )
-    
+    const rows = (data ?? []) as Array<Customer & { users: { id: string; name: string | null; email: string | null } | null }>
+    const customersWithMasters: CustomerWithMaster[] = rows.map((row) => {
+      const { users, ...customer } = row
+      return { ...customer, master_user: users ?? null }
+    })
     setCustomers(customersWithMasters)
     setLoading(false)
   }

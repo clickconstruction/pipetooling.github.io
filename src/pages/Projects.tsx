@@ -51,7 +51,7 @@ export default function Projects() {
 
       let q = supabase
         .from('projects')
-        .select('*, customers(name)')
+        .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
         .order('name')
       if (customerId) q = q.eq('customer_id', customerId)
       const { data, error: err } = await q
@@ -60,31 +60,17 @@ export default function Projects() {
         setLoading(false)
         return
       }
-      const projs = (data as unknown as ProjectWithCustomer[]) ?? []
-      
-      // Load master information for projects that have master_user_id
-      const projectsWithMasters = await Promise.all(
-        projs.map(async (p) => {
-          if (p.master_user_id) {
-            const { data: masterData } = await supabase
-              .from('users')
-              .select('id, name, email')
-              .eq('id', p.master_user_id)
-              .single()
-            return {
-              ...p,
-              master_user: masterData as { id: string; name: string | null; email: string | null } | null,
-            }
-          }
-          return { ...p, master_user: null }
-        })
-      )
+      const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
+      const projectsWithMasters: ProjectWithCustomer[] = rows.map((row) => {
+        const { users, ...rest } = row
+        return { ...rest, master_user: users ?? null }
+      })
       
       setProjects(projectsWithMasters)
       
       // Load active steps and step summaries for all projects
-      if (projs.length > 0) {
-        const projectIds = projs.map((p) => p.id)
+      if (projectsWithMasters.length > 0) {
+        const projectIds = projectsWithMasters.map((p) => p.id)
         
         // Get workflows for these projects
         const { data: workflows } = await supabase

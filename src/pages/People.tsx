@@ -99,6 +99,8 @@ export default function People() {
   const [editLaborSaving, setEditLaborSaving] = useState(false)
 
   // Pay/Hours tab state
+  const [payTabLoading, setPayTabLoading] = useState(false)
+  const [hoursTabLoading, setHoursTabLoading] = useState(false)
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [isDev, setIsDev] = useState(false)
@@ -271,8 +273,12 @@ export default function People() {
   useEffect(() => {
     async function loadPayAccess() {
       if (!authUser?.id) return
-      const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
-      const role = (me as { role?: string } | null)?.role ?? null
+      const [meRes, approvedRes] = await Promise.all([
+        supabase.from('users').select('role').eq('id', authUser.id).single(),
+        supabase.from('pay_approved_masters').select('master_id'),
+      ])
+      const role = (meRes.data as { role?: string } | null)?.role ?? null
+      const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
       if (role === 'dev') {
         setCanAccessPay(true)
         setCanAccessHours(true)
@@ -283,8 +289,6 @@ export default function People() {
         setCanAccessHours(true)
         return
       }
-      const { data: approved } = await supabase.from('pay_approved_masters').select('master_id')
-      const approvedIds = new Set((approved ?? []).map((r: { master_id: string }) => r.master_id))
       if (role === 'master_technician' && approvedIds.has(authUser.id)) {
         setCanAccessPay(true)
         setCanAccessHours(true)
@@ -861,12 +865,14 @@ export default function People() {
 
   async function loadTeams() {
     if (!canAccessPay) return
-    const { data: teamsData, error: teamsErr } = await supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true })
-    if (teamsErr) return
-    const teamList = (teamsData ?? []) as Array<{ id: string; name: string; sequence_order: number }>
-    const { data: membersData } = await supabase.from('people_team_members').select('team_id, person_name')
+    const [teamsRes, membersRes] = await Promise.all([
+      supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
+      supabase.from('people_team_members').select('team_id, person_name'),
+    ])
+    if (teamsRes.error) return
+    const teamList = (teamsRes.data ?? []) as Array<{ id: string; name: string; sequence_order: number }>
     const membersByTeam = new Map<string, string[]>()
-    for (const m of (membersData ?? []) as Array<{ team_id: string; person_name: string }>) {
+    for (const m of (membersRes.data ?? []) as Array<{ team_id: string; person_name: string }>) {
       if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, [])
       membersByTeam.get(m.team_id)!.push(m.person_name)
     }
@@ -875,9 +881,12 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'pay' && canAccessPay) {
-      loadPayConfig()
-      loadPeopleHours(matrixStartDate, matrixEndDate)
-      loadTeams()
+      setPayTabLoading(true)
+      Promise.all([
+        loadPayConfig(),
+        loadPeopleHours(matrixStartDate, matrixEndDate),
+        loadTeams(),
+      ]).finally(() => setPayTabLoading(false))
     }
   }, [activeTab, canAccessPay, matrixStartDate, matrixEndDate])
 
@@ -913,9 +922,12 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'hours' && canAccessHours) {
-      loadPayConfig()
-      loadPeopleHours(hoursDateStart, hoursDateEnd)
-      loadHoursDisplayOrder()
+      setHoursTabLoading(true)
+      Promise.all([
+        loadPayConfig(),
+        loadPeopleHours(hoursDateStart, hoursDateEnd),
+        loadHoursDisplayOrder(),
+      ]).finally(() => setHoursTabLoading(false))
     }
   }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
 
@@ -1974,6 +1986,10 @@ export default function People() {
 
       {activeTab === 'pay' && canAccessPay && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {payTabLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+          <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <section>
             <button
@@ -2223,11 +2239,17 @@ export default function People() {
               })}
             </div>
           </section>
+          </>
+          )}
         </div>
       )}
 
       {activeTab === 'hours' && canAccessHours && (
         <div>
+          {hoursTabLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+          <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
             <label>
@@ -2400,6 +2422,8 @@ export default function People() {
                 </tfoot>
               </table>
             </div>
+          )}
+          </>
           )}
         </div>
       )}

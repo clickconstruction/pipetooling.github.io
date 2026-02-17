@@ -70,10 +70,10 @@ export default function Checklist() {
         {canManageChecklists && (
           <>
             <button type="button" onClick={() => setActiveTab('manage')} style={tabStyle(activeTab === 'manage')}>
-              Manage
+              Review
             </button>
             <button type="button" onClick={() => setActiveTab('checklists')} style={tabStyle(activeTab === 'checklists')}>
-              Checklists
+              Manage
             </button>
           </>
         )}
@@ -110,8 +110,8 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
       setLoading(false)
       return
     }
-    loadToday()
-    loadUpcoming()
+    setLoading(true)
+    Promise.all([loadToday(), loadUpcoming()]).finally(() => setLoading(false))
   }, [authUserId])
 
   async function loadToday() {
@@ -125,7 +125,6 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
       .order('created_at', { ascending: true })
     if (e) {
       setError(e.message)
-      setLoading(false)
       return
     }
     setTodayInstances((data ?? []) as ChecklistInstance[])
@@ -136,7 +135,6 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
       })
       return next
     })
-    setLoading(false)
   }
 
   async function loadUpcoming() {
@@ -469,7 +467,7 @@ type OutstandingInstance = {
   id: string
   scheduled_date: string
   assigned_to_user_id: string
-  checklist_items?: { title: string } | null
+  checklist_items?: { title: string; repeat_type?: string } | null
   users?: { name: string; email: string } | null
 }
 
@@ -477,25 +475,40 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating'>('next_day')
 
   useEffect(() => {
     loadOutstanding()
-  }, [])
+  }, [dateRange])
 
   async function loadOutstanding() {
     setLoading(true)
     setError(null)
-    const { data, error } = await supabase
+    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10)
+    const weekEnd = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)
+
+    let query = supabase
       .from('checklist_instances')
-      .select('id, scheduled_date, assigned_to_user_id, checklist_items(title), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
+      .select('id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
+
+    if (dateRange !== 'non_repeating') {
+      const start = dateRange === 'next_day' ? tomorrow : tomorrow
+      const end = dateRange === 'next_day' ? tomorrow : weekEnd
+      query = query.gte('scheduled_date', start).lte('scheduled_date', end)
+    }
+
+    const { data, error } = await query
     if (error) {
       setError(error.message)
       setLoading(false)
       return
     }
-    const instances = (data ?? []) as OutstandingInstance[]
+    let instances = (data ?? []) as OutstandingInstance[]
+    if (dateRange === 'non_repeating') {
+      instances = instances.filter((inst) => (inst.checklist_items as { repeat_type?: string } | null)?.repeat_type === 'once')
+    }
     const map = new Map<string, OutstandingInstance[]>()
     for (const inst of instances) {
       const list = map.get(inst.assigned_to_user_id) ?? []
@@ -518,7 +531,53 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
 
   return (
     <div>
-      <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Outstanding by person</h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0 }}>Outstanding by person</h3>
+        <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <button
+            type="button"
+            onClick={() => setDateRange('next_day')}
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.875rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.25rem',
+              background: dateRange === 'next_day' ? '#e5e7eb' : 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Next day
+          </button>
+          <button
+            type="button"
+            onClick={() => setDateRange('next_week')}
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.875rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.25rem',
+              background: dateRange === 'next_week' ? '#e5e7eb' : 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Next week
+          </button>
+          <button
+            type="button"
+            onClick={() => setDateRange('non_repeating')}
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.875rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.25rem',
+              background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Non repeating
+          </button>
+        </div>
+      </div>
       {byUser.length === 0 ? (
         <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
       ) : (
@@ -613,8 +672,8 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
   })
 
   useEffect(() => {
-    loadItems()
-    loadUsers()
+    setLoading(true)
+    Promise.all([loadItems(), loadUsers()]).finally(() => setLoading(false))
   }, [filterUserId])
 
   async function loadUsers() {
@@ -623,7 +682,6 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
   }
 
   async function loadItems() {
-    setLoading(true)
     let q = supabase
       .from('checklist_items')
       .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, notify_on_complete_user_id, notify_creator_on_complete, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
@@ -632,11 +690,9 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
     const { data, error } = await q
     if (error) {
       setError(error.message)
-      setLoading(false)
       return
     }
     setItems((data ?? []) as ChecklistItem[])
-    setLoading(false)
   }
 
   function openAdd() {
