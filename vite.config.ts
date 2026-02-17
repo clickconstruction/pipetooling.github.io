@@ -22,7 +22,7 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         name: 'PipeTooling',
         short_name: 'PipeTooling',

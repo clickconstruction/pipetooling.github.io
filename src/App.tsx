@@ -22,6 +22,8 @@ import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
 import { Toast, useToast } from './components/Toast'
+import { UpdatePrompt } from './components/UpdatePrompt'
+import { ForceReloadProvider } from './contexts/ForceReloadContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -58,7 +60,7 @@ function AuthHandler() {
           } else {
             // Clear the hash, clear cache, and hard reload
             window.history.replaceState(null, '', window.location.pathname + window.location.search)
-            const reload = () => { location.reload() }
+            const reload = () => { window.location.reload() }
             if (typeof caches !== 'undefined') {
               caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
                 .then(reload, reload)
@@ -96,6 +98,7 @@ export default function App() {
 
   return (
     <>
+      <UpdatePrompt />
       <AuthHandler />
       <Routes>
         <Route path="/sign-in" element={<SignIn />} />
@@ -106,7 +109,9 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Layout />
+              <ForceReloadProvider>
+                <Layout />
+              </ForceReloadProvider>
             </ProtectedRoute>
           }
         >

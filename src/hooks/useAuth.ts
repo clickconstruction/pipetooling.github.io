@@ -74,7 +74,7 @@ export function useAuth(): UseAuthReturn {
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
 

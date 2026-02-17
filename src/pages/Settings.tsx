@@ -2983,12 +2983,31 @@ export default function Settings() {
             Your role: <strong>{myRole == null ? '—' : myRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</strong>
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
-            Change password
-          </button>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
             Sign out
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const base = window.location.origin + window.location.pathname
+              const hash = window.location.hash || ''
+              window.location.href = base + '?nocache=' + Date.now() + hash
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            Hard Reload
+          </button>
+          <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
+            Change password
           </button>
         </div>
       </div>

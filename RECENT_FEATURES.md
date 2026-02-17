@@ -12,12 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.39 → v2.4"
+version_range: "v2.43 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.42)"
-    line: ~106
-    description: "Checklist enhancements, Dashboard checklist, Settings/UI updates, PipeTooling rebrand"
+  - name: "Latest Version (v2.43)"
+    line: ~113
+    description: "Gear menu, Settings/Global Reload, Notification history ledger, Dashboard performance"
   - name: "v2.41"
     line: ~140
     description: "People Pay/Hours tabs, Cost matrix, Hours totals, People pay config collapsible"
@@ -64,49 +64,78 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-2. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-3. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-3. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-4. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-5. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-6. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-7. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-8. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-9. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-10. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-11. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-12. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-13. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-14. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-15. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-16. [Latest Updates (v2.26)](#latest-updates-v226)
-17. [Latest Updates (v2.25)](#latest-updates-v225)
-18. [Latest Updates (v2.24)](#latest-updates-v224)
-19. [Latest Updates (v2.23)](#latest-updates-v223)
-20. [Latest Updates (v2.22)](#latest-updates-v222)
-21. [Latest Updates (v2.21)](#latest-updates-v221)
-22. [Latest Updates (v2.20)](#latest-updates-v220)
-23. [Latest Updates (v2.19)](#latest-updates-v219)
-24. [Latest Updates (v2.18)](#latest-updates-v218)
-25. [Latest Updates (v2.17)](#latest-updates-v217)
-26. [Latest Updates (v2.16)](#latest-updates-v216)
-27. [Latest Updates (v2.15)](#latest-updates-v215)
-28. [Latest Updates (v2.14)](#latest-updates-v214)
-29. [Latest Updates (v2.13)](#latest-updates-v213)
-30. [Latest Updates (v2.12)](#latest-updates-v212)
-31. [Latest Updates (v2.11)](#latest-updates-v211)
-32. [Latest Updates (v2.10)](#latest-updates-v210)
-33. [Latest Updates (v2.9)](#latest-updates-v29)
-34. [Latest Updates (v2.8)](#latest-updates-v28)
-35. [Latest Updates (v2.7)](#latest-updates-v27)
-36. [Latest Updates (v2.6)](#latest-updates-v26)
-37. [Workflow Features](#workflow-features)
-38. [Calendar Updates](#calendar-updates)
-39. [Access Control](#access-control)
-40. [Email Templates](#email-templates)
-41. [Financial Tracking](#financial-tracking)
-42. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+2. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+3. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+4. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+5. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+6. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+7. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+8. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+9. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+10. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+11. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+12. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+13. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+14. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+15. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+16. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+17. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+18. [Latest Updates (v2.26)](#latest-updates-v226)
+19. [Latest Updates (v2.25)](#latest-updates-v225)
+20. [Latest Updates (v2.24)](#latest-updates-v224)
+21. [Latest Updates (v2.23)](#latest-updates-v223)
+22. [Latest Updates (v2.22)](#latest-updates-v222)
+23. [Latest Updates (v2.21)](#latest-updates-v221)
+24. [Latest Updates (v2.20)](#latest-updates-v220)
+25. [Latest Updates (v2.19)](#latest-updates-v219)
+26. [Latest Updates (v2.18)](#latest-updates-v218)
+27. [Latest Updates (v2.17)](#latest-updates-v217)
+28. [Latest Updates (v2.16)](#latest-updates-v216)
+29. [Latest Updates (v2.15)](#latest-updates-v215)
+30. [Latest Updates (v2.14)](#latest-updates-v214)
+31. [Latest Updates (v2.13)](#latest-updates-v213)
+32. [Latest Updates (v2.12)](#latest-updates-v212)
+33. [Latest Updates (v2.11)](#latest-updates-v211)
+34. [Latest Updates (v2.10)](#latest-updates-v210)
+35. [Latest Updates (v2.9)](#latest-updates-v29)
+36. [Latest Updates (v2.8)](#latest-updates-v28)
+37. [Latest Updates (v2.7)](#latest-updates-v27)
+38. [Latest Updates (v2.6)](#latest-updates-v26)
+39. [Workflow Features](#workflow-features)
+40. [Calendar Updates](#calendar-updates)
+41. [Access Control](#access-control)
+42. [Email Templates](#email-templates)
+43. [Financial Tracking](#financial-tracking)
+44. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.43)
+
+### Navigation, Settings, and Global Reload
+
+**Date**: 2026-02-17
+
+**Overview**:
+Navigation and Settings reorganization: gear menu, Sign out and Hard Reload moved to Settings, Global Reload for devs.
+
+**Gear Menu** (top-right):
+- **Settings**: Link to Settings page (all users)
+- **Global Reload**: Dev-only option that broadcasts a reload signal to all connected clients via Supabase Realtime; all clients clear caches and hard reload
+
+**Settings Page** (top button row):
+- **Sign out**: Moved from gear menu; now at top of Settings for all users
+- **Hard Reload**: Moved from nav bar; clears caches and reloads current user only
+- **Change password**: Unchanged
+
+**Technical**:
+- `ForceReloadContext`: Supabase Realtime Broadcast channel `force-reload`; all authenticated clients subscribe on mount; dev triggers broadcast via gear menu
+- Layout: Gear dropdown shows Settings + Global Reload (dev-only); removed Sign out and Hard Reload from nav
+
+**Dashboard**:
+- **Notification history ledger**: Expandable section showing recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
+- **Performance**: Parallel fetches (Phase 1: user, allUsers, subs, checklist; Phase 2: subscribed and assigned in parallel); progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
 
 ---
 

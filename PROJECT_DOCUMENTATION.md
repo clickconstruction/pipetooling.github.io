@@ -1912,6 +1912,8 @@ user_id = auth.uid()
     - Action buttons: Set Start, Complete, Approve, Reject (based on role and status)
   - **Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
+  - **Notification history**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
+  - **Performance**: Parallel fetches and progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
   - **Card Layout**: 
     - Format: "Stage name - Assigned person"
     - Project link below title
@@ -1920,7 +1922,12 @@ user_id = auth.uid()
 
 ### 8. Settings
 - **Page**: `Settings.tsx`
+- **Layout/Navigation**:
+  - **Gear menu** (top-right in Layout): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime)
+  - **Top button row** (Settings page): Sign out, Hard Reload (clears caches, reloads current user only), Change password
 - **Features (All Users)**:
+  - **Sign out**: At top of Settings page
+  - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
   - **Change Password**: Change your own password (requires current password verification)
 - **Features (Masters and Devs)**:
   - **Adopt Assistants**: Checkbox list to adopt/unadopt assistants
@@ -2294,6 +2301,7 @@ pipetooling.github.io/
 - Main navigation bar
 - Role-based link visibility
 - Impersonation handling ("Back to my account")
+- **Gear menu** (top-right): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime `force-reload` channel)
 - Sign out functionality
 
 #### `src/types/database.ts`

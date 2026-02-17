@@ -9,9 +9,15 @@ declare let self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Take control of all clients immediately
-self.skipWaiting()
+// Take control when activated (prompt mode: skipWaiting only when client requests via message)
 clientsClaim()
+
+// Handle SKIP_WAITING message from client (when user clicks Reload to update)
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
+})
 
 // Web Push: show notification when push message received
 self.addEventListener('push', (event: PushEvent) => {
