@@ -67,6 +67,41 @@ type PurchaseOrderWithItems = PurchaseOrder & {
 
 const PARTS_PAGE_SIZE = 50
 
+/** Batch-fetch prices for multiple parts in one query, then group by part_id. */
+async function fetchPricesForParts(partIds: string[]): Promise<Map<string, (MaterialPartPrice & { supply_house: SupplyHouse })[]>> {
+  const map = new Map<string, (MaterialPartPrice & { supply_house: SupplyHouse })[]>()
+  if (partIds.length === 0) return map
+
+  // Supabase .in() works with many IDs; chunk if needed for very large sets (e.g. 1000+)
+  const CHUNK = 500
+  for (let i = 0; i < partIds.length; i += CHUNK) {
+    const chunk = partIds.slice(i, i + CHUNK)
+    const { data: pricesData } = await supabase
+      .from('material_part_prices')
+      .select('*, supply_houses(*)')
+      .in('part_id', chunk)
+      .order('price', { ascending: true })
+
+    const rows = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
+    for (const row of rows) {
+      const pid = row.part_id
+      const priceRow = { ...row, supply_house: row.supply_houses }
+      const existing = map.get(pid)
+      if (existing) {
+        existing.push(priceRow)
+      } else {
+        map.set(pid, [priceRow])
+      }
+    }
+  }
+
+  // Sort each part's prices by price ascending (chunked results may not be fully ordered)
+  for (const prices of map.values()) {
+    prices.sort((a, b) => a.price - b.price)
+  }
+  return map
+}
+
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -121,9 +156,9 @@ export default function Materials() {
     }>
   } | null>(null)
 
-  // Load All Mode state - persisted per user in localStorage, default on
+  // Load All Mode state - persisted per user in localStorage, default off to reduce disk IO
   const LOAD_ALL_MODE_KEY = (uid: string) => `materials_loadAllMode_${uid}`
-  const [loadAllMode, setLoadAllMode] = useState(true)
+  const [loadAllMode, setLoadAllMode] = useState(false)
   const [allParts, setAllParts] = useState<PartWithPrices[]>([])
   const [loadingAllParts, setLoadingAllParts] = useState(false)
   const [clientSearchQuery, setClientSearchQuery] = useState('')
@@ -399,29 +434,12 @@ export default function Materials() {
         .map(id => partsWithTypes.find(p => p.id === id))
         .filter(p => p !== undefined) as MaterialPart[]
       
-      // Load prices for each part
-      const partsWithPrices: PartWithPrices[] = await Promise.all(
-        orderedPartsList.map(async (part) => {
-          const { data: pricesData, error: pricesError } = await supabase
-            .from('material_part_prices')
-            .select('*, supply_houses(*)')
-            .eq('part_id', part.id)
-            .order('price', { ascending: true })
-          
-          if (pricesError) {
-            console.error(`Failed to load prices for part ${part.id}:`, pricesError)
-            return { ...part, prices: [] }
-          }
-
-          const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-          const prices = pricesList.map(p => ({
-            ...p,
-            supply_house: p.supply_houses,
-          }))
-
-          return { ...part, prices }
-        })
-      )
+      // Batch-fetch prices for all parts in one query
+      const pricesByPartId = await fetchPricesForParts(orderedPartsList.map(p => p.id))
+      const partsWithPrices: PartWithPrices[] = orderedPartsList.map(part => ({
+        ...part,
+        prices: pricesByPartId.get(part.id) ?? [],
+      }))
       
       if (page === 0) {
         setParts(partsWithPrices)
@@ -486,29 +504,12 @@ export default function Materials() {
       return
     }
 
-    // Load prices for each part individually to avoid limit issues
-    const partsWithPrices: PartWithPrices[] = await Promise.all(
-      partsList.map(async (part) => {
-        const { data: pricesData, error: pricesError } = await supabase
-          .from('material_part_prices')
-          .select('*, supply_houses(*)')
-          .eq('part_id', part.id)
-          .order('price', { ascending: true })
-        
-        if (pricesError) {
-          console.error(`Failed to load prices for part ${part.id}:`, pricesError)
-          return { ...part, prices: [] }
-        }
-
-        const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-        const prices = pricesList.map(p => ({
-          ...p,
-          supply_house: p.supply_houses,
-        }))
-
-        return { ...part, prices }
-      })
-    )
+    // Batch-fetch prices for all parts in one query
+    const pricesByPartId = await fetchPricesForParts(partsList.map(p => p.id))
+    const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
+      ...part,
+      prices: pricesByPartId.get(part.id) ?? [],
+    }))
 
     if (page === 0) {
       setParts(partsWithPrices)
@@ -554,34 +555,12 @@ export default function Materials() {
         part_type: p.part_types
       })) as MaterialPart[]
       
-      // Load prices for each part (show progress)
-      const partsWithPrices: PartWithPrices[] = []
-      const batchSize = 50
-      
-      for (let i = 0; i < partsList.length; i += batchSize) {
-        const batch = partsList.slice(i, i + batchSize)
-        const batchWithPrices = await Promise.all(
-          batch.map(async (part) => {
-            const { data: pricesData } = await supabase
-              .from('material_part_prices')
-              .select('*, supply_houses(*)')
-              .eq('part_id', part.id)
-              .order('price', { ascending: true })
-            
-            const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-            const prices = pricesList.map(p => ({
-              ...p,
-              supply_house: p.supply_houses,
-            }))
-            
-            return { ...part, prices }
-          })
-        )
-        partsWithPrices.push(...batchWithPrices)
-        
-        // Update progress (optional: could show "Loaded 100/1500 parts...")
-        setAllParts([...partsWithPrices])
-      }
+      // Batch-fetch all prices in one or few queries
+      const pricesByPartId = await fetchPricesForParts(partsList.map(p => p.id))
+      const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
+        ...part,
+        prices: pricesByPartId.get(part.id) ?? [],
+      }))
       
       setAllParts(partsWithPrices)
     } catch (err: any) {
@@ -702,48 +681,75 @@ export default function Materials() {
     }
 
     const items = (itemsData as MaterialTemplateItem[]) ?? []
-    
-    // Load details for parts and nested templates
-    const itemsWithDetails: TemplateItemWithDetails[] = await Promise.all(
-      items.map(async (item) => {
-        if (item.item_type === 'part' && item.part_id) {
-          const { data: partData } = await supabase
-            .from('material_parts')
-            .select('*, part_types(*)')
-            .eq('id', item.part_id)
-            .single()
-          const rawPart = partData as (MaterialPart & { part_types?: PartType }) | null
-          let part: (MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }) | undefined
-          if (rawPart) {
-            part = { ...rawPart, part_type: rawPart.part_types }
-            const { data: pricesData } = await supabase
-              .from('material_part_prices')
-              .select('*, supply_houses(*)')
-              .eq('part_id', rawPart.id)
-              .order('price', { ascending: true })
-            const pricesList = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-            part.prices = pricesList.map(p => ({ ...p, supply_house: p.supply_houses }))
-          }
-          return { ...item, part }
-        } else if (item.item_type === 'template' && item.nested_template_id) {
-          const { data: templateData } = await supabase
-            .from('material_templates')
-            .select('*')
-            .eq('id', item.nested_template_id)
-            .single()
-          return { ...item, nested_template: templateData as MaterialTemplate | undefined }
-        }
-        return item
-      })
-    )
+    const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
+    const nestedTemplateIds = [...new Set(items.filter(i => i.item_type === 'template' && i.nested_template_id).map(i => i.nested_template_id as string))]
+
+    // Batch-fetch parts, prices, and nested templates
+    const [partsResult, pricesByPartId, templatesResult] = await Promise.all([
+      partIds.length > 0
+        ? supabase.from('material_parts').select('*, part_types(*)').in('id', partIds)
+        : Promise.resolve({ data: [] }),
+      partIds.length > 0 ? fetchPricesForParts(partIds) : Promise.resolve(new Map()),
+      nestedTemplateIds.length > 0
+        ? supabase.from('material_templates').select('*').in('id', nestedTemplateIds)
+        : Promise.resolve({ data: [] }),
+    ])
+
+    const partsMap = new Map<string, MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }>()
+    const rawParts = (partsResult.data as (MaterialPart & { part_types?: PartType })[]) ?? []
+    for (const p of rawParts) {
+      const part: MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] } = {
+        ...p,
+        part_type: p.part_types,
+        prices: pricesByPartId.get(p.id) ?? [],
+      }
+      partsMap.set(p.id, part)
+    }
+
+    const templatesMap = new Map<string, MaterialTemplate>()
+    const templates = (templatesResult.data as MaterialTemplate[]) ?? []
+    for (const t of templates) {
+      templatesMap.set(t.id, t)
+    }
+
+    const itemsWithDetails: TemplateItemWithDetails[] = items.map(item => {
+      if (item.item_type === 'part' && item.part_id) {
+        const part = partsMap.get(item.part_id)
+        return { ...item, part }
+      }
+      if (item.item_type === 'template' && item.nested_template_id) {
+        const nested_template = templatesMap.get(item.nested_template_id)
+        return { ...item, nested_template }
+      }
+      return item
+    })
 
     setTemplateItems(itemsWithDetails)
   }
 
   async function loadAllTemplateItemsForStats() {
+    // Only fetch template items for the selected service type to reduce disk IO
+    if (!selectedServiceTypeId) {
+      setAllTemplateItemsForStats([])
+      setPartIdToLowestPrice({})
+      return
+    }
+
+    const { data: templateIdsData } = await supabase
+      .from('material_templates')
+      .select('id')
+      .eq('service_type_id', selectedServiceTypeId)
+    const templateIds = (templateIdsData ?? []).map(t => t.id)
+    if (templateIds.length === 0) {
+      setAllTemplateItemsForStats([])
+      setPartIdToLowestPrice({})
+      return
+    }
+
     const { data, error } = await supabase
       .from('material_template_items')
       .select('template_id, item_type, part_id, nested_template_id, quantity')
+      .in('template_id', templateIds)
     if (!error && data) {
       const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
       setAllTemplateItemsForStats(items)
@@ -862,7 +868,7 @@ export default function Materials() {
     setLoadAllMode(stored === 'true')
   }, [authUser?.id])
 
-  // Reload data when service type changes
+  // Reload data when service type or loadAllMode changes
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       setFilterPartTypeId('')
@@ -872,20 +878,23 @@ export default function Materials() {
         setHasMoreParts(true)
         setParts([])     // Clear paginated mode data
         setAllParts([])  // Clear Load All mode data
-        await Promise.all([
+        const commonLoads = [
           loadSupplyHouses(),
           loadPartTypes(),
           loadAssemblyTypes(),
-          loadParts(0, { serviceTypeId: selectedServiceTypeId }),
-          loadAllParts(selectedServiceTypeId),
           loadMaterialTemplates(),
           loadPurchaseOrders(),
           loadSupplyHouseStatsByServiceType(),
-        ])
+        ]
+        if (loadAllMode) {
+          await Promise.all([...commonLoads, loadAllParts(selectedServiceTypeId)])
+        } else {
+          await Promise.all([...commonLoads, loadParts(0, { serviceTypeId: selectedServiceTypeId })])
+        }
       }
       loadForServiceType()
     }
-  }, [selectedServiceTypeId])
+  }, [selectedServiceTypeId, loadAllMode])
 
   useEffect(() => {
     const state = location.state as { refreshPrices?: boolean } | null
@@ -913,7 +922,7 @@ export default function Materials() {
     if (activeTab === 'templates-po' || activeTab === 'assembly-book') {
       loadAllTemplateItemsForStats()
     }
-  }, [activeTab])
+  }, [activeTab, selectedServiceTypeId])
 
   useEffect(() => {
     if (editingPO?.id) {

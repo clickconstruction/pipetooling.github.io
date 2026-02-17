@@ -286,6 +286,7 @@ export default function Dashboard() {
           .select('*')
           .eq('assigned_to_name', name)
           .order('created_at', { ascending: false })
+          .limit(100)
         const steps = (stepsData ?? []) as Step[]
         if (cancelled || steps.length === 0) {
           if (!cancelled) setAssignedLoading(false)
@@ -366,6 +367,7 @@ export default function Dashboard() {
         .select('*')
         .eq('assigned_to_name', name)
         .order('created_at', { ascending: false })
+        .limit(100)
       const steps = (stepsData ?? []) as Step[]
       if (steps.length > 0) {
         const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]

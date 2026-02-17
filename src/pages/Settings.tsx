@@ -3130,7 +3130,7 @@ export default function Settings() {
         <>
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, assemblies, assembly items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS.
+            Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, assemblies, assembly items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
           </p>
           {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>

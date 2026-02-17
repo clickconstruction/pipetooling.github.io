@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 17, 2026
 
+**`20260217230000_add_material_parts_service_type_name_index.sql`**
+- **Purpose**: Reduce disk IO for Materials Price Book queries
+- **Changes**: Added composite index `idx_material_parts_service_type_name` on (service_type_id, name)
+- **Impact**: Faster parts loading when filtering by service type and ordering by name
+- **Category**: Materials / Performance
+
 **`20260217210000_create_cost_matrix_teams_shares.sql`**
 - **Purpose**: Share Cost Matrix and Teams with selected masters/assistants (view-only)
 - **Changes**: Created `cost_matrix_teams_shares` (shared_with_user_id); `is_cost_matrix_shared_with_current_user()`; RLS for dev manage, shared users SELECT; added SELECT policies for shared users on people_pay_config, people_teams, people_team_members, people_hours
