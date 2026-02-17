@@ -1637,11 +1637,11 @@ user_id = auth.uid()
 1. Dev/Master clicks "imitate" button in Settings
 2. Frontend calls `login-as-user` Edge Function
 3. Edge Function generates magic link for target user
-4. Frontend stores original session in `sessionStorage` (key: `'impersonation_original'`)
+4. Frontend stores original session in `localStorage` (key: `'impersonation_original'`) so it survives reloads
 5. Browser redirects to magic link URL with tokens in hash
 6. AuthHandler component processes tokens and sets session
 7. User is redirected to dashboard as the target user
-8. "Back to my account" button restores original session from `sessionStorage`
+8. "Back to my account" button restores original session from `localStorage`
 
 ---
 
@@ -1859,13 +1859,13 @@ user_id = auth.uid()
   - **Contact Integration**: 
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
-  - Display shows "(account)" next to people who have user accounts
+  - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
   - **Labor Tab**: Add labor jobs per person; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate; fixture rows (Fixture, Count, hrs/unit, Fixed); Add Row, Save
   - **Ledger Tab**: Table of all labor jobs (User, Address, Job #, Date, Labor rate, Total hrs); Edit button opens modal to update job and fixture items; Delete button removes job; Print for sub uses job_date when set
-  - **Pay Tab** (dev and approved masters): People pay config (collapsible) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Cost matrix with date range showing daily cost per person (first column: Person | $periodTotal; bottom row: Total | $cumulative); Teams for combined cost by date range
+  - **Pay Tab** (dev, approved masters, or shared by dev): People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users)
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people and labor jobs; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed); people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams
+- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed); people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
 
 ### 6. Calendar View
 - **Page**: `Calendar.tsx`
@@ -2909,8 +2909,8 @@ async function myFunction() {
 - **Solution**: Filter `people` entries where `email` matches a `user.email`
 
 ### 8. Impersonation Session Storage
-- **Issue**: Original session lost during impersonation
-- **Solution**: Store original session in `sessionStorage` before impersonating
+- **Issue**: Original session lost during impersonation (e.g. when reload occurs after Global Reload or new version)
+- **Solution**: Store original session in `localStorage` before impersonating (persists across reloads)
 - **Key**: `'impersonation_original'`
 
 ### 9. TypeScript Type Updates

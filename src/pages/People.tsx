@@ -103,6 +103,7 @@ export default function People() {
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
+  const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
   const [isDev, setIsDev] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
@@ -110,6 +111,11 @@ export default function People() {
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
   const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(true)
+  const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
+  const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
+  const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
+  const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
+  const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
@@ -274,12 +280,15 @@ export default function People() {
   useEffect(() => {
     async function loadPayAccess() {
       if (!authUser?.id) return
-      const [meRes, approvedRes] = await Promise.all([
+      const [meRes, approvedRes, sharesRes] = await Promise.all([
         supabase.from('users').select('role').eq('id', authUser.id).single(),
         supabase.from('pay_approved_masters').select('master_id'),
+        supabase.from('cost_matrix_teams_shares').select('shared_with_user_id').eq('shared_with_user_id', authUser.id).maybeSingle(),
       ])
       const role = (meRes.data as { role?: string } | null)?.role ?? null
       const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
+      const hasCostMatrixShare = !!sharesRes.data
+      setCanViewCostMatrixShared(hasCostMatrixShare)
       if (role === 'dev') {
         setCanAccessPay(true)
         setCanAccessHours(true)
@@ -838,14 +847,14 @@ export default function People() {
   }, [activeTab, authUser?.id])
 
   async function loadPayConfig() {
-    if (!canAccessPay && !canAccessHours) return
+    if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
     const { data, error } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
     if (error) {
       setError(error.message)
       return
     }
     // Temporary: log for assistants when RLS may be blocking
-    if (!canAccessPay && (data ?? []).length === 0) {
+    if (!canAccessPay && !canViewCostMatrixShared && (data ?? []).length === 0) {
       console.warn('loadPayConfig: assistant got empty data', { error, rowCount: (data ?? []).length })
     }
     const map: Record<string, PayConfigRow> = {}
@@ -870,7 +879,7 @@ export default function People() {
   }
 
   async function loadTeams() {
-    if (!canAccessPay) return
+    if (!canAccessPay && !canViewCostMatrixShared) return
     const [teamsRes, membersRes] = await Promise.all([
       supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
       supabase.from('people_team_members').select('team_id, person_name'),
@@ -885,8 +894,34 @@ export default function People() {
     setTeams(teamList.map((t) => ({ id: t.id, name: t.name, members: membersByTeam.get(t.id) ?? [] })))
   }
 
+  async function loadCostMatrixShares() {
+    if (!isDev) return
+    const [candidatesRes, sharesRes] = await Promise.all([
+      supabase.from('users').select('id, name, email, role').in('role', ['master_technician', 'assistant']).order('name'),
+      supabase.from('cost_matrix_teams_shares').select('shared_with_user_id'),
+    ])
+    if (candidatesRes.data) setCostMatrixShareCandidates(candidatesRes.data as Array<{ id: string; name: string; email: string | null; role: string }>)
+    if (sharesRes.data) setCostMatrixSharedUserIds(new Set((sharesRes.data as { shared_with_user_id: string }[]).map((r) => r.shared_with_user_id)))
+  }
+
+  async function toggleCostMatrixShare(userId: string, isShared: boolean) {
+    if (!isDev) return
+    setCostMatrixShareSaving(true)
+    setCostMatrixShareError(null)
+    if (isShared) {
+      const { error } = await supabase.from('cost_matrix_teams_shares').insert({ shared_with_user_id: userId })
+      if (error) setCostMatrixShareError(error.message)
+      else setCostMatrixSharedUserIds((prev) => new Set(prev).add(userId))
+    } else {
+      const { error } = await supabase.from('cost_matrix_teams_shares').delete().eq('shared_with_user_id', userId)
+      if (error) setCostMatrixShareError(error.message)
+      else setCostMatrixSharedUserIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
+    }
+    setCostMatrixShareSaving(false)
+  }
+
   useEffect(() => {
-    if (activeTab === 'pay' && canAccessPay) {
+    if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared)) {
       setPayTabLoading(true)
       Promise.all([
         loadPayConfig(),
@@ -894,7 +929,11 @@ export default function People() {
         loadTeams(),
       ]).finally(() => setPayTabLoading(false))
     }
-  }, [activeTab, canAccessPay, matrixStartDate, matrixEndDate])
+  }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
+
+  useEffect(() => {
+    if (activeTab === 'pay' && isDev) loadCostMatrixShares()
+  }, [activeTab, isDev])
 
   async function loadHoursDisplayOrder() {
     if (!canAccessHours && !canAccessPay) return
@@ -1380,7 +1419,7 @@ export default function People() {
         <button type="button" onClick={() => setActiveTab('users')} style={tabStyle(activeTab === 'users')}>
           Users
         </button>
-        {canAccessPay && (
+        {(canAccessPay || canViewCostMatrixShared) && (
           <button type="button" onClick={() => setActiveTab('pay')} style={tabStyle(activeTab === 'pay')}>
             Pay
           </button>
@@ -1990,13 +2029,14 @@ export default function People() {
         </div>
       )}
 
-      {activeTab === 'pay' && canAccessPay && (
+      {activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {payTabLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : (
           <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {canAccessPay && (
           <section>
             <button
               type="button"
@@ -2093,6 +2133,53 @@ export default function People() {
               </>
             )}
           </section>
+          )}
+          {isDev && (
+          <section>
+            <button
+              type="button"
+              onClick={() => setCostMatrixShareSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                marginBottom: costMatrixShareSectionOpen ? '0.75rem' : 0,
+                padding: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{costMatrixShareSectionOpen ? '▼' : '▶'}</span>
+              Share Cost Matrix and Teams
+            </button>
+            {costMatrixShareSectionOpen && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  Select Masters or assistants to grant view-only access to Cost matrix and Teams.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                  {costMatrixShareCandidates.map((u) => (
+                    <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={costMatrixSharedUserIds.has(u.id)}
+                        onChange={(e) => toggleCostMatrixShare(u.id, e.target.checked)}
+                        disabled={costMatrixShareSaving}
+                      />
+                      {u.name || u.email || 'Unknown'} ({u.role === 'master_technician' ? 'Master' : 'Assistant'})
+                    </label>
+                  ))}
+                </div>
+                {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
+              </div>
+            )}
+          </section>
+          )}
           <section>
             <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Cost matrix</h2>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
@@ -2104,6 +2191,34 @@ export default function People() {
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
                 <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </label>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = new Date(matrixStartDate + 'T12:00:00')
+                  const e = new Date(matrixEndDate + 'T12:00:00')
+                  s.setDate(s.getDate() - 7)
+                  e.setDate(e.getDate() - 7)
+                  setMatrixStartDate(s.toISOString().slice(0, 10))
+                  setMatrixEndDate(e.toISOString().slice(0, 10))
+                }}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ← last week
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const s = new Date(matrixStartDate + 'T12:00:00')
+                  const e = new Date(matrixEndDate + 'T12:00:00')
+                  s.setDate(s.getDate() + 7)
+                  e.setDate(e.getDate() + 7)
+                  setMatrixStartDate(s.toISOString().slice(0, 10))
+                  setMatrixEndDate(e.toISOString().slice(0, 10))
+                }}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                next week →
+              </button>
             </div>
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
@@ -2161,11 +2276,11 @@ export default function People() {
             </div>
           </section>
           <section>
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Teams</h2>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-              Add people to teams to see combined cost for a date range (default: last 7 days).
+            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
             </p>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <label>
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
                 <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -2174,12 +2289,15 @@ export default function People() {
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
                 <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </label>
+              {canAccessPay && (
               <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
                 Add team
               </button>
+              )}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {teams.map((team) => {
+                const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
                 const costForRange = (start: string, end: string) =>
                   team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDate(p, d), 0), 0)
                 const today = new Date().toISOString().slice(0, 10)
@@ -2203,42 +2321,50 @@ export default function People() {
                 const last3Cost = costForRange(last3Start, today)
                 const yesterdayCost = costForRange(yesterday, yesterday)
                 return (
-                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <input
-                        type="text"
-                        value={team.name}
-                        onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
-                        onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
-                        style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 120 }}
-                      />
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem' }}>
-                        <span style={{ fontWeight: 600 }}>Total for Period: ${Math.round(periodCost)}</span>
-                        <span style={{ color: '#6b7280' }}>Last 7 days: ${Math.round(last7Cost)}</span>
-                        <span style={{ color: '#6b7280' }}>Last 3 days: ${Math.round(last3Cost)}</span>
+                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      {teamsReadOnly ? (
+                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={team.name}
+                          onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
+                          onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
+                          style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
+                        />
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
+                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost)}</span>
+                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost)}</span>
+                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost)}</span>
                         <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost)}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                       {team.members.map((m) => (
-                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.8125rem' }}>
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
                           {m}
-                          <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
+                          {!teamsReadOnly && (
+                            <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
+                          )}
                         </span>
                       ))}
+                      {!teamsReadOnly && (
                       <select
                         value=""
                         onChange={(e) => {
                           const v = e.target.value
                           if (v) { addTeamMember(team.id, v); e.target.value = '' }
                         }}
-                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.8125rem' }}
+                        style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
                       >
                         <option value="">+ Add person</option>
                         {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
                           <option key={p} value={p}>{p}</option>
                         ))}
                       </select>
+                      )}
                     </div>
                   </div>
                 )

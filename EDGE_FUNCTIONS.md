@@ -487,7 +487,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 4. Uses `supabase.auth.admin.generateLink()` to create magic link
 5. Returns magic link URL for frontend to redirect to
 6. Frontend workflow:
-   - Stores original session in `sessionStorage`
+   - Stores original session in `localStorage` (key: `impersonation_original`) so it survives reloads
    - Redirects to magic link
    - `AuthHandler` component processes tokens
    - User impersonated successfully

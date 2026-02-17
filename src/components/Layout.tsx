@@ -31,7 +31,7 @@ export default function Layout() {
   const { user: authUser } = useAuth()
   const [role, setRole] = useState<UserRole | null>(null)
   const [impersonating, setImpersonating] = useState(
-    () => typeof window !== 'undefined' && !!sessionStorage.getItem(IMPERSONATION_KEY)
+    () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
   const [gearOpen, setGearOpen] = useState(false)
   const gearRef = useRef<HTMLDivElement>(null)
@@ -85,8 +85,8 @@ export default function Layout() {
   }, [role, location.pathname, navigate])
 
   async function handleBackToMyAccount() {
-    const raw = sessionStorage.getItem(IMPERSONATION_KEY)
-    sessionStorage.removeItem(IMPERSONATION_KEY)
+    const raw = localStorage.getItem(IMPERSONATION_KEY)
+    localStorage.removeItem(IMPERSONATION_KEY)
     setImpersonating(false)
     if (!raw) return
     try {

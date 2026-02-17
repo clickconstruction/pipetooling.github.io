@@ -2532,7 +2532,7 @@ export default function Settings() {
     }
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.access_token && session?.refresh_token) {
-      sessionStorage.setItem('impersonation_original', JSON.stringify({
+      localStorage.setItem('impersonation_original', JSON.stringify({
         access_token: session.access_token,
         refresh_token: session.refresh_token,
       }))

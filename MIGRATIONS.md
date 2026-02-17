@@ -94,6 +94,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 17, 2026
 
+**`20260217210000_create_cost_matrix_teams_shares.sql`**
+- **Purpose**: Share Cost Matrix and Teams with selected masters/assistants (view-only)
+- **Changes**: Created `cost_matrix_teams_shares` (shared_with_user_id); `is_cost_matrix_shared_with_current_user()`; RLS for dev manage, shared users SELECT; added SELECT policies for shared users on people_pay_config, people_teams, people_team_members, people_hours
+- **Impact**: Dev can grant view-only Cost matrix and Teams access; shared users see Cost matrix and Teams but cannot edit
+- **Category**: People / Pay
+
+**`20260217200000_allow_masters_assistants_read_push_subscriptions.sql`**
+- **Purpose**: Allow masters and assistants to see push notification status (green dot) in People
+- **Changes**: Added RLS policy on `push_subscriptions` for role in (master_technician, assistant)
+- **Impact**: Masters and assistants see green dot next to users with push notifications enabled
+- **Category**: Notifications
+
 **`20260217070000_checklist_repeat_days_of_week_array.sql`**
 - **Purpose**: Support multiple days per week for weekly checklist repeats
 - **Changes**: Added `repeat_days_of_week` (integer[]); migrated from `repeat_day_of_week`; dropped `repeat_day_of_week`

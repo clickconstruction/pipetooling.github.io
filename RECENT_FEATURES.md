@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.43 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.43)"
+  - name: "Latest Version (v2.45)"
     line: ~113
-    description: "Gear menu, Settings/Global Reload, Notification history ledger, Dashboard performance"
+    description: "Impersonation fix (localStorage), Teams compact, Yesterday label"
   - name: "v2.41"
     line: ~140
     description: "People Pay/Hours tabs, Cost matrix, Hours totals, People pay config collapsible"
@@ -64,50 +64,93 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-2. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-3. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-4. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-5. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-6. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-7. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-8. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-9. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-10. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-11. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-12. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-13. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-14. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-15. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-16. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-17. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-18. [Latest Updates (v2.26)](#latest-updates-v226)
-19. [Latest Updates (v2.25)](#latest-updates-v225)
-20. [Latest Updates (v2.24)](#latest-updates-v224)
-21. [Latest Updates (v2.23)](#latest-updates-v223)
-22. [Latest Updates (v2.22)](#latest-updates-v222)
-23. [Latest Updates (v2.21)](#latest-updates-v221)
-24. [Latest Updates (v2.20)](#latest-updates-v220)
-25. [Latest Updates (v2.19)](#latest-updates-v219)
-26. [Latest Updates (v2.18)](#latest-updates-v218)
-27. [Latest Updates (v2.17)](#latest-updates-v217)
-28. [Latest Updates (v2.16)](#latest-updates-v216)
-29. [Latest Updates (v2.15)](#latest-updates-v215)
-30. [Latest Updates (v2.14)](#latest-updates-v214)
-31. [Latest Updates (v2.13)](#latest-updates-v213)
-32. [Latest Updates (v2.12)](#latest-updates-v212)
-33. [Latest Updates (v2.11)](#latest-updates-v211)
-34. [Latest Updates (v2.10)](#latest-updates-v210)
-35. [Latest Updates (v2.9)](#latest-updates-v29)
-36. [Latest Updates (v2.8)](#latest-updates-v28)
-37. [Latest Updates (v2.7)](#latest-updates-v27)
-38. [Latest Updates (v2.6)](#latest-updates-v26)
-39. [Workflow Features](#workflow-features)
-40. [Calendar Updates](#calendar-updates)
-41. [Access Control](#access-control)
-42. [Email Templates](#email-templates)
-43. [Financial Tracking](#financial-tracking)
-44. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+2. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+3. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+4. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+5. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+6. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+7. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+8. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+9. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+10. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+11. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+12. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+13. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+14. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+15. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+16. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+17. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+18. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+19. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+20. [Latest Updates (v2.26)](#latest-updates-v226)
+21. [Latest Updates (v2.25)](#latest-updates-v225)
+22. [Latest Updates (v2.24)](#latest-updates-v224)
+23. [Latest Updates (v2.23)](#latest-updates-v223)
+24. [Latest Updates (v2.22)](#latest-updates-v222)
+25. [Latest Updates (v2.21)](#latest-updates-v221)
+26. [Latest Updates (v2.20)](#latest-updates-v220)
+27. [Latest Updates (v2.19)](#latest-updates-v219)
+28. [Latest Updates (v2.18)](#latest-updates-v218)
+29. [Latest Updates (v2.17)](#latest-updates-v217)
+30. [Latest Updates (v2.16)](#latest-updates-v216)
+31. [Latest Updates (v2.15)](#latest-updates-v215)
+32. [Latest Updates (v2.14)](#latest-updates-v214)
+33. [Latest Updates (v2.13)](#latest-updates-v213)
+34. [Latest Updates (v2.12)](#latest-updates-v212)
+35. [Latest Updates (v2.11)](#latest-updates-v211)
+36. [Latest Updates (v2.10)](#latest-updates-v210)
+37. [Latest Updates (v2.9)](#latest-updates-v29)
+38. [Latest Updates (v2.8)](#latest-updates-v28)
+39. [Latest Updates (v2.7)](#latest-updates-v27)
+40. [Latest Updates (v2.6)](#latest-updates-v26)
+41. [Workflow Features](#workflow-features)
+42. [Calendar Updates](#calendar-updates)
+43. [Access Control](#access-control)
+44. [Email Templates](#email-templates)
+45. [Financial Tracking](#financial-tracking)
+46. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.45)
+
+### Impersonation Fix, Teams Compact, Yesterday Label
+
+**Date**: 2026-02-17
+
+**Overview**:
+Bug fix for impersonation when a reload occurs; Teams section made more compact; Yesterday label restored.
+
+**Impersonation**:
+- **Bug**: When a dev was impersonating another account and a change was pushed (Global Reload, new version reload, or service worker update), the original session was lost and the dev could not go back to their account, logout, or log back in
+- **Fix**: Store original session in `localStorage` instead of `sessionStorage` (key: `impersonation_original`). localStorage persists across reloads, so "Back to my account" works after any reload
+
+**People > Pay > Teams**:
+- **Compact layout**: Reduced padding, gaps, and font sizes; cost summary on single horizontal line (Period, 7d, 3d, Yesterday)
+- **Yesterday**: Restored full "Yesterday" label (was briefly "Yest")
+
+---
+
+## Latest Updates (v2.44)
+
+### Share Cost Matrix and Teams, Green Dot, Cost Matrix Navigation
+
+**Date**: 2026-02-17
+
+**Overview**:
+Dev can share Cost Matrix and Teams with selected masters and assistants (view-only). Masters and assistants can see the green dot for push notifications in People. Cost matrix has week navigation like Hours.
+
+**Share Cost Matrix and Teams** (People > Pay):
+- **Dev-only section**: Collapsible "Share Cost Matrix and Teams" above Cost matrix with checkboxes for each master and assistant
+- **Shared users**: Get view-only access to Cost matrix and Teams (no People pay config, no Add team, no rename/add/remove members)
+- **Database**: `cost_matrix_teams_shares` (shared_with_user_id); RLS allows dev to manage, shared users to SELECT people_pay_config, people_teams, people_team_members, people_hours
+
+**People Page**:
+- **Green dot**: Masters and assistants (in addition to devs) now see the green dot next to users with push notifications enabled in People > Users tab
+- **Cost matrix**: "← last week" and "next week →" buttons added (same as Hours tab)
+
+**Migrations**: `20260217200000_allow_masters_assistants_read_push_subscriptions.sql`, `20260217210000_create_cost_matrix_teams_shares.sql`
 
 ---
 

@@ -1557,6 +1557,20 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_teams_shares: {
+        Row: { shared_with_user_id: string }
+        Insert: { shared_with_user_id: string }
+        Update: { shared_with_user_id?: string }
+        Relationships: [
+          {
+            foreignKeyName: "cost_matrix_teams_shares_shared_with_user_id_fkey"
+            columns: ["shared_with_user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_pay_config: {
         Row: {
           person_name: string

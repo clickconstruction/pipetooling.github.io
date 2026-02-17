@@ -150,7 +150,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View people they created and people shared with them (via master_shares)
 - Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
-- Pay tab (dev and Pay Approved Masters only): People pay config, Cost matrix, Teams
+- Pay tab (dev, Pay Approved Masters, or shared by dev): People pay config (dev/approved only), Cost matrix, Teams. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via "Share Cost Matrix and Teams" section
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
 **Bids**:
@@ -217,6 +217,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View people they created and people shared with their master (via master_shares)
 - Labor tab: Add labor jobs per person
 - Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
+- Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
 - Hours tab (if master is Pay Approved): Timesheet entry for people in roster
 
 **Bids**:
@@ -394,7 +395,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
 | Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
-| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ |
+| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ |
 | Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ |
 
 ### Workflow Management

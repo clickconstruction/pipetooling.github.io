@@ -59,6 +59,7 @@ Customer (has master_user_id)
 
 - **Adoption**: `master_assistants(master_id, assistant_id)` - grants data access
 - **Sharing**: `master_shares(sharing_master_id, viewing_master_id)` - grants view access
+- **Cost Matrix Shares**: `cost_matrix_teams_shares(shared_with_user_id)` - dev grants view-only Cost matrix and Teams to masters/assistants
 - **Ownership**: Foreign keys to `users.id` as `master_user_id` or `created_by`
 - **Cascading**: Customer master changes propagate to projects automatically
 
