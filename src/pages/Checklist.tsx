@@ -483,10 +483,20 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
   const [formOpen, setFormOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterUserId, setFilterUserId] = useState<string>('')
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string
+    assigned_to_user_id: string
+    repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
+    repeat_days_of_week: number[]
+    repeat_days_after: number
+    repeat_end_date: string
+    start_date: string
+    notify_on_complete_user_id: string
+    notify_creator_on_complete: boolean
+  }>({
     title: '',
     assigned_to_user_id: '',
-    repeat_type: 'once' as 'day_of_week' | 'days_after_completion' | 'once',
+    repeat_type: 'once',
     repeat_days_of_week: [],
     repeat_days_after: 1,
     repeat_end_date: '',
@@ -698,7 +708,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
               <td style={{ padding: '0.5rem 0.75rem' }}>{item.title}</td>
               <td style={{ padding: '0.5rem 0.75rem' }}>{(item.users as { name: string; email: string } | null)?.name || (item.users as { email: string } | null)?.email || '—'}</td>
               <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
-                {item.repeat_type === 'day_of_week' && `Weekly ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d].slice(0, 3)).join(', ') : '—'}`}
+                {item.repeat_type === 'day_of_week' && `Weekly ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`}
                 {item.repeat_type === 'days_after_completion' && `${item.repeat_days_after} days after completion`}
                 {item.repeat_type === 'once' && 'Once'}
               </td>
