@@ -3,6 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
@@ -102,6 +103,7 @@ function timeSinceAgo(iso: string | null): string {
 export default function Settings() {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
+  const pushNotifications = usePushNotifications(authUser?.id)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -2761,6 +2763,52 @@ export default function Settings() {
             Sign out
           </button>
         </div>
+      </div>
+
+      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          Get browser notifications when a workflow stage is completed and it&apos;s your turn to pick up the task.
+        </p>
+        {!pushNotifications.supported && (
+          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+            Push notifications require HTTPS (or localhost) and a supporting browser. Try the deployed app or use Chrome/Firefox on localhost.
+          </p>
+        )}
+        {pushNotifications.supported && pushNotifications.error && (
+          <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
+        )}
+        {pushNotifications.supported && !pushNotifications.vapidConfigured && (
+          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+            Push notifications are not configured. Set VITE_VAPID_PUBLIC_KEY in your environment.
+          </p>
+        )}
+        {pushNotifications.supported && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {pushNotifications.isSubscribed ? (
+              <>
+                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
+                <button
+                  type="button"
+                  onClick={() => pushNotifications.disable()}
+                  disabled={pushNotifications.loading}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                >
+                  {pushNotifications.loading ? 'Disabling…' : 'Disable'}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => pushNotifications.enable()}
+                disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {myRole === 'dev' && (

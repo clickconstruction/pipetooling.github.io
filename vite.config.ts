@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 import { copyFileSync } from 'fs'
 import { join } from 'path'
 
@@ -15,6 +16,31 @@ function copy404Plugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), copy404Plugin()],
+  plugins: [
+    react(),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'Pipetooling',
+        short_name: 'Pipetooling',
+        description: 'Construction workflow and bid management',
+        theme_color: '#f97316',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [
+          {
+            src: '/favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable',
+          },
+        ],
+      },
+    }),
+    copy404Plugin(),
+  ],
   base: '/',
 })

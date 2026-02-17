@@ -797,7 +797,10 @@ export default function Workflow() {
     step: Step,
     recipientName: string,
     recipientEmail: string,
-    additionalVariables?: Record<string, string>
+    additionalVariables?: Record<string, string>,
+    recipientUserId?: string,
+    pushTitle?: string,
+    pushBody?: string
   ) {
     if (!project || !workflow || !recipientEmail) return
 
@@ -816,23 +819,16 @@ export default function Workflow() {
     }
 
     try {
-      // Debug: Log the function invocation details
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const functionName = 'send-workflow-notification'
-      console.log('Invoking Edge Function:', {
-        functionName,
-        supabaseUrl,
-        expectedUrl: `${supabaseUrl}/functions/v1/${functionName}`,
-        templateType,
-        recipientEmail,
-      })
-
       const { data, error: eFn } = await supabase.functions.invoke('send-workflow-notification', {
         body: {
           template_type: templateType,
           step_id: step.id,
           recipient_email: recipientEmail,
           recipient_name: recipientName,
+          recipient_user_id: recipientUserId,
+          push_title: pushTitle,
+          push_body: pushBody,
+          push_url: workflowLink,
           variables,
         },
       })
@@ -876,18 +872,18 @@ export default function Workflow() {
     const nextStep = currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
     const previousStep = currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
 
-    // Get contact info for people
-    const getEmailForName = async (name: string | null): Promise<string | null> => {
-      if (!name) return null
+    // Get contact info for people (email and userId when available for push)
+    const getContactForName = async (name: string | null): Promise<{ email: string | null; userId: string | null }> => {
+      if (!name) return { email: null, userId: null }
       const trimmedName = name.trim()
-      
-      // Check users table first (most reliable)
+
+      // Check users table first (most reliable - has both email and id)
       const { data: user } = await supabase
         .from('users')
-        .select('email')
+        .select('id, email')
         .eq('name', trimmedName)
         .maybeSingle()
-      if (user?.email) return user.email
+      if (user?.email) return { email: user.email, userId: user.id }
 
       // Check people table (may be limited by RLS, but try anyway)
       const { data: people } = await supabase
@@ -896,19 +892,19 @@ export default function Workflow() {
         .eq('name', trimmedName)
         .limit(1)
       if (people && people.length > 0 && people[0]?.email) {
-        return people[0].email
+        return { email: people[0].email, userId: null }
       }
 
-      return null
+      return { email: null, userId: null }
     }
 
     // Handle different action types
     if (actionType === 'started') {
       // Notify assigned person if enabled
       if (step.notify_assigned_when_started && step.assigned_to_name) {
-        const email = await getEmailForName(step.assigned_to_name)
+        const { email, userId } = await getContactForName(step.assigned_to_name)
         if (email) {
-          await sendNotification('stage_assigned_started', step, step.assigned_to_name, email)
+          await sendNotification('stage_assigned_started', step, step.assigned_to_name, email, undefined, userId ?? undefined)
         }
       }
 
@@ -928,7 +924,7 @@ export default function Workflow() {
               .eq('id', sub.user_id)
               .single()
             if (user?.email) {
-              await sendNotification('stage_me_started', step, user.name || user.email, user.email)
+              await sendNotification('stage_me_started', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
             }
           }
         }
@@ -936,9 +932,9 @@ export default function Workflow() {
     } else if (actionType === 'completed' || actionType === 'approved') {
       // Notify assigned person if enabled
       if (step.notify_assigned_when_complete && step.assigned_to_name) {
-        const email = await getEmailForName(step.assigned_to_name)
+        const { email, userId } = await getContactForName(step.assigned_to_name)
         if (email) {
-          await sendNotification('stage_assigned_complete', step, step.assigned_to_name, email)
+          await sendNotification('stage_assigned_complete', step, step.assigned_to_name, email, undefined, userId ?? undefined)
         }
       }
 
@@ -958,19 +954,18 @@ export default function Workflow() {
               .eq('id', sub.user_id)
               .single()
             if (user?.email) {
-              await sendNotification('stage_me_complete', step, user.name || user.email, user.email)
+              await sendNotification('stage_me_complete', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
             }
           }
         }
       }
 
-      // Cross-step: Notify next assignee
+      // Cross-step: Notify next assignee (primary handoff - include push title/body)
       if (step.notify_next_assignee_when_complete_or_approved && nextStep?.assigned_to_name) {
-        const email = await getEmailForName(nextStep.assigned_to_name)
+        const { email, userId } = await getContactForName(nextStep.assigned_to_name)
         if (email) {
-          // Create a minimal step object for the notification
           const nextStepForNotification: Step = {
-            ...step, // Use current step as base
+            ...step,
             id: nextStep.id,
             name: nextStep.name,
             assigned_to_name: nextStep.assigned_to_name,
@@ -980,18 +975,20 @@ export default function Workflow() {
             nextStepForNotification,
             nextStep.assigned_to_name,
             email,
-            { previous_stage_name: step.name }
+            { previous_stage_name: step.name },
+            userId ?? undefined,
+            'Your turn: Stage completed',
+            `${step.name} has been completed. You're up next for ${nextStep.name}.`
           )
         }
       }
     } else if (actionType === 'rejected') {
       // Cross-step: Notify prior assignee
       if (step.notify_prior_assignee_when_rejected && previousStep?.assigned_to_name) {
-        const email = await getEmailForName(previousStep.assigned_to_name)
+        const { email, userId } = await getContactForName(previousStep.assigned_to_name)
         if (email) {
-          // Create a minimal step object for the notification
           const previousStepForNotification: Step = {
-            ...step, // Use current step as base
+            ...step,
             id: previousStep.id,
             name: previousStep.name,
             assigned_to_name: previousStep.assigned_to_name,
@@ -1004,16 +1001,17 @@ export default function Workflow() {
             {
               previous_stage_name: previousStep.name,
               rejection_reason: step.rejection_reason || '',
-            }
+            },
+            userId ?? undefined
           )
         }
       }
     } else if (actionType === 'reopened') {
       // Notify assigned person if enabled
       if (step.notify_assigned_when_reopened && step.assigned_to_name) {
-        const email = await getEmailForName(step.assigned_to_name)
+        const { email, userId } = await getContactForName(step.assigned_to_name)
         if (email) {
-          await sendNotification('stage_assigned_reopened', step, step.assigned_to_name, email)
+          await sendNotification('stage_assigned_reopened', step, step.assigned_to_name, email, undefined, userId ?? undefined)
         }
       }
 
@@ -1033,7 +1031,7 @@ export default function Workflow() {
               .eq('id', sub.user_id)
               .single()
             if (user?.email) {
-              await sendNotification('stage_me_reopened', step, user.name || user.email, user.email)
+              await sendNotification('stage_me_reopened', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
             }
           }
         }

@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import webpush from 'npm:web-push@3.6.7'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,6 +13,10 @@ interface NotificationRequest {
   step_id: string
   recipient_email: string
   recipient_name: string
+  recipient_user_id?: string
+  push_title?: string
+  push_body?: string
+  push_url?: string
   variables?: Record<string, string>
 }
 
@@ -108,7 +113,17 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { template_type, step_id, recipient_email, recipient_name, variables = {} }: NotificationRequest = await req.json()
+    const {
+      template_type,
+      step_id,
+      recipient_email,
+      recipient_name,
+      recipient_user_id,
+      push_title,
+      push_body,
+      push_url,
+      variables = {},
+    }: NotificationRequest = await req.json()
 
     if (!template_type || !step_id || !recipient_email || !recipient_name) {
       return new Response(
@@ -165,11 +180,57 @@ serve(async (req) => {
       )
     }
 
+    // Send Web Push if recipient_user_id provided and VAPID keys configured
+    let pushSent = 0
+    if (recipient_user_id) {
+      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+      const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+      if (vapidPublicKey && vapidPrivateKey) {
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+        if (serviceRoleKey) {
+          const adminClient = createClient(supabaseUrl, serviceRoleKey)
+          const { data: subscriptions } = await adminClient
+            .from('push_subscriptions')
+            .select('endpoint, p256dh_key, auth_key')
+            .eq('user_id', recipient_user_id)
+
+          if (subscriptions && subscriptions.length > 0) {
+            const pushPayload = JSON.stringify({
+              title: push_title || subject,
+              body: push_body || body.substring(0, 200),
+              url: push_url || variables.workflow_link || '/',
+              tag: `workflow-${step_id}`,
+            })
+
+            webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
+
+            for (const sub of subscriptions) {
+              try {
+                await webpush.sendNotification(
+                  {
+                    endpoint: sub.endpoint,
+                    keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
+                  },
+                  pushPayload,
+                  { TTL: 86400 }
+                )
+                pushSent++
+              } catch (pushErr) {
+                console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
+                // If subscription is invalid (410 Gone), we could delete it - for now just log
+              }
+            }
+          }
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Notification sent successfully',
         email_id: result.email_id,
+        push_sent: pushSent,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
