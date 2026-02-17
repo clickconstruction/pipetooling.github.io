@@ -136,6 +136,25 @@ export default function Dashboard() {
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
+  const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [sendTaskTitle, setSendTaskTitle] = useState('')
+  const [sendTaskAssignedToUserId, setSendTaskAssignedToUserId] = useState('')
+  const [sendTaskShowUntilCompleted, setSendTaskShowUntilCompleted] = useState(false)
+  const [sendTaskNotifyOnCompleteUserId, setSendTaskNotifyOnCompleteUserId] = useState('')
+  const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
+  const [sendTaskSaving, setSendTaskSaving] = useState(false)
+  const [sendTaskError, setSendTaskError] = useState<string | null>(null)
+
+  const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
+
+  useEffect(() => {
+    if (canSendTask) {
+      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+        setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+        setSendTaskAssignedToUserId((prev) => prev || (data?.[0]?.id ?? ''))
+      })
+    }
+  }, [canSendTask])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -392,13 +411,90 @@ export default function Dashboard() {
   async function loadTodayChecklist() {
     if (!authUser?.id) return
     const today = toLocalDateString(new Date())
-    const { data } = await supabase
+    const { data: todayData } = await supabase
       .from('checklist_instances')
       .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
       .eq('assigned_to_user_id', authUser.id)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
-    setTodayChecklist((data ?? []) as ChecklistInstance[])
+    const { data: itemsData } = await supabase
+      .from('checklist_items')
+      .select('id')
+      .eq('show_until_completed', true)
+    const itemIds = (itemsData ?? []).map((i) => i.id)
+    let overdueData: ChecklistInstance[] = []
+    if (itemIds.length > 0) {
+      const { data } = await supabase
+        .from('checklist_instances')
+        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
+        .eq('assigned_to_user_id', authUser.id)
+        .is('completed_at', null)
+        .lt('scheduled_date', today)
+        .in('checklist_item_id', itemIds)
+        .order('scheduled_date', { ascending: true })
+      overdueData = (data ?? []) as ChecklistInstance[]
+    }
+    const merged = [...overdueData, ...(todayData ?? [])]
+    merged.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+    setTodayChecklist(merged as ChecklistInstance[])
+  }
+
+  async function submitSendTask(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id || sendTaskSaving) return
+    const title = sendTaskTitle.trim()
+    if (!title) {
+      setSendTaskError('Title is required.')
+      return
+    }
+    if (!sendTaskAssignedToUserId) {
+      setSendTaskError('Select someone to assign to.')
+      return
+    }
+    setSendTaskError(null)
+    setSendTaskSaving(true)
+    const today = toLocalDateString(new Date())
+    const { data: itemData, error: itemErr } = await supabase
+      .from('checklist_items')
+      .insert({
+        title,
+        assigned_to_user_id: sendTaskAssignedToUserId,
+        created_by_user_id: authUser.id,
+        repeat_type: 'once',
+        repeat_days_of_week: null,
+        repeat_days_after: null,
+        repeat_end_date: null,
+        start_date: today,
+        show_until_completed: sendTaskShowUntilCompleted,
+        notify_on_complete_user_id: sendTaskNotifyOnCompleteUserId || null,
+        notify_creator_on_complete: sendTaskNotifyMe,
+      })
+      .select('id')
+      .single()
+    setSendTaskSaving(false)
+    if (itemErr) {
+      setSendTaskError(itemErr.message)
+      return
+    }
+    const itemId = (itemData as { id: string })?.id
+    if (!itemId) return
+    const { error: instErr } = await supabase.from('checklist_instances').insert({
+      checklist_item_id: itemId,
+      scheduled_date: today,
+      assigned_to_user_id: sendTaskAssignedToUserId,
+    })
+    if (instErr) {
+      setSendTaskError(instErr.message)
+      return
+    }
+    setSendTaskTitle('')
+    setSendTaskAssignedToUserId(sendTaskUsers[0]?.id ?? '')
+    setSendTaskShowUntilCompleted(false)
+    setSendTaskNotifyOnCompleteUserId('')
+    setSendTaskNotifyMe(false)
+    if (authUser.id === sendTaskAssignedToUserId) {
+      await loadTodayChecklist()
+    }
   }
 
   async function toggleChecklistComplete(inst: ChecklistInstance) {
@@ -762,6 +858,74 @@ export default function Dashboard() {
             })}
           </ul>
           ) : null}
+        </div>
+      )}
+      {canSendTask && (
+        <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Send task</h2>
+          <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.5rem 1rem' }}>
+            <label style={{ flex: '1 1 120px', minWidth: 120 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Title</span>
+              <input
+                type="text"
+                value={sendTaskTitle}
+                onChange={(e) => setSendTaskTitle(e.target.value)}
+                placeholder="Task title"
+                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              />
+            </label>
+            <label style={{ flex: '0 1 140px', minWidth: 100 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Assigned To</span>
+              <select
+                value={sendTaskAssignedToUserId}
+                onChange={(e) => setSendTaskAssignedToUserId(e.target.value)}
+                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              >
+                {sendTaskUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
+                ))}
+              </select>
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <input
+                  type="checkbox"
+                  checked={sendTaskShowUntilCompleted}
+                  onChange={(e) => setSendTaskShowUntilCompleted(e.target.checked)}
+                />
+                <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Until complete</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <input
+                  type="checkbox"
+                  checked={sendTaskNotifyMe}
+                  onChange={(e) => setSendTaskNotifyMe(e.target.checked)}
+                />
+                <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Notify me</span>
+              </label>
+            </div>
+            <label style={{ flex: '0 1 120px', minWidth: 90 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Notify</span>
+              <select
+                value={sendTaskNotifyOnCompleteUserId}
+                onChange={(e) => setSendTaskNotifyOnCompleteUserId(e.target.value)}
+                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              >
+                <option value="">—</option>
+                {sendTaskUsers.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              disabled={sendTaskSaving || !sendTaskTitle.trim() || !sendTaskAssignedToUserId}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: sendTaskSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+            >
+              {sendTaskSaving ? 'Sending…' : 'Send'}
+            </button>
+            {sendTaskError && <div style={{ width: '100%', color: '#b91c1c', fontSize: '0.8125rem' }}>{sendTaskError}</div>}
+          </form>
         </div>
       )}
       {(userLoading || showAssigned) && (

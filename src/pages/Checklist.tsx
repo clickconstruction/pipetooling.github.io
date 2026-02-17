@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
@@ -38,10 +39,12 @@ function toLocalDateString(d: Date): string {
 
 export default function Checklist() {
   const { user: authUser } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [role, setRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<ChecklistTab>('today')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openAddFormOnMount, setOpenAddFormOnMount] = useState(false)
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -53,6 +56,14 @@ export default function Checklist() {
       setLoading(false)
     })
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (searchParams.get('add') === 'true' && (role === 'dev' || role === 'master_technician' || role === 'assistant')) {
+      setActiveTab('checklists')
+      setOpenAddFormOnMount(true)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, role, setSearchParams])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
@@ -83,13 +94,13 @@ export default function Checklist() {
         <ChecklistTodayTab authUserId={authUser?.id ?? null} setError={setError} />
       )}
       {activeTab === 'history' && (
-        <ChecklistHistoryTab authUserId={authUser?.id ?? null} />
+        <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistOutstandingTab setError={setError} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
-        <ChecklistManageTab authUserId={authUser?.id ?? null} setError={setError} />
+        <ChecklistManageTab authUserId={authUser?.id ?? null} setError={setError} openAddOnMount={openAddFormOnMount} onAddOpened={() => setOpenAddFormOnMount(false)} />
       )}
 
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
@@ -117,20 +128,39 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
   async function loadToday() {
     if (!authUserId) return
     const today = toLocalDateString(new Date())
-    const { data, error: e } = await supabase
+    const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
       .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
       .eq('assigned_to_user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
-    if (e) {
-      setError(e.message)
+    if (e1) {
+      setError(e1.message)
       return
     }
-    setTodayInstances((data ?? []) as ChecklistInstance[])
+    const { data: itemsData } = await supabase
+      .from('checklist_items')
+      .select('id')
+      .eq('show_until_completed', true)
+    const itemIds = (itemsData ?? []).map((i) => i.id)
+    let overdueData: ChecklistInstance[] = []
+    if (itemIds.length > 0) {
+      const { data } = await supabase
+        .from('checklist_instances')
+        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
+        .eq('assigned_to_user_id', authUserId)
+        .is('completed_at', null)
+        .lt('scheduled_date', today)
+        .in('checklist_item_id', itemIds)
+        .order('scheduled_date', { ascending: true })
+      overdueData = (data ?? []) as ChecklistInstance[]
+    }
+    const merged = [...overdueData, ...(todayData ?? [])]
+    merged.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+    setTodayInstances(merged)
     setNotesByInstance((prev) => {
       const next = { ...prev }
-      ;(data ?? []).forEach((r: ChecklistInstance) => {
+      merged.forEach((r: ChecklistInstance) => {
         if (r.notes != null) next[r.id] = r.notes
       })
       return next
@@ -357,21 +387,39 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
   )
 }
 
-function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
+function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setError }: { authUserId: string | null; canViewOthers: boolean; canEditHistory: boolean; setError: (s: string | null) => void }) {
   const [instances, setInstances] = useState<ChecklistInstance[]>([])
   const [loading, setLoading] = useState(true)
   const [monthsBack, setMonthsBack] = useState(6)
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [selectedUserId, setSelectedUserId] = useState<string>(authUserId ?? '')
+  const [editMode, setEditMode] = useState(false)
+  const [cyclingCell, setCyclingCell] = useState<string | null>(null)
+  const [deletedCells, setDeletedCells] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (!authUserId) {
+    setSelectedUserId((prev) => (authUserId && !prev ? authUserId : prev))
+  }, [authUserId])
+
+  useEffect(() => {
+    if (canViewOthers) {
+      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+        setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+      })
+    }
+  }, [canViewOthers])
+
+  useEffect(() => {
+    setDeletedCells(new Set())
+    if (!selectedUserId) {
       setLoading(false)
       return
     }
     loadHistory()
-  }, [authUserId, monthsBack])
+  }, [selectedUserId, monthsBack])
 
   async function loadHistory() {
-    if (!authUserId) return
+    if (!selectedUserId) return
     const end = new Date()
     const start = new Date()
     start.setMonth(start.getMonth() - monthsBack)
@@ -379,8 +427,8 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title)')
-      .eq('assigned_to_user_id', authUserId)
+      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, checklist_items(title)')
+      .eq('assigned_to_user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
       .order('scheduled_date', { ascending: true })
@@ -407,9 +455,100 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
   for (const inst of instances) allDates.add(inst.scheduled_date)
   const sortedDates = Array.from(allDates).sort()
 
+  const instanceByKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string; assigned_to_user_id: string }>()
+  for (const inst of instances) {
+    instanceByKey.set(`${inst.checklist_item_id}-${inst.scheduled_date}`, {
+      id: inst.id,
+      checklist_item_id: inst.checklist_item_id,
+      scheduled_date: inst.scheduled_date,
+      assigned_to_user_id: inst.assigned_to_user_id,
+    })
+  }
+
+  async function handleCycleStatus(itemId: string, date: string) {
+    if (!editMode || cyclingCell || !selectedUserId) return
+    const key = `${itemId}-${date}`
+    const rawStatus = byItem.get(itemId)?.dates[date]
+    const status = deletedCells.has(key) ? undefined : rawStatus
+    setCyclingCell(key)
+    setError(null)
+    try {
+      if (status === 'incomplete') {
+        const inst = instanceByKey.get(key)
+        if (!inst) return
+        const { error: err } = await supabase.from('checklist_instances').delete().eq('id', inst.id)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setDeletedCells((prev) => new Set(prev).add(key))
+        setCyclingCell(null)
+        setTimeout(() => {
+          loadHistory()
+          setDeletedCells((prev) => {
+            const next = new Set(prev)
+            next.delete(key)
+            return next
+          })
+        }, 2000)
+        return
+      } else if (status === 'completed') {
+        const inst = instanceByKey.get(key)
+        if (!inst) return
+        const { error: delErr } = await supabase.from('checklist_instances').delete().eq('id', inst.id)
+        if (delErr) {
+          setError(delErr.message)
+          return
+        }
+        const { error: insErr } = await supabase.from('checklist_instances').insert({
+          checklist_item_id: itemId,
+          scheduled_date: date,
+          assigned_to_user_id: selectedUserId,
+        })
+        if (insErr) {
+          setError(insErr.message)
+          return
+        }
+      } else {
+        const { error: err } = await supabase.from('checklist_instances').insert({
+          checklist_item_id: itemId,
+          scheduled_date: date,
+          assigned_to_user_id: selectedUserId,
+          completed_at: new Date().toISOString(),
+        })
+        if (err) {
+          setError(err.message)
+          return
+        }
+        setDeletedCells((prev) => {
+          const next = new Set(prev)
+          next.delete(key)
+          return next
+        })
+      }
+      await loadHistory()
+    } finally {
+      setCyclingCell(null)
+    }
+  }
+
   return (
     <div>
-      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        {canViewOthers && users.length > 0 && (
+          <label>
+            <span style={{ marginRight: '0.5rem' }}>View history for:</span>
+            <select
+              value={selectedUserId}
+              onChange={(e) => setSelectedUserId(e.target.value)}
+              style={{ padding: '0.35rem 0.5rem', minWidth: 160 }}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           <span style={{ marginRight: '0.5rem' }}>Months:</span>
           <select
@@ -422,6 +561,12 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
             ))}
           </select>
         </label>
+        {canEditHistory && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
+            <span style={{ fontSize: '0.875rem' }}>Edit mode</span>
+          </label>
+        )}
         <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
           Green = completed, Red = incomplete, White = not due
         </span>
@@ -431,11 +576,16 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
           <thead>
             <tr>
               <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-              {sortedDates.slice(-60).map((d) => (
-                <th key={d} style={{ padding: '0.25rem', borderBottom: '1px solid #e5e7eb', minWidth: 14, maxWidth: 14 }} title={d}>
-                  {d.slice(5)}
-                </th>
-              ))}
+              {sortedDates.slice(-60).map((d) => {
+                const parts = d.slice(5).split('-')
+                const month = parts[0] ?? ''
+                const day = parts[1] ?? ''
+                return (
+                  <th key={d} style={{ padding: '0.15rem', borderBottom: '1px solid #e5e7eb', minWidth: 12, maxWidth: 12, fontSize: '0.625rem', lineHeight: 1.1 }} title={d}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}><span>{month}</span><span>{day}</span></div>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
@@ -445,11 +595,29 @@ function ChecklistHistoryTab({ authUserId }: { authUserId: string | null }) {
                   {title}
                 </td>
                 {sortedDates.slice(-60).map((d) => {
-                  const status = dates[d]
+                  const rawStatus = dates[d]
+                  const status = deletedCells.has(`${itemId}-${d}`) ? undefined : rawStatus
                   const bg = status === 'completed' ? '#22c55e' : status === 'incomplete' ? '#ef4444' : '#f9fafb'
+                  const cellKey = `${itemId}-${d}`
+                  const isCycling = cyclingCell === cellKey
+                  const isClickable = editMode && !isCycling
                   return (
                     <td key={d} style={{ padding: 2, borderBottom: '1px solid #f3f4f6' }}>
-                      <div style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: bg }} title={`${d}: ${status || 'not due'}`} />
+                      <div
+                        role={isClickable ? 'button' : undefined}
+                        tabIndex={isClickable ? 0 : undefined}
+                        onClick={isClickable ? () => handleCycleStatus(itemId, d) : undefined}
+                        onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCycleStatus(itemId, d) } } : undefined}
+                        style={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: 2,
+                          backgroundColor: isCycling ? '#d1d5db' : bg,
+                          cursor: isClickable ? 'pointer' : undefined,
+                          opacity: isCycling ? 0.7 : 1,
+                        }}
+                        title={`${d}: ${status || 'not due'}${editMode ? ' (click to cycle)' : ''}`}
+                      />
                     </td>
                   )
                 })}
@@ -635,6 +803,7 @@ type ChecklistItem = {
   repeat_days_after: number | null
   repeat_end_date: string | null
   start_date: string
+  show_until_completed: boolean
   notify_on_complete_user_id: string | null
   notify_creator_on_complete: boolean
   created_at: string | null
@@ -642,7 +811,7 @@ type ChecklistItem = {
   users?: { name: string; email: string } | null
 }
 
-function ChecklistManageTab({ authUserId, setError }: { authUserId: string | null; setError: (s: string | null) => void }) {
+function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened }: { authUserId: string | null; setError: (s: string | null) => void; openAddOnMount?: boolean; onAddOpened?: () => void }) {
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -657,6 +826,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
     repeat_days_after: number
     repeat_end_date: string
     start_date: string
+    show_until_completed: boolean
     notify_on_complete_user_id: string
     notify_creator_on_complete: boolean
   }>({
@@ -667,6 +837,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
     repeat_days_after: 1,
     repeat_end_date: '',
     start_date: toLocalDateString(new Date()),
+    show_until_completed: false,
     notify_on_complete_user_id: '',
     notify_creator_on_complete: false,
   })
@@ -676,6 +847,13 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
     Promise.all([loadItems(), loadUsers()]).finally(() => setLoading(false))
   }, [filterUserId])
 
+  useEffect(() => {
+    if (openAddOnMount) {
+      openAdd()
+      onAddOpened?.()
+    }
+  }, [openAddOnMount])
+
   async function loadUsers() {
     const { data } = await supabase.from('users').select('id, name, email').order('name')
     setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
@@ -684,7 +862,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
   async function loadItems() {
     let q = supabase
       .from('checklist_items')
-      .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, notify_on_complete_user_id, notify_creator_on_complete, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
+      .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
       .order('start_date', { ascending: false })
     if (filterUserId) q = q.eq('assigned_to_user_id', filterUserId)
     const { data, error } = await q
@@ -705,6 +883,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
       repeat_days_after: 1,
       repeat_end_date: '',
       start_date: toLocalDateString(new Date()),
+      show_until_completed: false,
       notify_on_complete_user_id: '',
       notify_creator_on_complete: false,
     })
@@ -721,6 +900,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
       repeat_days_after: item.repeat_days_after ?? 1,
       repeat_end_date: item.repeat_end_date ?? '',
       start_date: item.start_date,
+      show_until_completed: item.show_until_completed ?? false,
       notify_on_complete_user_id: item.notify_on_complete_user_id ?? '',
       notify_creator_on_complete: item.notify_creator_on_complete,
     })
@@ -785,6 +965,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
           repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
           repeat_end_date: form.repeat_end_date || null,
           start_date: form.start_date,
+          show_until_completed: form.show_until_completed,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
           updated_at: new Date().toISOString(),
@@ -806,6 +987,7 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
           repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
           repeat_end_date: form.repeat_end_date || null,
           start_date: form.start_date,
+          show_until_completed: form.show_until_completed,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
         })
@@ -960,6 +1142,14 @@ function ChecklistManageTab({ authUserId, setError }: { authUserId: string | nul
                   />
                 </label>
               )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={form.show_until_completed}
+                  onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
+                />
+                <span>Show up until completed</span>
+              </label>
               <label>
                 <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat end date (optional)</span>
                 <input

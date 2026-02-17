@@ -128,7 +128,22 @@ export default function Layout() {
                   fontWeight: 500,
                 }}
               >
-                Add Project
+                Project
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/checklist?add=true')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Item
               </button>
             </>
           )}
@@ -146,7 +161,7 @@ export default function Layout() {
                 fontWeight: 500,
               }}
             >
-              Add Bid
+              Bid
             </button>
           )}
           <div ref={gearRef} style={{ position: 'relative' }}>

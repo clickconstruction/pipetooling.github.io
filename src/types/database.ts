@@ -521,6 +521,7 @@ export type Database = {
           repeat_days_after: number | null
           repeat_end_date: string | null
           start_date: string
+          show_until_completed: boolean
           notify_on_complete_user_id: string | null
           notify_creator_on_complete: boolean
           created_at: string | null
@@ -536,6 +537,7 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_end_date?: string | null
           start_date: string
+          show_until_completed?: boolean
           notify_on_complete_user_id?: string | null
           notify_creator_on_complete?: boolean
           created_at?: string | null
@@ -551,6 +553,7 @@ export type Database = {
           repeat_days_after?: number | null
           repeat_end_date?: string | null
           start_date?: string
+          show_until_completed?: boolean
           notify_on_complete_user_id?: string | null
           notify_creator_on_complete?: boolean
           created_at?: string | null

@@ -115,13 +115,14 @@ function formatAddressWithoutZip(address: string | null): string {
 }
 
 const tabStyle = (active: boolean) => ({
-  padding: '0.75rem 1.5rem',
+  padding: '0.5rem 0.6rem',
   border: 'none',
   background: 'none',
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
   color: active ? '#3b82f6' : '#6b7280',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
+  fontSize: '0.9375rem',
 })
 
 function formatTimeSinceLastContact(iso: string | null): string {
@@ -6082,11 +6083,11 @@ export default function Bids() {
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
           Bid Board
         </button>
-        <span style={{ color: '#9ca3af', padding: '0 0.25rem', position: 'relative', top: '-1px' }}>|</span>
+        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button type="button" onClick={() => setActiveTab('counts')} style={tabStyle(activeTab === 'counts')}>
           Counts
         </button>
