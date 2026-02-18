@@ -873,7 +873,7 @@ export default function People() {
   }
 
   async function loadPeopleHours(start: string, end: string) {
-    if (!canAccessHours && !canAccessPay) return
+    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
     const { data, error } = await supabase
       .from('people_hours')
       .select('person_name, work_date, hours')
@@ -1110,10 +1110,9 @@ export default function People() {
       const orderB = hoursDisplayOrder[b] ?? 999999
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
-  const showPeopleForMatrix = allRosterNames().filter((n) => {
-    const c = payConfig[n]
-    return c?.show_in_cost_matrix ?? false
-  })
+  const showPeopleForMatrix = Object.keys(payConfig)
+    .filter((n) => payConfig[n]?.show_in_cost_matrix ?? false)
+    .sort((a, b) => a.localeCompare(b))
 
   function addLaborFixtureRow() {
     setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
