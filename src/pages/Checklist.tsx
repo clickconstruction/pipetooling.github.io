@@ -1129,7 +1129,7 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
               {role === 'dev' && (
                 <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
                   {item.reminder_time
-                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'today+overdue' : 'today'})`
+                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'due date + daily until done' : 'due date'})`
                     : '—'}
                 </td>
               )}
@@ -1303,8 +1303,8 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
                         style={{ padding: '0.5rem', minWidth: 180 }}
                       >
                         <option value="">— Select —</option>
-                        <option value="today_only">Today only</option>
-                        <option value="today_and_overdue">Today + overdue</option>
+                        <option value="today_only">Due date</option>
+                        <option value="today_and_overdue">Due date + daily until done</option>
                       </select>
                     </label>
                   )}
@@ -1337,13 +1337,13 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
                 >
                   <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>What each option means</h4>
                   <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                    <strong>Today only</strong> – Remind only when there is an incomplete instance due today.
+                    <strong>Due date</strong> – Remind only when there is an incomplete instance due today.
                   </p>
                   <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
                     Example: &quot;Call client&quot; is due Monday. You get a reminder Monday at 9am if it&apos;s not done. You do not get a reminder Tuesday, Wednesday, etc., even if it&apos;s still incomplete.
                   </p>
                   <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                    <strong>Today + overdue</strong> – Remind when there is an incomplete instance due today or earlier.
+                    <strong>Due date + daily until done</strong> – Remind when there is an incomplete instance due today or earlier.
                   </p>
                   <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
                     Example: &quot;Call client&quot; was due Monday. If it&apos;s still incomplete, you get a reminder every day at 9am (Tuesday, Wednesday, etc.) until it&apos;s completed.
