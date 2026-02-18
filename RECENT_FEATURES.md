@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-17
+last_updated: 2026-02-18
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.46 → v2.4"
+version_range: "v2.47 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.46)"
-    line: ~113
+  - name: "Latest Version (v2.47)"
+    line: ~120
+    description: "Hours Update Pay Sync via Supabase Realtime; Pay tab updates when any user changes hours"
+  - name: "v2.46"
+    line: ~140
     description: "Supabase disk IO optimizations, Materials batching, Load All default off"
   - name: "v2.45"
     line: ~130
@@ -67,9 +70,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-2. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-3. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+1. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+2. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+3. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+4. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
 4. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
 5. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
 6. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
@@ -114,6 +118,26 @@ when_to_read:
 45. [Email Templates](#email-templates)
 46. [Financial Tracking](#financial-tracking)
 47. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.47)
+
+### Hours Update Pay Sync (Realtime)
+
+**Date**: 2026-02-18
+
+**Overview**:
+When any user (Dev, Master, or Assistant) updates hours in the People > Hours tab, the Pay section Cost matrix now updates automatically for all users viewing it—no refresh or tab switch required.
+
+**People > Pay / Hours**:
+- **Realtime subscription**: People page subscribes to Postgres changes on `people_hours` when Pay or Hours tab is active. On INSERT/UPDATE/DELETE, clients refetch `peopleHours` for their current date range.
+- **Cross-user sync**: User A edits hours; User B (viewing Pay) sees the Cost matrix update within seconds.
+- **Database**: `people_hours` added to `supabase_realtime` publication so changes are broadcast to subscribers.
+
+**Migration**: `20260218000002_add_people_hours_to_realtime.sql`
+
+**Files**: `src/pages/People.tsx`, `supabase/migrations/20260218000002_add_people_hours_to_realtime.sql`
 
 ---
 

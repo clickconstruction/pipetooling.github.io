@@ -1,26 +1,15 @@
-import { useEffect, useState } from 'react'
-import { registerSW } from 'virtual:pwa-register'
+import { useUpdatePrompt } from '../contexts/UpdatePromptContext'
 
 export function UpdatePrompt() {
-  const [show, setShow] = useState(false)
-  const [updateSW, setUpdateSW] = useState<(() => void) | null>(null)
-
-  useEffect(() => {
-    const updateServiceWorker = registerSW({
-      immediate: true,
-      onNeedRefresh: () => setShow(true),
-    })
-    setUpdateSW(() => updateServiceWorker)
-  }, [])
+  const ctx = useUpdatePrompt()
+  if (!ctx?.needRefresh) return null
 
   const handleReload = () => {
-    if (updateSW) {
-      setShow(false)
-      updateSW()
+    if (ctx.updateSW) {
+      ctx.dismiss()
+      ctx.updateSW()
     }
   }
-
-  if (!show) return null
 
   return (
     <div
@@ -31,21 +20,23 @@ export function UpdatePrompt() {
         right: 0,
         background: '#f97316',
         color: 'white',
-        padding: '0.75rem 1rem',
+        padding: 'max(0.75rem, env(safe-area-inset-top, 0px)) 1rem 0.75rem 1rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '1rem',
+        flexWrap: 'wrap',
         zIndex: 10000,
         boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
       }}
     >
       <span>New version available</span>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
         <button
-          onClick={() => setShow(false)}
+          onClick={() => ctx.dismiss()}
           style={{
             padding: '0.35rem 0.75rem',
+            minHeight: 44,
             background: 'rgba(255,255,255,0.2)',
             border: '1px solid rgba(255,255,255,0.5)',
             borderRadius: '6px',
@@ -59,6 +50,7 @@ export function UpdatePrompt() {
           onClick={handleReload}
           style={{
             padding: '0.35rem 0.75rem',
+            minHeight: 44,
             background: 'white',
             border: 'none',
             borderRadius: '6px',

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { usePushNotifications } from '../hooks/usePushNotifications'
+import { useUpdatePrompt } from '../contexts/UpdatePromptContext'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
@@ -146,6 +147,7 @@ export default function Settings() {
   const navigate = useNavigate()
   const { user: authUser } = useAuth()
   const pushNotifications = usePushNotifications(authUser?.id)
+  const updatePrompt = useUpdatePrompt()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -2985,6 +2987,26 @@ export default function Settings() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {updatePrompt?.needRefresh && updatePrompt?.updateSW && (
+            <button
+              type="button"
+              onClick={() => {
+                updatePrompt.dismiss()
+                updatePrompt.updateSW?.()
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#f97316',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Reload to update
+            </button>
+          )}
           <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
             Sign out
           </button>

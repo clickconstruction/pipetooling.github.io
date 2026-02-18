@@ -23,6 +23,7 @@ import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
 import { Toast, useToast } from './components/Toast'
 import { UpdatePrompt } from './components/UpdatePrompt'
+import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 
 // Easter egg:
@@ -104,7 +105,7 @@ export default function App() {
   }, [showToast])
 
   return (
-    <>
+    <UpdatePromptProvider>
       <UpdatePrompt />
       <AuthHandler />
       <Routes>
@@ -151,6 +152,6 @@ export default function App() {
           onClose={() => removeToast(toast.id)}
         />
       ))}
-    </>
+    </UpdatePromptProvider>
   )
 }

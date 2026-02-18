@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-17
+last_updated: 2026-02-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 17, 2026"
+date_range: "Through February 18, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -93,6 +93,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### February 2026
 
 #### February 18, 2026
+
+**`20260218000002_add_people_hours_to_realtime.sql`**
+- **Purpose**: Enable Realtime for people_hours so Pay/Hours tabs update when any user changes hours
+- **Changes**: Adds `people_hours` to `supabase_realtime` publication (idempotent via pg_publication_tables check)
+- **Impact**: When Dev, Master, or Assistant updates hours in Hours tab, all users viewing Pay tab see the Cost matrix update automatically without refresh
+- **Category**: People / Pay / Realtime
 
 **`20260218000001_schedule_reminder_cron.sql`**
 - **Purpose**: Schedule send-scheduled-reminders Edge Function every 15 minutes

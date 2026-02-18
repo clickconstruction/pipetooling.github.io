@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-17
+last_updated: 2026-02-18
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -121,7 +121,7 @@ A Master Plumber can:
   - Authentication (email/password)
   - Row Level Security (RLS) policies
   - Edge Functions (Deno runtime)
-  - Real-time subscriptions (not currently used)
+  - Real-time subscriptions (people_hours for Pay/Hours sync; force-reload broadcast for Global Reload)
 
 ### Hosting
 - **GitHub Pages** - Static site hosting
@@ -1862,8 +1862,8 @@ user_id = auth.uid()
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
   - **Labor Tab**: Add labor jobs per person; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate; fixture rows (Fixture, Count, hrs/unit, Fixed); Add Row, Save
   - **Ledger Tab**: Table of all labor jobs (User, Address, Job #, Date, Labor rate, Total hrs); Edit button opens modal to update job and fixture items; Delete button removes job; Print for sub uses job_date when set
-  - **Pay Tab** (dev, approved masters, or shared by dev): People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users)
-  - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total
+  - **Pay Tab** (dev, approved masters, or shared by dev): People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
+  - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people and labor jobs; shared people show "Created by [name]" instead of Remove
 - **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed); people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
 
@@ -3099,7 +3099,7 @@ async function myFunction() {
 
 ### Performance Optimizations
 - **Data Fetching**: Some pages fetch all data upfront (consider pagination)
-- **Real-time**: Supabase real-time not used (could enable for live updates)
+- **Real-time**: Supabase Realtime used for `people_hours` (Pay/Hours sync) and `force-reload` broadcast (Global Reload)
 - **Caching**: No client-side caching (consider React Query)
 
 ---
