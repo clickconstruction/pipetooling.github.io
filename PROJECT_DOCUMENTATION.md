@@ -103,7 +103,7 @@ A Master Plumber can:
 - **Template system**: Reusable workflow templates for common job types
 - **Notification subscriptions**: Users can subscribe to stage notifications
 - **Calendar view**: Visual calendar showing assigned work
-- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard
+- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard. **Scheduled reminders** (dev-only): Per-item reminder time (CST) and scope (today only / today+overdue); pg_cron invokes `send-scheduled-reminders` every 15 minutes to notify assignees with incomplete tasks
 
 ---
 

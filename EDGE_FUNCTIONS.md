@@ -693,6 +693,56 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ---
 
+### send-scheduled-reminders
+
+**Purpose**: Send Web Push reminders for incomplete checklist tasks at configured times (CST). Invoked by pg_cron every 15 minutes.
+
+**Endpoint**: `POST /functions/v1/send-scheduled-reminders`
+
+**Required Role**: None (invoked by pg_cron; validates `CRON_SECRET`)
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `CRON_SECRET` - Must match value passed in `X-Cron-Secret` header or `cron_secret` in body
+
+**Verify JWT**: `false` (uses CRON_SECRET for cron invocation)
+
+#### Request
+
+No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."}` in body.
+
+#### Success Response
+
+**Status**: 200 OK
+
+```json
+{
+  "success": true,
+  "message": "Scheduled reminders sent",
+  "sent": 3,
+  "users_notified": 2
+}
+```
+
+#### Implementation Details
+
+1. Validates CRON_SECRET (header or body)
+2. Gets current time in America/Chicago, rounded to 15-minute boundary
+3. Queries `checklist_items` where `reminder_time` matches current time
+4. For each item, finds incomplete `checklist_instances` per `reminder_scope` (today_only or today_and_overdue)
+5. Groups by assignee, sends one push per user with task summary
+6. Logs to `notification_history` with `template_type: 'scheduled_reminder'`
+
+**Prerequisites**:
+- pg_cron and pg_net enabled (Supabase Dashboard > Database > Extensions)
+- Vault secrets: `project_url`, `cron_secret` (same value as CRON_SECRET)
+- Dev configures `reminder_time` and `reminder_scope` on checklist items (Checklist > Manage)
+
+---
+
 ### set-user-password
 
 **Purpose**: Set password for any user (dev-only operation)

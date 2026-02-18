@@ -524,6 +524,8 @@ export type Database = {
           show_until_completed: boolean
           notify_on_complete_user_id: string | null
           notify_creator_on_complete: boolean
+          reminder_time: string | null
+          reminder_scope: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -540,6 +542,8 @@ export type Database = {
           show_until_completed?: boolean
           notify_on_complete_user_id?: string | null
           notify_creator_on_complete?: boolean
+          reminder_time?: string | null
+          reminder_scope?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -556,6 +560,8 @@ export type Database = {
           show_until_completed?: boolean
           notify_on_complete_user_id?: string | null
           notify_creator_on_complete?: boolean
+          reminder_time?: string | null
+          reminder_scope?: string | null
           created_at?: string | null
           updated_at?: string | null
         }

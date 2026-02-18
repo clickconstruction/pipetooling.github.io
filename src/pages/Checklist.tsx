@@ -101,7 +101,7 @@ export default function Checklist() {
         <ChecklistOutstandingTab setError={setError} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
-        <ChecklistManageTab authUserId={authUser?.id ?? null} setError={setError} openAddOnMount={openAddFormOnMount} onAddOpened={() => setOpenAddFormOnMount(false)} />
+        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} openAddOnMount={openAddFormOnMount} onAddOpened={() => setOpenAddFormOnMount(false)} />
       )}
 
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
@@ -645,10 +645,38 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating'>('next_day')
+  const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
 
   useEffect(() => {
     loadOutstanding()
   }, [dateRange])
+
+  async function sendReminder(userId: string, instances: OutstandingInstance[]) {
+    setRemindingUserId(userId)
+    const titles = instances.map((inst) => inst.checklist_items?.title ?? '—')
+    const n = titles.length
+    const body =
+      n === 1
+        ? `You have 1 outstanding task: ${titles[0]}`
+        : n <= 3
+          ? `You have ${n} outstanding tasks: ${titles.join(', ')}`
+          : `You have ${n} outstanding tasks: ${titles.slice(0, 3).join(', ')} and ${n - 3} more`
+    try {
+      await supabase.functions.invoke('send-checklist-notification', {
+        body: {
+          recipient_user_id: userId,
+          push_title: 'Task reminder',
+          push_body: body,
+          push_url: '/checklist',
+          tag: 'task-reminder',
+        },
+      })
+    } catch {
+      // Best-effort; do not block UI
+    } finally {
+      setRemindingUserId(null)
+    }
+  }
 
   async function loadOutstanding() {
     setLoading(true)
@@ -756,6 +784,7 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
               <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
               <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
               <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
+              <th style={{ padding: '0.5rem 0.75rem' }}>Remind</th>
             </tr>
           </thead>
           <tbody>
@@ -771,10 +800,27 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
                   <td style={{ padding: '0.5rem 0.75rem' }}>
                     {expandedUserId === userId ? '▼' : '▶'}
                   </td>
+                  <td style={{ padding: '0.5rem 0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      disabled={remindingUserId === userId}
+                      onClick={() => sendReminder(userId, instances)}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.25rem',
+                        background: 'transparent',
+                        cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {remindingUserId === userId ? 'Sending…' : 'Remind'}
+                    </button>
+                  </td>
                 </tr>
                 {expandedUserId === userId && (
                   <tr key={`${userId}-detail`}>
-                    <td colSpan={3} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                       <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
                         {instances.map((inst) => (
                           <li key={inst.id} style={{ marginBottom: '0.25rem' }}>
@@ -807,12 +853,14 @@ type ChecklistItem = {
   show_until_completed: boolean
   notify_on_complete_user_id: string | null
   notify_creator_on_complete: boolean
+  reminder_time: string | null
+  reminder_scope: string | null
   created_at: string | null
   updated_at: string | null
   users?: { name: string; email: string } | null
 }
 
-function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened }: { authUserId: string | null; setError: (s: string | null) => void; openAddOnMount?: boolean; onAddOpened?: () => void }) {
+function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddOpened }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; openAddOnMount?: boolean; onAddOpened?: () => void }) {
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -830,6 +878,8 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
     show_until_completed: boolean
     notify_on_complete_user_id: string
     notify_creator_on_complete: boolean
+    reminder_time: string
+    reminder_scope: 'today_only' | 'today_and_overdue' | ''
   }>({
     title: '',
     assigned_to_user_id: '',
@@ -841,6 +891,8 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
     show_until_completed: false,
     notify_on_complete_user_id: '',
     notify_creator_on_complete: false,
+    reminder_time: '',
+    reminder_scope: '',
   })
 
   useEffect(() => {
@@ -863,7 +915,7 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
   async function loadItems() {
     let q = supabase
       .from('checklist_items')
-      .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
+      .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
       .order('start_date', { ascending: false })
     if (filterUserId) q = q.eq('assigned_to_user_id', filterUserId)
     const { data, error } = await q
@@ -887,12 +939,15 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
       show_until_completed: false,
       notify_on_complete_user_id: '',
       notify_creator_on_complete: false,
+      reminder_time: '',
+      reminder_scope: '',
     })
     setFormOpen(true)
   }
 
   function openEdit(item: ChecklistItem) {
     setEditingId(item.id)
+    const rt = item.reminder_time
     setForm({
       title: item.title,
       assigned_to_user_id: item.assigned_to_user_id,
@@ -904,6 +959,8 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
       show_until_completed: item.show_until_completed ?? false,
       notify_on_complete_user_id: item.notify_on_complete_user_id ?? '',
       notify_creator_on_complete: item.notify_creator_on_complete,
+      reminder_time: rt ? (rt.length === 5 ? rt : rt.slice(0, 5)) : '',
+      reminder_scope: (item.reminder_scope as 'today_only' | 'today_and_overdue') ?? '',
     })
     setFormOpen(true)
   }
@@ -969,6 +1026,8 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
           show_until_completed: form.show_until_completed,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
+          reminder_time: form.reminder_time || null,
+          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingId)
@@ -991,6 +1050,8 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
           show_until_completed: form.show_until_completed,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
+          reminder_time: form.reminder_time || null,
+          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
         })
         .select('id')
         .single()
@@ -1045,6 +1106,7 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Repeat</th>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Start</th>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Notify</th>
+            {role === 'dev' && <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Remind</th>}
             <th style={{ padding: '0.5rem 0.75rem' }}></th>
           </tr>
         </thead>
@@ -1063,6 +1125,13 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
                 {item.notify_creator_on_complete && 'Creator '}
                 {item.notify_on_complete_user_id && '+1 user'}
               </td>
+              {role === 'dev' && (
+                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                  {item.reminder_time
+                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'today+overdue' : 'today'})`
+                    : '—'}
+                </td>
+              )}
               <td style={{ padding: '0.5rem 0.75rem' }}>
                 <button type="button" onClick={() => openEdit(item)} style={{ marginRight: '0.5rem' }}>Edit</button>
                 <button type="button" onClick={() => deleteItem(item.id)} style={{ color: '#b91c1c' }}>Delete</button>
@@ -1192,6 +1261,33 @@ function ChecklistManageTab({ authUserId, setError, openAddOnMount, onAddOpened 
                   </label>
                 </div>
               </label>
+              {role === 'dev' && (
+                <>
+                  <label>
+                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Remind at (CST, optional)</span>
+                    <input
+                      type="time"
+                      value={form.reminder_time}
+                      onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
+                      style={{ padding: '0.5rem' }}
+                    />
+                  </label>
+                  {form.reminder_time && (
+                    <label>
+                      <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reminder scope</span>
+                      <select
+                        value={form.reminder_scope}
+                        onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
+                        style={{ padding: '0.5rem', minWidth: 180 }}
+                      >
+                        <option value="">— Select —</option>
+                        <option value="today_only">Today only</option>
+                        <option value="today_and_overdue">Today + overdue</option>
+                      </select>
+                    </label>
+                  )}
+                </>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
               <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>

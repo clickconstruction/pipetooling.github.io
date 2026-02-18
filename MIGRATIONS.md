@@ -92,6 +92,21 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
+#### February 18, 2026
+
+**`20260218000001_schedule_reminder_cron.sql`**
+- **Purpose**: Schedule send-scheduled-reminders Edge Function every 15 minutes
+- **Changes**: Enables pg_cron and pg_net; creates cron job invoking `/functions/v1/send-scheduled-reminders` with X-Cron-Secret from Vault
+- **Prerequisites**: Vault secrets `project_url`, `cron_secret`; Edge Function secret `CRON_SECRET`; pg_cron and pg_net enabled in Dashboard
+- **Impact**: Assignees with incomplete tasks receive push reminders at configured times (CST)
+- **Category**: Checklist / Notifications
+
+**`20260218000000_add_checklist_reminder_fields.sql`**
+- **Purpose**: Per-item scheduled reminders (dev-only)
+- **Changes**: Added `reminder_time` (time, nullable) and `reminder_scope` (text, 'today_only' | 'today_and_overdue') to `checklist_items`
+- **Impact**: Dev can set reminder time (CST) and scope on each checklist item in Manage tab; send-scheduled-reminders uses these
+- **Category**: Checklist
+
 #### February 17, 2026
 
 **`20260217230000_add_material_parts_service_type_name_index.sql`**
