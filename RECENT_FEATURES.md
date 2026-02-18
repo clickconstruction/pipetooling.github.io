@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.43 → v2.4"
+version_range: "v2.46 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.45)"
+  - name: "Latest Version (v2.46)"
     line: ~113
+    description: "Supabase disk IO optimizations, Materials batching, Load All default off"
+  - name: "v2.45"
+    line: ~130
     description: "Impersonation fix (localStorage), Teams compact, Yesterday label"
   - name: "v2.41"
     line: ~140
@@ -47,7 +50,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.37)"
+  - "Latest features at top (v2.46)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -64,52 +67,84 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-2. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-3. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-4. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-5. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-6. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-7. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-8. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-9. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-10. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-11. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-12. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-13. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-14. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-15. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-16. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-17. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-18. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-19. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-20. [Latest Updates (v2.26)](#latest-updates-v226)
-21. [Latest Updates (v2.25)](#latest-updates-v225)
-22. [Latest Updates (v2.24)](#latest-updates-v224)
-23. [Latest Updates (v2.23)](#latest-updates-v223)
-24. [Latest Updates (v2.22)](#latest-updates-v222)
-25. [Latest Updates (v2.21)](#latest-updates-v221)
-26. [Latest Updates (v2.20)](#latest-updates-v220)
-27. [Latest Updates (v2.19)](#latest-updates-v219)
-28. [Latest Updates (v2.18)](#latest-updates-v218)
-29. [Latest Updates (v2.17)](#latest-updates-v217)
-30. [Latest Updates (v2.16)](#latest-updates-v216)
-31. [Latest Updates (v2.15)](#latest-updates-v215)
-32. [Latest Updates (v2.14)](#latest-updates-v214)
-33. [Latest Updates (v2.13)](#latest-updates-v213)
-34. [Latest Updates (v2.12)](#latest-updates-v212)
-35. [Latest Updates (v2.11)](#latest-updates-v211)
-36. [Latest Updates (v2.10)](#latest-updates-v210)
-37. [Latest Updates (v2.9)](#latest-updates-v29)
-38. [Latest Updates (v2.8)](#latest-updates-v28)
-39. [Latest Updates (v2.7)](#latest-updates-v27)
-40. [Latest Updates (v2.6)](#latest-updates-v26)
-41. [Workflow Features](#workflow-features)
-42. [Calendar Updates](#calendar-updates)
-43. [Access Control](#access-control)
-44. [Email Templates](#email-templates)
-45. [Financial Tracking](#financial-tracking)
-46. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+2. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+3. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+4. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+5. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+6. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+7. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+8. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+9. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+10. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+11. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+12. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+13. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+14. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+15. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+16. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+17. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+18. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+19. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+20. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+21. [Latest Updates (v2.26)](#latest-updates-v226)
+22. [Latest Updates (v2.25)](#latest-updates-v225)
+23. [Latest Updates (v2.24)](#latest-updates-v224)
+24. [Latest Updates (v2.23)](#latest-updates-v223)
+25. [Latest Updates (v2.22)](#latest-updates-v222)
+26. [Latest Updates (v2.21)](#latest-updates-v221)
+27. [Latest Updates (v2.20)](#latest-updates-v220)
+28. [Latest Updates (v2.19)](#latest-updates-v219)
+29. [Latest Updates (v2.18)](#latest-updates-v218)
+30. [Latest Updates (v2.17)](#latest-updates-v217)
+31. [Latest Updates (v2.16)](#latest-updates-v216)
+32. [Latest Updates (v2.15)](#latest-updates-v215)
+33. [Latest Updates (v2.14)](#latest-updates-v214)
+34. [Latest Updates (v2.13)](#latest-updates-v213)
+35. [Latest Updates (v2.12)](#latest-updates-v212)
+36. [Latest Updates (v2.11)](#latest-updates-v211)
+37. [Latest Updates (v2.10)](#latest-updates-v210)
+38. [Latest Updates (v2.9)](#latest-updates-v29)
+39. [Latest Updates (v2.8)](#latest-updates-v28)
+40. [Latest Updates (v2.7)](#latest-updates-v27)
+41. [Latest Updates (v2.6)](#latest-updates-v26)
+42. [Workflow Features](#workflow-features)
+43. [Calendar Updates](#calendar-updates)
+44. [Access Control](#access-control)
+45. [Email Templates](#email-templates)
+46. [Financial Tracking](#financial-tracking)
+47. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.46)
+
+### Supabase Disk IO Optimizations
+
+**Date**: 2026-02-17
+
+**Overview**:
+Reduced Supabase disk IO usage to address "Disk IO Budget" depletion. Materials page and related features now use batched queries, conditional loading, and targeted indexes.
+
+**Materials – Price Book**:
+- **Batch price fetching**: Replaced N+1 queries (one per part) with a single batch query for all prices per page. New `fetchPricesForParts()` helper fetches prices for multiple parts in one or few queries, then joins in memory.
+- **Conditional Load All**: `loadAllParts` runs only when Load All mode is on. When off, only paginated `loadParts` runs—avoids redundant full-table loads on service type change.
+- **Load All default off**: Default changed from on to off to reduce initial load. Users can still enable via the mountain icon; preference persists in localStorage.
+- **Template items batching**: `loadTemplateItems` now batch-fetches parts, prices, and nested templates instead of N+1 queries per item.
+- **Template stats filter**: `loadAllTemplateItemsForStats` now filters by selected service type (only templates for Plumbing/Electrical/HVAC) instead of loading all template items globally.
+
+**Dashboard**:
+- **Assigned steps limit**: Added `.limit(100)` to assigned workflow steps queries to cap result size.
+
+**Settings**:
+- **Export warning**: Added note that export "may take several minutes for large datasets and uses significant database resources."
+
+**Database**:
+- **Composite index**: `idx_material_parts_service_type_name` on `(service_type_id, name)` for faster Materials Price Book queries when filtering by service type and ordering by name.
+
+**Migration**: `20260217230000_add_material_parts_service_type_name_index.sql`
+
+**Files**: `src/pages/Materials.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260217230000_add_material_parts_service_type_name_index.sql`
 
 ---
 

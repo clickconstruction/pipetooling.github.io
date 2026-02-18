@@ -3299,20 +3299,20 @@ For questions or issues:
 
 #### Price Book Performance Enhancements (v2.24)
 
-- ✅ **Load All Mode** (default):
+- ✅ **Load All Mode** (opt-in, v2.46):
   - **Toggle button** with speed icon (triangle SVG) next to filter dropdowns
-  - **Progressive loading**: Fetches all parts in batches of 50 with count display
-  - Shows "Loading all parts... (X loaded)" during load
+  - **Batch loading**: Fetches all parts and prices in batched queries (no N+1)
+  - Shows "Loading all parts..." during load
   - **Instant client-side search**: No network delay, filters as you type
   - **Instant client-side sorting**: Click "#" to sort by price count immediately
   - **Visual indicators**:
     - Button turns blue when Load All is active
     - Search box background turns light blue
     - Search placeholder: "Search all parts (instant)..."
-  - **Default mode**: Enabled by default for optimal bulk editing workflow
+  - **Default mode**: Off by default (paginated) to reduce database load; enable via toggle for bulk editing. Preference persists in localStorage per user.
   - **Perfect for assistants**: Bulk price updates without pagination interruption
   - **Toggle anytime**: Switch to paginated mode if needed
-  - **Implementation**: `loadAllParts()` with batched loading, `allParts` state array
+  - **Implementation**: `loadAllParts()` with `fetchPricesForParts()` batch helper, `allParts` state array
 
 - ✅ **Infinite Scroll** (paginated mode):
   - **Automatic loading** when within 200px of page bottom
@@ -3340,6 +3340,13 @@ For questions or issues:
   - Maintains global sort order across pages (not just current page)
   - **Use case**: Quickly identify parts needing prices (sort ascending = 0 prices first)
   - Migration: `create_parts_with_price_count_function.sql`
+
+- ✅ **Disk IO Optimizations** (v2.46):
+  - **Batch price fetching**: `fetchPricesForParts()` fetches prices for multiple parts in one query instead of N+1 per part
+  - **Conditional Load All**: `loadAllParts` runs only when Load All mode is on; paginated `loadParts` runs when off
+  - **Template items batching**: `loadTemplateItems` batch-fetches parts, prices, and nested templates
+  - **Template stats filter**: `loadAllTemplateItemsForStats` filters by selected service type
+  - **Composite index**: `idx_material_parts_service_type_name` on `(service_type_id, name)` for faster parts queries
 
 - ✅ **Supply House Statistics**:
   - **Global stats** displayed at top of Supply Houses modal
@@ -3409,6 +3416,8 @@ For questions or issues:
 ### Data Export and Backup Features
 
 **Location**: Settings page → Data Export section (dev-only)
+
+**Note (v2.46)**: Export may take several minutes for large datasets and uses significant database resources.
 
 - ✅ **Projects Export**:
   - **Data included**: Complete projects data with workflows, steps, and related information

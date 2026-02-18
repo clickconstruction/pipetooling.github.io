@@ -130,7 +130,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
   - **Search all parts**: Server-side search across entire database (name, manufacturer, fixture type, notes)
   - **Infinite scroll**: Automatically loads more parts as you scroll
   - **Server-side sorting**: Click "#" column to sort all parts by price count
-  - **"Load All" mode** (default): Loads all parts with instant client-side search and sorting - perfect for bulk price editing
+  - **"Load All" mode** (opt-in): Loads all parts with instant client-side search and sorting - perfect for bulk price editing; default is paginated to reduce database load
   - **Supply house statistics**: Global price coverage stats in Supply Houses modal (total items, % priced, per-supply-house counts sorted by coverage)
   - Inline **Edit prices** action in expanded rows
   - Auto-refreshing stats when modal opens

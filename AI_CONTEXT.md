@@ -185,6 +185,7 @@ pipetooling.github.io/
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Email templates | `EMAIL_TEMPLATES_SETUP.md`, `EMAIL_TESTING.md` |
 | Database improvements | `DATABASE_IMPROVEMENTS_SUMMARY.md` → v2.22 enhancements |
+| Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 
 ---
 

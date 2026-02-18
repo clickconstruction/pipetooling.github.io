@@ -489,6 +489,20 @@ export default function Dashboard() {
       setSendTaskError(instErr.message)
       return
     }
+    // Notify assignee of new task (push notification)
+    try {
+      await supabase.functions.invoke('send-checklist-notification', {
+        body: {
+          recipient_user_id: sendTaskAssignedToUserId,
+          push_title: 'New task assigned',
+          push_body: `You have a new task: ${title}`,
+          push_url: '/checklist',
+          tag: 'task-assigned',
+        },
+      })
+    } catch {
+      // Non-blocking: task was created; notification is best-effort
+    }
     setSendTaskTitle('')
     setSendTaskAssignedToUserId(sendTaskUsers[0]?.id ?? '')
     setSendTaskShowUntilCompleted(false)
