@@ -865,6 +865,7 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
+  const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterUserId, setFilterUserId] = useState<string>('')
   const [form, setForm] = useState<{
@@ -1274,7 +1275,28 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
                   </label>
                   {form.reminder_time && (
                     <label>
-                      <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reminder scope</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
+                        Reminder scope
+                        <button
+                          type="button"
+                          onClick={() => setReminderScopeModalOpen(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 2,
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                          }}
+                          title="What each option means"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor">
+                            <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z" />
+                          </svg>
+                        </button>
+                      </span>
                       <select
                         value={form.reminder_scope}
                         onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
@@ -1289,6 +1311,53 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
                 </>
               )}
             </div>
+            {reminderScopeModalOpen && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1100,
+                }}
+                onClick={() => setReminderScopeModalOpen(false)}
+              >
+                <div
+                  style={{
+                    background: 'white',
+                    padding: '1.5rem',
+                    borderRadius: 8,
+                    maxWidth: 420,
+                    width: '90%',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>What each option means</h4>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
+                    <strong>Today only</strong> – Remind only when there is an incomplete instance due today.
+                  </p>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+                    Example: &quot;Call client&quot; is due Monday. You get a reminder Monday at 9am if it&apos;s not done. You do not get a reminder Tuesday, Wednesday, etc., even if it&apos;s still incomplete.
+                  </p>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
+                    <strong>Today + overdue</strong> – Remind when there is an incomplete instance due today or earlier.
+                  </p>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+                    Example: &quot;Call client&quot; was due Monday. If it&apos;s still incomplete, you get a reminder every day at 9am (Tuesday, Wednesday, etc.) until it&apos;s completed.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setReminderScopeModalOpen(false)}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
               <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                 Save
