@@ -822,9 +822,28 @@ export default function Dashboard() {
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
+  const canAccessBids = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator'
+
   return (
     <div>
-      <h1>Dashboard</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+        <h1 style={{ margin: 0 }}>Dashboard</h1>
+        {canAccessBids && (
+          <Link
+            to="/bids?tab=builder-review"
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 6,
+              textDecoration: 'none',
+              fontWeight: 500,
+            }}
+          >
+            Builder Review
+          </Link>
+        )}
+      </div>
       {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
