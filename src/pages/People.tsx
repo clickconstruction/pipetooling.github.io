@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -158,6 +158,14 @@ export default function People() {
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
+
+  const loadPeopleHoursRef = useRef<() => void>()
+  loadPeopleHoursRef.current = () => {
+    if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared))
+      loadPeopleHours(matrixStartDate, matrixEndDate)
+    else if (activeTab === 'hours' && canAccessHours)
+      loadPeopleHours(hoursDateStart, hoursDateEnd)
+  }
 
   async function loadPeople() {
     if (!authUser?.id) {
@@ -975,6 +983,21 @@ export default function People() {
       ]).finally(() => setHoursTabLoading(false))
     }
   }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
+
+  useEffect(() => {
+    const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
+    const isRelevantTab = activeTab === 'pay' || activeTab === 'hours'
+    if (!hasAccess || !isRelevantTab) return
+    const channel = supabase
+      .channel('people-hours-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
+        loadPeopleHoursRef.current?.()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [activeTab, canAccessHours, canAccessPay, canViewCostMatrixShared])
 
   async function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return

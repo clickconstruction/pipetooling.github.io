@@ -878,15 +878,22 @@ export default function Dashboard() {
       )}
       {canSendTask && (
         <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Send task</h2>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
+            <h2 style={{ fontSize: '1.125rem', marginBottom: 0, marginTop: 0 }}>Send task</h2>
+            <Link
+              to="/checklist?add=true"
+              style={{ fontSize: '0.875rem', color: '#3b82f6', textDecoration: 'none' }}
+            >
+              detail send
+            </Link>
+          </div>
           <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.5rem 1rem' }}>
             <label style={{ flex: '1 1 120px', minWidth: 120 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Title</span>
               <input
                 type="text"
                 value={sendTaskTitle}
                 onChange={(e) => setSendTaskTitle(e.target.value)}
-                placeholder="Task title"
+                placeholder="Task"
                 style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
               />
             </label>
