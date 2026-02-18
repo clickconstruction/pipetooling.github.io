@@ -92,13 +92,13 @@ export default function Checklist() {
       </div>
 
       {activeTab === 'today' && (
-        <ChecklistTodayTab authUserId={authUser?.id ?? null} setError={setError} />
+        <ChecklistTodayTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
-        <ChecklistOutstandingTab setError={setError} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} openAddOnMount={openAddFormOnMount} onAddOpened={() => setOpenAddFormOnMount(false)} />
@@ -109,13 +109,18 @@ export default function Checklist() {
   )
 }
 
-function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null; setError: (s: string | null) => void }) {
+function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void }) {
   const [todayInstances, setTodayInstances] = useState<ChecklistInstance[]>([])
   const [upcomingInstances, setUpcomingInstances] = useState<ChecklistInstance[]>([])
   const [upcomingExpanded, setUpcomingExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [notesByInstance, setNotesByInstance] = useState<Record<string, string>>({})
+  const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
+  const [fwdTitle, setFwdTitle] = useState('')
+  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
+  const [fwdSaving, setFwdSaving] = useState(false)
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
 
   useEffect(() => {
     if (!authUserId) {
@@ -125,6 +130,14 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
     setLoading(true)
     Promise.all([loadToday(), loadUpcoming()]).finally(() => setLoading(false))
   }, [authUserId])
+
+  useEffect(() => {
+    if (isDev) {
+      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+        setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+      })
+    }
+  }, [isDev])
 
   async function loadToday() {
     if (!authUserId) return
@@ -282,6 +295,58 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
     await loadToday()
   }
 
+  function openFwd(inst: ChecklistInstance) {
+    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setFwdInstance(inst)
+    setFwdTitle(title)
+    setFwdAssigneeId(inst.assigned_to_user_id)
+  }
+
+  async function saveFwd() {
+    if (!fwdInstance || !authUserId || !fwdTitle.trim() || !fwdAssigneeId) return
+    setFwdSaving(true)
+    setError(null)
+    try {
+      const { data: sourceItem } = await supabase
+        .from('checklist_items')
+        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
+        .eq('id', fwdInstance.checklist_item_id)
+        .single()
+      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
+      const { data: newItem, error: itemErr } = await supabase
+        .from('checklist_items')
+        .insert({
+          title: fwdTitle.trim(),
+          assigned_to_user_id: fwdAssigneeId,
+          created_by_user_id: authUserId,
+          repeat_type: 'once',
+          start_date: fwdInstance.scheduled_date,
+          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
+          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
+          reminder_time: src?.reminder_time ?? null,
+          reminder_scope: src?.reminder_scope ?? null,
+        })
+        .select('id')
+        .single()
+      if (itemErr) throw itemErr
+      if (newItem?.id) {
+        await supabase.from('checklist_instances').insert({
+          checklist_item_id: newItem.id,
+          scheduled_date: fwdInstance.scheduled_date,
+          assigned_to_user_id: fwdAssigneeId,
+        })
+        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
+      }
+      setFwdInstance(null)
+      await loadToday()
+      await loadUpcoming()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to forward')
+    } finally {
+      setFwdSaving(false)
+    }
+  }
+
   if (loading) return <p>Loading…</p>
 
   return (
@@ -315,7 +380,7 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
                     disabled={!!completingId}
                     style={{ marginTop: '0.25rem' }}
                   />
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{title}</div>
                     <textarea
                       value={notesByInstance[inst.id] ?? inst.notes ?? ''}
@@ -331,6 +396,26 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
                       </div>
                     )}
                   </div>
+                  {isDev && (
+                    <button
+                      type="button"
+                      className="fwd-btn-desktop"
+                      onClick={() => openFwd(inst)}
+                      style={{
+                        flexShrink: 0,
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 500,
+                        border: '1px solid #3b82f6',
+                        borderRadius: 4,
+                        background: '#3b82f6',
+                        color: 'white',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      FWD
+                    </button>
+                  )}
                 </li>
               )
             })}
@@ -372,10 +457,31 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
                         borderBottom: '1px solid #f3f4f6',
                         display: 'flex',
                         gap: '1rem',
+                        alignItems: 'center',
                       }}
                     >
                       <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{inst.scheduled_date}</span>
-                      <span>{title}</span>
+                      <span style={{ flex: 1 }}>{title}</span>
+                      {isDev && (
+                        <button
+                          type="button"
+                          className="fwd-btn-desktop"
+                          onClick={() => openFwd(inst)}
+                          style={{
+                            flexShrink: 0,
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.8125rem',
+                            fontWeight: 500,
+                            border: '1px solid #3b82f6',
+                            borderRadius: 4,
+                            background: '#3b82f6',
+                            color: 'white',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          FWD
+                        </button>
+                      )}
                     </li>
                   )
                 })}
@@ -384,6 +490,85 @@ function ChecklistTodayTab({ authUserId, setError }: { authUserId: string | null
           </div>
         )}
       </section>
+
+      {fwdInstance && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 400,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
+                <input
+                  type="text"
+                  value={fwdTitle}
+                  onChange={(e) => setFwdTitle(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
+                <select
+                  value={fwdAssigneeId}
+                  onChange={(e) => setFwdAssigneeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                >
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                onClick={saveFwd}
+                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {fwdSaving ? 'Saving…' : 'Forward'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFwdInstance(null)}
+                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -634,22 +819,87 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
 type OutstandingInstance = {
   id: string
+  checklist_item_id: string
   scheduled_date: string
   assigned_to_user_id: string
   checklist_items?: { title: string; repeat_type?: string } | null
   users?: { name: string; email: string } | null
 }
 
-function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void }) {
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating'>('next_day')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
+  const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
+  const [fwdTitle, setFwdTitle] = useState('')
+  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
+  const [fwdSaving, setFwdSaving] = useState(false)
+  const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
 
   useEffect(() => {
     loadOutstanding()
   }, [dateRange])
+
+  useEffect(() => {
+    if (isDev) {
+      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+        setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+      })
+    }
+  }, [isDev])
+
+  function openFwd(inst: OutstandingInstance) {
+    const title = inst.checklist_items?.title ?? 'Untitled'
+    setFwdInstance(inst)
+    setFwdTitle(title)
+    setFwdAssigneeId(inst.assigned_to_user_id)
+  }
+
+  async function saveFwd() {
+    if (!fwdInstance || !authUserId || !fwdTitle.trim() || !fwdAssigneeId) return
+    setFwdSaving(true)
+    setError(null)
+    try {
+      const { data: sourceItem } = await supabase
+        .from('checklist_items')
+        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
+        .eq('id', fwdInstance.checklist_item_id)
+        .single()
+      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
+      const { data: newItem, error: itemErr } = await supabase
+        .from('checklist_items')
+        .insert({
+          title: fwdTitle.trim(),
+          assigned_to_user_id: fwdAssigneeId,
+          created_by_user_id: authUserId,
+          repeat_type: 'once',
+          start_date: fwdInstance.scheduled_date,
+          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
+          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
+          reminder_time: src?.reminder_time ?? null,
+          reminder_scope: src?.reminder_scope ?? null,
+        })
+        .select('id')
+        .single()
+      if (itemErr) throw itemErr
+      if (newItem?.id) {
+        await supabase.from('checklist_instances').insert({
+          checklist_item_id: newItem.id,
+          scheduled_date: fwdInstance.scheduled_date,
+          assigned_to_user_id: fwdAssigneeId,
+        })
+        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
+      }
+      setFwdInstance(null)
+      await loadOutstanding()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to forward')
+    } finally {
+      setFwdSaving(false)
+    }
+  }
 
   async function sendReminder(userId: string, instances: OutstandingInstance[]) {
     setRemindingUserId(userId)
@@ -686,7 +936,7 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
+      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -823,8 +1073,30 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
                     <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                       <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
                         {instances.map((inst) => (
-                          <li key={inst.id} style={{ marginBottom: '0.25rem' }}>
-                            {inst.checklist_items?.title ?? '—'} <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+                          <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ flex: 1 }}>
+                              {inst.checklist_items?.title ?? '—'} <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+                            </span>
+                            {isDev && (
+                              <button
+                                type="button"
+                                className="fwd-btn-desktop"
+                                onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                style={{
+                                  flexShrink: 0,
+                                  padding: '0.25rem 0.5rem',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 500,
+                                  border: '1px solid #3b82f6',
+                                  borderRadius: 4,
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                FWD
+                              </button>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -835,6 +1107,84 @@ function ChecklistOutstandingTab({ setError }: { setError: (s: string | null) =>
             ))}
           </tbody>
         </table>
+      )}
+      {fwdInstance && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 400,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
+                <input
+                  type="text"
+                  value={fwdTitle}
+                  onChange={(e) => setFwdTitle(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
+                <select
+                  value={fwdAssigneeId}
+                  onChange={(e) => setFwdAssigneeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                >
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                onClick={saveFwd}
+                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {fwdSaving ? 'Saving…' : 'Forward'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFwdInstance(null)}
+                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

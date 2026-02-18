@@ -17,6 +17,7 @@ import Calendar from './pages/Calendar'
 import Dashboard from './pages/Dashboard'
 import Templates from './pages/Templates'
 import People from './pages/People'
+import Jobs from './pages/Jobs'
 import Materials from './pages/Materials'
 import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
@@ -132,6 +133,7 @@ export default function App() {
           <Route path="projects/new" element={<ProjectForm />} />
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
+          <Route path="jobs" element={<Jobs />} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="templates" element={<Templates />} />

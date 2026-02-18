@@ -1710,6 +1710,118 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger: {
+        Row: {
+          created_at: string | null
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          master_user_id: string
+          revenue: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hcp_number?: string
+          id?: string
+          job_address?: string
+          job_name?: string
+          master_user_id: string
+          revenue?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hcp_number?: string
+          id?: string
+          job_address?: string
+          job_name?: string
+          master_user_id?: string
+          revenue?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs_ledger_materials: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string
+          id: string
+          job_id: string
+          sequence_order: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          description?: string
+          id?: string
+          job_id: string
+          sequence_order?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string
+          id?: string
+          job_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_materials_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs_ledger_team_members: {
+        Row: {
+          created_at: string | null
+          id: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_team_members_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_pay_config: {
         Row: {
           hourly_wage: number | null

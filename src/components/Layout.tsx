@@ -23,7 +23,7 @@ const IMPERSONATION_KEY = 'impersonation_original'
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings']
-const ESTIMATOR_PATHS = ['/materials', '/bids', '/calendar', '/checklist', '/settings']
+const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings']
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -79,7 +79,7 @@ export default function Layout() {
     if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
     }
-    if (role === 'estimator' && (location.pathname === '/' || location.pathname === '/dashboard' || !ESTIMATOR_PATHS.includes(location.pathname))) {
+    if (role === 'estimator' && (location.pathname === '/' || !ESTIMATOR_PATHS.includes(location.pathname))) {
       navigate('/bids', { replace: true })
     }
   }, [role, location.pathname, navigate])
@@ -104,6 +104,7 @@ export default function Layout() {
     if (role === 'estimator') {
       return (
         <>
+          <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/calendar" style={linkStyle} onClick={onNavClick}>Calendar</NavLink>
@@ -118,6 +119,9 @@ export default function Layout() {
           <>
             <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
             <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
+            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+              <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
+            )}
             <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
@@ -218,7 +222,7 @@ export default function Layout() {
                   fontWeight: 500,
                 }}
               >
-                Item
+                ToDo
               </button>
             </>
           )}

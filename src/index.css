@@ -77,4 +77,14 @@ button {
   .appNav {
     flex-wrap: wrap;
   }
+
+  .fwd-btn-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 641px) {
+  .fwd-btn-desktop {
+    display: inline-block !important;
+  }
 }

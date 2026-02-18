@@ -144,8 +144,13 @@ export default function Dashboard() {
   const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
   const [sendTaskSaving, setSendTaskSaving] = useState(false)
   const [sendTaskError, setSendTaskError] = useState<string | null>(null)
+  const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
+  const [fwdTitle, setFwdTitle] = useState('')
+  const [fwdAssigneeId, setFwdAssigneeId] = useState('')
+  const [fwdSaving, setFwdSaving] = useState(false)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const isDev = role === 'dev'
 
   useEffect(() => {
     if (canSendTask) {
@@ -199,7 +204,7 @@ export default function Dashboard() {
       }
 
       const user = userData as { role: UserRole | 'subcontractor' | 'estimator'; name: string | null } | null
-      setRole((user?.role === 'subcontractor' || user?.role === 'estimator' ? null : (user?.role ?? null)) as UserRole | null)
+      setRole((user?.role === 'subcontractor' ? null : (user?.role ?? null)) as UserRole | null)
       setUserLoading(false)
 
       const userNamesSet = new Set<string>()
@@ -530,6 +535,57 @@ export default function Dashboard() {
     if (!isCompleted) {
       await sendChecklistCompletionNotifications(inst)
       await maybeCreateNextChecklistInstance(inst)
+    }
+  }
+
+  function openFwd(inst: ChecklistInstance) {
+    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setFwdInstance(inst)
+    setFwdTitle(title)
+    setFwdAssigneeId(inst.assigned_to_user_id)
+  }
+
+  async function saveFwd() {
+    if (!fwdInstance || !authUser?.id || !fwdTitle.trim() || !fwdAssigneeId) return
+    setFwdSaving(true)
+    setUserError(null)
+    try {
+      const { data: sourceItem } = await supabase
+        .from('checklist_items')
+        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
+        .eq('id', fwdInstance.checklist_item_id)
+        .single()
+      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
+      const { data: newItem, error: itemErr } = await supabase
+        .from('checklist_items')
+        .insert({
+          title: fwdTitle.trim(),
+          assigned_to_user_id: fwdAssigneeId,
+          created_by_user_id: authUser.id,
+          repeat_type: 'once',
+          start_date: fwdInstance.scheduled_date,
+          notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
+          notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
+          reminder_time: src?.reminder_time ?? null,
+          reminder_scope: src?.reminder_scope ?? null,
+        })
+        .select('id')
+        .single()
+      if (itemErr) throw itemErr
+      if (newItem?.id) {
+        await supabase.from('checklist_instances').insert({
+          checklist_item_id: newItem.id,
+          scheduled_date: fwdInstance.scheduled_date,
+          assigned_to_user_id: fwdAssigneeId,
+        })
+        await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
+      }
+      setFwdInstance(null)
+      await loadTodayChecklist()
+    } catch (err: unknown) {
+      setUserError(err instanceof Error ? err.message : 'Failed to forward')
+    } finally {
+      setFwdSaving(false)
     }
   }
 
@@ -888,11 +944,107 @@ export default function Dashboard() {
                       {new Date(inst.completed_at).toLocaleString()}
                     </span>
                   )}
+                  {isDev && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); openFwd(inst) }}
+                      style={{
+                        marginLeft: 'auto',
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.8125rem',
+                        color: '#9ca3af',
+                        textDecoration: 'underline',
+                      }}
+                    >
+                      fwd
+                    </button>
+                  )}
                 </li>
               )
             })}
           </ul>
           ) : null}
+        </div>
+      )}
+      {fwdInstance && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 400,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
+                <input
+                  type="text"
+                  value={fwdTitle}
+                  onChange={(e) => setFwdTitle(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
+                <select
+                  value={fwdAssigneeId}
+                  onChange={(e) => setFwdAssigneeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                >
+                  {sendTaskUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.email || u.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                onClick={saveFwd}
+                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {fwdSaving ? 'Saving…' : 'Forward'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFwdInstance(null)}
+                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {canSendTask && (
