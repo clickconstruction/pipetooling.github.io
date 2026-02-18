@@ -377,7 +377,7 @@ export default function Workflow() {
       items: items.map(item => ({
         part: { name: item.material_parts.name },
         quantity: item.quantity,
-        supply_house: item.supply_houses,
+        supply_house: item.supply_houses as { name: string } | null,
         price_at_time: item.price_at_time,
       })),
     })
@@ -2784,7 +2784,7 @@ function StepFormModal({
                 <button
                   key={phrase}
                   type="button"
-                  onClick={() => setName((prev) => (prev ? `${prev}, ${phrase}` : phrase))}
+                  onClick={() => setName((prev: string | undefined) => (prev ? `${prev}, ${phrase}` : phrase))}
                   style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
                 >
                   {phrase}

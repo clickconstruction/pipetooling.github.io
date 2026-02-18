@@ -457,48 +457,48 @@ export type Database = {
       }
       checklist_instances: {
         Row: {
-          id: string
-          checklist_item_id: string
-          scheduled_date: string
           assigned_to_user_id: string
+          checklist_item_id: string
           completed_at: string | null
-          notes: string | null
           completed_by_user_id: string | null
           created_at: string | null
+          id: string
+          notes: string | null
+          scheduled_date: string
         }
         Insert: {
-          id?: string
-          checklist_item_id: string
-          scheduled_date: string
           assigned_to_user_id: string
+          checklist_item_id: string
           completed_at?: string | null
-          notes?: string | null
           completed_by_user_id?: string | null
           created_at?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_date: string
         }
         Update: {
-          id?: string
-          checklist_item_id?: string
-          scheduled_date?: string
           assigned_to_user_id?: string
+          checklist_item_id?: string
           completed_at?: string | null
-          notes?: string | null
           completed_by_user_id?: string | null
           created_at?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_date?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "checklist_instances_checklist_item_id_fkey"
-            columns: ["checklist_item_id"]
-            isOneToOne: false
-            referencedRelation: "checklist_items"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "checklist_instances_assigned_to_user_id_fkey"
             columns: ["assigned_to_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instances_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
             referencedColumns: ["id"]
           },
           {
@@ -512,57 +512,57 @@ export type Database = {
       }
       checklist_items: {
         Row: {
-          id: string
-          title: string
           assigned_to_user_id: string
-          created_by_user_id: string
-          repeat_type: string
-          repeat_days_of_week: number[] | null
-          repeat_days_after: number | null
-          repeat_end_date: string | null
-          start_date: string
-          show_until_completed: boolean
-          notify_on_complete_user_id: string | null
-          notify_creator_on_complete: boolean
-          reminder_time: string | null
-          reminder_scope: string | null
           created_at: string | null
+          created_by_user_id: string
+          id: string
+          notify_creator_on_complete: boolean
+          notify_on_complete_user_id: string | null
+          reminder_scope: string | null
+          reminder_time: string | null
+          repeat_days_after: number | null
+          repeat_days_of_week: number[] | null
+          repeat_end_date: string | null
+          repeat_type: string
+          show_until_completed: boolean
+          start_date: string
+          title: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          title: string
           assigned_to_user_id: string
-          created_by_user_id: string
-          repeat_type: string
-          repeat_days_of_week?: number[] | null
-          repeat_days_after?: number | null
-          repeat_end_date?: string | null
-          start_date: string
-          show_until_completed?: boolean
-          notify_on_complete_user_id?: string | null
-          notify_creator_on_complete?: boolean
-          reminder_time?: string | null
-          reminder_scope?: string | null
           created_at?: string | null
+          created_by_user_id: string
+          id?: string
+          notify_creator_on_complete?: boolean
+          notify_on_complete_user_id?: string | null
+          reminder_scope?: string | null
+          reminder_time?: string | null
+          repeat_days_after?: number | null
+          repeat_days_of_week?: number[] | null
+          repeat_end_date?: string | null
+          repeat_type: string
+          show_until_completed?: boolean
+          start_date: string
+          title: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          title?: string
           assigned_to_user_id?: string
-          created_by_user_id?: string
-          repeat_type?: string
-          repeat_days_of_week?: number[] | null
-          repeat_days_after?: number | null
-          repeat_end_date?: string | null
-          start_date?: string
-          show_until_completed?: boolean
-          notify_on_complete_user_id?: string | null
-          notify_creator_on_complete?: boolean
-          reminder_time?: string | null
-          reminder_scope?: string | null
           created_at?: string | null
+          created_by_user_id?: string
+          id?: string
+          notify_creator_on_complete?: boolean
+          notify_on_complete_user_id?: string | null
+          reminder_scope?: string | null
+          reminder_time?: string | null
+          repeat_days_after?: number | null
+          repeat_days_of_week?: number[] | null
+          repeat_end_date?: string | null
+          repeat_type?: string
+          show_until_completed?: boolean
+          start_date?: string
+          title?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -710,6 +710,26 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_teams_shares: {
+        Row: {
+          shared_with_user_id: string
+        }
+        Insert: {
+          shared_with_user_id: string
+        }
+        Update: {
+          shared_with_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_matrix_teams_shares_shared_with_user_id_fkey"
+            columns: ["shared_with_user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       counts_fixture_group_items: {
         Row: {
           created_at: string | null
@@ -776,6 +796,48 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_contacts: {
+        Row: {
+          contact_date: string
+          created_at: string | null
+          created_by: string | null
+          customer_id: string
+          details: string | null
+          id: string
+        }
+        Insert: {
+          contact_date: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id: string
+          details?: string | null
+          id?: string
+        }
+        Update: {
+          contact_date?: string
+          created_at?: string | null
+          created_by?: string | null
+          customer_id?: string
+          details?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -1318,69 +1380,98 @@ export type Database = {
       }
       notification_history: {
         Row: {
-          id: string
-          recipient_user_id: string
-          template_type: string
-          title: string
           body_preview: string | null
           channel: string
-          step_id: string | null
-          workflow_id: string | null
-          project_id: string | null
           checklist_instance_id: string | null
-          sent_at: string
-        }
-        Insert: {
-          id?: string
+          id: string
+          project_id: string | null
           recipient_user_id: string
+          sent_at: string
+          step_id: string | null
           template_type: string
           title: string
+          workflow_id: string | null
+        }
+        Insert: {
           body_preview?: string | null
           channel: string
-          step_id?: string | null
-          workflow_id?: string | null
-          project_id?: string | null
           checklist_instance_id?: string | null
+          id?: string
+          project_id?: string | null
+          recipient_user_id: string
           sent_at?: string
+          step_id?: string | null
+          template_type: string
+          title: string
+          workflow_id?: string | null
         }
         Update: {
-          id?: string
-          recipient_user_id?: string
-          template_type?: string
-          title?: string
           body_preview?: string | null
           channel?: string
-          step_id?: string | null
-          workflow_id?: string | null
-          project_id?: string | null
           checklist_instance_id?: string | null
+          id?: string
+          project_id?: string | null
+          recipient_user_id?: string
           sent_at?: string
+          step_id?: string | null
+          template_type?: string
+          title?: string
+          workflow_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_checklist_instance_id_fkey"
+            columns: ["checklist_instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_history_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "project_workflow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_history_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "project_workflows"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_templates: {
         Row: {
-          id: string
-          template_type: string
-          push_title: string
-          push_body: string
           created_at: string | null
+          id: string
+          push_body: string
+          push_title: string
+          template_type: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          template_type: string
-          push_title: string
-          push_body: string
           created_at?: string | null
+          id?: string
+          push_body: string
+          push_title: string
+          template_type: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          template_type?: string
-          push_title?: string
-          push_body?: string
           created_at?: string | null
+          id?: string
+          push_body?: string
+          push_title?: string
+          template_type?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1419,6 +1510,26 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_approved_masters: {
+        Row: {
+          master_id: string
+        }
+        Insert: {
+          master_id: string
+        }
+        Update: {
+          master_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_approved_masters_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: true
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1467,36 +1578,86 @@ export type Database = {
           },
         ]
       }
-      people_labor_job_items: {
+      people_hours: {
         Row: {
-          id: string
-          job_id: string
-          fixture: string
-          count: number
-          hrs_per_unit: number
-          is_fixed: boolean
-          sequence_order: number
           created_at: string | null
+          entered_by: string | null
+          hours: number
+          id: string
+          person_name: string
+          work_date: string
         }
         Insert: {
-          id?: string
-          job_id: string
-          fixture?: string
-          count?: number
-          hrs_per_unit?: number
-          is_fixed?: boolean
-          sequence_order?: number
           created_at?: string | null
+          entered_by?: string | null
+          hours?: number
+          id?: string
+          person_name: string
+          work_date: string
         }
         Update: {
-          id?: string
-          job_id?: string
-          fixture?: string
-          count?: number
-          hrs_per_unit?: number
-          is_fixed?: boolean
-          sequence_order?: number
           created_at?: string | null
+          entered_by?: string | null
+          hours?: number
+          id?: string
+          person_name?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_hours_entered_by_fkey"
+            columns: ["entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_hours_display_order: {
+        Row: {
+          person_name: string
+          sequence_order: number
+        }
+        Insert: {
+          person_name: string
+          sequence_order?: number
+        }
+        Update: {
+          person_name?: string
+          sequence_order?: number
+        }
+        Relationships: []
+      }
+      people_labor_job_items: {
+        Row: {
+          count: number
+          created_at: string | null
+          fixture: string
+          hrs_per_unit: number
+          id: string
+          is_fixed: boolean
+          job_id: string
+          sequence_order: number
+        }
+        Insert: {
+          count?: number
+          created_at?: string | null
+          fixture?: string
+          hrs_per_unit?: number
+          id?: string
+          is_fixed?: boolean
+          job_id: string
+          sequence_order?: number
+        }
+        Update: {
+          count?: number
+          created_at?: string | null
+          fixture?: string
+          hrs_per_unit?: number
+          id?: string
+          is_fixed?: boolean
+          job_id?: string
+          sequence_order?: number
         }
         Relationships: [
           {
@@ -1510,34 +1671,34 @@ export type Database = {
       }
       people_labor_jobs: {
         Row: {
-          id: string
-          master_user_id: string
-          assigned_to_name: string
           address: string
+          assigned_to_name: string
+          created_at: string | null
+          id: string
+          job_date: string | null
           job_number: string | null
           labor_rate: number | null
-          job_date: string | null
-          created_at: string | null
+          master_user_id: string
         }
         Insert: {
-          id?: string
-          master_user_id: string
-          assigned_to_name: string
           address?: string
+          assigned_to_name: string
+          created_at?: string | null
+          id?: string
+          job_date?: string | null
           job_number?: string | null
           labor_rate?: number | null
-          job_date?: string | null
-          created_at?: string | null
+          master_user_id: string
         }
         Update: {
-          id?: string
-          master_user_id?: string
-          assigned_to_name?: string
           address?: string
+          assigned_to_name?: string
+          created_at?: string | null
+          id?: string
+          job_date?: string | null
           job_number?: string | null
           labor_rate?: number | null
-          job_date?: string | null
-          created_at?: string | null
+          master_user_id?: string
         }
         Relationships: [
           {
@@ -1549,118 +1710,43 @@ export type Database = {
           },
         ]
       }
-      pay_approved_masters: {
-        Row: { master_id: string }
-        Insert: { master_id: string }
-        Update: { master_id?: string }
-        Relationships: [
-          {
-            foreignKeyName: "pay_approved_masters_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cost_matrix_teams_shares: {
-        Row: { shared_with_user_id: string }
-        Insert: { shared_with_user_id: string }
-        Update: { shared_with_user_id?: string }
-        Relationships: [
-          {
-            foreignKeyName: "cost_matrix_teams_shares_shared_with_user_id_fkey"
-            columns: ["shared_with_user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people_pay_config: {
         Row: {
-          person_name: string
           hourly_wage: number | null
           is_salary: boolean
-          show_in_hours: boolean
+          person_name: string
           show_in_cost_matrix: boolean
+          show_in_hours: boolean
         }
         Insert: {
-          person_name: string
           hourly_wage?: number | null
           is_salary?: boolean
-          show_in_hours?: boolean
+          person_name: string
           show_in_cost_matrix?: boolean
+          show_in_hours?: boolean
         }
         Update: {
-          person_name?: string
           hourly_wage?: number | null
           is_salary?: boolean
-          show_in_hours?: boolean
-          show_in_cost_matrix?: boolean
-        }
-        Relationships: []
-      }
-      people_hours: {
-        Row: {
-          id: string
-          person_name: string
-          work_date: string
-          hours: number
-          entered_by: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          person_name: string
-          work_date: string
-          hours?: number
-          entered_by?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
           person_name?: string
-          work_date?: string
-          hours?: number
-          entered_by?: string | null
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_hours_entered_by_fkey"
-            columns: ["entered_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      people_teams: {
-        Row: {
-          id: string
-          name: string
-          sequence_order: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          sequence_order?: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          sequence_order?: number
-          created_at?: string | null
+          show_in_cost_matrix?: boolean
+          show_in_hours?: boolean
         }
         Relationships: []
       }
       people_team_members: {
-        Row: { team_id: string; person_name: string }
-        Insert: { team_id: string; person_name: string }
-        Update: { team_id?: string; person_name?: string }
+        Row: {
+          person_name: string
+          team_id: string
+        }
+        Insert: {
+          person_name: string
+          team_id: string
+        }
+        Update: {
+          person_name?: string
+          team_id?: string
+        }
         Relationships: [
           {
             foreignKeyName: "people_team_members_team_id_fkey"
@@ -1671,10 +1757,25 @@ export type Database = {
           },
         ]
       }
-      people_hours_display_order: {
-        Row: { person_name: string; sequence_order: number }
-        Insert: { person_name: string; sequence_order?: number }
-        Update: { person_name?: string; sequence_order?: number }
+      people_teams: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          sequence_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          sequence_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          sequence_order?: number
+        }
         Relationships: []
       }
       price_book_entries: {
@@ -2014,36 +2115,6 @@ export type Database = {
           },
         ]
       }
-      push_subscriptions: {
-        Row: {
-          id: string
-          user_id: string
-          endpoint: string
-          p256dh_key: string
-          auth_key: string
-          user_agent: string | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          endpoint: string
-          p256dh_key: string
-          auth_key: string
-          user_agent?: string | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          endpoint?: string
-          p256dh_key?: string
-          auth_key?: string
-          user_agent?: string | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
       purchase_order_items: {
         Row: {
           created_at: string | null
@@ -2194,6 +2265,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth_key: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh_key: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_key: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh_key: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_key?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh_key?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       service_types: {
         Row: {
@@ -2673,6 +2774,10 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_see_sharing_master: {
+        Args: { sharing_master_id: string }
+        Returns: boolean
+      }
       claim_dev_with_code: { Args: { code_input: string }; Returns: boolean }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
@@ -2742,8 +2847,14 @@ export type Database = {
           total_parts: number
         }[]
       }
+      is_assistant: { Args: never; Returns: boolean }
+      is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
+      is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
+      is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
+      is_estimator: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
+      is_pay_approved_master: { Args: never; Returns: boolean }
       master_adopted_current_user: {
         Args: { master_user_id: string }
         Returns: boolean
@@ -2921,4 +3032,3 @@ export const Constants = {
     },
   },
 } as const
-

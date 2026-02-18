@@ -14,6 +14,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
 type Bid = Database['public']['Tables']['bids']['Row']
 type BidCountRow = Database['public']['Tables']['bids_count_rows']['Row']
 type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
+type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -512,7 +513,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -573,6 +574,15 @@ export default function Bids() {
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
+  const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
+  const [addContactModalCustomer, setAddContactModalCustomer] = useState<Customer | null>(null)
+  const [addContactModalDate, setAddContactModalDate] = useState('')
+  const [addContactModalDetails, setAddContactModalDetails] = useState('')
+  const [savingContact, setSavingContact] = useState(false)
+  const [builderReviewSectionOpen, setBuilderReviewSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  const [builderReviewCardExpanded, setBuilderReviewCardExpanded] = useState<Record<string, boolean>>({})
+  const [builderReviewSearchQuery, setBuilderReviewSearchQuery] = useState('')
+  const [builderReviewSortOrder, setBuilderReviewSortOrder] = useState<'oldest-first' | 'newest-first'>('oldest-first')
 
   // Bid Board
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
@@ -858,6 +868,14 @@ export default function Bids() {
     setSubmissionSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
+  function toggleBuilderReviewSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
+    setBuilderReviewSectionOpen((prev: typeof builderReviewSectionOpen) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  function toggleBuilderReviewCard(customerId: string) {
+    setBuilderReviewCardExpanded((prev) => ({ ...prev, [customerId]: !(prev[customerId] !== false) }))
+  }
+
   useEffect(() => {
     if (activeTab !== 'submission-followup') return
     const id = setInterval(() => setTick((t) => t + 1), 60_000)
@@ -1076,6 +1094,18 @@ export default function Bids() {
       return
     }
     setSubmissionEntries((data as BidSubmissionEntry[]) ?? [])
+  }
+
+  async function loadCustomerContacts() {
+    const { data, error } = await supabase
+      .from('customer_contacts')
+      .select('*')
+      .order('contact_date', { ascending: false })
+    if (error) {
+      setError(`Failed to load customer contacts: ${error.message}`)
+      return
+    }
+    setCustomerContacts((data as CustomerContact[]) ?? [])
   }
 
   async function loadTakeoffCountRows(bidId: string) {
@@ -2186,7 +2216,7 @@ export default function Bids() {
       setSelectedPricingVersionId(null)
       setPriceBookEntries([])
       if (selectedBidForPricing?.selected_price_book_version_id === pricingVersionToDelete.id) {
-        saveBidSelectedPriceBookVersion(selectedBidForPricing.id, null)
+        saveBidSelectedPriceBookVersion(selectedBidForPricing!.id, null)
         await loadBids()
       }
     }
@@ -2343,7 +2373,7 @@ export default function Bids() {
       if (selectedLaborBookVersionId === v.id) {
         setSelectedLaborBookVersionId(null)
         if (selectedBidForCostEstimate?.selected_labor_book_version_id === v.id) {
-          saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
+          saveBidSelectedLaborBookVersion(selectedBidForCostEstimate!.id, null)
           await loadBids()
         }
       }
@@ -2493,7 +2523,7 @@ export default function Bids() {
       if (selectedTakeoffBookVersionId === v.id) {
         setSelectedTakeoffBookVersionId(null)
         if (selectedBidForTakeoff?.selected_takeoff_book_version_id === v.id) {
-          saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
+          saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff!.id, null)
           void loadBids()
         }
       }
@@ -2679,7 +2709,7 @@ export default function Bids() {
         const fixtureLower = (row.fixture ?? '').toLowerCase()
         for (const entry of entriesList) {
           const matchesPrimary = entry.fixture_name.toLowerCase() === fixtureLower
-          const matchesAlias = (entry.alias_names ?? []).some((alias) => alias.trim().toLowerCase() === fixtureLower)
+          const matchesAlias = (entry.alias_names ?? []).some((alias: string) => alias.trim().toLowerCase() === fixtureLower)
           if (!matchesPrimary && !matchesAlias) continue
           const items = itemsByEntryId.get(entry.id) ?? []
           for (const item of items) {
@@ -4956,7 +4986,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
+        await Promise.all([loadCustomers(), loadBids(), loadCustomerContacts(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }
       loadForServiceType()
     }
@@ -6000,6 +6030,41 @@ export default function Bids() {
     }, 0)
   }
 
+  // Builder Review: customers sorted by last contact (oldest or newest first, nulls last)
+  const builderReviewCustomersSorted = useMemo(() => {
+    function getLastContactForCustomer(customerId: string): string | null {
+      const customerBids = bids.filter((b) => b.customer_id === customerId)
+      const customerContactDates = customerContacts.filter((c: CustomerContact) => c.customer_id === customerId).map((c: CustomerContact) => c.contact_date)
+      const dates: string[] = [...customerContactDates]
+      for (const bid of customerBids) {
+        if (bid.last_contact) dates.push(bid.last_contact)
+        const entryDate = lastContactFromEntries[bid.id]
+        if (entryDate) dates.push(entryDate)
+      }
+      if (dates.length === 0) return null
+      return dates.reduce((a, b) => (new Date(b) > new Date(a) ? b : a))
+    }
+    const asc = builderReviewSortOrder === 'oldest-first'
+    return [...customers].sort((a, b) => {
+      const aDate = getLastContactForCustomer(a.id)
+      const bDate = getLastContactForCustomer(b.id)
+      if (!aDate && !bDate) return a.name.localeCompare(b.name)
+      if (!aDate) return 1
+      if (!bDate) return -1
+      return asc ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate)
+    })
+  }, [customers, bids, customerContacts, lastContactFromEntries, builderReviewSortOrder])
+
+  const builderReviewCustomersFiltered = useMemo(() => {
+    if (!builderReviewSearchQuery.trim()) return builderReviewCustomersSorted
+    const q = builderReviewSearchQuery.toLowerCase().trim()
+    return builderReviewCustomersSorted.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.address?.toLowerCase().includes(q) ?? false)
+    )
+  }, [builderReviewCustomersSorted, builderReviewSearchQuery])
+
   const wonBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'won') : []
   const lostBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'lost') : []
   const wonBidsForBuilder = viewingGcBuilder ? bids.filter((b) => b.gc_builder_id === viewingGcBuilder.id && b.outcome === 'won') : []
@@ -6086,6 +6151,9 @@ export default function Bids() {
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
           Bid Board
+        </button>
+        <button type="button" onClick={() => setActiveTab('builder-review')} style={tabStyle(activeTab === 'builder-review')}>
+          Builder Review
         </button>
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button type="button" onClick={() => setActiveTab('counts')} style={tabStyle(activeTab === 'counts')}>
@@ -6286,6 +6354,206 @@ export default function Bids() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Builder Review Tab */}
+      {activeTab === 'builder-review' && (
+        <div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Search builders..."
+              value={builderReviewSearchQuery}
+              onChange={(e) => setBuilderReviewSearchQuery(e.target.value)}
+              style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+            <button
+              type="button"
+              onClick={() => setBuilderReviewSortOrder((prev) => (prev === 'oldest-first' ? 'newest-first' : 'oldest-first'))}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #d1d5db',
+                background: builderReviewSortOrder === 'oldest-first' ? '#f3f4f6' : '#eff6ff',
+                color: builderReviewSortOrder === 'oldest-first' ? '#374151' : '#3b82f6',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              {builderReviewSortOrder === 'oldest-first' ? 'Oldest first' : 'Newest first'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBuilderReviewCardExpanded(Object.fromEntries(builderReviewCustomersFiltered.map((c) => [c.id, false])))}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#374151', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              Collapse all
+            </button>
+            <button
+              type="button"
+              onClick={() => setBuilderReviewCardExpanded({})}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#374151', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              Expand all
+            </button>
+          </div>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Sorted by last contact. Add outreach not tied to bids via General contact.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {builderReviewCustomersFiltered.map((customer) => {
+              const customerBids = bids.filter((b) => b.customer_id === customer.id)
+              const brUnsent = customerBids.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+              const brPending = customerBids.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+              const brWon = customerBids.filter((b) => b.outcome === 'won')
+              const brStartedOrComplete = customerBids.filter((b) => b.outcome === 'started_or_complete')
+              const brLost = customerBids.filter((b) => b.outcome === 'lost')
+              const hasBids = customerBids.length > 0
+              const lastContact = (() => {
+                const dates: string[] = customerContacts.filter((c: CustomerContact) => c.customer_id === customer.id).map((c: CustomerContact) => c.contact_date)
+                for (const bid of customerBids) {
+                  if (bid.last_contact) dates.push(bid.last_contact)
+                  const ed = lastContactFromEntries[bid.id]
+                  if (ed) dates.push(ed)
+                }
+                if (dates.length === 0) return null
+                return dates.reduce((a, b) => (new Date(b) > new Date(a) ? b : a))
+              })()
+              const isCardExpanded = builderReviewCardExpanded[customer.id] !== false
+              return (
+                <div key={customer.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: 'white' }}>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggleBuilderReviewCard(customer.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBuilderReviewCard(customer.id) } }}
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      background: '#f9fafb',
+                      borderBottom: isCardExpanded && (hasBids || customerContacts.some((c: CustomerContact) => c.customer_id === customer.id)) ? '1px solid #e5e7eb' : 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.875rem', color: '#6b7280' }} aria-hidden>{isCardExpanded ? '\u25BC' : '\u25B6'}</span>
+                      <div>
+                        <strong>{customer.name}</strong>
+                        {customer.address && <span style={{ marginLeft: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>{customer.address}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                      <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        Last contact: {lastContact ? formatTimeSinceLastContact(lastContact) : '—'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddContactModalCustomer(customer)
+                          setAddContactModalDate(new Date().toISOString().slice(0, 10))
+                          setAddContactModalDetails('')
+                        }}
+                        style={{ padding: '0.375rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        General contact
+                      </button>
+                    </div>
+                  </div>
+                  {isCardExpanded && hasBids && (
+                    <div style={{ padding: '0.75rem 1.25rem' }}>
+                      {[
+                        { key: 'unsent' as const, label: 'Unsent', bids: brUnsent },
+                        { key: 'pending' as const, label: 'Not yet won or lost', bids: brPending },
+                        { key: 'won' as const, label: 'Won', bids: brWon },
+                        { key: 'startedOrComplete' as const, label: 'Started or Complete', bids: brStartedOrComplete },
+                        { key: 'lost' as const, label: 'Lost', bids: brLost },
+                      ].map(({ key, label, bids: sectionBids }) => (
+                        <div key={key}>
+                          <button
+                            type="button"
+                            onClick={() => toggleBuilderReviewSection(key)}
+                            style={{ margin: '0.5rem 0 0.25rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                          >
+                            <span>{builderReviewSectionOpen[key] ? '\u25BC' : '\u25B6'}</span>
+                            {label} ({sectionBids.length})
+                          </button>
+                          {builderReviewSectionOpen[key] && sectionBids.length > 0 && (
+                            <ul style={{ margin: '0.25rem 0 0.5rem 1.5rem', padding: 0, listStyle: 'none' }}>
+                              {sectionBids.map((bid) => (
+                                <li key={bid.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditBid(bid)}
+                                    style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left', fontSize: '0.875rem' }}
+                                  >
+                                    {formatBidNameWithValue(bid)}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedBidForSubmission(bid)
+                                      setActiveTab('submission-followup')
+                                      setScrollToContactFromBidBoard(true)
+                                    }}
+                                    title="View submissions"
+                                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#6b7280' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                      <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
+                                    </svg>
+                                  </button>
+                                  {' — '}
+                                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                    due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {isCardExpanded && (() => {
+                    const contacts = customerContacts
+                      .filter((c: CustomerContact) => c.customer_id === customer.id)
+                      .sort((a, b) => (new Date(b.contact_date).getTime() - new Date(a.contact_date).getTime()))
+                    if (contacts.length === 0) return null
+                    return (
+                      <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>General contact</div>
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact method</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time and date</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {contacts.map((cc) => (
+                                <tr key={cc.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.75rem' }}>—</td>
+                                  <td style={{ padding: '0.75rem' }}>{cc.details ?? '—'}</td>
+                                  <td style={{ padding: '0.75rem' }}>{cc.contact_date ? new Date(cc.contact_date).toLocaleString() : '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -10800,6 +11068,74 @@ export default function Bids() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Contact modal (Builder Review) */}
+      {addContactModalCustomer && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+          <div style={{ background: 'white', padding: '1.5rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>General contact – {addContactModalCustomer.name}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="add-contact-date" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Date</label>
+              <input
+                id="add-contact-date"
+                type="date"
+                value={addContactModalDate}
+                onChange={(e) => setAddContactModalDate(e.target.value)}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="add-contact-details" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Details</label>
+              <textarea
+                id="add-contact-details"
+                value={addContactModalDetails}
+                onChange={(e) => setAddContactModalDetails(e.target.value)}
+                placeholder="Notes about this outreach…"
+                rows={4}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => { setAddContactModalCustomer(null); setAddContactModalDetails('') }}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingContact}
+                onClick={async () => {
+                  if (!addContactModalCustomer || !authUser?.id) return
+                  setSavingContact(true)
+                  const contactDate = addContactModalDate ? `${addContactModalDate}T12:00:00Z` : new Date().toISOString()
+                  const { error: err } = await supabase
+                    .from('customer_contacts')
+                    .insert({
+                      customer_id: addContactModalCustomer.id,
+                      contact_date: contactDate,
+                      details: addContactModalDetails.trim() || null,
+                      created_by: authUser.id,
+                    })
+                  setSavingContact(false)
+                  if (err) {
+                    setError(`Failed to save contact: ${err.message}`)
+                    return
+                  }
+                  await loadCustomerContacts()
+                  await loadBids()
+                  setAddContactModalCustomer(null)
+                  setAddContactModalDetails('')
+                }}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingContact ? 'not-allowed' : 'pointer' }}
+              >
+                {savingContact ? 'Saving…' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       )}

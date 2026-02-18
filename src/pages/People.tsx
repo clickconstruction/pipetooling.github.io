@@ -143,6 +143,7 @@ export default function People() {
   })
   const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10))
   const [showMaxHours, setShowMaxHours] = useState(false)
+  const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1077,6 +1078,15 @@ export default function People() {
 
   function getCostForPersonDateMatrix(personName: string, workDate: string): number {
     if (!showMaxHours) return getCostForPersonDate(personName, workDate)
+    const cfg = payConfig[personName]
+    const wage = cfg?.hourly_wage ?? 0
+    const day = new Date(workDate + 'T12:00:00').getDay()
+    if (day >= 1 && day <= 5) return wage * 8
+    return getCostForPersonDate(personName, workDate)
+  }
+
+  function getCostForPersonDateTeams(personName: string, workDate: string): number {
+    if (!showMaxHoursTeams) return getCostForPersonDate(personName, workDate)
     const cfg = payConfig[personName]
     const wage = cfg?.hourly_wage ?? 0
     const day = new Date(workDate + 'T12:00:00').getDay()
@@ -2341,7 +2351,7 @@ export default function People() {
               {teams.map((team) => {
                 const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
                 const costForRange = (start: string, end: string) =>
-                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDate(p, d), 0), 0)
+                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
                 const today = new Date().toISOString().slice(0, 10)
                 const yesterday = (() => {
                   const d = new Date()
@@ -2367,7 +2377,7 @@ export default function People() {
                 const memberCostByWeekday = team.members.map((m) => {
                   const byDay = dayNames.map((_, dayOfWeek) => {
                     const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
-                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDate(m, d), 0)
+                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(m, d), 0)
                   })
                   const total = byDay.reduce((s, v) => s + v, 0)
                   return { member: m, byDay, total }
@@ -2455,6 +2465,14 @@ export default function People() {
                 )
               })}
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showMaxHoursTeams}
+                onChange={(e) => setShowMaxHoursTeams(e.target.checked)}
+              />
+              show max hours
+            </label>
           </section>
           </>
           )}
