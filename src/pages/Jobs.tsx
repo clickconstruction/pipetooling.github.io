@@ -180,8 +180,7 @@ export default function Jobs() {
           .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), revenue: revNum })
           .eq('id', editing.id)
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
-        for (let i = 0; i < validMaterials.length; i++) {
-          const m = validMaterials[i]
+        for (const [i, m] of validMaterials.entries()) {
           await supabase.from('jobs_ledger_materials').insert({
             job_id: editing.id,
             description: m.description.trim(),
@@ -214,8 +213,7 @@ export default function Jobs() {
         if (insertErr) throw insertErr
         const jobId = inserted?.id
         if (jobId) {
-          for (let i = 0; i < validMaterials.length; i++) {
-            const m = validMaterials[i]
+          for (const [i, m] of validMaterials.entries()) {
             await supabase.from('jobs_ledger_materials').insert({
               job_id: jobId,
               description: m.description.trim(),

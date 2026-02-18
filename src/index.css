@@ -56,6 +56,8 @@ button {
 
 .appNav {
   padding: var(--app-nav-pad-y) var(--app-nav-pad-x);
+  /* iOS: push nav below status bar / notch so menu & settings stay tappable */
+  padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top, 0px));
 }
 
 .appMain {
