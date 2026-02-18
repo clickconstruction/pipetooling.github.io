@@ -142,6 +142,7 @@ export default function People() {
     return start.toISOString().slice(0, 10)
   })
   const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10))
+  const [showMaxHours, setShowMaxHours] = useState(false)
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1072,6 +1073,15 @@ export default function People() {
     const wage = cfg?.hourly_wage ?? 0
     const hrs = getEffectiveHours(personName, workDate)
     return wage * hrs
+  }
+
+  function getCostForPersonDateMatrix(personName: string, workDate: string): number {
+    if (!showMaxHours) return getCostForPersonDate(personName, workDate)
+    const cfg = payConfig[personName]
+    const wage = cfg?.hourly_wage ?? 0
+    const day = new Date(workDate + 'T12:00:00').getDay()
+    if (day >= 1 && day <= 5) return wage * 8
+    return getCostForPersonDate(personName, workDate)
   }
 
   function getDaysInRange(start: string, end: string): string[] {
@@ -2203,7 +2213,17 @@ export default function People() {
           </section>
           )}
           <section>
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Cost matrix</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showMaxHours}
+                  onChange={(e) => setShowMaxHours(e.target.checked)}
+                />
+                show max hours
+              </label>
+            </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <label>
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
@@ -2258,14 +2278,14 @@ export default function People() {
                   {showPeopleForMatrix.map((personName) => {
                     const cfg = payConfig[personName]
                     const wage = cfg?.hourly_wage ?? 0
-                    const periodTotal = getDaysInRange(matrixStartDate, matrixEndDate).reduce((s, d) => s + getCostForPersonDate(personName, d), 0)
+                    const periodTotal = getDaysInRange(matrixStartDate, matrixEndDate).reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white' }}>
                           {personName} | {wage > 0 ? `$${Math.round(periodTotal)}` : '—'}
                         </td>
                         {getDaysInRange(matrixStartDate, matrixEndDate).map((d) => {
-                          const cost = getCostForPersonDate(personName, d)
+                          const cost = getCostForPersonDateMatrix(personName, d)
                           return (
                             <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
                               {wage > 0 ? `$${Math.round(cost)}` : '—'}
@@ -2279,13 +2299,13 @@ export default function People() {
                     <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
                       Total | ${Math.round(
                         getDaysInRange(matrixStartDate, matrixEndDate).reduce(
-                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDate(p, d), 0),
+                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
                           0
                         )
                       )}
                     </td>
                     {getDaysInRange(matrixStartDate, matrixEndDate).map((d) => {
-                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDate(p, d), 0)
+                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
                       return (
                         <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
                           ${Math.round(dayTotal)}
@@ -2342,6 +2362,20 @@ export default function People() {
                 const last7Cost = costForRange(last7Start, today)
                 const last3Cost = costForRange(last3Start, today)
                 const yesterdayCost = costForRange(yesterday, yesterday)
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
+                const memberCostByWeekday = team.members.map((m) => {
+                  const byDay = dayNames.map((_, dayOfWeek) => {
+                    const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDate(m, d), 0)
+                  })
+                  const total = byDay.reduce((s, v) => s + v, 0)
+                  return { member: m, byDay, total }
+                })
+                const costByWeekday = dayNames.map((_, dayOfWeek) =>
+                  memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+                )
+                const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
                 return (
                   <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
@@ -2388,6 +2422,35 @@ export default function People() {
                       </select>
                       )}
                     </div>
+                    <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                          {dayNames.map((name) => (
+                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                          ))}
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberCostByWeekday.map(({ member, byDay, total }) => (
+                          <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
+                            {byDay.map((val, i) => (
+                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val)}</td>
+                            ))}
+                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total)}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                          {costByWeekday.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val)}</td>
+                          ))}
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )
               })}
