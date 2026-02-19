@@ -99,7 +99,7 @@ Customer (has master_user_id)
 ```
 pipetooling.github.io/
 ├── src/
-│   ├── pages/              # Main UI pages (Customers, Projects, Workflow, Bids, Materials, Checklist, etc.)
+│   ├── pages/              # Main UI pages (Customers, Projects, Workflow, People, Jobs, Bids, Materials, Checklist, etc.)
 │   ├── components/         # Reusable UI components
 │   ├── contexts/           # React contexts (AuthContext, etc.)
 │   ├── lib/               # Utilities (supabaseClient, errorHandling, etc.)
@@ -121,6 +121,7 @@ pipetooling.github.io/
 - **`src/pages/Bids.tsx`** (~1200 lines) - 6-tab bid estimation system
 - **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
+- **`src/pages/Jobs.tsx`** - Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary tabs)
 - **`src/contexts/AuthContext.tsx`** - Authentication state and user role
 - **`src/lib/supabaseClient.ts`** - Supabase client configuration
 - **`src/lib/errorHandling.ts`** - Retry wrappers and error utilities

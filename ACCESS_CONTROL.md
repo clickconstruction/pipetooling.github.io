@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-18
+last_updated: 2026-02-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -119,7 +119,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 **Purpose**: Project and business management
 
 **Access**:
-- Dashboard, Customers, Projects, People, Calendar, Bids, Materials, Settings (limited)
+- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Settings (limited)
 
 **Permissions**:
 
@@ -148,8 +148,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
-- Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
-- Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
+- Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
+- Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Pay tab (dev, Pay Approved Masters, or shared by dev): People pay config (dev/approved only), Cost matrix, Teams. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via "Share Cost Matrix and Teams" section
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
@@ -182,7 +182,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 **Purpose**: Support masters with customer and project work
 
 **Access**:
-- Dashboard, Customers, Projects, People, Calendar, Bids, Materials
+- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials
 - **Blocked**: Settings (except viewing adoptions), Templates
 
 **Permissions**:
@@ -215,8 +215,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 **People**:
 - View people they created and people shared with their master (via master_shares)
-- Labor tab: Add labor jobs per person
-- Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
+- Jobs page — Labor tab: Add labor jobs per person
+- Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 - Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
 - Hours tab (if master is Pay Approved): Timesheet entry for people in roster
 
@@ -242,7 +242,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 **Access**:
 - Dashboard, Calendar only
-- **Blocked**: All other pages (Customers, Projects, People, Bids, Materials, Settings, Templates)
+- **Blocked**: All other pages (Customers, Projects, People, Jobs, Bids, Materials, Settings, Templates)
 
 **Permissions**:
 
@@ -282,7 +282,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 **Access**:
 - Dashboard, Bids, Materials, Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Templates
+- **Blocked**: Customers, Projects, People, Jobs, Templates
 
 **Service Type Filtering**:
 - Devs can restrict an estimator to specific service types (e.g., Electrical only, Plumbing only)
@@ -345,6 +345,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ |
@@ -391,9 +392,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
 | Create people | ✅ | ✅ | ✅ | ❌ | ❌ |
 | Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
-| Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
-| Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
+| Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
+| Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
 | Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ |
 | Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ |
 

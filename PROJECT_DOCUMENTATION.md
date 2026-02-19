@@ -692,7 +692,7 @@ WHERE proname IN (
 - **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
 
 #### `public.people_labor_jobs`
-- **Purpose**: Labor jobs from People Labor tab; displayed in Ledger
+- **Purpose**: Labor jobs from Jobs page (Labor tab); displayed in Sub Sheet Ledger tab on Jobs
 - **Key Fields**:
   - `id` (uuid, PK)
   - `master_user_id` (uuid, FK → `users.id` ON DELETE CASCADE)
@@ -1854,6 +1854,7 @@ user_id = auth.uid()
 
 ### 5. People Roster
 - **Page**: `People.tsx`
+- **Tabs**: **Users** (default), **Pay**, **Hours**
 - **Features**:
   - List people by kind (Assistant, Master Technician, Subcontractor)
   - Add people without user accounts
@@ -1864,14 +1865,23 @@ user_id = auth.uid()
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
-  - **Labor Tab**: Add labor jobs per person; form fields: User (assigned_to_name), Address, Job # (max 10 chars), Date, Labor rate; fixture rows (Fixture, Count, hrs/unit, Fixed); Add Row, Save
-  - **Ledger Tab**: Table of all labor jobs (User, Address, Job #, Date, Labor rate, Total hrs); Edit button opens modal to update job and fixture items; Delete button removes job; Print for sub uses job_date when set
   - **Pay Tab** (dev, approved masters, or shared by dev): People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
-  - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people and labor jobs; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; labor jobs (assigned_to_name, address, job_number, job_date, labor_rate); labor job items (fixture, count, hrs_per_unit, is_fixed); people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
+  - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
+- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
+- **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
 
-### 6. Calendar View
+### 6. Jobs Page
+- **Page**: `Jobs.tsx`
+- **Tabs**: **Labor**, **Sub Sheet Ledger**, **HCP Jobs**, **Upcoming**, **Teams Summary**
+- **Features**:
+  - **Labor Tab**: Add labor jobs; form fields: User (assigned_to_name, from roster), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People for the User picker.
+  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date); Edit opens modal to update job and fixture items; Delete removes job; date editable inline.
+  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search, Edit/Delete.
+  - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
+- **Data**: Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
+
+### 7. Calendar View
 - **Page**: `Calendar.tsx`
 - **Features**:
   - Month-view calendar
@@ -1883,7 +1893,7 @@ user_id = auth.uid()
   - Navigation (prev/next month, "Today")
   - **Access Control**: Assistants/subcontractors only see stages assigned to them
 
-### 7. Dashboard
+### 8. Dashboard
 - **Page**: `Dashboard.tsx`
 - **Features**:
   - **User Role Display**: Shows current user's role
@@ -1925,7 +1935,7 @@ user_id = auth.uid()
     - Status, start/end times displayed
     - Color-coded by status (green for approved/completed, red for rejected)
 
-### 8. Settings
+### 9. Settings
 - **Page**: `Settings.tsx`
 - **Layout/Navigation**:
   - **Gear menu** (top-right in Layout): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime)
@@ -1965,7 +1975,7 @@ user_id = auth.uid()
     - "Export bids backup" downloads bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items
     - Filenames include date (e.g. `projects-backup-2026-01-26.json`). Exports respect RLS.
 
-### 9. Notifications
+### 10. Notifications
 - **System**: `step_subscriptions` table + step-level flags + `send-workflow-notification` Edge Function
 - **Features**:
   - **Two Subscription Types**:
@@ -1991,7 +2001,7 @@ user_id = auth.uid()
 - **Email Lookup**: Recipients are found by matching names in `people` and `users` tables
 - **Template Variables**: Supports `{{name}}`, `{{email}}`, `{{project_name}}`, `{{stage_name}}`, `{{assigned_to_name}}`, `{{workflow_link}}`, `{{previous_stage_name}}`, `{{rejection_reason}}`
 
-### 10. Materials Management
+### 11. Materials Management
 - **Page**: `Materials.tsx`
 - **Route**: `/materials`
 - **Access**: Devs and master_technicians only
@@ -2133,7 +2143,7 @@ user_id = auth.uid()
 - Assistants can confirm prices on PO items (can update price_confirmed_at and price_confirmed_by fields only)
 - Price history table: devs and master_technicians can read (write handled by trigger)
 
-### 11. Action History & Audit Trail
+### 12. Action History & Audit Trail
 - **System**: `project_workflow_step_actions` table
 - **Features**:
   - Complete ledger of all step state changes
@@ -2142,7 +2152,7 @@ user_id = auth.uid()
   - Displayed in "Action Ledger" section on each step card
   - Provides full audit trail for compliance and debugging
 
-### 12. Bids Management
+### 13. Bids Management
 - **Page**: `Bids.tsx`
 - **Route**: `/bids`
 - **Access**: Devs, master_technicians, assistants, and **estimators** (estimators see Dashboard, Materials, Bids, Calendar, Checklist in nav; no access to `/customers` or `/projects`)
@@ -2216,7 +2226,7 @@ user_id = auth.uid()
 
 **RLS**: Bids tables allow devs, masters, assistants, and estimators full access (assistants via `allow_assistants_access_bids.sql`, estimators via `allow_estimators_access_bids.sql`; masters see all bids via `allow_masters_see_all_bids.sql`). Child tables (bids_count_rows, bids_submission_entries) follow parent bid access. Customers table: estimators can SELECT all and INSERT when master is assigned (see `allow_estimators_select_customers.sql`).
 
-### 13. Integration Features
+### 14. Integration Features
 - **Google Maps Integration**: 
   - Project addresses on Dashboard are clickable
   - Opens Google Maps search in new tab with project address
@@ -2256,8 +2266,9 @@ pipetooling.github.io/
 │   │   ├── CustomerForm.tsx    # Create/edit customer
 │   │   ├── Customers.tsx       # List customers
 │   │   ├── Dashboard.tsx       # User dashboard
-│   │   ├── People.tsx          # People roster
-│   │   ├── ProjectForm.tsx     # Create/edit project
+│   │   ├── People.tsx          # People roster (Users, Pay, Hours)
+│   │   ├── Jobs.tsx           # Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary)
+│   │   ├── ProjectForm.tsx    # Create/edit project
 │   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
 │   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
 │   │   ├── Projects.tsx       # List projects
@@ -3123,7 +3134,8 @@ async function myFunction() {
 - `/customers` - Customer list
 - `/projects` - Project list
 - `/workflows/:projectId` - Workflow management
-- `/people` - People roster
+- `/people` - People roster (Users, Pay, Hours tabs)
+- `/jobs` - Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary tabs)
 - `/calendar` - Calendar view
 - `/materials` - Materials management (devs and masters only: price book, templates, purchase orders)
 - `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup; devs, masters, assistants)

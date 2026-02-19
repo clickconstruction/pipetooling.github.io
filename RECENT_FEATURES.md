@@ -7,19 +7,22 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-18
+last_updated: 2026-02-19
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.48 → v2.4"
+version_range: "v2.49 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.48)"
+  - name: "Latest Version (v2.49)"
     line: ~120
+    description: "Labor and Sub Sheet Ledger moved from People to Jobs"
+  - name: "v2.48"
+    line: ~165
     description: "Checklist FWD, Estimator Dashboard, iOS Safe Area, Jobs Fix"
   - name: "v2.47"
-    line: ~165
+    line: ~195
     description: "Hours Update Pay Sync via Supabase Realtime; Pay tab updates when any user changes hours"
   - name: "v2.46"
     line: ~175
@@ -73,55 +76,82 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-2. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-3. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-4. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-5. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-6. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-7. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-8. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-9. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-10. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-11. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-12. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-13. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-14. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-15. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-16. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-17. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-18. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-19. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-20. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-21. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-22. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-23. [Latest Updates (v2.26)](#latest-updates-v226)
-24. [Latest Updates (v2.25)](#latest-updates-v225)
-25. [Latest Updates (v2.24)](#latest-updates-v224)
-26. [Latest Updates (v2.23)](#latest-updates-v223)
-27. [Latest Updates (v2.22)](#latest-updates-v222)
-28. [Latest Updates (v2.21)](#latest-updates-v221)
-29. [Latest Updates (v2.20)](#latest-updates-v220)
-30. [Latest Updates (v2.19)](#latest-updates-v219)
-31. [Latest Updates (v2.18)](#latest-updates-v218)
-32. [Latest Updates (v2.17)](#latest-updates-v217)
-33. [Latest Updates (v2.16)](#latest-updates-v216)
-34. [Latest Updates (v2.15)](#latest-updates-v215)
-35. [Latest Updates (v2.14)](#latest-updates-v214)
-36. [Latest Updates (v2.13)](#latest-updates-v213)
-37. [Latest Updates (v2.12)](#latest-updates-v212)
-38. [Latest Updates (v2.11)](#latest-updates-v211)
-39. [Latest Updates (v2.10)](#latest-updates-v210)
-40. [Latest Updates (v2.9)](#latest-updates-v29)
-41. [Latest Updates (v2.8)](#latest-updates-v28)
-42. [Latest Updates (v2.7)](#latest-updates-v27)
-43. [Latest Updates (v2.6)](#latest-updates-v26)
+1. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+2. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+3. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+4. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+5. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+6. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+7. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+8. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+9. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+10. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+11. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+12. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+13. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+14. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+15. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+16. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+17. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+18. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+19. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+20. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+21. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+22. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+23. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+24. [Latest Updates (v2.26)](#latest-updates-v226)
+25. [Latest Updates (v2.25)](#latest-updates-v225)
+26. [Latest Updates (v2.24)](#latest-updates-v224)
+27. [Latest Updates (v2.23)](#latest-updates-v223)
+28. [Latest Updates (v2.22)](#latest-updates-v222)
+29. [Latest Updates (v2.21)](#latest-updates-v221)
+30. [Latest Updates (v2.20)](#latest-updates-v220)
+31. [Latest Updates (v2.19)](#latest-updates-v219)
+32. [Latest Updates (v2.18)](#latest-updates-v218)
+33. [Latest Updates (v2.17)](#latest-updates-v217)
+34. [Latest Updates (v2.16)](#latest-updates-v216)
+35. [Latest Updates (v2.15)](#latest-updates-v215)
+36. [Latest Updates (v2.14)](#latest-updates-v214)
+37. [Latest Updates (v2.13)](#latest-updates-v213)
+38. [Latest Updates (v2.12)](#latest-updates-v212)
+39. [Latest Updates (v2.11)](#latest-updates-v211)
+40. [Latest Updates (v2.10)](#latest-updates-v210)
+41. [Latest Updates (v2.9)](#latest-updates-v29)
+42. [Latest Updates (v2.8)](#latest-updates-v28)
+43. [Latest Updates (v2.7)](#latest-updates-v27)
+44. [Latest Updates (v2.6)](#latest-updates-v26)
 44. [Workflow Features](#workflow-features)
 45. [Calendar Updates](#calendar-updates)
 46. [Access Control](#access-control)
 47. [Email Templates](#email-templates)
 48. [Financial Tracking](#financial-tracking)
 49. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.49)
+
+### Labor and Sub Sheet Ledger moved from People to Jobs
+
+**Date**: 2026-02-19
+
+**Overview**:
+Labor and Sub Sheet Ledger tabs were moved from the People page to the Jobs page. People now has only **Users**, **Pay**, and **Hours** (default tab: Users). Jobs now has **Labor**, **Sub Sheet Ledger**, **HCP Jobs**, **Upcoming**, and **Teams Summary**.
+
+**People page** (`/people`):
+- **Tabs**: Users (default), Pay, Hours. Labor and Sub Sheet Ledger tabs and all related state, handlers, and UI removed.
+- No route or URL change; only which tabs appear.
+
+**Jobs page** (`/jobs`):
+- **Tabs** (in order): Labor | Sub Sheet Ledger | HCP Jobs | Upcoming | Teams Summary.
+- **Labor tab**: Same behavior as before—User picker (roster), Address, Job #, Service type, Labor rate, Date, fixture rows, Save Job, Print for sub, collapsible Labor book (versions/entries, Apply matching Labor Hours). Uses `people_labor_jobs` and `people_labor_job_items`.
+- **Sub Sheet Ledger tab**: Table of labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date, Edit/Delete). Edit Labor Job modal with same form as add; User selection via radio list.
+- Jobs loads roster (people + users) when Labor or Sub Sheet Ledger tab is active; same filters as People (devs include dev users). Helpers: `byKind`, `allRosterNames`, `isAlreadyUser`.
+
+**Cross-checks**:
+- No route changes. No backend or migration changes; same RLS and tables.
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/People.tsx`
 
 ---
 
