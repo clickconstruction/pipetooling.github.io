@@ -878,8 +878,6 @@ export default function Dashboard() {
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
-  const canAccessBids = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator'
-
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
