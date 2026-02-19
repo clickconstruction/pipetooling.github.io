@@ -215,6 +215,8 @@ export default function Settings() {
   const [adoptedAssistantIds, setAdoptedAssistantIds] = useState<Set<string>>(new Set())
   const [adoptionSaving, setAdoptionSaving] = useState(false)
   const [adoptionError, setAdoptionError] = useState<string | null>(null)
+  // Dev-only: which master's adoptions we're managing (null = current user)
+  const [selectedMasterIdForAdoptions, setSelectedMasterIdForAdoptions] = useState<string | null>(null)
   const [masters, setMasters] = useState<UserRow[]>([])
   const [sharedMasterIds, setSharedMasterIds] = useState<Set<string>>(new Set())
   const [sharingSaving, setSharingSaving] = useState(false)
@@ -831,8 +833,12 @@ export default function Settings() {
     }
   }
 
+  // When dev has selected another master, we manage that master's adoptions; otherwise current user's
+  const adoptionMasterId = (myRole === 'dev' && selectedMasterIdForAdoptions) ? selectedMasterIdForAdoptions : authUser?.id ?? null
+
   async function toggleAdoption(assistantId: string, isAdopted: boolean) {
-    if (!authUser?.id) return
+    const masterId = adoptionMasterId ?? authUser?.id
+    if (!masterId) return
     
     setAdoptionSaving(true)
     setAdoptionError(null)
@@ -842,7 +848,7 @@ export default function Settings() {
       const { error } = await supabase
         .from('master_assistants')
         .delete()
-        .eq('master_id', authUser.id)
+        .eq('master_id', masterId)
         .eq('assistant_id', assistantId)
       
       if (error) {
@@ -859,7 +865,7 @@ export default function Settings() {
       const { error } = await supabase
         .from('master_assistants')
         .insert({
-          master_id: authUser.id,
+          master_id: masterId,
           assistant_id: assistantId,
         })
       
@@ -871,6 +877,13 @@ export default function Settings() {
     }
     
     setAdoptionSaving(false)
+  }
+
+  async function handleAdoptionMasterChange(masterId: string | null) {
+    setSelectedMasterIdForAdoptions(masterId)
+    if (authUser?.id) {
+      await loadAssistantsAndAdoptions(masterId ?? authUser.id)
+    }
   }
 
   async function loadMastersAndShares(sharingMasterId: string) {
@@ -3010,25 +3023,6 @@ export default function Settings() {
           <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
             Sign out
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              const base = window.location.origin + window.location.pathname
-              const hash = window.location.hash || ''
-              window.location.href = base + '?nocache=' + Date.now() + hash
-            }}
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            Hard Reload
-          </button>
           <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
             Change password
           </button>
@@ -3710,8 +3704,26 @@ export default function Settings() {
       {(myRole === 'master_technician' || myRole === 'dev') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Assistants</h2>
+          {myRole === 'dev' && (
+            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+              <label htmlFor="adoption-master-select" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
+              <select
+                id="adoption-master-select"
+                value={selectedMasterIdForAdoptions ?? ''}
+                onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+              >
+                <option value="">Myself</option>
+                {masters.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name || m.email || m.id}</option>
+                ))}
+              </select>
+            </p>
+          )}
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants can not see private notes or financials.
+            {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
+              ? `Adopt or unadopt assistants for the selected master. Changes apply to that master's access.`
+              : 'Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants can not see private notes or financials.'}
           </p>
           {adoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{adoptionError}</p>}
           {assistants.length === 0 ? (

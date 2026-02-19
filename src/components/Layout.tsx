@@ -286,11 +286,34 @@ export default function Layout() {
                     padding: '0.5rem 1rem',
                     textDecoration: 'none',
                     color: 'inherit',
-                    borderBottom: role === 'dev' ? '1px solid #e5e7eb' : undefined,
+                    borderBottom: '1px solid #e5e7eb',
                   }}
                 >
                   Settings
                 </NavLink>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGearOpen(false)
+                    const base = window.location.origin + window.location.pathname
+                    const hash = window.location.hash || ''
+                    window.location.href = base + '?nocache=' + Date.now() + hash
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'inherit',
+                    color: '#dc2626',
+                    borderBottom: role === 'dev' ? '1px solid #e5e7eb' : undefined,
+                  }}
+                >
+                  Hard Reload
+                </button>
                 {role === 'dev' && (
                   <button
                     type="button"

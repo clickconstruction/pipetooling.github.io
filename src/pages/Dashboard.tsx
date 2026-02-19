@@ -884,7 +884,7 @@ export default function Dashboard() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
         <h1 style={{ margin: 0 }}>Dashboard</h1>
-        {canAccessBids && (
+        {role === 'master_technician' && (
           <Link
             to="/bids?tab=builder-review"
             style={{
