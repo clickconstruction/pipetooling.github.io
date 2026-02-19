@@ -18,7 +18,6 @@ type JobsTab = 'labor' | 'sub_sheet_ledger' | 'ledger' | 'upcoming' | 'teams-sum
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
-const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator']
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
 
 // Labor / Sub Sheet Ledger types
@@ -197,14 +196,31 @@ export default function Jobs() {
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
 
-  function allRosterNames(): string[] {
-    const names = new Set<string>()
-    for (const k of KINDS) {
-      for (const item of byKind(k)) {
-        if (item.name?.trim()) names.add(item.name.trim())
-      }
+  function rosterNamesSubcontractors(): string[] {
+    return byKind('sub')
+      .map((item) => item.name?.trim())
+      .filter((n): n is string => !!n)
+      .sort((a, b) => a.localeCompare(b))
+  }
+
+  function rosterNamesEveryoneElse(): string[] {
+    const result: string[] = []
+    const seen = new Set<string>()
+    const kindsExceptSub: PersonKind[] = ['master_technician', 'assistant', 'estimator']
+    for (const k of kindsExceptSub) {
+      const names = byKind(k)
+        .map((item) => item.name?.trim())
+        .filter((n): n is string => !!n && !seen.has(n))
+      names.forEach((n) => seen.add(n))
+      result.push(...names.sort((a, b) => a.localeCompare(b)))
     }
-    return Array.from(names).sort()
+    const devNames = users
+      .filter((u) => u.role === 'dev')
+      .map((u) => u.name?.trim())
+      .filter((n): n is string => !!n && !seen.has(n))
+    devNames.forEach((n) => seen.add(n))
+    result.push(...devNames.sort((a, b) => a.localeCompare(b)))
+    return result
   }
 
   async function loadServiceTypes() {
@@ -991,11 +1007,11 @@ export default function Jobs() {
         <button type="button" onClick={() => setActiveTab('labor')} style={tabStyle(activeTab === 'labor')}>
           Labor
         </button>
-        <button type="button" onClick={() => setActiveTab('sub_sheet_ledger')} style={tabStyle(activeTab === 'sub_sheet_ledger')}>
-          Sub Sheet Ledger
-        </button>
         <button type="button" onClick={() => setActiveTab('ledger')} style={tabStyle(activeTab === 'ledger')}>
           HCP Jobs
+        </button>
+        <button type="button" onClick={() => setActiveTab('sub_sheet_ledger')} style={tabStyle(activeTab === 'sub_sheet_ledger')}>
+          Sub Sheet Ledger
         </button>
         <button type="button" onClick={() => setActiveTab('upcoming')} style={tabStyle(activeTab === 'upcoming')}>
           Upcoming
@@ -1011,19 +1027,43 @@ export default function Jobs() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 720 }}>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 120, overflowY: 'auto' }}>
-                {allRosterNames().map((n) => (
-                  <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    <input
-                      type="radio"
-                      name="labor-user"
-                      checked={laborAssignedTo === n}
-                      onChange={() => setLaborAssignedTo(n)}
-                      style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                    />
-                    <span>{n}</span>
-                  </label>
-                ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                    {rosterNamesEveryoneElse().map((n) => (
+                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="radio"
+                          name="labor-user"
+                          checked={laborAssignedTo === n}
+                          onChange={() => setLaborAssignedTo(n)}
+                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                        />
+                        <span>{n}</span>
+                      </label>
+                    ))}
+                    {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                    {rosterNamesSubcontractors().map((n) => (
+                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="radio"
+                          name="labor-user"
+                          checked={laborAssignedTo === n}
+                          onChange={() => setLaborAssignedTo(n)}
+                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                        />
+                        <span>{n}</span>
+                      </label>
+                    ))}
+                    {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                  </div>
+                </div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -1501,7 +1541,8 @@ export default function Jobs() {
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                         {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
                       </td>
-                      <td style={{ padding: '0.75rem', display: 'flex', gap: '0.35rem' }}>
+                      <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                         <button
                           type="button"
                           onClick={() => openEdit(job)}
@@ -1533,6 +1574,7 @@ export default function Jobs() {
                         >
                           {deletingId === job.id ? '…' : 'Delete'}
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1553,19 +1595,43 @@ export default function Jobs() {
             <form onSubmit={saveEditedLaborJob}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                  {allRosterNames().map((n) => (
-                    <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      <input
-                        type="radio"
-                        name="edit-labor-user"
-                        checked={editAssignedTo === n}
-                        onChange={() => setEditAssignedTo(n)}
-                        style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                      />
-                      <span>{n}</span>
-                    </label>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Everyone else</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                      {rosterNamesEveryoneElse().map((n) => (
+                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="radio"
+                            name="edit-labor-user"
+                            checked={editAssignedTo === n}
+                            onChange={() => setEditAssignedTo(n)}
+                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                          />
+                          <span>{n}</span>
+                        </label>
+                      ))}
+                      {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Subcontractors</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                      {rosterNamesSubcontractors().map((n) => (
+                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="radio"
+                            name="edit-labor-user"
+                            checked={editAssignedTo === n}
+                            onChange={() => setEditAssignedTo(n)}
+                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                          />
+                          <span>{n}</span>
+                        </label>
+                      ))}
+                      {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
