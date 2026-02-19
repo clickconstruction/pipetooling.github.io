@@ -12,14 +12,17 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.47 → v2.4"
+version_range: "v2.48 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.47)"
+  - name: "Latest Version (v2.48)"
     line: ~120
+    description: "Checklist FWD, Estimator Dashboard, iOS Safe Area, Jobs Fix"
+  - name: "v2.47"
+    line: ~165
     description: "Hours Update Pay Sync via Supabase Realtime; Pay tab updates when any user changes hours"
   - name: "v2.46"
-    line: ~140
+    line: ~175
     description: "Supabase disk IO optimizations, Materials batching, Load All default off"
   - name: "v2.45"
     line: ~130
@@ -70,54 +73,83 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-2. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-3. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-4. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-4. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-5. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-6. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-7. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-8. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-9. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-10. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-11. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-12. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-13. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-14. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-15. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-16. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-17. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-18. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-19. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-20. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-21. [Latest Updates (v2.26)](#latest-updates-v226)
-22. [Latest Updates (v2.25)](#latest-updates-v225)
-23. [Latest Updates (v2.24)](#latest-updates-v224)
-24. [Latest Updates (v2.23)](#latest-updates-v223)
-25. [Latest Updates (v2.22)](#latest-updates-v222)
-26. [Latest Updates (v2.21)](#latest-updates-v221)
-27. [Latest Updates (v2.20)](#latest-updates-v220)
-28. [Latest Updates (v2.19)](#latest-updates-v219)
-29. [Latest Updates (v2.18)](#latest-updates-v218)
-30. [Latest Updates (v2.17)](#latest-updates-v217)
-31. [Latest Updates (v2.16)](#latest-updates-v216)
-32. [Latest Updates (v2.15)](#latest-updates-v215)
-33. [Latest Updates (v2.14)](#latest-updates-v214)
-34. [Latest Updates (v2.13)](#latest-updates-v213)
-35. [Latest Updates (v2.12)](#latest-updates-v212)
-36. [Latest Updates (v2.11)](#latest-updates-v211)
-37. [Latest Updates (v2.10)](#latest-updates-v210)
-38. [Latest Updates (v2.9)](#latest-updates-v29)
-39. [Latest Updates (v2.8)](#latest-updates-v28)
-40. [Latest Updates (v2.7)](#latest-updates-v27)
-41. [Latest Updates (v2.6)](#latest-updates-v26)
-42. [Workflow Features](#workflow-features)
-43. [Calendar Updates](#calendar-updates)
-44. [Access Control](#access-control)
-45. [Email Templates](#email-templates)
-46. [Financial Tracking](#financial-tracking)
-47. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+2. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+3. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+4. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+5. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+6. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+7. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+8. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+9. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+10. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+11. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+12. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+13. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+14. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+15. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+16. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+17. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+18. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+19. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+20. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+21. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+22. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+23. [Latest Updates (v2.26)](#latest-updates-v226)
+24. [Latest Updates (v2.25)](#latest-updates-v225)
+25. [Latest Updates (v2.24)](#latest-updates-v224)
+26. [Latest Updates (v2.23)](#latest-updates-v223)
+27. [Latest Updates (v2.22)](#latest-updates-v222)
+28. [Latest Updates (v2.21)](#latest-updates-v221)
+29. [Latest Updates (v2.20)](#latest-updates-v220)
+30. [Latest Updates (v2.19)](#latest-updates-v219)
+31. [Latest Updates (v2.18)](#latest-updates-v218)
+32. [Latest Updates (v2.17)](#latest-updates-v217)
+33. [Latest Updates (v2.16)](#latest-updates-v216)
+34. [Latest Updates (v2.15)](#latest-updates-v215)
+35. [Latest Updates (v2.14)](#latest-updates-v214)
+36. [Latest Updates (v2.13)](#latest-updates-v213)
+37. [Latest Updates (v2.12)](#latest-updates-v212)
+38. [Latest Updates (v2.11)](#latest-updates-v211)
+39. [Latest Updates (v2.10)](#latest-updates-v210)
+40. [Latest Updates (v2.9)](#latest-updates-v29)
+41. [Latest Updates (v2.8)](#latest-updates-v28)
+42. [Latest Updates (v2.7)](#latest-updates-v27)
+43. [Latest Updates (v2.6)](#latest-updates-v26)
+44. [Workflow Features](#workflow-features)
+45. [Calendar Updates](#calendar-updates)
+46. [Access Control](#access-control)
+47. [Email Templates](#email-templates)
+48. [Financial Tracking](#financial-tracking)
+49. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.48)
+
+### Checklist FWD, Estimator Dashboard, iOS Safe Area, Jobs Fix
+
+**Date**: 2026-02-18
+
+**Overview**:
+Checklist Forward (FWD) feature for devs, estimator access to Dashboard, iOS safe-area fix for nav bar, and Jobs TypeScript build fix.
+
+**Checklist FWD (dev-only)**:
+- **FWD button**: On Checklist page (Today, Upcoming, Outstanding tabs) and Dashboard, devs see an "fwd" link/button on the far right of each task. On Checklist desktop it appears as a blue FWD button; on Dashboard it appears as a light grey "fwd" link.
+- **Forward modal**: Clicking FWD opens a modal to edit the task title and assign it to another user via dropdown. Creates a new checklist item (repeat_type: once) with the edited title and assignee, copies notifications/reminders from the source, and **removes the original task**.
+- **Visibility**: FWD button hidden on mobile (max-width: 640px) on Checklist; Dashboard "fwd" link always visible for devs.
+
+**Estimator Dashboard Access**:
+- Estimators can now access the Dashboard. Added `/dashboard` to `ESTIMATOR_PATHS` in Layout; Dashboard nav link shown for estimators; redirect logic updated so estimators are not redirected away from `/dashboard`.
+- Dashboard sets `role` to `'estimator'` (no longer null) so estimators see Builder Review and their checklist items.
+
+**iOS Safe Area**:
+- Nav bar (menu and settings buttons) was stuck under the iOS status bar/notch on subcontractor devices. Added `padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top, 0px))` to `.appNav` in `index.css` so the nav content sits below the safe area.
+
+**Jobs TypeScript Fix**:
+- Fixed "m is possibly undefined" build errors in `Jobs.tsx` (lines 187–188, 221–222) by using `for (const [i, m] of validMaterials.entries())` instead of index access.
+
+**Files**: `src/pages/Checklist.tsx`, `src/pages/Dashboard.tsx`, `src/components/Layout.tsx`, `src/index.css`, `src/pages/Jobs.tsx`
 
 ---
 

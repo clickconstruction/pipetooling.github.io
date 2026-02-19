@@ -103,7 +103,7 @@ A Master Plumber can:
 - **Template system**: Reusable workflow templates for common job types
 - **Notification subscriptions**: Users can subscribe to stage notifications
 - **Calendar view**: Visual calendar showing assigned work
-- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard. **Scheduled reminders** (dev-only): Per-item reminder time (CST) and scope (today only / today+overdue); pg_cron invokes `send-scheduled-reminders` every 15 minutes to notify assignees with incomplete tasks
+- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard. **FWD (Forward)** (dev-only): Button/link on each task to forward it—edit title, assign to another user; creates new task and removes original. **Scheduled reminders** (dev-only): Per-item reminder time (CST) and scope (today only / today+overdue); pg_cron invokes `send-scheduled-reminders` every 15 minutes to notify assignees with incomplete tasks
 
 ---
 
@@ -1514,11 +1514,15 @@ counts_fixture_groups (id)
 **Purpose**: Dedicated role for bid estimation and material management without access to ongoing project operations.
 
 ##### Pages Allowed
+- **Dashboard** - Checklist items due today, Builder Review link; Send task (if dev/master/assistant)
 - **Materials** - Full access to price book, parts, templates, purchase orders
 - **Bids** - Full access to all Bids tabs and features
+- **Calendar** - View calendar
+- **Checklist** - Today, History, Manage tabs
+- **Settings** - Change password, push notifications
 
 ##### Pages Blocked
-- Dashboard, Customers, Projects, People, Templates, Calendar, Settings
+- Customers, Projects, People, Templates
 - **Layout redirects**: Attempts to access blocked pages redirect to `/bids`
 
 ##### Bids Capabilities
@@ -1914,6 +1918,7 @@ user_id = auth.uid()
     - Links to projects and workflows
   - **Notification history**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
   - **Performance**: Parallel fetches and progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
+  - **Checklist FWD (dev-only)**: Each checklist item shows a light grey "fwd" link on the far right; opens modal to edit title and assign to another user; creates new task and removes original
   - **Card Layout**: 
     - Format: "Stage name - Assigned person"
     - Project link below title
@@ -2140,7 +2145,7 @@ user_id = auth.uid()
 ### 12. Bids Management
 - **Page**: `Bids.tsx`
 - **Route**: `/bids`
-- **Access**: Devs, master_technicians, assistants, and **estimators** (estimators see only Materials and Bids in nav; no access to `/customers` or `/projects`)
+- **Access**: Devs, master_technicians, assistants, and **estimators** (estimators see Dashboard, Materials, Bids, Calendar, Checklist in nav; no access to `/customers` or `/projects`)
 - **Purpose**: Track bids, fixture counts, and submission/follow-up per bid
 
 #### Features
@@ -2299,6 +2304,7 @@ pipetooling.github.io/
 
 #### `src/components/Layout.tsx`
 - Main navigation bar
+- **iOS safe area**: Nav uses `padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top))` so menu/settings stay below status bar on iOS
 - Role-based link visibility
 - Impersonation handling ("Back to my account")
 - **Gear menu** (top-right): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime `force-reload` channel)

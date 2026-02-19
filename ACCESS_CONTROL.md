@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-13
+last_updated: 2026-02-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -281,8 +281,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 **Purpose**: Bid estimation and material pricing specialist
 
 **Access**:
-- Bids, Materials only
-- **Blocked**: Dashboard, Customers, Projects, People, Templates, Calendar, Settings
+- Dashboard, Bids, Materials, Calendar, Checklist, Settings
+- **Blocked**: Customers, Projects, People, Templates
 
 **Service Type Filtering**:
 - Devs can restrict an estimator to specific service types (e.g., Electrical only, Plumbing only)
@@ -322,8 +322,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Cannot view or edit workflows
 - Cannot assign people to stages
 - Cannot access customer management page
-- No settings or user management
-- No calendar or dashboard views
+- No user management (can change own password via Settings)
 
 **Use Cases**:
 - Dedicated estimators who only handle bids
@@ -332,8 +331,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Focused interface for bid workflows
 
 **Layout Behavior**:
-- Navigation shows only: Bids, Materials
-- Attempts to access other pages redirect to `/bids`
+- Navigation shows: Dashboard, Materials, Bids, Calendar, Checklist
+- Attempts to access blocked pages redirect to `/bids`
 
 ---
 
@@ -341,7 +340,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 | Page | dev | master | assistant | sub | estimator |
 |------|-----|--------|-----------|-----|-----------|
-| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
@@ -350,13 +349,13 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ❌ |
+| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited |
 
 ### Redirection Rules
 
 **Subcontractors**: Any page except Dashboard/Calendar → `/dashboard`
 
-**Estimators**: Any page except Bids/Materials → `/bids`
+**Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
 
 **Assistants**: Can access most pages but see filtered data
 
