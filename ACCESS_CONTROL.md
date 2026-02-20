@@ -150,7 +150,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View people they created and people shared with them (via master_shares)
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
-- Pay tab (dev, Pay Approved Masters, or shared by dev): People pay config (dev/approved only), Cost matrix, Teams. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via "Share Cost Matrix and Teams" section
+- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Tag, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams, Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via "Share Cost Matrix and Teams" section
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
 **Bids**:

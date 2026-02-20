@@ -1529,7 +1529,7 @@ counts_fixture_groups (id)
 ##### Bids Capabilities
 
 **Full Bids System Access**:
-- All 6 Bids tabs (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup)
+- All Bids tabs (Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup). Builder Review: customers sorted by last contact (Oldest first / Newest first); PIA checkbox per customer excludes that customer when Oldest first is selected (stored per user in localStorage).
 - Create, edit, and delete bids
 - Enter fixture counts with quick-select and number pad
 - Map counts to material templates (Takeoff tab)
@@ -1866,7 +1866,7 @@ user_id = auth.uid()
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
-  - **Pay Tab** (dev, approved masters, or shared by dev): People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
+  - **Pay Tab** (dev, approved masters, or shared by dev): Due by Tag, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
 - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)

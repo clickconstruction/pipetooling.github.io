@@ -14,7 +14,7 @@
 - **Users**: 5 roles with complex access control (dev, master, assistant, subcontractor, estimator)
 - **4 Major Systems**: 
   1. Projects/Workflows (ongoing work tracking)
-  2. Bids (6-tab estimation system with book templates)
+  2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
   3. Materials (price book, templates, purchase orders)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
 
@@ -118,7 +118,7 @@ pipetooling.github.io/
 
 ### Core Application
 - **`src/pages/Workflow.tsx`** (~1500 lines) - Most complex component, manages project workflow
-- **`src/pages/Bids.tsx`** (~1200 lines) - 6-tab bid estimation system
+- **`src/pages/Bids.tsx`** (~12k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission
 - **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
@@ -130,7 +130,7 @@ pipetooling.github.io/
 - **`README.md`** - Quick start and documentation index
 - **`AI_CONTEXT.md`** - This file (quick overview)
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
-- **`BIDS_SYSTEM.md`** - Bids system documentation (all 6 tabs)
+- **`BIDS_SYSTEM.md`** - Bids system documentation (all tabs)
 - **`ACCESS_CONTROL.md`** - Complete role permissions matrix
 - **`EDGE_FUNCTIONS.md`** - Edge Functions API reference
 - **`RECENT_FEATURES.md`** - Chronological feature log
@@ -180,7 +180,7 @@ pipetooling.github.io/
 | User role permissions | `ACCESS_CONTROL.md` → Page/Feature access matrices |
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
 | Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
-| Bids system (6 tabs) | `BIDS_SYSTEM.md` → Complete workflow documentation |
+| Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All 6 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
@@ -268,7 +268,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 - **RLS**: Row Level Security (PostgreSQL security policies)
 - **SECURITY DEFINER**: Function runs with creator's permissions (bypasses RLS)
 
-### Bids System (6 Tabs)
+### Bids System
 - **Bid Board**: Main bid list and management
 - **Counts**: Fixture/tie-in quantity entry
 - **Takeoff**: Map counts to material templates → create POs

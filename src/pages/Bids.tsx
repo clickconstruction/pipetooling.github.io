@@ -593,6 +593,7 @@ export default function Bids() {
   const [builderReviewCardExpanded, setBuilderReviewCardExpanded] = useState<Record<string, boolean>>({})
   const [builderReviewSearchQuery, setBuilderReviewSearchQuery] = useState('')
   const [builderReviewSortOrder, setBuilderReviewSortOrder] = useState<'oldest-first' | 'newest-first'>('oldest-first')
+  const [builderReviewPiaCustomerIds, setBuilderReviewPiaCustomerIds] = useState<Set<string>>(() => new Set())
 
   // Bid Board
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
@@ -5065,6 +5066,20 @@ export default function Bids() {
     }
   }, [activeTab, myRole])
 
+  // Builder Review PIA: load from localStorage (per user)
+  useEffect(() => {
+    if (!authUser?.id || typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem(`bids_builder_review_pia_${authUser.id}`)
+      if (raw) {
+        const arr = JSON.parse(raw) as string[]
+        if (Array.isArray(arr)) setBuilderReviewPiaCustomerIds(new Set(arr))
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [authUser?.id])
+
   // Close price book modals when service type changes
   useEffect(() => {
     setPricingVersionFormOpen(false)
@@ -6129,14 +6144,34 @@ export default function Bids() {
   }, [customers, bids, customerContacts, lastContactFromEntries, builderReviewSortOrder])
 
   const builderReviewCustomersFiltered = useMemo(() => {
-    if (!builderReviewSearchQuery.trim()) return builderReviewCustomersSorted
+    let list = builderReviewCustomersSorted
+    // When Oldest first: exclude PIA customers (they are ignored in the sort order)
+    if (builderReviewSortOrder === 'oldest-first' && builderReviewPiaCustomerIds.size > 0) {
+      list = list.filter((c) => !builderReviewPiaCustomerIds.has(c.id))
+    }
+    if (!builderReviewSearchQuery.trim()) return list
     const q = builderReviewSearchQuery.toLowerCase().trim()
-    return builderReviewCustomersSorted.filter(
+    return list.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         (c.address?.toLowerCase().includes(q) ?? false)
     )
-  }, [builderReviewCustomersSorted, builderReviewSearchQuery])
+  }, [builderReviewCustomersSorted, builderReviewSearchQuery, builderReviewSortOrder, builderReviewPiaCustomerIds])
+
+  // When Oldest first: PIA customers that were excluded (for showing in "PIA (excluded)" section)
+  const builderReviewPiaCustomersExcluded = useMemo(() => {
+    if (builderReviewSortOrder !== 'oldest-first' || builderReviewPiaCustomerIds.size === 0) return []
+    let list = builderReviewCustomersSorted.filter((c) => builderReviewPiaCustomerIds.has(c.id))
+    if (builderReviewSearchQuery.trim()) {
+      const q = builderReviewSearchQuery.toLowerCase().trim()
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.address?.toLowerCase().includes(q) ?? false)
+      )
+    }
+    return list
+  }, [builderReviewCustomersSorted, builderReviewSearchQuery, builderReviewSortOrder, builderReviewPiaCustomerIds])
 
   const wonBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'won') : []
   const lostBidsForCustomer = viewingCustomer ? bids.filter((b) => b.customer_id === viewingCustomer.id && b.outcome === 'lost') : []
@@ -6569,7 +6604,7 @@ export default function Bids() {
             </button>
           </div>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Sorted by last contact. Add outreach not tied to bids via General contact.
+            Sorted by last contact. Add outreach not tied to bids via General contact. PIA = ignore when Oldest first.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {builderReviewCustomersFiltered.map((customer) => {
@@ -6667,6 +6702,25 @@ export default function Bids() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }} title="Ignore when Oldest first is selected">
+                        <input
+                          type="checkbox"
+                          checked={builderReviewPiaCustomerIds.has(customer.id)}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            setBuilderReviewPiaCustomerIds((prev) => {
+                              const next = new Set(prev)
+                              if (checked) next.add(customer.id)
+                              else next.delete(customer.id)
+                              if (authUser?.id && typeof window !== 'undefined') {
+                                localStorage.setItem(`bids_builder_review_pia_${authUser.id}`, JSON.stringify([...next]))
+                              }
+                              return next
+                            })
+                          }}
+                        />
+                        PIA
+                      </label>
                       <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                         Last contact: {lastContact ? formatTimeSinceLastContact(lastContact) : '—'}
                       </span>
@@ -6857,6 +6911,33 @@ export default function Bids() {
                 </div>
               )
             })}
+            {builderReviewPiaCustomersExcluded.length > 0 && (
+              <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.75rem' }}>PIA (excluded from Oldest first)</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {builderReviewPiaCustomersExcluded.map((customer) => (
+                    <label key={customer.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked
+                        onChange={() => {
+                          setBuilderReviewPiaCustomerIds((prev) => {
+                            const next = new Set(prev)
+                            next.delete(customer.id)
+                            if (authUser?.id && typeof window !== 'undefined') {
+                              localStorage.setItem(`bids_builder_review_pia_${authUser.id}`, JSON.stringify([...next]))
+                            }
+                            return next
+                          })
+                        }}
+                      />
+                      {customer.name}
+                      {customer.address && <span style={{ color: '#6b7280' }}>{customer.address}</span>}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

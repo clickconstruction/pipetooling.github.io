@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-20
+last_updated: 2026-02-19
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.50 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.51)"
+  - name: "Latest Version (v2.52)"
     line: ~132
+    description: "People Pay layout, Cost matrix mobile dates, Builder Review PIA"
+  - name: "v2.51"
+    line: ~165
     description: "Fix app page, Cost matrix pins, Builder Review, Supabase troubleshooting"
   - name: "v2.49"
     line: ~165
@@ -79,21 +82,22 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-2. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-3. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-4. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-5. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-5. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-6. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-7. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-8. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-9. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-10. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-11. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-12. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-13. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-14. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+1. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+2. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+3. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+4. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+5. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+6. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+7. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+8. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+9. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+10. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+11. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+12. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+13. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+14. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+15. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+16. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
 15. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
 16. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
 17. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
@@ -131,6 +135,30 @@ when_to_read:
 47. [Email Templates](#email-templates)
 48. [Financial Tracking](#financial-tracking)
 49. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.52)
+
+### People Pay layout, Cost matrix mobile dates, Builder Review PIA
+
+**Date**: 2026-02-19
+
+**Overview**:
+People Pay tab section order, Cost matrix date headers on mobile, and Builder Review PIA checkbox to exclude customers when Oldest first is selected.
+
+**People Pay tab**:
+- **Section order**: People pay config, Share Cost Matrix and Teams, and Tag colors moved to the bottom of the Pay tab. Order is now: Due by Tag → Due by Team → Cost matrix → Teams → People pay config → Share Cost Matrix and Teams → Tag colors.
+
+**Cost matrix**:
+- **Mobile date headers**: On mobile (≤640px), date column headers display on two lines (e.g. "Mon" above "2/16") instead of "Mon, 2/16" on one line. Improves readability on narrow screens.
+
+**Builder Review**:
+- **PIA checkbox**: Each customer card has a "[ ] PIA" checkbox. When checked, that customer is excluded from the list when "Oldest first" is selected. PIA = "ignore when Oldest first."
+- **Persistence**: PIA selections stored per user in localStorage (`bids_builder_review_pia_${userId}`).
+- **PIA (excluded) section**: When Oldest first is active and some customers are marked PIA, a section at the bottom lists them with checkboxes so users can uncheck PIA without switching to Newest first.
+
+**Files**: `src/pages/People.tsx`, `src/index.css`, `src/pages/Bids.tsx`
 
 ---
 
