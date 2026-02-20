@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -906,8 +906,22 @@ export default function Jobs() {
   }, [laborBookEntriesVersionId])
 
   useEffect(() => {
-    if (activeTab === 'sub_sheet_ledger' && authUser?.id) loadLaborJobs()
+    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary') && authUser?.id) loadLaborJobs()
   }, [activeTab, authUser?.id])
+
+  useEffect(() => {
+    if (activeTab === 'labor' && authUser?.id && laborRate === '') {
+      supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle().then(({ data }) => {
+        const val = (data as { value_num: number | null } | null)?.value_num
+        if (val != null) setLaborRate(String(val))
+      })
+    }
+  }, [activeTab, authUser?.id])
+
+  const laborJobHcps = useMemo(
+    () => new Set(laborJobs.map((j) => (j.job_number ?? '').trim().toLowerCase()).filter(Boolean)),
+    [laborJobs]
+  )
 
   const filteredJobs = jobs.filter((j) => {
     const q = searchQuery.toLowerCase().trim()
@@ -918,6 +932,83 @@ export default function Jobs() {
       (j.job_address ?? '').toLowerCase().includes(q)
     )
   })
+
+  const teamsSummaryData = useMemo(() => {
+    const laborCostByName = new Map<string, number>()
+    const billingByName = new Map<string, number>()
+
+    for (const job of jobs) {
+      const rev = job.revenue != null ? Number(job.revenue) : 0
+      if (rev <= 0 || job.team_members.length === 0) continue
+      const share = rev / job.team_members.length
+      for (const tm of job.team_members) {
+        const name = tm.users?.name ?? 'Unknown'
+        billingByName.set(name, (billingByName.get(name) ?? 0) + share)
+      }
+    }
+
+    for (const job of laborJobs) {
+      const totalHrs = (job.items ?? []).reduce((s, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+      }, 0)
+      const rate = job.labor_rate ?? 0
+      const laborCost = totalHrs * rate
+      const names = (job.assigned_to_name ?? '')
+        .split(LABOR_ASSIGNED_DELIMITER)
+        .map((n) => n.trim())
+        .filter(Boolean)
+      if (names.length === 0 || laborCost <= 0) continue
+      const share = laborCost / names.length
+      for (const name of names) {
+        laborCostByName.set(name, (laborCostByName.get(name) ?? 0) + share)
+      }
+    }
+
+    const allNames = new Set<string>()
+    for (const [name] of billingByName) allNames.add(name)
+    for (const [name] of laborCostByName) allNames.add(name)
+    const rows = [...allNames].sort((a, b) => a.localeCompare(b)).map((name) => ({
+      name,
+      laborCost: laborCostByName.get(name) ?? 0,
+      billing: billingByName.get(name) ?? 0,
+    }))
+
+    const billingHcps = new Set(
+      jobs.filter((j) => j.revenue != null && Number(j.revenue) > 0).map((j) => (j.hcp_number ?? '').trim().toLowerCase())
+    )
+    const laborHcps = new Set(
+      laborJobs
+        .filter((job) => {
+          const totalHrs = (job.items ?? []).reduce((s, i) => {
+            const hrs = Number(i.hrs_per_unit) || 0
+            return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+          }, 0)
+          return totalHrs > 0 && (job.labor_rate ?? 0) > 0
+        })
+        .map((j) => (j.job_number ?? '').trim().toLowerCase())
+    )
+    const matchedHcps = new Set([...billingHcps].filter((h) => h && laborHcps.has(h)))
+
+    let matchedLaborTotal = 0
+    let matchedBillingTotal = 0
+    for (const job of laborJobs) {
+      const hcp = (job.job_number ?? '').trim().toLowerCase()
+      if (!hcp || !matchedHcps.has(hcp)) continue
+      const totalHrs = (job.items ?? []).reduce((s, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+      }, 0)
+      matchedLaborTotal += totalHrs * (job.labor_rate ?? 0)
+    }
+    for (const job of jobs) {
+      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
+      if (!hcp || !matchedHcps.has(hcp) || job.revenue == null) continue
+      matchedBillingTotal += Number(job.revenue)
+    }
+
+    return { rows, matchedLaborTotal, matchedBillingTotal }
+  }, [jobs, laborJobs])
 
   function openNew() {
     setEditing(null)
@@ -991,6 +1082,22 @@ export default function Jobs() {
       .map((t) => t.users?.name?.trim())
       .filter((n): n is string => !!n && rosterNames.includes(n))
     setLaborAssignedTo(teamNames)
+  }
+
+  function fillLaborFromBillingJobAndSwitch(job: JobWithDetails) {
+    setLaborJobNumber(job.hcp_number ?? '')
+    setLaborAddress(job.job_address ?? '')
+    const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
+    const teamNames = (job.team_members ?? [])
+      .map((t) => t.users?.name?.trim())
+      .filter((n): n is string => !!n && rosterNames.includes(n))
+    setLaborAssignedTo(teamNames)
+    setActiveTab('labor')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'labor')
+      return next
+    })
   }
 
   async function saveJob() {
@@ -1117,7 +1224,7 @@ export default function Jobs() {
           }}
           style={tabStyle(activeTab === 'labor')}
         >
-          Labor
+          + Labor
         </button>
         <button
           type="button"
@@ -1317,7 +1424,38 @@ export default function Jobs() {
                   </tbody>
                 </table>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <select
+                    value={selectedLaborBookVersionId ?? ''}
+                    onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
+                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', minWidth: '10rem' }}
+                  >
+                    <option value="">— Labor book version —</option>
+                    {laborBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={applyLaborBookHoursToPeople}
+                    disabled={applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim())}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? '#9ca3af' : '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
+                  </button>
+                  {laborBookApplyMessage && (
+                    <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                  )}
+                </div>
                 <button type="button" onClick={addLaborFixtureRow} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
                   Add additional fixture or tie-in
                 </button>
@@ -1427,29 +1565,6 @@ export default function Jobs() {
                         ))}
                       </select>
                     </div>
-                    {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && selectedLaborBookVersionId && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={applyLaborBookHoursToPeople}
-                          disabled={applyingLaborBookHours}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: applyingLaborBookHours ? 'wait' : 'pointer',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
-                        </button>
-                        {laborBookApplyMessage && (
-                          <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
-                        )}
-                      </div>
-                    )}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
                     {laborBookVersions.map((v) => (
@@ -1548,11 +1663,11 @@ export default function Jobs() {
           ) : laborJobs.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No jobs yet. Add one in the Labor tab.</p>
           ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+              <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
@@ -1576,7 +1691,21 @@ export default function Jobs() {
                       <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
                         <td style={{ padding: '0.75rem' }}>{job.job_number ?? '—'}</td>
-                        <td style={{ padding: '0.75rem' }}>{job.address}</td>
+                        <td style={{ padding: '0.75rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {job.address ? (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: '#2563eb', textDecoration: 'none' }}
+                              title={job.address}
+                            >
+                              {job.address}
+                            </a>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{job.labor_rate != null ? `$${formatCurrency(job.labor_rate)}/hr` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalHrs.toFixed(2)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{rate > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
@@ -1666,7 +1795,21 @@ export default function Jobs() {
                 <tbody>
                   {filteredJobs.map((job) => (
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.75rem' }}>{job.hcp_number || '—'}</td>
+                      <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        {job.hcp_number || '—'}
+                        {job.hcp_number && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => fillLaborFromBillingJobAndSwitch(job)}
+                            title="Add Labor: fill from Billing and go to Labor tab"
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="#b91c1c" aria-hidden="true">
+                              <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
+                            </svg>
+                          </button>
+                        )}
+                      </td>
                       <td style={{ padding: '0.75rem' }}>
                         <div>{job.job_name || '—'}</div>
                         {(job.job_address ?? '').trim() && (
@@ -1702,33 +1845,23 @@ export default function Jobs() {
                         <button
                           type="button"
                           onClick={() => openEdit(job)}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            background: '#e5e7eb',
-                            color: '#374151',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontSize: '0.8125rem',
-                          }}
+                          title="Edit"
+                          style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          Edit
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                            <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                          </svg>
                         </button>
                         <button
                           type="button"
                           onClick={() => deleteJob(job.id)}
                           disabled={deletingId === job.id}
-                          style={{
-                            padding: '0.25rem 0.5rem',
-                            background: '#fee2e2',
-                            color: '#991b1c',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: deletingId === job.id ? 'not-allowed' : 'pointer',
-                            fontSize: '0.8125rem',
-                          }}
+                          title="Delete"
+                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: deletingId === job.id ? 'not-allowed' : 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          {deletingId === job.id ? '…' : 'Delete'}
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                            <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+                          </svg>
                         </button>
                         </div>
                       </td>
@@ -1741,7 +1874,39 @@ export default function Jobs() {
         </div>
       )}
 
-      {activeTab === 'teams-summary' && <p style={{ color: '#6b7280' }}>Teams Summary content coming soon.</p>}
+      {activeTab === 'teams-summary' && (
+        <div>
+          {teamsSummaryData.rows.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No jobs yet. Add billing jobs and labor jobs to see the summary.</p>
+          ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Labor Cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Billing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamsSummaryData.rows.map((row) => (
+                    <tr key={row.name} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '0.75rem' }}>{row.name}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.laborCost)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.billing)}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600, background: '#f9fafb' }}>
+                    <td style={{ padding: '0.75rem' }}>Total (matched jobs only)</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedLaborTotal)}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedBillingTotal)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {editingLaborJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>

@@ -917,6 +917,9 @@ export default function Bids() {
     const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     setMyRole(role)
+    // #region agent log
+    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:loadRole',message:'loadRole completed',data:{role},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
     } else {
@@ -4964,6 +4967,9 @@ export default function Bids() {
     const bidId = params.get('bidId')
     const tab = params.get('tab')
     if (tab === 'builder-review') {
+      // #region agent log
+      fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:urlParams',message:'URL set activeTab to builder-review',data:{tab},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setActiveTab('builder-review')
       return
     }
@@ -5032,8 +5038,14 @@ export default function Bids() {
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:BuilderReviewEffect',message:'Builder Review effect run',data:{activeTab,myRole,conditionMet:activeTab==='builder-review'&&(myRole==='dev'||myRole==='master_technician'||myRole==='assistant'||myRole==='estimator')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForBuilderReview = async () => {
+        // #region agent log
+        fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:loadForBuilderReview',message:'loadForBuilderReview invoked',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         await Promise.all([
           loadCustomers(),
           loadBids(null), // load all bids (no service type filter)
@@ -5051,7 +5063,7 @@ export default function Bids() {
       }
       loadForBuilderReview()
     }
-  }, [activeTab])
+  }, [activeTab, myRole])
 
   // Close price book modals when service type changes
   useEffect(() => {

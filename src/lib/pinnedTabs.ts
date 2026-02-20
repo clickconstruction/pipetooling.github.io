@@ -170,6 +170,17 @@ export async function clearPinnedInSupabase(userId: string): Promise<void> {
   window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
 }
 
+/** Get user IDs who have a pin for path+tab (e.g. Cost matrix). Devs only. */
+export async function getUsersWithPin(path: string, tab: string): Promise<{ user_id: string }[]> {
+  const { data, error } = await (supabase as any)
+    .from('user_pinned_tabs')
+    .select('user_id')
+    .eq('path', path)
+    .eq('tab', tab)
+  if (error) return []
+  return (data ?? []) as { user_id: string }[]
+}
+
 /** Delete all pins for a given path+tab (e.g. Cost matrix). Devs only. Returns { count, error }. */
 export async function deletePinForPathAndTab(
   path: string,

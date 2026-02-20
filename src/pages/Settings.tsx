@@ -232,6 +232,8 @@ export default function Settings() {
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
+  const [defaultLaborRate, setDefaultLaborRate] = useState('')
+  const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -722,9 +724,22 @@ export default function Settings() {
       await loadNotificationTemplates()
       await loadEmailTemplates()
       await loadPayApprovedMasters()
+      const { data: appSettings } = await supabase.from('app_settings').select('key, value_num').eq('key', 'default_labor_rate').maybeSingle()
+      const val = (appSettings as { value_num: number | null } | null)?.value_num
+      setDefaultLaborRate(val != null ? String(val) : '')
     }
     
     setLoading(false)
+  }
+
+  async function saveDefaultLaborRate(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setDefaultLaborRateSaving(true)
+    const val = defaultLaborRate.trim() === '' ? null : parseFloat(defaultLaborRate) || null
+    const { error } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
+    setDefaultLaborRateSaving(false)
+    if (error) setError(error.message)
   }
 
   async function loadPeopleForDev() {
@@ -3189,6 +3204,31 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Default Labor Rate (dev)</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
+          </p>
+          <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+            <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
+            <input
+              id="default-labor-rate"
+              type="number"
+              min={0}
+              step={0.01}
+              value={defaultLaborRate}
+              onChange={(e) => setDefaultLaborRate(e.target.value)}
+              placeholder="e.g. 75"
+              style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            />
+            <button
+              type="submit"
+              disabled={defaultLaborRateSaving}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            >
+              {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+            </button>
+          </form>
+
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, assemblies, assembly items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.

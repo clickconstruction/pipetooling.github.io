@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 type ChecklistTab = 'today' | 'history' | 'manage' | 'checklists'
@@ -72,6 +73,7 @@ export default function Checklist() {
   }, [searchParams])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const [editItemId, setEditItemId] = useState<string | null>(null)
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
@@ -147,10 +149,19 @@ export default function Checklist() {
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} setEditItemId={setEditItemId} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
-        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} />
+        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
+      )}
+      {editItemId && (
+        <ChecklistItemEditModal
+          itemId={editItemId}
+          onClose={() => setEditItemId(null)}
+          onSaved={() => {}}
+          setError={setError}
+          role={role}
+        />
       )}
 
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
@@ -875,7 +886,7 @@ type OutstandingInstance = {
   users?: { name: string; email: string } | null
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
@@ -886,10 +897,19 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
 
   useEffect(() => {
     loadOutstanding()
   }, [dateRange])
+
+  const loadOutstandingRef = useRef(loadOutstanding)
+  loadOutstandingRef.current = loadOutstanding
+  useEffect(() => {
+    const handler = () => loadOutstandingRef.current()
+    window.addEventListener('checklist-item-saved', handler)
+    return () => window.removeEventListener('checklist-item-saved', handler)
+  }, [])
 
   useEffect(() => {
     if (isDev) {
@@ -904,6 +924,21 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
     setFwdInstance(inst)
     setFwdTitle(title)
     setFwdAssigneeId(inst.assigned_to_user_id)
+  }
+
+  async function deleteInstance(inst: OutstandingInstance) {
+    if (!confirm(`Delete this outstanding task: ${inst.checklist_items?.title ?? '—'} (${inst.scheduled_date})?`)) return
+    setDeletingInstanceId(inst.id)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('checklist_instances').delete().eq('id', inst.id)
+      if (err) throw err
+      await loadOutstanding()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to delete')
+    } finally {
+      setDeletingInstanceId(null)
+    }
   }
 
   async function saveFwd() {
@@ -1147,24 +1182,47 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
                               {inst.checklist_items?.title ?? '—'} <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
                             </span>
                             {isDev && (
-                              <button
-                                type="button"
-                                className="fwd-btn-desktop"
-                                onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                style={{
-                                  flexShrink: 0,
-                                  padding: '0.25rem 0.5rem',
-                                  fontSize: '0.8125rem',
-                                  fontWeight: 500,
-                                  border: '1px solid #3b82f6',
-                                  borderRadius: 4,
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                FWD
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setEditItemId(inst.checklist_item_id) }}
+                                  title="Edit"
+                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                    <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); deleteInstance(inst) }}
+                                  disabled={deletingInstanceId === inst.id}
+                                  title="Delete"
+                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                    <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="fwd-btn-desktop"
+                                  onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                  style={{
+                                    flexShrink: 0,
+                                    padding: '0.25rem 0.5rem',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 500,
+                                    border: '1px solid #3b82f6',
+                                    borderRadius: 4,
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  FWD
+                                </button>
+                              </>
                             )}
                           </li>
                         ))}
@@ -1279,41 +1337,12 @@ type ChecklistItem = {
   users?: { name: string; email: string } | null
 }
 
-function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void }) {
+function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
-  const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [filterUserId, setFilterUserId] = useState<string>('')
-  const [form, setForm] = useState<{
-    title: string
-    assigned_to_user_id: string
-    repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
-    repeat_days_of_week: number[]
-    repeat_days_after: number
-    repeat_end_date: string
-    start_date: string
-    show_until_completed: boolean
-    notify_on_complete_user_id: string
-    notify_creator_on_complete: boolean
-    reminder_time: string
-    reminder_scope: 'today_only' | 'today_and_overdue' | ''
-  }>({
-    title: '',
-    assigned_to_user_id: '',
-    repeat_type: 'once',
-    repeat_days_of_week: [],
-    repeat_days_after: 1,
-    repeat_end_date: '',
-    start_date: toLocalDateString(new Date()),
-    show_until_completed: false,
-    notify_on_complete_user_id: '',
-    notify_creator_on_complete: false,
-    reminder_time: '',
-    reminder_scope: '',
-  })
 
   useEffect(() => {
     setLoading(true)
@@ -1347,126 +1376,6 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
     setItems((data ?? []) as ChecklistItem[])
   }
 
-  function openEdit(item: ChecklistItem) {
-    setEditingId(item.id)
-    const rt = item.reminder_time
-    setForm({
-      title: item.title,
-      assigned_to_user_id: item.assigned_to_user_id,
-      repeat_type: item.repeat_type as 'day_of_week' | 'days_after_completion' | 'once',
-      repeat_days_of_week: item.repeat_days_of_week ?? [],
-      repeat_days_after: item.repeat_days_after ?? 1,
-      repeat_end_date: item.repeat_end_date ?? '',
-      start_date: item.start_date,
-      show_until_completed: item.show_until_completed ?? false,
-      notify_on_complete_user_id: item.notify_on_complete_user_id ?? '',
-      notify_creator_on_complete: item.notify_creator_on_complete,
-      reminder_time: rt ? (rt.length === 5 ? rt : rt.slice(0, 5)) : '',
-      reminder_scope: (item.reminder_scope as 'today_only' | 'today_and_overdue') ?? '',
-    })
-  }
-
-  async function generateInstances(itemId: string, item: typeof form) {
-    const instances: { checklist_item_id: string; scheduled_date: string; assigned_to_user_id: string }[] = []
-    const start = new Date(item.start_date)
-    const endDate = item.repeat_end_date ? new Date(item.repeat_end_date) : null
-
-    if (item.repeat_type === 'once') {
-      instances.push({
-        checklist_item_id: itemId,
-        scheduled_date: item.start_date,
-        assigned_to_user_id: item.assigned_to_user_id,
-      })
-    } else if (item.repeat_type === 'day_of_week') {
-      const targetDows = item.repeat_days_of_week ?? []
-      const maxWeeks = 104
-      for (const targetDow of targetDows) {
-        let d = new Date(start)
-        while (d.getDay() !== targetDow) d.setDate(d.getDate() + 1)
-        for (let w = 0; w < maxWeeks; w++) {
-          if (endDate && d > endDate) break
-          instances.push({
-            checklist_item_id: itemId,
-            scheduled_date: toLocalDateString(d),
-            assigned_to_user_id: item.assigned_to_user_id,
-          })
-          d.setDate(d.getDate() + 7)
-        }
-      }
-    } else if (item.repeat_type === 'days_after_completion') {
-      instances.push({
-        checklist_item_id: itemId,
-        scheduled_date: item.start_date,
-        assigned_to_user_id: item.assigned_to_user_id,
-      })
-    }
-
-    if (instances.length > 0) {
-      await supabase.from('checklist_instances').insert(instances)
-    }
-  }
-
-  async function saveItem() {
-    if (!authUserId) return
-    setError(null)
-    if (form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length === 0) {
-      setError('Select at least one day of the week.')
-      return
-    }
-    if (editingId) {
-      const { error } = await supabase
-        .from('checklist_items')
-        .update({
-          title: form.title,
-          assigned_to_user_id: form.assigned_to_user_id,
-          repeat_type: form.repeat_type,
-          repeat_days_of_week: form.repeat_type === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
-          repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
-          repeat_end_date: form.repeat_end_date || null,
-          start_date: form.start_date,
-          show_until_completed: form.show_until_completed,
-          notify_on_complete_user_id: form.notify_on_complete_user_id || null,
-          notify_creator_on_complete: form.notify_creator_on_complete,
-          reminder_time: form.reminder_time || null,
-          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', editingId)
-      if (error) {
-        setError(error.message)
-        return
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('checklist_items')
-        .insert({
-          title: form.title,
-          assigned_to_user_id: form.assigned_to_user_id,
-          created_by_user_id: authUserId,
-          repeat_type: form.repeat_type,
-          repeat_days_of_week: form.repeat_type === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
-          repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
-          repeat_end_date: form.repeat_end_date || null,
-          start_date: form.start_date,
-          show_until_completed: form.show_until_completed,
-          notify_on_complete_user_id: form.notify_on_complete_user_id || null,
-          notify_creator_on_complete: form.notify_creator_on_complete,
-          reminder_time: form.reminder_time || null,
-          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
-        })
-        .select('id')
-        .single()
-      if (error) {
-        setError(error.message)
-        return
-      }
-      const newId = (data as { id: string })?.id
-      if (newId) await generateInstances(newId, form)
-    }
-    setEditingId(null)
-    await loadItems()
-  }
-
   async function deleteItem(id: string) {
     if (!confirm('Delete this checklist item? Instances will also be removed.')) return
     const { error } = await supabase.from('checklist_items').delete().eq('id', id)
@@ -1476,7 +1385,7 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-  if (loading && !editingId) return <p>Loading…</p>
+  if (loading) return <p>Loading…</p>
 
   return (
     <div>
@@ -1503,11 +1412,11 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
         <thead>
           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Title</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Assigned to</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Repeat</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Start</th>
-            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Notify</th>
-            {role === 'dev' && <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Remind</th>}
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Assigned to</th>
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Repeat</th>
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Start</th>
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Notify</th>
+            {role === 'dev' && <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Remind</th>}
             <th style={{ padding: '0.5rem 0.75rem' }}></th>
           </tr>
         </thead>
@@ -1515,8 +1424,8 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
           {items.map((item) => (
             <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
               <td style={{ padding: '0.5rem 0.75rem' }}>{item.title}</td>
-              <td style={{ padding: '0.5rem 0.75rem' }}>{(item.users as { name: string; email: string } | null)?.name || (item.users as { email: string } | null)?.email || '—'}</td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{(item.users as { name: string; email: string } | null)?.name || (item.users as { email: string } | null)?.email || '—'}</td>
+              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
                 {item.show_until_completed
                   ? 'Until completed'
                   : item.repeat_type === 'day_of_week'
@@ -1525,13 +1434,22 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
                       ? `${item.repeat_days_after} days after completion`
                       : 'Once'}
               </td>
-              <td style={{ padding: '0.5rem 0.75rem' }}>{item.start_date}</td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                {(() => {
+                  const d = new Date(item.start_date + 'T12:00:00')
+                  const oneYearAgo = new Date()
+                  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+                  return d >= oneYearAgo
+                    ? `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                    : String(d.getFullYear())
+                })()}
+              </td>
+              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
                 {item.notify_creator_on_complete && 'Creator '}
                 {item.notify_on_complete_user_id && '+1 user'}
               </td>
               {role === 'dev' && (
-                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
                   {item.reminder_time
                     ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'due date + daily until done' : 'due date'})`
                     : '—'}
@@ -1540,7 +1458,7 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
               <td style={{ padding: '0.5rem 0.75rem' }}>
                 <button
                   type="button"
-                  onClick={() => openEdit(item)}
+                  onClick={() => setEditItemId(item.id)}
                   title="Edit"
                   style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                 >
@@ -1564,242 +1482,6 @@ function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string
         </tbody>
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
-
-      {editingId && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="checklist-edit-modal-title"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
-          onClick={() => setEditingId(null)}
-        >
-          <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="checklist-edit-modal-title" style={{ marginTop: 0 }}>Edit checklist item</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
-                <input
-                  type="text"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>
-                <select
-                  value={form.assigned_to_user_id}
-                  onChange={(e) => setForm((f) => ({ ...f, assigned_to_user_id: e.target.value }))}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <label><input type="radio" name="repeat" checked={form.repeat_type === 'once'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'once' }))} /> Once</label>
-                  <label><input type="radio" name="repeat" checked={form.repeat_type === 'day_of_week'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'day_of_week' }))} /> Day of week</label>
-                  <label><input type="radio" name="repeat" checked={form.repeat_type === 'days_after_completion'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'days_after_completion' }))} /> Days after completion</label>
-                </div>
-              </label>
-              {form.repeat_type === 'day_of_week' && (
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days of week</span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                    {DAYS.map((name, i) => (
-                      <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={form.repeat_days_of_week.includes(i)}
-                          onChange={(e) => {
-                            setForm((f) => ({
-                              ...f,
-                              repeat_days_of_week: e.target.checked
-                                ? [...f.repeat_days_of_week, i].sort((a, b) => a - b)
-                                : f.repeat_days_of_week.filter((d) => d !== i),
-                            }))
-                          }}
-                        />
-                        {name}
-                      </label>
-                    ))}
-                  </div>
-                </label>
-              )}
-              {form.repeat_type === 'days_after_completion' && (
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days after completion</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={form.repeat_days_after}
-                    onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
-                    style={{ padding: '0.5rem', width: 80 }}
-                  />
-                </label>
-              )}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <input
-                  type="checkbox"
-                  checked={form.show_until_completed}
-                  onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
-                />
-                <span>Show up until completed</span>
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat end date (optional)</span>
-                <input
-                  type="date"
-                  value={form.repeat_end_date}
-                  onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
-                  style={{ padding: '0.5rem' }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Start date</span>
-                <input
-                  type="date"
-                  value={form.start_date}
-                  onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                  style={{ padding: '0.5rem' }}
-                />
-              </label>
-              <label>
-                <span style={{ display: 'block', marginBottom: '0.25rem' }}>Notify once complete</span>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select
-                    value={form.notify_on_complete_user_id}
-                    onChange={(e) => setForm((f) => ({ ...f, notify_on_complete_user_id: e.target.value }))}
-                    style={{ padding: '0.5rem', minWidth: 180 }}
-                  >
-                    <option value="">— Select user —</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                    ))}
-                  </select>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={form.notify_creator_on_complete}
-                      onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
-                    />
-                    {' '}Notify me
-                  </label>
-                </div>
-              </label>
-              {role === 'dev' && (
-                <>
-                  <label>
-                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Remind at (CST, optional)</span>
-                    <input
-                      type="time"
-                      value={form.reminder_time}
-                      onChange={(e) => setForm((f) => ({ ...f, reminder_time: e.target.value }))}
-                      style={{ padding: '0.5rem' }}
-                    />
-                  </label>
-                  {form.reminder_time && (
-                    <label>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
-                        Reminder scope
-                        <button
-                          type="button"
-                          onClick={() => setReminderScopeModalOpen(true)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: 2,
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#6b7280',
-                          }}
-                          title="What each option means"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor">
-                            <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z" />
-                          </svg>
-                        </button>
-                      </span>
-                      <select
-                        value={form.reminder_scope}
-                        onChange={(e) => setForm((f) => ({ ...f, reminder_scope: e.target.value as 'today_only' | 'today_and_overdue' | '' }))}
-                        style={{ padding: '0.5rem', minWidth: 180 }}
-                      >
-                        <option value="">— Select —</option>
-                        <option value="today_only">Due date</option>
-                        <option value="today_and_overdue">Due date + daily until done</option>
-                      </select>
-                    </label>
-                  )}
-                </>
-              )}
-            </div>
-            {reminderScopeModalOpen && (
-              <div
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  background: 'rgba(0,0,0,0.5)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1100,
-                }}
-                onClick={() => setReminderScopeModalOpen(false)}
-              >
-                <div
-                  style={{
-                    background: 'white',
-                    padding: '1.5rem',
-                    borderRadius: 8,
-                    maxWidth: 420,
-                    width: '90%',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>What each option means</h4>
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                    <strong>Due date</strong> – Remind only when there is an incomplete instance due today.
-                  </p>
-                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
-                    Example: &quot;Call client&quot; is due Monday. You get a reminder Monday at 9am if it&apos;s not done. You do not get a reminder Tuesday, Wednesday, etc., even if it&apos;s still incomplete.
-                  </p>
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
-                    <strong>Due date + daily until done</strong> – Remind when there is an incomplete instance due today or earlier.
-                  </p>
-                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
-                    Example: &quot;Call client&quot; was due Monday. If it&apos;s still incomplete, you get a reminder every day at 9am (Tuesday, Wednesday, etc.) until it&apos;s completed.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setReminderScopeModalOpen(false)}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Got it
-                  </button>
-                </div>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-              <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                Save
-              </button>
-              <button type="button" onClick={() => setEditingId(null)} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

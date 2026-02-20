@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          value_num: number | null
+        }
+        Insert: {
+          key: string
+          value_num?: number | null
+        }
+        Update: {
+          key?: string
+          value_num?: number | null
+        }
+        Relationships: []
+      }
       assembly_types: {
         Row: {
           category: string | null

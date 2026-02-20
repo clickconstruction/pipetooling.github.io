@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { addPinForUser, deletePinForPathAndTab } from '../lib/pinnedTabs'
+import { addPinForUser, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
@@ -71,6 +71,8 @@ export default function People() {
   const [costMatrixTagColorsSectionOpen, setCostMatrixTagColorsSectionOpen] = useState(false)
   const [newTagName, setNewTagName] = useState('')
   const [newTagColor, setNewTagColor] = useState('#e5e7eb')
+  const [tagLedgerModalTag, setTagLedgerModalTag] = useState<string | null>(null)
+  const [teamLedgerModalTeam, setTeamLedgerModalTeam] = useState<PeopleTeam | null>(null)
   const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
@@ -605,8 +607,17 @@ export default function People() {
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
 
+  async function loadCostMatrixPinnedUsers() {
+    if (!isDev) return
+    const rows = await getUsersWithPin('/people', 'pay')
+    setPinToDashboardMasterIds(new Set(rows.map((r) => r.user_id)))
+  }
+
   useEffect(() => {
-    if (activeTab === 'pay' && isDev) loadCostMatrixShares()
+    if (activeTab === 'pay' && isDev) {
+      loadCostMatrixShares()
+      loadCostMatrixPinnedUsers()
+    }
   }, [activeTab, isDev])
 
   useEffect(() => {
@@ -1169,6 +1180,244 @@ export default function People() {
           ) : (
           <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {(() => {
+            const matrixTotal = matrixDays.reduce(
+              (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+              0
+            )
+            const tagTotals = new Map<string, number>()
+            for (const personName of showPeopleForMatrix) {
+              const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+              const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+              for (const tag of tags) {
+                tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
+              }
+            }
+            const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
+            if (sortedTags.length === 0) return null
+            return (
+              <section style={{ marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Tag</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
+                  {sortedTags.map(([tag, total]) => {
+                    const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
+                    return (
+                      <span
+                        key={tag}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setTagLedgerModalTag(tag)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTagLedgerModalTag(tag) } }}
+                        style={{ fontWeight: 500, cursor: 'pointer' }}
+                        title="Click to view ledger"
+                      >
+                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}%
+                      </span>
+                    )
+                  })}
+                </div>
+              </section>
+            )
+          })()}
+          {teams.length > 0 && (
+            <section style={{ marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Team:</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
+                {teams.map((team) => {
+                  const costForRange = (start: string, end: string) =>
+                    team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
+                  const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
+                  return (
+                    <span
+                      key={team.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setTeamLedgerModalTeam(team)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setTeamLedgerModalTeam(team) } }}
+                      style={{ fontWeight: 500, cursor: 'pointer' }}
+                      title="Click to view ledger"
+                    >
+                      {team.name}: ${Math.round(periodCost).toLocaleString('en-US')}
+                    </span>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+          {tagLedgerModalTag && (() => {
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+            const peopleWithTag = showPeopleForMatrix.filter((p) =>
+              (costMatrixTags[p] ?? '').split(',').map((t) => t.trim()).filter(Boolean).includes(tagLedgerModalTag)
+            )
+            const daysInRange = getDaysInRange(matrixStartDate, matrixEndDate)
+            const memberCostByWeekday = peopleWithTag.map((personName) => {
+              const byDay = dayNames.map((_, dayOfWeek) => {
+                const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                return matchingDays.reduce((sum, d) => sum + getCostForPersonDateMatrix(personName, d), 0)
+              })
+              const total = byDay.reduce((s, v) => s + v, 0)
+              return { personName, byDay, total }
+            })
+            const costByWeekday = dayNames.map((_, dayOfWeek) =>
+              memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+            )
+            const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+            return (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}
+                onClick={() => setTagLedgerModalTag(null)}
+              >
+                <div
+                  style={{
+                    background: 'white',
+                    borderRadius: 8,
+                    padding: '1rem 1.25rem',
+                    maxWidth: '90vw',
+                    maxHeight: '85vh',
+                    overflow: 'auto',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
+                      {tagLedgerModalTag} — Week of {matrixStartDate} to {matrixEndDate}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setTagLedgerModalTag(null)}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                        {dayNames.map((name) => (
+                          <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                        ))}
+                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {memberCostByWeekday.map(({ personName, byDay, total }) => (
+                        <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
+                          {byDay.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                          ))}
+                          <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                        <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                        {costByWeekday.map((val, i) => (
+                          <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                        ))}
+                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+          {teamLedgerModalTeam && (() => {
+            const team = teamLedgerModalTeam
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+            const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
+            const memberCostByWeekday = team.members.map((personName) => {
+              const byDay = dayNames.map((_, dayOfWeek) => {
+                const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(personName, d), 0)
+              })
+              const total = byDay.reduce((s, v) => s + v, 0)
+              return { personName, byDay, total }
+            })
+            const costByWeekday = dayNames.map((_, dayOfWeek) =>
+              memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+            )
+            const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+            return (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}
+                onClick={() => setTeamLedgerModalTeam(null)}
+              >
+                <div
+                  style={{
+                    background: 'white',
+                    borderRadius: 8,
+                    padding: '1rem 1.25rem',
+                    maxWidth: '90vw',
+                    maxHeight: '85vh',
+                    overflow: 'auto',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.125rem' }}>
+                      {team.name} — {teamPeriodStart} to {teamPeriodEnd}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setTeamLedgerModalTeam(null)}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                        {dayNames.map((name) => (
+                          <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                        ))}
+                        <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {memberCostByWeekday.map(({ personName, byDay, total }) => (
+                        <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
+                          {byDay.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                          ))}
+                          <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                        <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                        {costByWeekday.map((val, i) => (
+                          <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                        ))}
+                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
           {canAccessPay && (
           <section>
             <button
@@ -1302,6 +1551,114 @@ export default function People() {
                   ))}
                 </div>
                 {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
+                  </p>
+                  {pinToDashboardMasterIds.size > 0 && (
+                    <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+                      Pinned for:{' '}
+                      {costMatrixShareCandidates
+                        .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                        .filter((u) => pinToDashboardMasterIds.has(u.id))
+                        .map((u) => u.name || u.email || 'Unknown')
+                        .join(', ')}
+                    </p>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+                    {costMatrixShareCandidates.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+                      <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={pinToDashboardMasterIds.has(u.id)}
+                          onChange={(e) => {
+                            setPinToDashboardMasterIds((prev) => {
+                              const next = new Set(prev)
+                              if (e.target.checked) next.add(u.id)
+                              else next.delete(u.id)
+                              return next
+                            })
+                          }}
+                          disabled={pinToDashboardSaving}
+                        />
+                        {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                      </label>
+                    ))}
+                    <button
+                      type="button"
+                      disabled={pinToDashboardSaving || pinToDashboardMasterIds.size === 0}
+                      onClick={async () => {
+                        setPinToDashboardSaving(true)
+                        setPinToDashboardMessage(null)
+                        const total = matrixDays.reduce(
+                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                          0
+                        )
+                        const item = { path: '/people', label: `Total | $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
+                        const ids = Array.from(pinToDashboardMasterIds)
+                        let ok = 0
+                        let errMsg: string | null = null
+                        for (const userId of ids) {
+                          const { error } = await addPinForUser(userId, item)
+                          if (error) errMsg = error.message
+                          else ok++
+                        }
+                        setPinToDashboardSaving(false)
+                        if (errMsg) setPinToDashboardMessage({ type: 'error', text: errMsg })
+                        else {
+                          loadCostMatrixPinnedUsers()
+                          setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                          setTimeout(() => setPinToDashboardMessage(null), 5000)
+                        }
+                      }}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: pinToDashboardSaving || pinToDashboardMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Pin To Dashboard
+                    </button>
+                    <button
+                      type="button"
+                      disabled={pinToDashboardSaving || pinToDashboardUnpinSaving}
+                      onClick={async () => {
+                        setPinToDashboardUnpinSaving(true)
+                        setPinToDashboardMessage(null)
+                        const { count, error } = await deletePinForPathAndTab('/people', 'pay')
+                        setPinToDashboardUnpinSaving(false)
+                        if (error) setPinToDashboardMessage({ type: 'error', text: error.message })
+                        else {
+                          loadCostMatrixPinnedUsers()
+                          setPinToDashboardMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
+                          setTimeout(() => setPinToDashboardMessage(null), 5000)
+                        }
+                      }}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 6,
+                        cursor: pinToDashboardSaving || pinToDashboardUnpinSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Unpin All
+                    </button>
+                  </div>
+                  {pinToDashboardMessage && (
+                    <p style={{ color: pinToDashboardMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                      {pinToDashboardMessage.text}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </section>
@@ -1671,150 +2028,9 @@ export default function People() {
                 </tbody>
               </table>
             </div>
-            {(() => {
-              const matrixTotal = matrixDays.reduce(
-                (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-                0
-              )
-              const tagTotals = new Map<string, number>()
-              for (const personName of showPeopleForMatrix) {
-                const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
-                const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
-                for (const tag of tags) {
-                  tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
-                }
-              }
-              const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
-              if (sortedTags.length === 0) return null
-              return (
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Total by tag this week:</span>
-                  {sortedTags.map(([tag, total]) => {
-                    const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
-                    return (
-                      <span
-                        key={tag}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.15rem 0.4rem',
-                          background: costMatrixTagColors[tag] ?? '#e5e7eb',
-                          borderRadius: 4,
-                          color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
-                        }}
-                      >
-                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}%
-                      </span>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-            {isDev && (
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-                  {costMatrixShareCandidates.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-                    <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={pinToDashboardMasterIds.has(u.id)}
-                        onChange={(e) => {
-                          setPinToDashboardMasterIds((prev) => {
-                            const next = new Set(prev)
-                            if (e.target.checked) next.add(u.id)
-                            else next.delete(u.id)
-                            return next
-                          })
-                        }}
-                        disabled={pinToDashboardSaving}
-                      />
-                      {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={pinToDashboardSaving || pinToDashboardMasterIds.size === 0}
-                    onClick={async () => {
-                      setPinToDashboardSaving(true)
-                      setPinToDashboardMessage(null)
-                      const total = matrixDays.reduce(
-                        (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-                        0
-                      )
-                      const item = { path: '/people', label: `Total | $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
-                      const ids = Array.from(pinToDashboardMasterIds)
-                      let ok = 0
-                      let errMsg: string | null = null
-                      for (const userId of ids) {
-                        const { error } = await addPinForUser(userId, item)
-                        if (error) errMsg = error.message
-                        else ok++
-                      }
-                      setPinToDashboardSaving(false)
-                      if (errMsg) setPinToDashboardMessage({ type: 'error', text: errMsg })
-                      else {
-                        setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                        setTimeout(() => setPinToDashboardMessage(null), 5000)
-                      }
-                    }}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.875rem',
-                      background: '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: pinToDashboardSaving || pinToDashboardMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Pin To Dashboard
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pinToDashboardSaving || pinToDashboardUnpinSaving}
-                    onClick={async () => {
-                      setPinToDashboardUnpinSaving(true)
-                      setPinToDashboardMessage(null)
-                      const { count, error } = await deletePinForPathAndTab('/people', 'pay')
-                      setPinToDashboardUnpinSaving(false)
-                      if (error) setPinToDashboardMessage({ type: 'error', text: error.message })
-                      else {
-                        setPinToDashboardMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
-                        setTimeout(() => setPinToDashboardMessage(null), 5000)
-                      }
-                    }}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.875rem',
-                      background: '#f3f4f6',
-                      color: '#374151',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 6,
-                      cursor: pinToDashboardSaving || pinToDashboardUnpinSaving ? 'not-allowed' : 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Unpin All
-                  </button>
-                </div>
-                {pinToDashboardMessage && (
-                  <p style={{ color: pinToDashboardMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                    {pinToDashboardMessage.text}
-                  </p>
-                )}
-              </div>
-            )}
           </section>
           <section>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
-            </p>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <label>
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
@@ -1830,6 +2046,9 @@ export default function People() {
               </button>
               )}
             </div>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {teams.map((team) => {
                 const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
