@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -144,7 +145,7 @@ export default function Dashboard() {
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [sendTaskTitle, setSendTaskTitle] = useState('')
   const [sendTaskAssignedToUserId, setSendTaskAssignedToUserId] = useState('')
-  const [sendTaskShowUntilCompleted, setSendTaskShowUntilCompleted] = useState(false)
+  const [sendTaskShowUntilCompleted, setSendTaskShowUntilCompleted] = useState(true)
   const [sendTaskNotifyOnCompleteUserId, setSendTaskNotifyOnCompleteUserId] = useState('')
   const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
   const [sendTaskSaving, setSendTaskSaving] = useState(false)
@@ -157,6 +158,7 @@ export default function Dashboard() {
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const isDev = role === 'dev'
+  const checklistAddModal = useChecklistAddModal()
 
   useEffect(() => {
     if (canSendTask) {
@@ -565,7 +567,7 @@ export default function Dashboard() {
     }
     setSendTaskTitle('')
     setSendTaskAssignedToUserId(sendTaskUsers[0]?.id ?? '')
-    setSendTaskShowUntilCompleted(false)
+    setSendTaskShowUntilCompleted(true)
     setSendTaskNotifyOnCompleteUserId('')
     setSendTaskNotifyMe(false)
     if (authUser.id === sendTaskAssignedToUserId) {
@@ -1135,12 +1137,13 @@ export default function Dashboard() {
         <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <h2 style={{ fontSize: '1.125rem', marginBottom: 0, marginTop: 0 }}>Send task</h2>
-            <Link
-              to="/checklist?add=true"
-              style={{ fontSize: '0.875rem', color: '#3b82f6', textDecoration: 'none' }}
+            <button
+              type="button"
+              onClick={() => checklistAddModal?.openAddModal()}
+              style={{ fontSize: '0.875rem', color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'none' }}
             >
               detail send
-            </Link>
+            </button>
           </div>
           <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
             <label style={{ flex: '1 1 120px', minWidth: 120 }}>

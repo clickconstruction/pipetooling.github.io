@@ -39,6 +39,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 | Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 6 tabs documented |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
+| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in |
 | Migration history | [MIGRATIONS.md](./MIGRATIONS.md) - All database changes |
 | Understanding terminology | [GLOSSARY.md](./GLOSSARY.md) - All domain terms and concepts defined |
 
@@ -70,6 +71,9 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
 - **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
 - **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking
+
+🔧 **Troubleshooting**:
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - White screen fix, Supabase issues, sign-in, duplicate pins
 
 📝 **Feature-Specific Documentation**:
 - **[PRIVATE_NOTES_SETUP.md](./PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup

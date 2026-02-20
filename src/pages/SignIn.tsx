@@ -22,22 +22,13 @@ export default function SignIn() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'SignIn.tsx:handleSubmit',message:'Sign-in attempt',data:{emailPrefix:email.slice(0,3)+'***',hasPassword:!!password},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
-    const { data, error: err } = await supabase.auth.signInWithPassword({ email, password })
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'SignIn.tsx:handleSubmit',message:'Sign-in result',data:{success:!err,errorMsg:err?.message||null,hasSession:!!data?.session},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password })
     setLoading(false)
     if (err) {
       setError(err.message)
       return
     }
     void supabase.rpc('touch_last_sign_in')
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'SignIn.tsx:handleSubmit',message:'Sign-in success, about to reload',data:{},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     // Hard reload to clear cache (avoids stale data, service worker cache)
     const reload = () => { location.reload() }
     if (typeof caches !== 'undefined') {

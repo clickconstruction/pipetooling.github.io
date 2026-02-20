@@ -3,6 +3,8 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useForceReload } from '../contexts/ForceReloadContext'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import ChecklistAddModal from './ChecklistAddModal'
 import {
   PINNABLE_PATHS,
   pathToLabel,
@@ -56,6 +58,7 @@ export default function Layout() {
   const [pinForOpen, setPinForOpen] = useState(false)
   const pinForRef = useRef<HTMLDivElement>(null)
   const forceReload = useForceReload()
+  const checklistAddModal = useChecklistAddModal()
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 640px)')
@@ -245,7 +248,7 @@ export default function Layout() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/checklist?add=true')}
+                onClick={() => checklistAddModal?.openAddModal()}
                 style={{
                   padding: '0.5rem 1rem',
                   background: '#3b82f6',
@@ -562,6 +565,7 @@ export default function Layout() {
           </div>
         )}
       </main>
+      <ChecklistAddModal />
     </div>
   )
 }

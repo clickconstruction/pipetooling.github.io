@@ -97,6 +97,10 @@ export default function People() {
   })
   const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10))
   const [showMaxHours, setShowMaxHours] = useState(false)
+  const [payEditArrangement, setPayEditArrangement] = useState(false)
+  const [payEditTags, setPayEditTags] = useState(false)
+  const [costMatrixTags, setCostMatrixTags] = useState<Record<string, string>>({})
+  const [matrixSortBy, setMatrixSortBy] = useState<'cost' | 'tag' | 'name'>('cost')
   const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
@@ -556,6 +560,16 @@ export default function People() {
     setCostMatrixShareSaving(false)
   }
 
+  async function loadCostMatrixTags() {
+    if (!canAccessPay && !canViewCostMatrixShared) return
+    const { data } = await supabase.from('people_cost_matrix_tags').select('person_name, tags')
+    const map: Record<string, string> = {}
+    for (const r of (data ?? []) as { person_name: string; tags: string }[]) {
+      map[r.person_name] = r.tags ?? ''
+    }
+    setCostMatrixTags(map)
+  }
+
   useEffect(() => {
     if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared)) {
       setPayTabLoading(true)
@@ -563,6 +577,8 @@ export default function People() {
         loadPayConfig(),
         loadPeopleHours(matrixStartDate, matrixEndDate),
         loadTeams(),
+        loadHoursDisplayOrder(),
+        loadCostMatrixTags(),
       ]).finally(() => setPayTabLoading(false))
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
@@ -587,6 +603,36 @@ export default function People() {
     const otherIdx = direction === 'up' ? idx - 1 : idx + 1
     if (otherIdx < 0 || otherIdx >= showPeopleForHours.length) return
     const otherName = showPeopleForHours[otherIdx]
+    if (!otherName) return
+    const newOrderA = otherIdx
+    const newOrderB = idx
+    setHoursDisplayOrder((prev) => ({
+      ...prev,
+      [personName]: newOrderA,
+      [otherName]: newOrderB,
+    }))
+    await Promise.all([
+      supabase.from('people_hours_display_order').upsert({ person_name: personName, sequence_order: newOrderA }, { onConflict: 'person_name' }),
+      supabase.from('people_hours_display_order').upsert({ person_name: otherName, sequence_order: newOrderB }, { onConflict: 'person_name' }),
+    ])
+  }
+
+  async function saveCostMatrixTags(personName: string, tags: string) {
+    if (!canAccessPay) return
+    const trimmed = (tags ?? '').trim()
+    setCostMatrixTags((prev) => ({ ...prev, [personName]: trimmed }))
+    await supabase.from('people_cost_matrix_tags').upsert(
+      { person_name: personName, tags: trimmed },
+      { onConflict: 'person_name' }
+    )
+  }
+
+  async function moveMatrixRow(personName: string, direction: 'up' | 'down') {
+    const idx = showPeopleForMatrix.indexOf(personName)
+    if (idx < 0) return
+    const otherIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (otherIdx < 0 || otherIdx >= showPeopleForMatrix.length) return
+    const otherName = showPeopleForMatrix[otherIdx]
     if (!otherName) return
     const newOrderA = otherIdx
     const newOrderB = idx
@@ -756,9 +802,31 @@ export default function People() {
       const orderB = hoursDisplayOrder[b] ?? 999999
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
-  const showPeopleForMatrix = Object.keys(payConfig)
+  const showPeopleForMatrixBase = Object.keys(payConfig)
     .filter((n) => payConfig[n]?.show_in_cost_matrix ?? false)
-    .sort((a, b) => a.localeCompare(b))
+    .sort((a, b) => {
+      const orderA = hoursDisplayOrder[a] ?? 999999
+      const orderB = hoursDisplayOrder[b] ?? 999999
+      return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
+    })
+
+  const showPeopleForMatrix =
+    matrixSortBy === 'cost'
+      ? [...showPeopleForMatrixBase].sort((a, b) => {
+          const days = getDaysInRange(matrixStartDate, matrixEndDate)
+          const totalA = days.reduce((s, d) => s + getCostForPersonDateMatrix(a, d), 0)
+          const totalB = days.reduce((s, d) => s + getCostForPersonDateMatrix(b, d), 0)
+          return totalB - totalA
+        })
+      : matrixSortBy === 'tag'
+        ? [...showPeopleForMatrixBase].sort((a, b) => {
+            const tagsA = (costMatrixTags[a] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+            const tagsB = (costMatrixTags[b] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+            const firstA = tagsA[0] ?? 'zzz'
+            const firstB = tagsB[0] ?? 'zzz'
+            return firstA.localeCompare(firstB) || a.localeCompare(b)
+          })
+        : [...showPeopleForMatrixBase].sort((a, b) => a.localeCompare(b))
 
   function shiftMatrixWeek(delta: number) {
     const dStart = new Date(matrixStartDate + 'T12:00:00')
@@ -1171,6 +1239,26 @@ export default function People() {
                 />
                 show max hours
               </label>
+              {canAccessPay && (
+                <>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={payEditArrangement}
+                      onChange={(e) => setPayEditArrangement(e.target.checked)}
+                    />
+                    edit arrangement
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={payEditTags}
+                      onChange={(e) => setPayEditTags(e.target.checked)}
+                    />
+                    edit tags
+                  </label>
+                </>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <label>
@@ -1200,7 +1288,59 @@ export default function People() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Person</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        Person
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('cost')}
+                          title="Sort by cost (most expensive first)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'cost' ? 600 : 400,
+                          }}
+                        >
+                          $
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('tag')}
+                          title="Sort by first tag (A-Z)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'tag' ? 600 : 400,
+                          }}
+                        >
+                          tag
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('name')}
+                          title="Sort by name (A-Z)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'name' ? 600 : 400,
+                          }}
+                        >
+                          name
+                        </button>
+                      </span>
+                    </th>
                     {matrixDays.map((d) => (
                       <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
                         {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
@@ -1209,14 +1349,73 @@ export default function People() {
                   </tr>
                 </thead>
                 <tbody>
-                  {showPeopleForMatrix.map((personName) => {
+                  {showPeopleForMatrix.map((personName, idx) => {
                     const cfg = payConfig[personName]
                     const wage = cfg?.hourly_wage ?? 0
                     const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white' }}>
-                          {personName} | {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'}
+                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white', minWidth: 200 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              {payEditArrangement && canAccessPay ? (
+                                <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMatrixRow(personName, 'up')}
+                                    disabled={idx === 0}
+                                    title="Move up"
+                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                  >
+                                    ▲
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMatrixRow(personName, 'down')}
+                                    disabled={idx === showPeopleForMatrix.length - 1}
+                                    title="Move down"
+                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                  >
+                                    ▼
+                                  </button>
+                                </span>
+                              ) : null}
+                              <span>
+                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}
+                              </span>
+                            </span>
+                            {payEditTags && canAccessPay ? (
+                              <input
+                                type="text"
+                                value={costMatrixTags[personName] ?? ''}
+                                onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
+                                onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
+                                placeholder="Tags (comma-separated)"
+                                style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
+                              />
+                            ) : (costMatrixTags[personName] ?? '').trim() ? (
+                              <span style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                                {(costMatrixTags[personName] ?? '')
+                                  .split(',')
+                                  .map((t) => t.trim())
+                                  .filter(Boolean)
+                                  .map((tag) => (
+                                    <span
+                                      key={tag}
+                                      style={{
+                                        padding: '0.1rem 0.35rem',
+                                        background: '#e5e7eb',
+                                        borderRadius: 4,
+                                        fontSize: '0.7rem',
+                                        color: '#374151',
+                                      }}
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                              </span>
+                            ) : null}
+                          </span>
                         </td>
                         {matrixDays.map((d) => {
                           const cost = getCostForPersonDateMatrix(personName, d)

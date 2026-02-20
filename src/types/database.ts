@@ -1122,6 +1122,41 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_fixtures: {
+        Row: {
+          id: string
+          job_id: string
+          name: string
+          count: number
+          sequence_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          name?: string
+          count?: number
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          name?: string
+          count?: number
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_fixtures_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -1778,6 +1813,21 @@ export type Database = {
         Update: {
           person_name?: string
           sequence_order?: number
+        }
+        Relationships: []
+      }
+      people_cost_matrix_tags: {
+        Row: {
+          person_name: string
+          tags: string
+        }
+        Insert: {
+          person_name: string
+          tags?: string
+        }
+        Update: {
+          person_name?: string
+          tags?: string
         }
         Relationships: []
       }

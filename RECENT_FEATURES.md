@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-19
+last_updated: 2026-02-20
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.50 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.50)"
+  - name: "Latest Version (v2.51)"
     line: ~132
-    description: "Jobs tab order, Labor user lists, HCP row alignment"
+    description: "Fix app page, Cost matrix pins, Builder Review, Supabase troubleshooting"
   - name: "v2.49"
     line: ~165
     description: "Labor and Sub Sheet Ledger moved from People to Jobs"
@@ -79,10 +79,11 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-2. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-3. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-4. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+1. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+2. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+3. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+4. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+5. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
 5. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
 6. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
 7. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
@@ -130,6 +131,38 @@ when_to_read:
 47. [Email Templates](#email-templates)
 48. [Financial Tracking](#financial-tracking)
 49. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.51)
+
+### Fix app page, Cost matrix pins, Builder Review, People Pay
+
+**Date**: 2026-02-19
+
+**Overview**:
+Fix app page for white-screen recovery, Cost matrix Pin To Dashboard with total display and Unpin All, Builder Review improvements, People Pay config collapsed by default, cost matrix comma formatting, and duplicate pin handling.
+
+**Fix app (white screen recovery)**:
+- **`/fix-cache.html`**: Standalone page (no React dependency) to recover from white screen after app updates. Unregisters service workers, clears Cache API caches, clears app localStorage keys (`pipetooling_*`, `impersonation_original`, `materials_loadAllMode_*`), then reloads. Accessible when the main app won't load. Link in Settings under "Fix app".
+- **Use case**: User had phone open during deploy; app showed white screen. Navigate to `https://yoursite.com/fix-cache.html`, click "Fix app", app reloads fresh.
+
+**Cost matrix Pin To Dashboard**:
+- **Display**: Pins now show "Total | $12,354" (current week total) on Dashboard instead of "People – Cost matrix · pay". Link goes to `/people?tab=pay#cost-matrix` and scrolls to Cost matrix.
+- **Unpin All**: Button next to "Pin To Dashboard" removes Cost matrix pin from all users. Requires dev RLS policy (`allow_devs_delete_user_pinned_tabs`).
+- **Duplicate handling**: `addPinForUser` treats duplicate key (23505 or message containing constraint name) as success; no error shown when re-pinning.
+
+**Builder Review**:
+- **Service Types**: Grayed out (opacity 0.5, pointer-events none) when Builder Review tab is active.
+- **All customers**: When Builder Review is open, loads all customers and all bids (no service type filter). Switching back to Bid Board reloads with selected service type.
+
+**People Pay**:
+- **Pay config**: "People pay config" section collapsed by default.
+- **Cost matrix totals**: All dollar amounts use comma formatting (e.g. $12,354).
+
+**Realtime for pins**: `user_pinned_tabs` added to Supabase Realtime publication; Dashboard subscribes so new pins appear immediately without refresh. `visibilitychange` listener also refreshes pins when tab becomes visible.
+
+**Files**: `public/fix-cache.html`, `src/pages/People.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Settings.tsx`, `src/pages/Bids.tsx`, `src/lib/pinnedTabs.ts`, `supabase/migrations/20260219220000_add_user_pinned_tabs_to_realtime.sql`, `supabase/migrations/20260219230000_allow_devs_delete_user_pinned_tabs.sql`
 
 ---
 

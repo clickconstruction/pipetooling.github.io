@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-18
+last_updated: 2026-02-20
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -50,6 +50,7 @@ related_docs:
   - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role permissions"
   - "[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - API reference"
   - "[MIGRATIONS.md](./MIGRATIONS.md) - Schema changes"
+  - "[TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in"
   - "[GLOSSARY.md](./GLOSSARY.md) - Term definitions"
 
 prerequisites:
@@ -121,7 +122,7 @@ A Master Plumber can:
   - Authentication (email/password)
   - Row Level Security (RLS) policies
   - Edge Functions (Deno runtime)
-  - Real-time subscriptions (people_hours for Pay/Hours sync; force-reload broadcast for Global Reload)
+  - Real-time subscriptions (people_hours for Pay/Hours sync; user_pinned_tabs for Dashboard pins; force-reload broadcast for Global Reload)
 
 ### Hosting
 - **GitHub Pages** - Static site hosting
@@ -3116,7 +3117,7 @@ async function myFunction() {
 
 ### Performance Optimizations
 - **Data Fetching**: Some pages fetch all data upfront (consider pagination)
-- **Real-time**: Supabase Realtime used for `people_hours` (Pay/Hours sync) and `force-reload` broadcast (Global Reload)
+- **Real-time**: Supabase Realtime used for `people_hours` (Pay/Hours sync), `user_pinned_tabs` (Dashboard pins), and `force-reload` broadcast (Global Reload)
 - **Caching**: No client-side caching (consider React Query)
 
 ---

@@ -6,15 +6,17 @@ import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
+type JobsLedgerFixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
 type JobWithDetails = JobsLedgerRow & {
   materials: JobsLedgerMaterial[]
+  fixtures: JobsLedgerFixture[]
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
 }
 
-type JobsTab = 'labor' | 'sub_sheet_ledger' | 'ledger' | 'upcoming' | 'teams-summary'
+type JobsTab = 'labor' | 'sub_sheet_ledger' | 'ledger' | 'teams-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -44,8 +46,11 @@ function formatCurrency(n: number): string {
 }
 
 type MaterialRow = { id: string; description: string; amount: number }
+type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['labor', 'ledger', 'sub_sheet_ledger', 'upcoming', 'teams-summary']
+const JOBS_TABS: JobsTab[] = ['ledger', 'labor', 'sub_sheet_ledger', 'teams-summary']
+
+const LABOR_ASSIGNED_DELIMITER = ' | '
 
 export default function Jobs() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -64,6 +69,7 @@ export default function Jobs() {
   const [jobAddress, setJobAddress] = useState('')
   const [revenue, setRevenue] = useState('')
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
+  const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -91,7 +97,7 @@ export default function Jobs() {
   const [laborEntryTopOut, setLaborEntryTopOut] = useState('')
   const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
-  const [laborAssignedTo, setLaborAssignedTo] = useState('')
+  const [laborAssignedTo, setLaborAssignedTo] = useState<string[]>([])
   const [laborAddress, setLaborAddress] = useState('')
   const [laborJobNumber, setLaborJobNumber] = useState('')
   const [laborRate, setLaborRate] = useState('')
@@ -103,7 +109,7 @@ export default function Jobs() {
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
-  const [editAssignedTo, setEditAssignedTo] = useState('')
+  const [editAssignedTo, setEditAssignedTo] = useState<string[]>([])
   const [editAddress, setEditAddress] = useState('')
   const [editJobNumber, setEditJobNumber] = useState('')
   const [editJobDate, setEditJobDate] = useState('')
@@ -118,7 +124,7 @@ export default function Jobs() {
     const { data: jobsData, error: jobsErr } = await supabase
       .from('jobs_ledger')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('hcp_number', { ascending: false })
     if (jobsErr) {
       setError(jobsErr.message)
       setLoading(false)
@@ -131,20 +137,28 @@ export default function Jobs() {
       return
     }
     const jobIds = jobList.map((j) => j.id)
-    const [matsRes, teamRes] = await Promise.all([
+    const [matsRes, fixturesRes, teamRes] = await Promise.all([
       supabase.from('jobs_ledger_materials').select('*').in('job_id', jobIds).order('sequence_order'),
+      supabase.from('jobs_ledger_fixtures').select('*').in('job_id', jobIds).order('sequence_order'),
       supabase
         .from('jobs_ledger_team_members')
         .select('*, users(name)')
         .in('job_id', jobIds),
     ])
     const materialsList = (matsRes.data ?? []) as JobsLedgerMaterial[]
+    const fixturesList = (fixturesRes.data ?? []) as JobsLedgerFixture[]
     const teamList = (teamRes.data ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]
     const materialsByJob = new Map<string, JobsLedgerMaterial[]>()
     for (const m of materialsList) {
       const arr = materialsByJob.get(m.job_id) ?? []
       arr.push(m)
       materialsByJob.set(m.job_id, arr)
+    }
+    const fixturesByJob = new Map<string, JobsLedgerFixture[]>()
+    for (const f of fixturesList) {
+      const arr = fixturesByJob.get(f.job_id) ?? []
+      arr.push(f)
+      fixturesByJob.set(f.job_id, arr)
     }
     const teamByJob = new Map<string, (JobsLedgerTeamMember & { users: { name: string } | null })[]>()
     for (const t of teamList) {
@@ -155,6 +169,7 @@ export default function Jobs() {
     const jobsWithDetails: JobWithDetails[] = jobList.map((j) => ({
       ...j,
       materials: (materialsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      fixtures: (fixturesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       team_members: teamByJob.get(j.id) ?? [],
     }))
     setJobs(jobsWithDetails)
@@ -550,10 +565,11 @@ export default function Jobs() {
 
   async function saveLaborJob() {
     if (!authUser?.id) return
-    const assigned = laborAssignedTo.trim()
+    const assignedNames = laborAssignedTo.map((n) => n.trim()).filter(Boolean)
+    const assigned = assignedNames.join(LABOR_ASSIGNED_DELIMITER)
     const address = laborAddress.trim()
-    if (!assigned) {
-      setError('Select a user.')
+    if (assignedNames.length === 0) {
+      setError('Select at least one user.')
       return
     }
     if (!address) {
@@ -605,7 +621,7 @@ export default function Jobs() {
         return
       }
     }
-    setLaborAssignedTo('')
+    setLaborAssignedTo([])
     setLaborAddress('')
     setLaborJobNumber('')
     setLaborRate('')
@@ -637,7 +653,10 @@ export default function Jobs() {
 
   function openEditLaborJob(job: LaborJob) {
     setEditingLaborJob(job)
-    setEditAssignedTo(job.assigned_to_name)
+    const names = job.assigned_to_name
+      ? job.assigned_to_name.split(LABOR_ASSIGNED_DELIMITER).map((s) => s.trim()).filter(Boolean)
+      : []
+    setEditAssignedTo(names)
     setEditAddress(job.address)
     setEditJobNumber(job.job_number ?? '')
     setEditJobDate(job.job_date ?? '')
@@ -655,7 +674,7 @@ export default function Jobs() {
 
   function closeEditLaborJob() {
     setEditingLaborJob(null)
-    setEditAssignedTo('')
+    setEditAssignedTo([])
     setEditAddress('')
     setEditJobNumber('')
     setEditJobDate('')
@@ -678,10 +697,11 @@ export default function Jobs() {
   async function saveEditedLaborJob(e: React.FormEvent) {
     e.preventDefault()
     if (!editingLaborJob) return
-    const assigned = editAssignedTo.trim()
+    const assignedNames = editAssignedTo.map((n) => n.trim()).filter(Boolean)
+    const assigned = assignedNames.join(LABOR_ASSIGNED_DELIMITER)
     const address = editAddress.trim()
-    if (!assigned) {
-      setError('Select a user.')
+    if (assignedNames.length === 0) {
+      setError('Select at least one user.')
       return
     }
     if (!address) {
@@ -745,7 +765,8 @@ export default function Jobs() {
   function printLaborSubSheet() {
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const dateStr = new Date().toLocaleDateString()
-    const title = escapeHtml(laborAssignedTo || 'Labor') + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
+    const assignedLabel = laborAssignedTo.length > 0 ? laborAssignedTo.join(', ') : 'Labor'
+    const title = escapeHtml(assignedLabel) + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
     const rate = laborRate.trim() === '' ? 0 : parseFloat(laborRate) || 0
 
     const validRows = laborFixtureRows.filter((r) => (r.fixture ?? '').trim())
@@ -905,6 +926,7 @@ export default function Jobs() {
     setJobAddress('')
     setRevenue('')
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
+    setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
     setTeamMemberIds([])
     setFormOpen(true)
   }
@@ -919,6 +941,11 @@ export default function Jobs() {
       job.materials.length > 0
         ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))
         : [{ id: crypto.randomUUID(), description: '', amount: 0 }]
+    )
+    setFixtures(
+      job.fixtures.length > 0
+        ? job.fixtures.map((f) => ({ id: f.id, name: f.name, count: Number(f.count) || 1 }))
+        : [{ id: crypto.randomUUID(), name: '', count: 1 }]
     )
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
     setFormOpen(true)
@@ -941,6 +968,31 @@ export default function Jobs() {
     setMaterials((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
+  function addFixtureRow() {
+    setFixtures((prev) => [...prev, { id: crypto.randomUUID(), name: '', count: 1 }])
+  }
+
+  function updateFixtureRow(id: string, updates: Partial<FixtureRow>) {
+    setFixtures((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+  }
+
+  function removeFixtureRow(id: string) {
+    setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
+  }
+
+  function fillLaborFromBilling() {
+    const hcp = laborJobNumber.trim()
+    if (!hcp) return
+    const match = jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === hcp.toLowerCase())
+    if (!match) return
+    setLaborAddress(match.job_address ?? '')
+    const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
+    const teamNames = (match.team_members ?? [])
+      .map((t) => t.users?.name?.trim())
+      .filter((n): n is string => !!n && rosterNames.includes(n))
+    setLaborAssignedTo(teamNames)
+  }
+
   async function saveJob() {
     if (!authUser?.id) return
     setSaving(true)
@@ -959,6 +1011,16 @@ export default function Jobs() {
             job_id: editing.id,
             description: m.description.trim(),
             amount: m.amount,
+            sequence_order: i,
+          })
+        }
+        await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', editing.id)
+        const validFixtures = fixtures.filter((f) => (f.name ?? '').trim())
+        for (const [i, f] of validFixtures.entries()) {
+          await supabase.from('jobs_ledger_fixtures').insert({
+            job_id: editing.id,
+            name: f.name.trim(),
+            count: f.count,
             sequence_order: i,
           })
         }
@@ -995,6 +1057,15 @@ export default function Jobs() {
               sequence_order: i,
             })
           }
+          const validFixtures = fixtures.filter((f) => (f.name ?? '').trim())
+          for (const [i, f] of validFixtures.entries()) {
+            await supabase.from('jobs_ledger_fixtures').insert({
+              job_id: jobId,
+              name: f.name.trim(),
+              count: f.count,
+              sequence_order: i,
+            })
+          }
           for (const uid of teamMemberIds) {
             await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
           }
@@ -1019,8 +1090,21 @@ export default function Jobs() {
 
   return (
     <div>
-      <h1>Jobs</h1>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('ledger')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'ledger')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'ledger')}
+        >
+          Billing
+        </button>
         <button
           type="button"
           onClick={() => {
@@ -1038,20 +1122,6 @@ export default function Jobs() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab('ledger')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'ledger')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'ledger')}
-        >
-          HCP Jobs
-        </button>
-        <button
-          type="button"
-          onClick={() => {
             setActiveTab('sub_sheet_ledger')
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
@@ -1061,21 +1131,7 @@ export default function Jobs() {
           }}
           style={tabStyle(activeTab === 'sub_sheet_ledger')}
         >
-          Sub Sheet Ledger
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('upcoming')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'upcoming')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'upcoming')}
-        >
-          Upcoming
+          Labor Ledger
         </button>
         <button
           type="button"
@@ -1097,48 +1153,37 @@ export default function Jobs() {
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 720 }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                    {rosterNamesEveryoneElse().map((n) => (
-                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="radio"
-                          name="labor-user"
-                          checked={laborAssignedTo === n}
-                          onChange={() => setLaborAssignedTo(n)}
-                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                        />
-                        <span>{n}</span>
-                      </label>
-                    ))}
-                    {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                    {rosterNamesSubcontractors().map((n) => (
-                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="radio"
-                          name="labor-user"
-                          checked={laborAssignedTo === n}
-                          onChange={() => setLaborAssignedTo(n)}
-                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                        />
-                        <span>{n}</span>
-                      </label>
-                    ))}
-                    {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, marginBottom: '0.25rem' }}>calculate, save, and match the labor rate for a job</p>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: '0 0 120px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
+                  <label style={{ fontWeight: 500, margin: 0 }}>HCP</label>
+                  <button
+                    type="button"
+                    onClick={fillLaborFromBilling}
+                    disabled={!laborJobNumber.trim()}
+                    title="Fill Contractors and Address from Billing if HCP matches"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: laborJobNumber.trim() ? 'pointer' : 'default',
+                      fontSize: '0.8125rem',
+                      color: laborJobNumber.trim() ? '#2563eb' : '#9ca3af',
+                    }}
+                  >
+                    fill
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={laborJobNumber}
+                  onChange={(e) => setLaborJobNumber(e.target.value)}
+                  maxLength={10}
+                  placeholder="Optional"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
                 <input
@@ -1149,53 +1194,43 @@ export default function Jobs() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
-              <div style={{ flex: '0 0 120px' }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
-                <input
-                  type="text"
-                  value={laborJobNumber}
-                  onChange={(e) => setLaborJobNumber(e.target.value)}
-                  maxLength={10}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              {serviceTypes.length > 1 && (
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
-                  <select
-                    value={selectedServiceTypeId}
-                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  >
-                    {serviceTypes.map((st) => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
+            <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                    {rosterNamesSubcontractors().map((n) => (
+                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={laborAssignedTo.includes(n)}
+                          onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                        />
+                        <span>{n}</span>
+                      </label>
                     ))}
-                  </select>
+                    {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                  </div>
                 </div>
-              )}
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={laborRate}
-                  onChange={(e) => setLaborRate(e.target.value)}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
-                <input
-                  type="date"
-                  value={laborDate}
-                  onChange={(e) => setLaborDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                    {rosterNamesEveryoneElse().map((n) => (
+                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="checkbox"
+                          checked={laborAssignedTo.includes(n)}
+                          onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                        />
+                        <span>{n}</span>
+                      </label>
+                    ))}
+                    {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                  </div>
+                </div>
               </div>
             </div>
             <div>
@@ -1203,7 +1238,7 @@ export default function Jobs() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items)</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
@@ -1298,11 +1333,48 @@ export default function Jobs() {
                 </p>
               )}
             </div>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              {serviceTypes.length > 1 && (
+                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
+                  <select
+                    value={selectedServiceTypeId}
+                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  >
+                    {serviceTypes.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={laborRate}
+                  onChange={(e) => setLaborRate(e.target.value)}
+                  placeholder="Optional"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
+                <input
+                  type="date"
+                  value={laborDate}
+                  onChange={(e) => setLaborDate(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
               <button
                 type="button"
                 onClick={saveLaborJob}
-                disabled={laborSaving || !laborAssignedTo.trim() || !laborAddress.trim() || laborFixtureRows.every((r) => {
+                disabled={laborSaving || laborAssignedTo.length === 0 || !laborAddress.trim() || laborFixtureRows.every((r) => {
                   const hasFixture = (r.fixture ?? '').trim()
                   const isFixed = r.is_fixed ?? false
                   return !hasFixture || (!isFixed && Number(r.count) <= 0)
@@ -1314,9 +1386,9 @@ export default function Jobs() {
               <button
                 type="button"
                 onClick={printLaborSubSheet}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                style={{ padding: '0.5rem 1rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
               >
-                Print for sub
+                Print
               </button>
             </div>
             <div style={{ marginTop: '1.5rem' }}>
@@ -1481,12 +1553,12 @@ export default function Jobs() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job #</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Print for sub</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sub Sheet</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
                     <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
@@ -1509,8 +1581,8 @@ export default function Jobs() {
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalHrs.toFixed(2)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{rate > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          <button type="button" onClick={() => printJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                            Print for sub
+                          <button type="button" onClick={() => printJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                            Print
                           </button>
                         </td>
                         <td style={{ padding: '0.75rem' }}>
@@ -1582,12 +1654,12 @@ export default function Jobs() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Materials List</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Team Members</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Materials</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractors</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -1595,8 +1667,20 @@ export default function Jobs() {
                   {filteredJobs.map((job) => (
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem' }}>{job.hcp_number || '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{job.job_name || '—'}</td>
-                      <td style={{ padding: '0.75rem' }}>{job.job_address || '—'}</td>
+                      <td style={{ padding: '0.75rem' }}>
+                        <div>{job.job_name || '—'}</div>
+                        {(job.job_address ?? '').trim() && (
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.job_address}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 180 }}>
+                        {job.fixtures.length === 0
+                          ? '—'
+                          : job.fixtures
+                              .filter((f) => (f.name ?? '').trim())
+                              .map((f) => (f.count > 1 ? `${f.name} × ${f.count}` : f.name))
+                              .join('\n')}
+                      </td>
                       <td style={{ padding: '0.75rem', whiteSpace: 'pre-wrap', maxWidth: 200 }}>
                         {job.materials.length === 0
                           ? '—'
@@ -1657,7 +1741,6 @@ export default function Jobs() {
         </div>
       )}
 
-      {activeTab === 'upcoming' && <p style={{ color: '#6b7280' }}>Upcoming content coming soon.</p>}
       {activeTab === 'teams-summary' && <p style={{ color: '#6b7280' }}>Teams Summary content coming soon.</p>}
 
       {editingLaborJob && (
@@ -1665,48 +1748,17 @@ export default function Jobs() {
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Edit job</h2>
             <form onSubmit={saveEditedLaborJob}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>User</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Everyone else</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
-                      {rosterNamesEveryoneElse().map((n) => (
-                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <input
-                            type="radio"
-                            name="edit-labor-user"
-                            checked={editAssignedTo === n}
-                            onChange={() => setEditAssignedTo(n)}
-                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                          />
-                          <span>{n}</span>
-                        </label>
-                      ))}
-                      {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Subcontractors</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
-                      {rosterNamesSubcontractors().map((n) => (
-                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          <input
-                            type="radio"
-                            name="edit-labor-user"
-                            checked={editAssignedTo === n}
-                            onChange={() => setEditAssignedTo(n)}
-                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                          />
-                          <span>{n}</span>
-                        </label>
-                      ))}
-                      {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <div style={{ flex: '0 0 100px' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>HCP</label>
+                  <input
+                    type="text"
+                    value={editJobNumber}
+                    onChange={(e) => setEditJobNumber(e.target.value)}
+                    maxLength={10}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
                   <input
@@ -1716,15 +1768,43 @@ export default function Jobs() {
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                 </div>
-                <div style={{ flex: '0 0 100px' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
-                  <input
-                    type="text"
-                    value={editJobNumber}
-                    onChange={(e) => setEditJobNumber(e.target.value)}
-                    maxLength={10}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Subcontractors</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                      {rosterNamesSubcontractors().map((n) => (
+                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="checkbox"
+                            checked={editAssignedTo.includes(n)}
+                            onChange={() => setEditAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                          />
+                          <span>{n}</span>
+                        </label>
+                      ))}
+                      {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Everyone else</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                      {rosterNamesEveryoneElse().map((n) => (
+                        <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <input
+                            type="checkbox"
+                            checked={editAssignedTo.includes(n)}
+                            onChange={() => setEditAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                            style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                          />
+                          <span>{n}</span>
+                        </label>
+                      ))}
+                      {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                    </div>
+                  </div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -1754,7 +1834,7 @@ export default function Jobs() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items)</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>fixed</th>
@@ -1955,7 +2035,7 @@ export default function Jobs() {
             {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP #</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
                 <input
                   type="text"
                   value={hcpNumber}
@@ -1985,12 +2065,11 @@ export default function Jobs() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Materials List</label>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Description</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Materials (Line Items)</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount ($)</th>
                         <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
@@ -2042,11 +2121,69 @@ export default function Jobs() {
                   </table>
                 </div>
                 <button type="button" onClick={addMaterialRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  Add line item
+                  Add Material
                 </button>
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Team Members</label>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items)</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: 80 }}>Count</th>
+                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fixtures.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <input
+                              type="text"
+                              value={row.name}
+                              onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                              placeholder="Fixture or tie-in name"
+                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              value={row.count}
+                              onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                              style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'center' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => removeFixtureRow(row.id)}
+                              disabled={fixtures.length <= 1}
+                              style={{
+                                padding: '0.25rem',
+                                background: fixtures.length <= 1 ? '#f3f4f6' : '#fee2e2',
+                                color: fixtures.length <= 1 ? '#9ca3af' : '#991b1c',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: fixtures.length <= 1 ? 'not-allowed' : 'pointer',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" onClick={addFixtureRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                  Add Fixture /Tie-in
+                </button>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Contractors</label>
                 <select
                   multiple
                   value={teamMemberIds}
@@ -2072,7 +2209,7 @@ export default function Jobs() {
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Hold Ctrl/Cmd to select multiple.</p>
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Revenue ($)</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Total Bill ($)</label>
                 <input
                   type="number"
                   min={0}

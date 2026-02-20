@@ -26,6 +26,7 @@ import { Toast, useToast } from './components/Toast'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
+import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -119,7 +120,9 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ForceReloadProvider>
-                <Layout />
+                <ChecklistAddModalProvider>
+                  <Layout />
+                </ChecklistAddModalProvider>
               </ForceReloadProvider>
             </ProtectedRoute>
           }

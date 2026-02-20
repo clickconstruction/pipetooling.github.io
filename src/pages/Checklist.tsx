@@ -1,7 +1,8 @@
-import { useState, useEffect, Fragment } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 type ChecklistTab = 'today' | 'history' | 'manage' | 'checklists'
@@ -45,7 +46,6 @@ export default function Checklist() {
   const [activeTab, setActiveTab] = useState<ChecklistTab>('today')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [openAddFormOnMount, setOpenAddFormOnMount] = useState(false)
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -59,25 +59,17 @@ export default function Checklist() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (searchParams.get('add') === 'true' && (role === 'dev' || role === 'master_technician' || role === 'assistant')) {
-      setActiveTab('checklists')
-      setOpenAddFormOnMount(true)
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, role, setSearchParams])
-
-  useEffect(() => {
     const tab = searchParams.get('tab')
     if (tab === 'today' || tab === 'history' || tab === 'manage' || tab === 'checklists') {
       setActiveTab(tab)
-    } else if (!tab && !openAddFormOnMount) {
+    } else if (!tab) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'today')
         return next
       }, { replace: true })
     }
-  }, [searchParams, openAddFormOnMount])
+  }, [searchParams])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
@@ -158,7 +150,7 @@ export default function Checklist() {
         <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'checklists' && canManageChecklists && (
-        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} openAddOnMount={openAddFormOnMount} onAddOpened={() => setOpenAddFormOnMount(false)} />
+        <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} />
       )}
 
       {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
@@ -879,7 +871,7 @@ type OutstandingInstance = {
   checklist_item_id: string
   scheduled_date: string
   assigned_to_user_id: string
-  checklist_items?: { title: string; repeat_type?: string } | null
+  checklist_items?: { title: string; repeat_type?: string; reminder_scope?: string | null } | null
   users?: { name: string; email: string } | null
 }
 
@@ -887,7 +879,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating'>('next_day')
+  const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('next_day')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -993,11 +985,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
+      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type, reminder_scope), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
-    if (dateRange !== 'non_repeating') {
+    if (dateRange === 'missed') {
+      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10) // more than 1 day old = scheduled before yesterday
+      query = query.lt('scheduled_date', yesterday)
+    } else if (dateRange !== 'non_repeating') {
       const start = dateRange === 'next_day' ? tomorrow : tomorrow
       const end = dateRange === 'next_day' ? tomorrow : weekEnd
       query = query.gte('scheduled_date', start).lte('scheduled_date', end)
@@ -1012,6 +1007,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
     let instances = (data ?? []) as OutstandingInstance[]
     if (dateRange === 'non_repeating') {
       instances = instances.filter((inst) => (inst.checklist_items as { repeat_type?: string } | null)?.repeat_type === 'once')
+    }
+    if (dateRange === 'missed') {
+      instances = instances.filter((inst) => (inst.checklist_items as { reminder_scope?: string | null } | null)?.reminder_scope !== 'today_and_overdue')
     }
     const map = new Map<string, OutstandingInstance[]>()
     for (const inst of instances) {
@@ -1038,6 +1036,20 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0 }}>Outstanding by person</h3>
         <div style={{ display: 'flex', gap: '0.25rem' }}>
+          <button
+            type="button"
+            onClick={() => setDateRange('non_repeating')}
+            style={{
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.875rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.25rem',
+              background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            Non repeating
+          </button>
           <button
             type="button"
             onClick={() => setDateRange('next_day')}
@@ -1068,17 +1080,17 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError }: { authUserId: 
           </button>
           <button
             type="button"
-            onClick={() => setDateRange('non_repeating')}
+            onClick={() => setDateRange('missed')}
             style={{
               padding: '0.25rem 0.5rem',
               fontSize: '0.875rem',
               border: '1px solid #e5e7eb',
               borderRadius: '0.25rem',
-              background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
+              background: dateRange === 'missed' ? '#e5e7eb' : 'transparent',
               cursor: 'pointer',
             }}
           >
-            Non repeating
+            Missed
           </button>
         </div>
       </div>
@@ -1267,11 +1279,11 @@ type ChecklistItem = {
   users?: { name: string; email: string } | null
 }
 
-function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddOpened }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; openAddOnMount?: boolean; onAddOpened?: () => void }) {
+function ChecklistManageTab({ authUserId, role, setError }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void }) {
+  const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
-  const [formOpen, setFormOpen] = useState(false)
   const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [filterUserId, setFilterUserId] = useState<string>('')
@@ -1308,12 +1320,13 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
     Promise.all([loadItems(), loadUsers()]).finally(() => setLoading(false))
   }, [filterUserId])
 
+  const loadItemsRef = useRef(loadItems)
+  loadItemsRef.current = loadItems
   useEffect(() => {
-    if (openAddOnMount) {
-      openAdd()
-      onAddOpened?.()
-    }
-  }, [openAddOnMount])
+    const handler = () => loadItemsRef.current()
+    window.addEventListener('checklist-item-saved', handler)
+    return () => window.removeEventListener('checklist-item-saved', handler)
+  }, [])
 
   async function loadUsers() {
     const { data } = await supabase.from('users').select('id, name, email').order('name')
@@ -1334,25 +1347,6 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
     setItems((data ?? []) as ChecklistItem[])
   }
 
-  function openAdd() {
-    setEditingId(null)
-    setForm({
-      title: '',
-      assigned_to_user_id: users[0]?.id ?? '',
-      repeat_type: 'once',
-      repeat_days_of_week: [],
-      repeat_days_after: 1,
-      repeat_end_date: '',
-      start_date: toLocalDateString(new Date()),
-      show_until_completed: false,
-      notify_on_complete_user_id: '',
-      notify_creator_on_complete: false,
-      reminder_time: '',
-      reminder_scope: '',
-    })
-    setFormOpen(true)
-  }
-
   function openEdit(item: ChecklistItem) {
     setEditingId(item.id)
     const rt = item.reminder_time
@@ -1370,7 +1364,6 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
       reminder_time: rt ? (rt.length === 5 ? rt : rt.slice(0, 5)) : '',
       reminder_scope: (item.reminder_scope as 'today_only' | 'today_and_overdue') ?? '',
     })
-    setFormOpen(true)
   }
 
   async function generateInstances(itemId: string, item: typeof form) {
@@ -1470,7 +1463,7 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
       const newId = (data as { id: string })?.id
       if (newId) await generateInstances(newId, form)
     }
-    setFormOpen(false)
+    setEditingId(null)
     await loadItems()
   }
 
@@ -1483,12 +1476,12 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-  if (loading) return <p>Loading…</p>
+  if (loading && !editingId) return <p>Loading…</p>
 
   return (
     <div>
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" onClick={openAdd} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+        <button type="button" onClick={() => checklistAddModal?.openAddModal()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
           Add checklist item
         </button>
         <label>
@@ -1524,9 +1517,13 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
               <td style={{ padding: '0.5rem 0.75rem' }}>{item.title}</td>
               <td style={{ padding: '0.5rem 0.75rem' }}>{(item.users as { name: string; email: string } | null)?.name || (item.users as { email: string } | null)?.email || '—'}</td>
               <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
-                {item.repeat_type === 'day_of_week' && `Weekly: ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`}
-                {item.repeat_type === 'days_after_completion' && `${item.repeat_days_after} days after completion`}
-                {item.repeat_type === 'once' && 'Once'}
+                {item.show_until_completed
+                  ? 'Until completed'
+                  : item.repeat_type === 'day_of_week'
+                    ? `Weekly: ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`
+                    : item.repeat_type === 'days_after_completion'
+                      ? `${item.repeat_days_after} days after completion`
+                      : 'Once'}
               </td>
               <td style={{ padding: '0.5rem 0.75rem' }}>{item.start_date}</td>
               <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
@@ -1541,8 +1538,26 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
                 </td>
               )}
               <td style={{ padding: '0.5rem 0.75rem' }}>
-                <button type="button" onClick={() => openEdit(item)} style={{ marginRight: '0.5rem' }}>Edit</button>
-                <button type="button" onClick={() => deleteItem(item.id)} style={{ color: '#b91c1c' }}>Delete</button>
+                <button
+                  type="button"
+                  onClick={() => openEdit(item)}
+                  title="Edit"
+                  style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                    <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteItem(item.id)}
+                  title="Delete"
+                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                    <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
+                  </svg>
+                </button>
               </td>
             </tr>
           ))}
@@ -1550,10 +1565,19 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
 
-      {formOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>{editingId ? 'Edit' : 'Add'} checklist item</h3>
+      {editingId && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="checklist-edit-modal-title"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setEditingId(null)}
+        >
+          <div
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="checklist-edit-modal-title" style={{ marginTop: 0 }}>Edit checklist item</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <label>
                 <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
@@ -1769,7 +1793,7 @@ function ChecklistManageTab({ authUserId, role, setError, openAddOnMount, onAddO
               <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                 Save
               </button>
-              <button type="button" onClick={() => setFormOpen(false)} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+              <button type="button" onClick={() => setEditingId(null)} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
