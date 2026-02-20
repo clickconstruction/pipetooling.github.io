@@ -730,6 +730,21 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
+      }
       counts_fixture_group_items: {
         Row: {
           created_at: string | null

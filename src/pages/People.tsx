@@ -60,8 +60,17 @@ export default function People() {
   type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
+  const [payConfigDraft, setPayConfigDraft] = useState<Record<string, string>>({})
+  const payConfigRef = useRef(payConfig)
+  payConfigRef.current = payConfig
+  const payConfigDraftRef = useRef(payConfigDraft)
+  payConfigDraftRef.current = payConfigDraft
+  const payConfigDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(false)
   const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
+  const [costMatrixTagColorsSectionOpen, setCostMatrixTagColorsSectionOpen] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagColor, setNewTagColor] = useState('#e5e7eb')
   const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
@@ -100,6 +109,7 @@ export default function People() {
   const [payEditArrangement, setPayEditArrangement] = useState(false)
   const [payEditTags, setPayEditTags] = useState(false)
   const [costMatrixTags, setCostMatrixTags] = useState<Record<string, string>>({})
+  const [costMatrixTagColors, setCostMatrixTagColors] = useState<Record<string, string>>({})
   const [matrixSortBy, setMatrixSortBy] = useState<'cost' | 'tag' | 'name'>('cost')
   const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
   const [hoursDateStart, setHoursDateStart] = useState(() => {
@@ -502,6 +512,7 @@ export default function People() {
       map[r.person_name] = r
     }
     setPayConfig(map)
+    setPayConfigDraft({})
   }
 
   async function loadPeopleHours(start: string, end: string) {
@@ -570,6 +581,16 @@ export default function People() {
     setCostMatrixTags(map)
   }
 
+  async function loadCostMatrixTagColors() {
+    if (!canAccessPay && !canViewCostMatrixShared) return
+    const { data } = await supabase.from('cost_matrix_tag_colors').select('tag, color')
+    const map: Record<string, string> = {}
+    for (const r of (data ?? []) as { tag: string; color: string }[]) {
+      map[r.tag] = r.color ?? '#e5e7eb'
+    }
+    setCostMatrixTagColors(map)
+  }
+
   useEffect(() => {
     if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared)) {
       setPayTabLoading(true)
@@ -579,6 +600,7 @@ export default function People() {
         loadTeams(),
         loadHoursDisplayOrder(),
         loadCostMatrixTags(),
+        loadCostMatrixTagColors(),
       ]).finally(() => setPayTabLoading(false))
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
@@ -586,6 +608,13 @@ export default function People() {
   useEffect(() => {
     if (activeTab === 'pay' && isDev) loadCostMatrixShares()
   }, [activeTab, isDev])
+
+  useEffect(() => {
+    return () => {
+      for (const t of Object.values(payConfigDebounceRef.current)) clearTimeout(t)
+      payConfigDebounceRef.current = {}
+    }
+  }, [])
 
   async function loadHoursDisplayOrder() {
     if (!canAccessHours && !canAccessPay) return
@@ -624,6 +653,17 @@ export default function People() {
     await supabase.from('people_cost_matrix_tags').upsert(
       { person_name: personName, tags: trimmed },
       { onConflict: 'person_name' }
+    )
+  }
+
+  async function saveTagColor(tag: string, color: string) {
+    if (!canAccessPay) return
+    const trimmedTag = tag.trim()
+    if (!trimmedTag) return
+    setCostMatrixTagColors((prev) => ({ ...prev, [trimmedTag]: color }))
+    await supabase.from('cost_matrix_tag_colors').upsert(
+      { tag: trimmedTag, color },
+      { onConflict: 'tag' }
     )
   }
 
@@ -673,15 +713,43 @@ export default function People() {
     }
   }, [activeTab, canAccessHours, canAccessPay, canViewCostMatrixShared])
 
-  async function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
+  function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return
-    setPayConfigSaving(true)
     const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
     const full = { person_name: personName, hourly_wage: row.hourly_wage ?? cur.hourly_wage, is_salary: row.is_salary ?? cur.is_salary, show_in_hours: row.show_in_hours ?? cur.show_in_hours, show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix }
-    const { error } = await supabase.from('people_pay_config').upsert(full, { onConflict: 'person_name' })
-    if (error) setError(error.message)
-    else setPayConfig((prev) => ({ ...prev, [personName]: full }))
-    setPayConfigSaving(false)
+    setPayConfig((prev) => ({ ...prev, [personName]: full }))
+    const prevTimeout = payConfigDebounceRef.current[personName]
+    if (prevTimeout) clearTimeout(prevTimeout)
+    payConfigDebounceRef.current[personName] = setTimeout(async () => {
+      delete payConfigDebounceRef.current[personName]
+      setPayConfigSaving(true)
+      const toSave = payConfigRef.current[personName] ?? full
+      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      if (error) setError(error.message)
+      setPayConfigSaving(false)
+    }, 2000)
+  }
+
+  function updatePayConfigHourlyWage(personName: string, rawValue: string) {
+    if (!canAccessPay) return
+    setPayConfigDraft((prev) => ({ ...prev, [personName]: rawValue }))
+    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
+    const parsed = rawValue === '' ? null : parseFloat(rawValue) || null
+    const full = { ...cur, hourly_wage: parsed }
+    setPayConfig((prev) => ({ ...prev, [personName]: full }))
+    const prevTimeout = payConfigDebounceRef.current[personName]
+    if (prevTimeout) clearTimeout(prevTimeout)
+    payConfigDebounceRef.current[personName] = setTimeout(async () => {
+      delete payConfigDebounceRef.current[personName]
+      setPayConfigSaving(true)
+      const draftVal = payConfigDraftRef.current[personName]
+      const finalWage = draftVal !== undefined ? (draftVal === '' ? null : parseFloat(draftVal) || null) : (payConfigRef.current[personName]?.hourly_wage ?? null)
+      const toSave = { ...(payConfigRef.current[personName] ?? full), hourly_wage: finalWage }
+      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      if (error) setError(error.message)
+      else setPayConfigDraft((prev) => { const next = { ...prev }; delete next[personName]; return next })
+      setPayConfigSaving(false)
+    }, 2000)
   }
 
   async function saveHours(personName: string, workDate: string, hours: number) {
@@ -764,6 +832,16 @@ export default function People() {
     const day = new Date(workDate + 'T12:00:00').getDay()
     if (day >= 1 && day <= 5) return wage * 8
     return getCostForPersonDate(personName, workDate)
+  }
+
+  function textColorForBackground(hex: string): string {
+    const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i)
+    if (!m) return '#374151'
+    const r = parseInt(m[1] ?? '00', 16) / 255
+    const g = parseInt(m[2] ?? '00', 16) / 255
+    const b = parseInt(m[3] ?? '00', 16) / 255
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+    return luminance < 0.5 ? '#ffffff' : '#374151'
   }
 
   function getDaysInRange(start: string, end: string): string[] {
@@ -1141,8 +1219,8 @@ export default function People() {
                             type="number"
                             step="0.01"
                             min="0"
-                            value={c.hourly_wage ?? ''}
-                            onChange={(e) => upsertPayConfig(n, { hourly_wage: e.target.value === '' ? null : parseFloat(e.target.value) || null })}
+                            value={payConfigDraft[n] !== undefined ? payConfigDraft[n] : (c.hourly_wage ?? '')}
+                            onChange={(e) => updatePayConfigHourlyWage(n, e.target.value)}
                             disabled={payConfigSaving}
                             style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                           />
@@ -1224,6 +1302,150 @@ export default function People() {
                   ))}
                 </div>
                 {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
+              </div>
+            )}
+          </section>
+          )}
+          {canAccessPay && (
+          <section>
+            <button
+              type="button"
+              onClick={() => setCostMatrixTagColorsSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                marginBottom: costMatrixTagColorsSectionOpen ? '0.75rem' : 0,
+                padding: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{costMatrixTagColorsSectionOpen ? '▼' : '▶'}</span>
+              Tag colors
+            </button>
+            {costMatrixTagColorsSectionOpen && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  Click a tag to change its color.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                  {(() => {
+                    const tagsInUse = new Set<string>()
+                    for (const tags of Object.values(costMatrixTags)) {
+                      for (const t of (tags ?? '').split(',').map((x) => x.trim()).filter(Boolean)) {
+                        tagsInUse.add(t)
+                      }
+                    }
+                    const tagsWithColors = new Set(Object.keys(costMatrixTagColors))
+                    const allTags = [...new Set([...tagsInUse, ...tagsWithColors])].sort()
+                    return (
+                      <>
+                        {allTags.map((tag) => {
+                          const bg = costMatrixTagColors[tag] ?? '#e5e7eb'
+                          return (
+                            <label
+                              key={tag}
+                              style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }}
+                              title="Click to change color"
+                            >
+                              <input
+                                type="color"
+                                value={bg}
+                                onChange={(e) => saveTagColor(tag, e.target.value)}
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  opacity: 0,
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  height: '100%',
+                                }}
+                              />
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '0.1rem 0.35rem',
+                                  background: bg,
+                                  borderRadius: 4,
+                                  fontSize: '0.7rem',
+                                  color: textColorForBackground(bg),
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            </label>
+                          )
+                        })}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
+                          <input
+                            type="text"
+                            placeholder="Add tag"
+                            value={newTagName}
+                            onChange={(e) => setNewTagName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const t = newTagName.trim()
+                                if (t) {
+                                  saveTagColor(t, newTagColor)
+                                  setNewTagName('')
+                                  setNewTagColor('#e5e7eb')
+                                }
+                              }
+                            }}
+                            style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.7rem' }}
+                          />
+                          <label style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }} title="Color for new tag">
+                            <input
+                              type="color"
+                              value={newTagColor}
+                              onChange={(e) => setNewTagColor(e.target.value)}
+                              style={{
+                                position: 'absolute',
+                                inset: 0,
+                                opacity: 0,
+                                cursor: 'pointer',
+                                width: '100%',
+                                height: '100%',
+                              }}
+                            />
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '0.1rem 0.35rem',
+                                background: newTagColor,
+                                borderRadius: 4,
+                                fontSize: '0.7rem',
+                                color: textColorForBackground(newTagColor),
+                              }}
+                            >
+                              +
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const t = newTagName.trim()
+                              if (t) {
+                                saveTagColor(t, newTagColor)
+                                setNewTagName('')
+                                setNewTagColor('#e5e7eb')
+                              }
+                            }}
+                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                          >
+                            Add
+                          </button>
+                        </span>
+                      </>
+                    )
+                  })()}
+                </div>
               </div>
             )}
           </section>
@@ -1356,8 +1578,8 @@ export default function People() {
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white', minWidth: 200 }}>
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                               {payEditArrangement && canAccessPay ? (
                                 <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
                                   <button
@@ -1394,7 +1616,7 @@ export default function People() {
                                 style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
                               />
                             ) : (costMatrixTags[personName] ?? '').trim() ? (
-                              <span style={{ display: 'flex', gap: '0.2rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                              <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
                                 {(costMatrixTags[personName] ?? '')
                                   .split(',')
                                   .map((t) => t.trim())
@@ -1404,10 +1626,10 @@ export default function People() {
                                       key={tag}
                                       style={{
                                         padding: '0.1rem 0.35rem',
-                                        background: '#e5e7eb',
+                                        background: costMatrixTagColors[tag] ?? '#e5e7eb',
                                         borderRadius: 4,
                                         fontSize: '0.7rem',
-                                        color: '#374151',
+                                        color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
                                       }}
                                     >
                                       {tag}
@@ -1449,6 +1671,46 @@ export default function People() {
                 </tbody>
               </table>
             </div>
+            {(() => {
+              const matrixTotal = matrixDays.reduce(
+                (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                0
+              )
+              const tagTotals = new Map<string, number>()
+              for (const personName of showPeopleForMatrix) {
+                const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+                const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
+                for (const tag of tags) {
+                  tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
+                }
+              }
+              const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
+              if (sortedTags.length === 0) return null
+              return (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', fontSize: '0.8125rem' }}>
+                  <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Total by tag this week:</span>
+                  {sortedTags.map(([tag, total]) => {
+                    const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
+                    return (
+                      <span
+                        key={tag}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.4rem',
+                          background: costMatrixTagColors[tag] ?? '#e5e7eb',
+                          borderRadius: 4,
+                          color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
+                        }}
+                      >
+                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}%
+                      </span>
+                    )
+                  })}
+                </div>
+              )
+            })()}
             {isDev && (
               <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
