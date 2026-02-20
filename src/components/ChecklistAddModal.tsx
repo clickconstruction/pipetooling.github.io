@@ -50,7 +50,7 @@ export default function ChecklistAddModal() {
 
   useEffect(() => {
     if (modalContext?.isOpen && users.length > 0 && !form.assigned_to_user_id) {
-      setForm((f) => ({ ...f, assigned_to_user_id: users[0].id }))
+      setForm((f) => ({ ...f, assigned_to_user_id: users[0]?.id ?? '' }))
     }
   }, [modalContext?.isOpen, users, form.assigned_to_user_id])
 

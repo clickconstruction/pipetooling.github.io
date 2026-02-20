@@ -8,6 +8,7 @@ import {
   getPinnedForUserFromSupabase,
   type PinnedItem,
 } from '../lib/pinnedTabs'
+import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
@@ -159,6 +160,8 @@ export default function Dashboard() {
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const isDev = role === 'dev'
   const checklistAddModal = useChecklistAddModal()
+  const hasCostMatrixPin = pinnedRoutes.some((p) => p.path === '/people' && p.tab === 'pay')
+  const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
 
   useEffect(() => {
     if (canSendTask) {
@@ -963,7 +966,9 @@ export default function Dashboard() {
               const to = item.tab
                 ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
                 : item.path
-              const displayLabel = isCostMatrix ? item.label : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+              const displayLabel = isCostMatrix
+                ? (costMatrixTotal != null ? `Total | $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
+                : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
                 <Link
                   key={item.path + (item.tab ?? '')}
