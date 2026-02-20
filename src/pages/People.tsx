@@ -1283,9 +1283,8 @@ export default function People() {
                       setPinToDashboardSaving(false)
                       if (errMsg) setPinToDashboardMessage({ type: 'error', text: errMsg })
                       else {
-                        setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}.` })
-                        setPinToDashboardMasterIds(new Set())
-                        setTimeout(() => setPinToDashboardMessage(null), 3000)
+                        setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                        setTimeout(() => setPinToDashboardMessage(null), 5000)
                       }
                     }}
                     style={{

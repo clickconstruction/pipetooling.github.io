@@ -154,7 +154,7 @@ export async function addPinForUser(
     tab: item.tab ?? null,
   })
   if (error) {
-    if (error.code === '23505') return { error: null } // unique violation = already pinned
+    if (error?.code === '23505') return { error: null } // unique violation = already pinned
     return { error: new Error(error.message) }
   }
   window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))

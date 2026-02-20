@@ -193,10 +193,27 @@ export default function Dashboard() {
     const onPinsChanged = () => refreshPinned()
     window.addEventListener('pipetooling-pins-changed', onPinsChanged)
     window.addEventListener('focus', onPinsChanged)
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshPinned() }
+    document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
       window.removeEventListener('focus', onPinsChanged)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
     }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    const channel = supabase
+      .channel('user-pinned-tabs')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_pinned_tabs',
+        filter: `user_id=eq.${authUser.id}`,
+      }, () => { refreshPinned() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [authUser?.id])
 
   useEffect(() => {
