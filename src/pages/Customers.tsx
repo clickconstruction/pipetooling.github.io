@@ -190,7 +190,7 @@ export default function Customers() {
                   })()}
                 </div>
               </div>
-              <span style={{ display: 'flex', gap: '0.5rem' }}>
+              <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
                 <Link to={`/projects?customer=${c.id}`}>Projects</Link>
                 <button
                   onClick={() => {

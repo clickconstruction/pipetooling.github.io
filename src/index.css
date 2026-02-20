@@ -83,6 +83,20 @@ button {
   .fwd-btn-desktop {
     display: none !important;
   }
+
+  /* /customers: stack Projects and Bids links vertically on mobile */
+  .customers-projects-bids-links {
+    flex-direction: column !important;
+    align-items: flex-end;
+  }
+
+  /* People Pay: cost matrix date headers on two lines (Mon / 2/16) */
+  .cost-matrix-date-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.2;
+  }
 }
 
 @media (min-width: 641px) {

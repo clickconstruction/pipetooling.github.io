@@ -1418,6 +1418,383 @@ export default function People() {
               </div>
             )
           })()}
+          <section id="cost-matrix">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+              <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showMaxHours}
+                  onChange={(e) => setShowMaxHours(e.target.checked)}
+                />
+                show max hours
+              </label>
+              {canAccessPay && (
+                <>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={payEditArrangement}
+                      onChange={(e) => setPayEditArrangement(e.target.checked)}
+                    />
+                    edit arrangement
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={payEditTags}
+                      onChange={(e) => setPayEditTags(e.target.checked)}
+                    />
+                    edit tags
+                  </label>
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <button
+                type="button"
+                onClick={() => shiftMatrixWeek(-1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ← last week
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftMatrixWeek(1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                next week →
+              </button>
+            </div>
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        Person
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('cost')}
+                          title="Sort by cost (most expensive first)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'cost' ? 600 : 400,
+                          }}
+                        >
+                          $
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('tag')}
+                          title="Sort by first tag (A-Z)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'tag' ? 600 : 400,
+                          }}
+                        >
+                          tag
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMatrixSortBy('name')}
+                          title="Sort by name (A-Z)"
+                          style={{
+                            padding: '0.15rem 0.35rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: matrixSortBy === 'name' ? 600 : 400,
+                          }}
+                        >
+                          name
+                        </button>
+                      </span>
+                    </th>
+                    {matrixDays.map((d) => {
+                      const dt = new Date(d + 'T12:00:00')
+                      const weekday = dt.toLocaleDateString(undefined, { weekday: 'short' })
+                      const monthDay = dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
+                      return (
+                        <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
+                          <span className="cost-matrix-date-header">
+                            <span>{weekday}</span>
+                            <span> {monthDay}</span>
+                          </span>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {showPeopleForMatrix.map((personName, idx) => {
+                    const cfg = payConfig[personName]
+                    const wage = cfg?.hourly_wage ?? 0
+                    const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+                    return (
+                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white', minWidth: 200 }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                              {payEditArrangement && canAccessPay ? (
+                                <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMatrixRow(personName, 'up')}
+                                    disabled={idx === 0}
+                                    title="Move up"
+                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                  >
+                                    ▲
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => moveMatrixRow(personName, 'down')}
+                                    disabled={idx === showPeopleForMatrix.length - 1}
+                                    title="Move down"
+                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                                  >
+                                    ▼
+                                  </button>
+                                </span>
+                              ) : null}
+                              <span>
+                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}
+                              </span>
+                            </span>
+                            {payEditTags && canAccessPay ? (
+                              <input
+                                type="text"
+                                value={costMatrixTags[personName] ?? ''}
+                                onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
+                                onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
+                                placeholder="Tags (comma-separated)"
+                                style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
+                              />
+                            ) : (costMatrixTags[personName] ?? '').trim() ? (
+                              <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                                {(costMatrixTags[personName] ?? '')
+                                  .split(',')
+                                  .map((t) => t.trim())
+                                  .filter(Boolean)
+                                  .map((tag) => (
+                                    <span
+                                      key={tag}
+                                      style={{
+                                        padding: '0.1rem 0.35rem',
+                                        background: costMatrixTagColors[tag] ?? '#e5e7eb',
+                                        borderRadius: 4,
+                                        fontSize: '0.7rem',
+                                        color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
+                                      }}
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                              </span>
+                            ) : null}
+                          </span>
+                        </td>
+                        {matrixDays.map((d) => {
+                          const cost = getCostForPersonDateMatrix(personName, d)
+                          return (
+                            <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                              {wage > 0 ? `$${Math.round(cost).toLocaleString('en-US')}` : '—'}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                  <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                      Total | ${Math.round(
+                        matrixDays.reduce(
+                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                          0
+                        )
+                      ).toLocaleString('en-US')}
+                    </td>
+                    {matrixDays.map((d) => {
+                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
+                      return (
+                        <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
+                          ${Math.round(dayTotal).toLocaleString('en-US')}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <section>
+            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              {canAccessPay && (
+              <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
+                Add team
+              </button>
+              )}
+            </div>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {teams.map((team) => {
+                const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
+                const costForRange = (start: string, end: string) =>
+                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
+                const today = new Date().toISOString().slice(0, 10)
+                const yesterday = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 1)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const last7Start = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 6)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const last3Start = (() => {
+                  const d = new Date()
+                  d.setDate(d.getDate() - 2)
+                  return d.toISOString().slice(0, 10)
+                })()
+                const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
+                const last7Cost = costForRange(last7Start, today)
+                const last3Cost = costForRange(last3Start, today)
+                const yesterdayCost = costForRange(yesterday, yesterday)
+                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
+                const memberCostByWeekday = team.members.map((m) => {
+                  const byDay = dayNames.map((_, dayOfWeek) => {
+                    const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
+                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(m, d), 0)
+                  })
+                  const total = byDay.reduce((s, v) => s + v, 0)
+                  return { member: m, byDay, total }
+                })
+                const costByWeekday = dayNames.map((_, dayOfWeek) =>
+                  memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
+                )
+                const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
+                return (
+                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      {teamsReadOnly ? (
+                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
+                      ) : (
+                        <input
+                          type="text"
+                          value={team.name}
+                          onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
+                          onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
+                          style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
+                        />
+                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
+                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
+                      {team.members.map((m) => (
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
+                          {m}
+                          {!teamsReadOnly && (
+                            <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
+                          )}
+                        </span>
+                      ))}
+                      {!teamsReadOnly && (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (v) { addTeamMember(team.id, v); e.target.value = '' }
+                        }}
+                        style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
+                      >
+                        <option value="">+ Add person</option>
+                        {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                      )}
+                    </div>
+                    <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
+                          {dayNames.map((name) => (
+                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
+                          ))}
+                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {memberCostByWeekday.map(({ member, byDay, total }) => (
+                          <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
+                            {byDay.map((val, i) => (
+                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                            ))}
+                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
+                          {costByWeekday.map((val, i) => (
+                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
+                          ))}
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showMaxHoursTeams}
+                onChange={(e) => setShowMaxHoursTeams(e.target.checked)}
+              />
+              show max hours
+            </label>
+          </section>
           {canAccessPay && (
           <section>
             <button
@@ -1807,375 +2184,6 @@ export default function People() {
             )}
           </section>
           )}
-          <section id="cost-matrix">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={showMaxHours}
-                  onChange={(e) => setShowMaxHours(e.target.checked)}
-                />
-                show max hours
-              </label>
-              {canAccessPay && (
-                <>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={payEditArrangement}
-                      onChange={(e) => setPayEditArrangement(e.target.checked)}
-                    />
-                    edit arrangement
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={payEditTags}
-                      onChange={(e) => setPayEditTags(e.target.checked)}
-                    />
-                    edit tags
-                  </label>
-                </>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <button
-                type="button"
-                onClick={() => shiftMatrixWeek(-1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                ← last week
-              </button>
-              <button
-                type="button"
-                onClick={() => shiftMatrixWeek(1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                next week →
-              </button>
-            </div>
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        Person
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('cost')}
-                          title="Sort by cost (most expensive first)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'cost' ? 600 : 400,
-                          }}
-                        >
-                          $
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('tag')}
-                          title="Sort by first tag (A-Z)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'tag' ? 600 : 400,
-                          }}
-                        >
-                          tag
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMatrixSortBy('name')}
-                          title="Sort by name (A-Z)"
-                          style={{
-                            padding: '0.15rem 0.35rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: matrixSortBy === 'name' ? 600 : 400,
-                          }}
-                        >
-                          name
-                        </button>
-                      </span>
-                    </th>
-                    {matrixDays.map((d) => (
-                      <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70 }}>
-                        {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {showPeopleForMatrix.map((personName, idx) => {
-                    const cfg = payConfig[personName]
-                    const wage = cfg?.hourly_wage ?? 0
-                    const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
-                    return (
-                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white', minWidth: 200 }}>
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                              {payEditArrangement && canAccessPay ? (
-                                <span style={{ display: 'flex', flexDirection: 'column', gap: 0, marginRight: '0.25rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => moveMatrixRow(personName, 'up')}
-                                    disabled={idx === 0}
-                                    title="Move up"
-                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                                  >
-                                    ▲
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => moveMatrixRow(personName, 'down')}
-                                    disabled={idx === showPeopleForMatrix.length - 1}
-                                    title="Move down"
-                                    style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
-                                  >
-                                    ▼
-                                  </button>
-                                </span>
-                              ) : null}
-                              <span>
-                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}
-                              </span>
-                            </span>
-                            {payEditTags && canAccessPay ? (
-                              <input
-                                type="text"
-                                value={costMatrixTags[personName] ?? ''}
-                                onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
-                                onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
-                                placeholder="Tags (comma-separated)"
-                                style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
-                              />
-                            ) : (costMatrixTags[personName] ?? '').trim() ? (
-                              <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
-                                {(costMatrixTags[personName] ?? '')
-                                  .split(',')
-                                  .map((t) => t.trim())
-                                  .filter(Boolean)
-                                  .map((tag) => (
-                                    <span
-                                      key={tag}
-                                      style={{
-                                        padding: '0.1rem 0.35rem',
-                                        background: costMatrixTagColors[tag] ?? '#e5e7eb',
-                                        borderRadius: 4,
-                                        fontSize: '0.7rem',
-                                        color: textColorForBackground(costMatrixTagColors[tag] ?? '#e5e7eb'),
-                                      }}
-                                    >
-                                      {tag}
-                                    </span>
-                                  ))}
-                              </span>
-                            ) : null}
-                          </span>
-                        </td>
-                        {matrixDays.map((d) => {
-                          const cost = getCostForPersonDateMatrix(personName, d)
-                          return (
-                            <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                              {wage > 0 ? `$${Math.round(cost).toLocaleString('en-US')}` : '—'}
-                            </td>
-                          )
-                        })}
-                      </tr>
-                    )
-                  })}
-                  <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
-                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
-                      Total | ${Math.round(
-                        matrixDays.reduce(
-                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-                          0
-                        )
-                      ).toLocaleString('en-US')}
-                    </td>
-                    {matrixDays.map((d) => {
-                      const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
-                      return (
-                        <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                          ${Math.round(dayTotal).toLocaleString('en-US')}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
-          <section>
-            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              {canAccessPay && (
-              <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
-                Add team
-              </button>
-              )}
-            </div>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {teams.map((team) => {
-                const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
-                const costForRange = (start: string, end: string) =>
-                  team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
-                const today = new Date().toISOString().slice(0, 10)
-                const yesterday = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 1)
-                  return d.toISOString().slice(0, 10)
-                })()
-                const last7Start = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 6)
-                  return d.toISOString().slice(0, 10)
-                })()
-                const last3Start = (() => {
-                  const d = new Date()
-                  d.setDate(d.getDate() - 2)
-                  return d.toISOString().slice(0, 10)
-                })()
-                const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
-                const last7Cost = costForRange(last7Start, today)
-                const last3Cost = costForRange(last3Start, today)
-                const yesterdayCost = costForRange(yesterday, yesterday)
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                const daysInRange = getDaysInRange(teamPeriodStart, teamPeriodEnd)
-                const memberCostByWeekday = team.members.map((m) => {
-                  const byDay = dayNames.map((_, dayOfWeek) => {
-                    const matchingDays = daysInRange.filter((d) => new Date(d + 'T12:00:00').getDay() === dayOfWeek)
-                    return matchingDays.reduce((sum, d) => sum + getCostForPersonDateTeams(m, d), 0)
-                  })
-                  const total = byDay.reduce((s, v) => s + v, 0)
-                  return { member: m, byDay, total }
-                })
-                const costByWeekday = dayNames.map((_, dayOfWeek) =>
-                  memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-                )
-                const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
-                return (
-                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                      {teamsReadOnly ? (
-                        <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={team.name}
-                          onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
-                          onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
-                          style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
-                        />
-                      )}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                      {team.members.map((m) => (
-                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
-                          {m}
-                          {!teamsReadOnly && (
-                            <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
-                          )}
-                        </span>
-                      ))}
-                      {!teamsReadOnly && (
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const v = e.target.value
-                          if (v) { addTeamMember(team.id, v); e.target.value = '' }
-                        }}
-                        style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
-                      >
-                        <option value="">+ Add person</option>
-                        {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      )}
-                    </div>
-                    <table style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                          {dayNames.map((name) => (
-                            <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                          ))}
-                          <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {memberCostByWeekday.map(({ member, byDay, total }) => (
-                          <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
-                            {byDay.map((val, i) => (
-                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                          </tr>
-                        ))}
-                        <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                          <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                          {costByWeekday.map((val, i) => (
-                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                          ))}
-                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )
-              })}
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.75rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showMaxHoursTeams}
-                onChange={(e) => setShowMaxHoursTeams(e.target.checked)}
-              />
-              show max hours
-            </label>
-          </section>
           </>
           )}
         </div>
