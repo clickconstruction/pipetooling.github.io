@@ -167,6 +167,22 @@ export async function clearPinnedInSupabase(userId: string): Promise<void> {
   window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
 }
 
+/** Delete all pins for a given path+tab (e.g. Cost matrix). Devs only. Returns { count, error }. */
+export async function deletePinForPathAndTab(
+  path: string,
+  tab: string
+): Promise<{ count: number; error: Error | null }> {
+  const { data, error } = await (supabase as any)
+    .from('user_pinned_tabs')
+    .delete()
+    .eq('path', path)
+    .eq('tab', tab)
+    .select('id')
+  if (error) return { count: 0, error: new Error(error.message) }
+  window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
+  return { count: (data ?? []).length, error: null }
+}
+
 export function pathToLabel(path: string): string {
   return PATH_TO_LABEL[path] ?? (path.slice(1) || 'Dashboard')
 }

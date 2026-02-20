@@ -956,24 +956,31 @@ export default function Dashboard() {
       {pinnedRoutes.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {pinnedRoutes.map((item) => (
-              <Link
-                key={item.path + (item.tab ?? '')}
-                to={item.tab ? `${item.path}?tab=${encodeURIComponent(item.tab)}` : item.path}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 6,
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                }}
-              >
-                {item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label}
-              </Link>
-            ))}
+            {pinnedRoutes.map((item) => {
+              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
+              const to = item.tab
+                ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
+                : item.path
+              const displayLabel = isCostMatrix ? item.label : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+              return (
+                <Link
+                  key={item.path + (item.tab ?? '')}
+                  to={to}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                >
+                  {displayLabel}
+                </Link>
+              )
+            })}
           </div>
         </div>
       )}

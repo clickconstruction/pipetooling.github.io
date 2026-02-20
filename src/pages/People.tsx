@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { addPinForUser } from '../lib/pinnedTabs'
+import { addPinForUser, deletePinForPathAndTab } from '../lib/pinnedTabs'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
@@ -60,7 +60,7 @@ export default function People() {
   type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
-  const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(true)
+  const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(false)
   const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
   const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
@@ -68,6 +68,7 @@ export default function People() {
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   const [pinToDashboardMasterIds, setPinToDashboardMasterIds] = useState<Set<string>>(new Set())
   const [pinToDashboardSaving, setPinToDashboardSaving] = useState(false)
+  const [pinToDashboardUnpinSaving, setPinToDashboardUnpinSaving] = useState(false)
   const [pinToDashboardMessage, setPinToDashboardMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
@@ -252,6 +253,14 @@ export default function People() {
       }, { replace: true })
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash === '#cost-matrix' && activeTab === 'pay') {
+      const el = document.getElementById('cost-matrix')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [activeTab, searchParams])
 
   useEffect(() => {
     async function loadPayAccess() {
@@ -1151,7 +1160,7 @@ export default function People() {
             )}
           </section>
           )}
-          <section>
+          <section id="cost-matrix">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
@@ -1207,13 +1216,13 @@ export default function People() {
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white' }}>
-                          {personName} | {wage > 0 ? `$${Math.round(periodTotal)}` : '—'}
+                          {personName} | {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'}
                         </td>
                         {matrixDays.map((d) => {
                           const cost = getCostForPersonDateMatrix(personName, d)
                           return (
                             <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                              {wage > 0 ? `$${Math.round(cost)}` : '—'}
+                              {wage > 0 ? `$${Math.round(cost).toLocaleString('en-US')}` : '—'}
                             </td>
                           )
                         })}
@@ -1227,13 +1236,13 @@ export default function People() {
                           (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
                           0
                         )
-                      )}
+                      ).toLocaleString('en-US')}
                     </td>
                     {matrixDays.map((d) => {
                       const dayTotal = showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0)
                       return (
                         <td key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right' }}>
-                          ${Math.round(dayTotal)}
+                          ${Math.round(dayTotal).toLocaleString('en-US')}
                         </td>
                       )
                     })}
@@ -1271,7 +1280,11 @@ export default function People() {
                     onClick={async () => {
                       setPinToDashboardSaving(true)
                       setPinToDashboardMessage(null)
-                      const item = { path: '/people', label: 'People – Cost matrix', tab: 'pay' as const }
+                      const total = matrixDays.reduce(
+                        (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
+                        0
+                      )
+                      const item = { path: '/people', label: `Total | $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
                       const ids = Array.from(pinToDashboardMasterIds)
                       let ok = 0
                       let errMsg: string | null = null
@@ -1299,6 +1312,33 @@ export default function People() {
                     }}
                   >
                     Pin To Dashboard
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pinToDashboardSaving || pinToDashboardUnpinSaving}
+                    onClick={async () => {
+                      setPinToDashboardUnpinSaving(true)
+                      setPinToDashboardMessage(null)
+                      const { count, error } = await deletePinForPathAndTab('/people', 'pay')
+                      setPinToDashboardUnpinSaving(false)
+                      if (error) setPinToDashboardMessage({ type: 'error', text: error.message })
+                      else {
+                        setPinToDashboardMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
+                        setTimeout(() => setPinToDashboardMessage(null), 5000)
+                      }
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.875rem',
+                      background: '#f3f4f6',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 6,
+                      cursor: pinToDashboardSaving || pinToDashboardUnpinSaving ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Unpin All
                   </button>
                 </div>
                 {pinToDashboardMessage && (
@@ -1383,10 +1423,10 @@ export default function People() {
                         />
                       )}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
-                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost)}</span>
-                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost)}</span>
-                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost)}</span>
-                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost)}</span>
+                        <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
@@ -1429,17 +1469,17 @@ export default function People() {
                           <tr key={member} style={{ borderBottom: '1px solid #f3f4f6' }}>
                             <td style={{ padding: '0.2rem 0.5rem' }}>{member}</td>
                             {byDay.map((val, i) => (
-                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val)}</td>
+                              <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
                             ))}
-                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total)}</td>
+                            <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
                           </tr>
                         ))}
                         <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
                           <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
                           {costByWeekday.map((val, i) => (
-                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val)}</td>
+                            <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
                           ))}
-                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal)}</td>
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
                         </tr>
                       </tbody>
                     </table>
