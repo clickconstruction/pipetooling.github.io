@@ -154,7 +154,10 @@ export async function addPinForUser(
     tab: item.tab ?? null,
   })
   if (error) {
-    if (error?.code === '23505') return { error: null } // unique violation = already pinned
+    const isDuplicate = error?.code === '23505' || error?.code === 23505 ||
+      error?.message?.includes('user_pinned_tabs_user_path_tab_key') ||
+      error?.message?.includes('duplicate key value violates unique constraint')
+    if (isDuplicate) return { error: null } // already pinned
     return { error: new Error(error.message) }
   }
   window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
