@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PipeTooling – Fix app</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 400px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+    p { color: #6b7280; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    button { padding: 0.75rem 1.5rem; background: #f97316; color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; width: 100%; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .done { color: #059669; font-weight: 500; margin-top: 1rem; }
+    .error { color: #dc2626; font-size: 0.875rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Fix PipeTooling</h1>
+  <p>If the app shows a white screen after an update, this will clear cached files and reset storage so the app can load correctly.</p>
+  <button id="fix" type="button">Fix app</button>
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('fix').onclick = async function () {
+      const btn = this;
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      status.textContent = 'Clearing…';
+      status.className = '';
+
+      try {
+        // 1. Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            await reg.unregister();
+          }
+        }
+
+        // 2. Clear all Cache API caches
+        if ('caches' in window) {
+          const names = await caches.keys();
+          for (const name of names) {
+            await caches.delete(name);
+          }
+        }
+
+        // 3. Clear app localStorage keys
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('pipetooling_') || k === 'impersonation_original' || k.startsWith('materials_loadAllMode_'))) {
+            keysToRemove.push(k);
+          }
+        }
+        for (const k of keysToRemove) {
+          localStorage.removeItem(k);
+        }
+
+        status.textContent = 'Done. Reloading…';
+        status.className = 'done';
+        const basePath = location.pathname.replace(/\/fix-cache\.html$/, '') || '/';
+        window.location.replace(basePath || '/');
+      } catch (e) {
+        status.textContent = 'Error: ' + (e.message || String(e));
+        status.className = 'error';
+        btn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
