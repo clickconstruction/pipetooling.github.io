@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { useAuth } from '../hooks/useAuth'
 import { clearPinned, clearPinnedInSupabase } from '../lib/pinnedTabs'
 import { usePushNotifications } from '../hooks/usePushNotifications'
@@ -804,6 +805,10 @@ export default function Settings() {
     setEditPersonSaving(false)
     if (err) setEditPersonError(err.message)
     else {
+      const oldName = editingNonUserPerson.name?.trim()
+      if (oldName && oldName !== trimmedName) {
+        await cascadePersonNameInPayTables(oldName, trimmedName)
+      }
       setEditingNonUserPerson(null)
       await loadPeopleForDev()
     }
@@ -2460,7 +2465,11 @@ export default function Settings() {
     setEditError(null)
   }
 
-  async function updateUserProfile(id: string, updates: { name: string; email: string; estimator_service_type_ids?: string[] | null }) {
+  async function updateUserProfile(
+    id: string,
+    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null },
+    oldName?: string
+  ) {
     setUpdatingId(id)
     setError(null)
     setEditError(null)
@@ -2475,6 +2484,9 @@ export default function Settings() {
     if (e) {
       setEditError(e.message)
     } else {
+      if (oldName != null && oldName.trim() !== updates.name.trim()) {
+        await cascadePersonNameInPayTables(oldName, updates.name)
+      }
       setUsers((prev) =>
         prev.map((u) =>
           u.id === id
@@ -2514,7 +2526,7 @@ export default function Settings() {
     if (editingUser?.role === 'estimator') {
       updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
     }
-    await updateUserProfile(editingUserId, updates)
+    await updateUserProfile(editingUserId, updates, editingUser?.name)
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')

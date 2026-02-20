@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { useAuth } from '../hooks/useAuth'
 import { addPinForUser, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
 
@@ -407,6 +408,10 @@ export default function People() {
       const { error: err } = await supabase.from('people').update(payload).eq('id', editing.id)
       if (err) setError(err.message)
       else {
+        const oldName = editing.name?.trim()
+        if (oldName && oldName !== trimmedName) {
+          await cascadePersonNameInPayTables(oldName, trimmedName)
+        }
         setPeople((prev) => prev.map((p) => (p.id === editing.id ? { ...p, ...payload } : p)))
         closeForm()
       }
