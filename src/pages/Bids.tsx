@@ -585,7 +585,7 @@ export default function Bids() {
   const [addContactPersonModalCustomer, setAddContactPersonModalCustomer] = useState<Customer | null>(null)
   const [editingContactPerson, setEditingContactPerson] = useState<CustomerContactPerson | null>(null)
   const [contactPersonName, setContactPersonName] = useState('')
-  const [contactPersonPhone, setContactPersonPhone] = useState('')
+  const [contactPersonPhones, setContactPersonPhones] = useState<string[]>([''])
   const [contactPersonEmail, setContactPersonEmail] = useState('')
   const [contactPersonNote, setContactPersonNote] = useState('')
   const [savingContactPerson, setSavingContactPerson] = useState(false)
@@ -6676,7 +6676,7 @@ export default function Bids() {
                           setAddContactPersonModalCustomer(customer)
                           setEditingContactPerson(null)
                           setContactPersonName('')
-                          setContactPersonPhone('')
+                          setContactPersonPhones([''])
                           setContactPersonEmail('')
                           setContactPersonNote('')
                         }}
@@ -6813,7 +6813,8 @@ export default function Bids() {
                                       setEditingContactPerson(cp)
                                       setAddContactPersonModalCustomer(customer)
                                       setContactPersonName(cp.name)
-                                      setContactPersonPhone(cp.phone ?? '')
+                                      const phones = (cp.phone ?? '').split('\n').filter(Boolean)
+                                      setContactPersonPhones(phones.length > 0 ? phones : [''])
                                       setContactPersonEmail(cp.email ?? '')
                                       setContactPersonNote(cp.note ?? '')
                                     }}
@@ -6836,9 +6837,9 @@ export default function Bids() {
                                   </button>
                                 </div>
                               </div>
-                              {cp.phone && (
-                                <a href={`tel:${cp.phone}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{cp.phone}</a>
-                              )}
+                              {(cp.phone ?? '').split('\n').filter(Boolean).map((phone, i) => (
+                                <a key={i} href={`tel:${phone}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{phone}</a>
+                              ))}
                               {cp.email && (
                                 <a href={`mailto:${cp.email}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{cp.email}</a>
                               )}
@@ -11461,15 +11462,33 @@ export default function Bids() {
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="contact-person-phone" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone</label>
-              <input
-                id="contact-person-phone"
-                type="text"
-                value={contactPersonPhone}
-                onChange={(e) => setContactPersonPhone(e.target.value)}
-                placeholder="Phone"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              />
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone{contactPersonPhones.length > 1 ? 's' : ''}</label>
+              {contactPersonPhones.map((p, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.35rem', marginBottom: i < contactPersonPhones.length - 1 ? '0.35rem' : 0 }}>
+                  <input
+                    type="text"
+                    value={p}
+                    onChange={(e) => setContactPersonPhones((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                    placeholder="Phone"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setContactPersonPhones((prev) => (prev.length > 1 ? prev.filter((_, j) => j !== i) : prev))}
+                    title="Remove phone"
+                    style={{ padding: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', color: '#991b1b', flexShrink: 0 }}
+                  >
+                    −
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setContactPersonPhones((prev) => [...prev, ''])}
+                style={{ marginTop: '0.35rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+              >
+                + Add phone
+              </button>
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <label htmlFor="contact-person-email" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Email</label>
@@ -11500,7 +11519,7 @@ export default function Bids() {
                   setAddContactPersonModalCustomer(null)
                   setEditingContactPerson(null)
                   setContactPersonName('')
-                  setContactPersonPhone('')
+                  setContactPersonPhones([''])
                   setContactPersonEmail('')
                   setContactPersonNote('')
                 }}
@@ -11514,12 +11533,13 @@ export default function Bids() {
                 onClick={async () => {
                   if (!addContactPersonModalCustomer || !contactPersonName.trim()) return
                   setSavingContactPerson(true)
+                  const phoneVal = contactPersonPhones.map((p) => p.trim()).filter(Boolean).join('\n') || null
                   if (editingContactPerson) {
                     const { error: err } = await supabase
                       .from('customer_contact_persons')
                       .update({
                         name: contactPersonName.trim(),
-                        phone: contactPersonPhone.trim() || null,
+                        phone: phoneVal,
                         email: contactPersonEmail.trim() || null,
                         note: contactPersonNote.trim() || null,
                       })
@@ -11535,7 +11555,7 @@ export default function Bids() {
                       .insert({
                         customer_id: addContactPersonModalCustomer.id,
                         name: contactPersonName.trim(),
-                        phone: contactPersonPhone.trim() || null,
+                        phone: phoneVal,
                         email: contactPersonEmail.trim() || null,
                         note: contactPersonNote.trim() || null,
                       })
@@ -11549,7 +11569,7 @@ export default function Bids() {
                   setAddContactPersonModalCustomer(null)
                   setEditingContactPerson(null)
                   setContactPersonName('')
-                  setContactPersonPhone('')
+                  setContactPersonPhones([''])
                   setContactPersonEmail('')
                   setContactPersonNote('')
                 }}
