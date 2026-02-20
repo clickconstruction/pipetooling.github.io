@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
@@ -106,10 +106,13 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+const MATERIALS_TABS = ['price-book', 'assembly-book', 'templates-po', 'purchase-orders'] as const
+
 export default function Materials() {
   const { user: authUser } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<'price-book' | 'assembly-book' | 'templates-po' | 'purchase-orders'>('price-book')
   const [loading, setLoading] = useState(true)
@@ -844,6 +847,19 @@ export default function Materials() {
   useEffect(() => {
     loadRole()
   }, [authUser?.id])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && MATERIALS_TABS.includes(tab as typeof MATERIALS_TABS[number])) {
+      setActiveTab(tab as typeof activeTab)
+    } else if (!tab) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'price-book')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
@@ -2587,7 +2603,14 @@ export default function Materials() {
       <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
         <button
           type="button"
-          onClick={() => setActiveTab('price-book')}
+          onClick={() => {
+            setActiveTab('price-book')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'price-book')
+              return next
+            })
+          }}
           style={{
             padding: '0.75rem 1.5rem',
             border: 'none',
@@ -2602,7 +2625,14 @@ export default function Materials() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('assembly-book')}
+          onClick={() => {
+            setActiveTab('assembly-book')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'assembly-book')
+              return next
+            })
+          }}
           style={{
             padding: '0.75rem 1.5rem',
             border: 'none',
@@ -2617,7 +2647,14 @@ export default function Materials() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('templates-po')}
+          onClick={() => {
+            setActiveTab('templates-po')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'templates-po')
+              return next
+            })
+          }}
           style={{
             padding: '0.75rem 1.5rem',
             border: 'none',
@@ -2632,7 +2669,14 @@ export default function Materials() {
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab('purchase-orders')}
+          onClick={() => {
+            setActiveTab('purchase-orders')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'purchase-orders')
+              return next
+            })
+          }}
           style={{
             padding: '0.75rem 1.5rem',
             border: 'none',

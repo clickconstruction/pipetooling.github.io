@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
@@ -15,6 +15,7 @@ type Bid = Database['public']['Tables']['bids']['Row']
 type BidCountRow = Database['public']['Tables']['bids_count_rows']['Row']
 type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
+type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -510,6 +511,7 @@ export default function Bids() {
   const { user: authUser } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const [, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -579,6 +581,14 @@ export default function Bids() {
   const [addContactModalDate, setAddContactModalDate] = useState('')
   const [addContactModalDetails, setAddContactModalDetails] = useState('')
   const [savingContact, setSavingContact] = useState(false)
+  const [customerContactPersons, setCustomerContactPersons] = useState<CustomerContactPerson[]>([])
+  const [addContactPersonModalCustomer, setAddContactPersonModalCustomer] = useState<Customer | null>(null)
+  const [editingContactPerson, setEditingContactPerson] = useState<CustomerContactPerson | null>(null)
+  const [contactPersonName, setContactPersonName] = useState('')
+  const [contactPersonPhone, setContactPersonPhone] = useState('')
+  const [contactPersonEmail, setContactPersonEmail] = useState('')
+  const [contactPersonNote, setContactPersonNote] = useState('')
+  const [savingContactPerson, setSavingContactPerson] = useState(false)
   const [builderReviewSectionOpen, setBuilderReviewSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [builderReviewCardExpanded, setBuilderReviewCardExpanded] = useState<Record<string, boolean>>({})
   const [builderReviewSearchQuery, setBuilderReviewSearchQuery] = useState('')
@@ -1011,12 +1021,13 @@ export default function Bids() {
     setSupplyHouses((data as SupplyHouse[]) ?? [])
   }
 
-  async function loadBids(): Promise<BidWithBuilder[]> {
-    const { data, error } = await supabase
+  async function loadBids(serviceTypeId?: string | null): Promise<BidWithBuilder[]> {
+    const sid = serviceTypeId === undefined ? selectedServiceTypeId : serviceTypeId
+    let q = supabase
       .from('bids')
       .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('bid_due_date', { ascending: false, nullsFirst: false })
+    if (sid) q = q.eq('service_type_id', sid)
+    const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: false })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
       return []
@@ -1106,6 +1117,18 @@ export default function Bids() {
       return
     }
     setCustomerContacts((data as CustomerContact[]) ?? [])
+  }
+
+  async function loadCustomerContactPersons() {
+    const { data, error } = await supabase
+      .from('customer_contact_persons')
+      .select('*')
+      .order('name')
+    if (error) {
+      setError(`Failed to load contact persons: ${error.message}`)
+      return
+    }
+    setCustomerContactPersons((data as CustomerContactPerson[]) ?? [])
   }
 
   async function loadTakeoffCountRows(bidId: string) {
@@ -4929,6 +4952,8 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
+  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup'] as const
+
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('new') === 'true') {
@@ -4940,7 +4965,6 @@ export default function Bids() {
     const tab = params.get('tab')
     if (tab === 'builder-review') {
       setActiveTab('builder-review')
-      navigate('/bids', { replace: true })
       return
     }
     if (bidId && tab === 'submission-followup') {
@@ -4959,7 +4983,6 @@ export default function Bids() {
         setTimeout(() => {
           document.getElementById(`submission-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }, 150)
-        navigate('/bids', { replace: true })
       } else if (serviceTypes.length > 0) {
         // Bid not in current list - may be different service type; fetch and switch
         supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
@@ -4969,6 +4992,16 @@ export default function Bids() {
           }
         })
       }
+      return
+    }
+    if (tab && BIDS_TABS.includes(tab as typeof BIDS_TABS[number])) {
+      setActiveTab(tab as typeof activeTab)
+    } else if (!params.get('tab')) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
     }
   }, [location.search, bids, serviceTypes.length, selectedServiceTypeId])
 
@@ -4987,15 +5020,38 @@ export default function Bids() {
     }
   }, [myRole, estimatorServiceTypeIds])
   
-  // Reload data when service type changes
+  // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
-    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadCustomerContacts(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
+        await Promise.all([loadCustomers(), loadBids(), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }
       loadForServiceType()
     }
-  }, [selectedServiceTypeId])
+  }, [selectedServiceTypeId, activeTab])
+
+  // Load all customers and bids when Builder Review tab is active (no service type filter)
+  useEffect(() => {
+    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+      const loadForBuilderReview = async () => {
+        await Promise.all([
+          loadCustomers(),
+          loadBids(null), // load all bids (no service type filter)
+          loadCustomerContacts(),
+          loadCustomerContactPersons(),
+          loadEstimatorUsers(),
+          loadFixtureTypes(),
+          loadPartTypes(),
+          loadSupplyHouses(),
+          loadTakeoffBookVersions(),
+          loadLaborBookVersions(),
+          loadPriceBookVersions(),
+          loadMaterialTemplates()
+        ])
+      }
+      loadForBuilderReview()
+    }
+  }, [activeTab])
 
   // Close price book modals when service type changes
   useEffect(() => {
@@ -6124,9 +6180,17 @@ export default function Bids() {
           </div>
         )}
 
-      {/* Service Type Filter - for estimators with restrictions, only show allowed types */}
+      {/* Service Type Filter - for estimators with restrictions, only show allowed types; grayed out on Builder Review */}
       {visibleServiceTypes.length > 0 && (
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1rem',
+          flexWrap: 'wrap',
+          opacity: activeTab === 'builder-review' ? 0.5 : 1,
+          pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
+          cursor: activeTab === 'builder-review' ? 'not-allowed' : 'default'
+        }}>
           {visibleServiceTypes.map(st => (
             <button
               key={st.id}
@@ -6154,29 +6218,117 @@ export default function Bids() {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setActiveTab('bid-board')} style={tabStyle(activeTab === 'bid-board')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('bid-board')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'bid-board')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'bid-board')}
+        >
           Bid Board
         </button>
-        <button type="button" onClick={() => setActiveTab('builder-review')} style={tabStyle(activeTab === 'builder-review')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('builder-review')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'builder-review')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'builder-review')}
+        >
           Builder Review
         </button>
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-        <button type="button" onClick={() => setActiveTab('counts')} style={tabStyle(activeTab === 'counts')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('counts')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'counts')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'counts')}
+        >
           Counts
         </button>
-        <button type="button" onClick={() => setActiveTab('takeoffs')} style={tabStyle(activeTab === 'takeoffs')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('takeoffs')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'takeoffs')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'takeoffs')}
+        >
           Takeoffs
         </button>
-        <button type="button" onClick={() => setActiveTab('cost-estimate')} style={tabStyle(activeTab === 'cost-estimate')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('cost-estimate')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'cost-estimate')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'cost-estimate')}
+        >
           Cost Estimate
         </button>
-        <button type="button" onClick={() => setActiveTab('pricing')} style={tabStyle(activeTab === 'pricing')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('pricing')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'pricing')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'pricing')}
+        >
           Pricing
         </button>
-        <button type="button" onClick={() => setActiveTab('cover-letter')} style={tabStyle(activeTab === 'cover-letter')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('cover-letter')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'cover-letter')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'cover-letter')}
+        >
           Cover Letter
         </button>
-        <button type="button" onClick={() => setActiveTab('submission-followup')} style={tabStyle(activeTab === 'submission-followup')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('submission-followup')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'submission-followup')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'submission-followup')}
+        >
           Submission & Followup
         </button>
       </div>
@@ -6442,7 +6594,7 @@ export default function Bids() {
                       flexWrap: 'wrap',
                       gap: '0.5rem',
                       background: '#f9fafb',
-                      borderBottom: isCardExpanded && (hasBids || customerContacts.some((c: CustomerContact) => c.customer_id === customer.id)) ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: isCardExpanded ? '1px solid #e5e7eb' : 'none',
                       cursor: 'pointer',
                     }}
                   >
@@ -6509,102 +6661,186 @@ export default function Bids() {
                       <button
                         type="button"
                         onClick={() => {
+                          setAddContactPersonModalCustomer(customer)
+                          setEditingContactPerson(null)
+                          setContactPersonName('')
+                          setContactPersonPhone('')
+                          setContactPersonEmail('')
+                          setContactPersonNote('')
+                        }}
+                        title="Add contact person"
+                        style={{ padding: '0.375rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                          <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
                           setAddContactModalCustomer(customer)
                           setAddContactModalDate(new Date().toISOString().slice(0, 10))
                           setAddContactModalDetails('')
                         }}
-                        style={{ padding: '0.375rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        title="General contact"
+                        style={{ padding: '0.375rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        General contact
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                          <path d="M160 544C124.7 544 96 515.3 96 480L96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 373.5C544 390.5 537.3 406.8 525.3 418.8L418.7 525.3C406.7 537.3 390.4 544 373.4 544L160 544zM485.5 368L392 368C378.7 368 368 378.7 368 392L368 485.5L485.5 368z" />
+                        </svg>
                       </button>
                     </div>
                   </div>
-                  {isCardExpanded && hasBids && (
-                    <div style={{ padding: '0.75rem 1.25rem' }}>
-                      {[
-                        { key: 'unsent' as const, label: 'Unsent', bids: brUnsent },
-                        { key: 'pending' as const, label: 'Not yet won or lost', bids: brPending },
-                        { key: 'won' as const, label: 'Won', bids: brWon },
-                        { key: 'startedOrComplete' as const, label: 'Started or Complete', bids: brStartedOrComplete },
-                        { key: 'lost' as const, label: 'Lost', bids: brLost },
-                      ].map(({ key, label, bids: sectionBids }) => (
-                        <div key={key}>
-                          <button
-                            type="button"
-                            onClick={() => toggleBuilderReviewSection(key)}
-                            style={{ margin: '0.5rem 0 0.25rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                          >
-                            <span>{builderReviewSectionOpen[key] ? '\u25BC' : '\u25B6'}</span>
-                            {label} ({sectionBids.length})
-                          </button>
-                          {builderReviewSectionOpen[key] && sectionBids.length > 0 && (
-                            <ul style={{ margin: '0.25rem 0 0.5rem 1.5rem', padding: 0, listStyle: 'none' }}>
-                              {sectionBids.map((bid) => (
-                                <li key={bid.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => openEditBid(bid)}
-                                    style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left', fontSize: '0.875rem' }}
-                                  >
-                                    {formatBidNameWithValue(bid)}
-                                  </button>
+                  {isCardExpanded && (
+                    <div style={{ display: 'flex', gap: '1.5rem', padding: '0.75rem 1.25rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {hasBids && (
+                          <div>
+                            {[
+                              { key: 'unsent' as const, label: 'Unsent', bids: brUnsent },
+                              { key: 'pending' as const, label: 'Not yet won or lost', bids: brPending },
+                              { key: 'won' as const, label: 'Won', bids: brWon },
+                              { key: 'startedOrComplete' as const, label: 'Started or Complete', bids: brStartedOrComplete },
+                              { key: 'lost' as const, label: 'Lost', bids: brLost },
+                            ].map(({ key, label, bids: sectionBids }) => (
+                              <div key={key}>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBuilderReviewSection(key)}
+                                  style={{ margin: '0.5rem 0 0.25rem', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                                >
+                                  <span>{builderReviewSectionOpen[key] ? '\u25BC' : '\u25B6'}</span>
+                                  {label} ({sectionBids.length})
+                                </button>
+                                {builderReviewSectionOpen[key] && sectionBids.length > 0 && (
+                                  <ul style={{ margin: '0.25rem 0 0.5rem 1.5rem', padding: 0, listStyle: 'none' }}>
+                                    {sectionBids.map((bid) => (
+                                      <li key={bid.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => openEditBid(bid)}
+                                          style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left', fontSize: '0.875rem' }}
+                                        >
+                                          {formatBidNameWithValue(bid)}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedBidForSubmission(bid)
+                                            setActiveTab('submission-followup')
+                                            setScrollToContactFromBidBoard(true)
+                                          }}
+                                          title="View submissions"
+                                          style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#6b7280' }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                            <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
+                                          </svg>
+                                        </button>
+                                        {' — '}
+                                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                          due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
+                                        </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(() => {
+                          const contacts = customerContacts
+                            .filter((c: CustomerContact) => c.customer_id === customer.id)
+                            .sort((a, b) => (new Date(b.contact_date).getTime() - new Date(a.contact_date).getTime()))
+                          if (contacts.length === 0) return null
+                          return (
+                            <div style={{ marginTop: hasBids ? '1rem' : 0, paddingTop: hasBids ? '1rem' : 0, borderTop: hasBids ? '1px solid #e5e7eb' : 'none' }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                General contact
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true">
+                                  <path d="M160 544C124.7 544 96 515.3 96 480L96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 373.5C544 390.5 537.3 406.8 525.3 418.8L418.7 525.3C406.7 537.3 390.4 544 373.4 544L160 544zM485.5 368L392 368C378.7 368 368 378.7 368 392L368 485.5L485.5 368z" />
+                                </svg>
+                              </div>
+                              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                  <thead style={{ background: '#f9fafb' }}>
+                                    <tr>
+                                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact method</th>
+                                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time and date</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {contacts.map((cc) => (
+                                      <tr key={cc.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <td style={{ padding: '0.75rem' }}>—</td>
+                                        <td style={{ padding: '0.75rem' }}>{cc.details ?? '—'}</td>
+                                        <td style={{ padding: '0.75rem' }}>{cc.contact_date ? new Date(cc.contact_date).toLocaleString() : '—'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      <div style={{ width: 220, flexShrink: 0 }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Contact persons</div>
+                        {customerContactPersons
+                          .filter((cp) => cp.customer_id === customer.id)
+                          .map((cp) => (
+                            <div key={cp.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '0.5rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.25rem' }}>
+                                <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{cp.name}</div>
+                                <div style={{ display: 'flex', gap: '0.25rem' }}>
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setSelectedBidForSubmission(bid)
-                                      setActiveTab('submission-followup')
-                                      setScrollToContactFromBidBoard(true)
+                                      setEditingContactPerson(cp)
+                                      setAddContactPersonModalCustomer(customer)
+                                      setContactPersonName(cp.name)
+                                      setContactPersonPhone(cp.phone ?? '')
+                                      setContactPersonEmail(cp.email ?? '')
+                                      setContactPersonNote(cp.note ?? '')
                                     }}
-                                    title="View submissions"
-                                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#6b7280' }}
+                                    title="Edit"
+                                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#6b7280' }}
                                   >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                      <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
-                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="12" height="12" fill="currentColor"><path d="M416 128L512 224L192 544L96 544L96 448L416 128zM444 64L544 64L576 96L576 196L544 228L444 196L444 64zM128 480L176 480L496 160L448 112L128 432L128 480z" /></svg>
                                   </button>
-                                  {' — '}
-                                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                                    due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      ))}
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (!confirm('Delete this contact?')) return
+                                      await supabase.from('customer_contact_persons').delete().eq('id', cp.id)
+                                      await loadCustomerContactPersons()
+                                    }}
+                                    title="Delete"
+                                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#b91c1c' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="12" height="12" fill="currentColor"><path d="M160 128H96V96H256V64H160V128zM288 64V96H544V128H480V512C480 547.3 451.3 576 416 576H224C188.7 576 160 547.3 160 512V128H96V512C96 569.4 142.6 616 200 616H440C497.4 616 544 569.4 544 512V128H288V64zM224 128H416V512H224V128zM288 192V480H352V192H288zM416 192V480H480V192H416z" /></svg>
+                                  </button>
+                                </div>
+                              </div>
+                              {cp.phone && (
+                                <a href={`tel:${cp.phone}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{cp.phone}</a>
+                              )}
+                              {cp.email && (
+                                <a href={`mailto:${cp.email}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{cp.email}</a>
+                              )}
+                              {cp.note && (
+                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{cp.note}</div>
+                              )}
+                            </div>
+                          ))}
+                        {customerContactPersons.filter((cp) => cp.customer_id === customer.id).length === 0 && (
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>No contacts yet</div>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {isCardExpanded && (() => {
-                    const contacts = customerContacts
-                      .filter((c: CustomerContact) => c.customer_id === customer.id)
-                      .sort((a, b) => (new Date(b.contact_date).getTime() - new Date(a.contact_date).getTime()))
-                    if (contacts.length === 0) return null
-                    return (
-                      <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #e5e7eb' }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>General contact</div>
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: '#f9fafb' }}>
-                              <tr>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact method</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time and date</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {contacts.map((cc) => (
-                                <tr key={cc.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                  <td style={{ padding: '0.75rem' }}>—</td>
-                                  <td style={{ padding: '0.75rem' }}>{cc.details ?? '—'}</td>
-                                  <td style={{ padding: '0.75rem' }}>{cc.contact_date ? new Date(cc.contact_date).toLocaleString() : '—'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )
-                  })()}
                 </div>
               )
             })}
@@ -11188,6 +11424,126 @@ export default function Bids() {
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingContact ? 'not-allowed' : 'pointer' }}
               >
                 {savingContact ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Contact Person modal (Builder Review) */}
+      {addContactPersonModalCustomer && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+          <div style={{ background: 'white', padding: '1.5rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>
+              {editingContactPerson ? 'Edit contact person' : 'Add contact person'} – {addContactPersonModalCustomer.name}
+            </h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="contact-person-name" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+              <input
+                id="contact-person-name"
+                type="text"
+                value={contactPersonName}
+                onChange={(e) => setContactPersonName(e.target.value)}
+                placeholder="Name"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="contact-person-phone" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone</label>
+              <input
+                id="contact-person-phone"
+                type="text"
+                value={contactPersonPhone}
+                onChange={(e) => setContactPersonPhone(e.target.value)}
+                placeholder="Phone"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="contact-person-email" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Email</label>
+              <input
+                id="contact-person-email"
+                type="email"
+                value={contactPersonEmail}
+                onChange={(e) => setContactPersonEmail(e.target.value)}
+                placeholder="Email"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label htmlFor="contact-person-note" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Note</label>
+              <textarea
+                id="contact-person-note"
+                value={contactPersonNote}
+                onChange={(e) => setContactPersonNote(e.target.value)}
+                placeholder="Note"
+                rows={3}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddContactPersonModalCustomer(null)
+                  setEditingContactPerson(null)
+                  setContactPersonName('')
+                  setContactPersonPhone('')
+                  setContactPersonEmail('')
+                  setContactPersonNote('')
+                }}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingContactPerson || !contactPersonName.trim()}
+                onClick={async () => {
+                  if (!addContactPersonModalCustomer || !contactPersonName.trim()) return
+                  setSavingContactPerson(true)
+                  if (editingContactPerson) {
+                    const { error: err } = await supabase
+                      .from('customer_contact_persons')
+                      .update({
+                        name: contactPersonName.trim(),
+                        phone: contactPersonPhone.trim() || null,
+                        email: contactPersonEmail.trim() || null,
+                        note: contactPersonNote.trim() || null,
+                      })
+                      .eq('id', editingContactPerson.id)
+                    setSavingContactPerson(false)
+                    if (err) {
+                      setError(`Failed to update contact: ${err.message}`)
+                      return
+                    }
+                  } else {
+                    const { error: err } = await supabase
+                      .from('customer_contact_persons')
+                      .insert({
+                        customer_id: addContactPersonModalCustomer.id,
+                        name: contactPersonName.trim(),
+                        phone: contactPersonPhone.trim() || null,
+                        email: contactPersonEmail.trim() || null,
+                        note: contactPersonNote.trim() || null,
+                      })
+                    setSavingContactPerson(false)
+                    if (err) {
+                      setError(`Failed to save contact: ${err.message}`)
+                      return
+                    }
+                  }
+                  await loadCustomerContactPersons()
+                  setAddContactPersonModalCustomer(null)
+                  setEditingContactPerson(null)
+                  setContactPersonName('')
+                  setContactPersonPhone('')
+                  setContactPersonEmail('')
+                  setContactPersonNote('')
+                }}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingContactPerson ? 'not-allowed' : 'pointer' }}
+              >
+                {savingContactPerson ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

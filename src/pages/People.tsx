@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { addPinForUser } from '../lib/pinnedTabs'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
@@ -25,6 +27,7 @@ const tabStyle = (active: boolean) => ({
 type PeopleTab = 'users' | 'pay' | 'hours'
 
 export default function People() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser } = useAuth()
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -63,6 +66,9 @@ export default function People() {
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
+  const [pinToDashboardMasterIds, setPinToDashboardMasterIds] = useState<Set<string>>(new Set())
+  const [pinToDashboardSaving, setPinToDashboardSaving] = useState(false)
+  const [pinToDashboardMessage, setPinToDashboardMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
@@ -233,6 +239,19 @@ export default function People() {
   useEffect(() => {
     loadPeople()
   }, [authUser?.id])
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'users' || tab === 'pay' || tab === 'hours') {
+      setActiveTab(tab)
+    } else if (!tab) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'users')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams])
 
   useEffect(() => {
     async function loadPayAccess() {
@@ -505,7 +524,7 @@ export default function People() {
   async function loadCostMatrixShares() {
     if (!isDev) return
     const [candidatesRes, sharesRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['master_technician', 'assistant']).order('name'),
+      supabase.from('users').select('id, name, email, role').in('role', ['master_technician', 'assistant', 'dev']).order('name'),
       supabase.from('cost_matrix_teams_shares').select('shared_with_user_id'),
     ])
     if (candidatesRes.data) setCostMatrixShareCandidates(candidatesRes.data as Array<{ id: string; name: string; email: string | null; role: string }>)
@@ -758,16 +777,49 @@ export default function People() {
   return (
     <div>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        <button type="button" onClick={() => setActiveTab('users')} style={tabStyle(activeTab === 'users')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('users')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'users')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'users')}
+        >
           Users
         </button>
         {(canAccessPay || canViewCostMatrixShared) && (
-          <button type="button" onClick={() => setActiveTab('pay')} style={tabStyle(activeTab === 'pay')}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('pay')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'pay')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'pay')}
+          >
             Pay
           </button>
         )}
         {(canAccessPay || canAccessHours) && (
-          <button type="button" onClick={() => setActiveTab('hours')} style={tabStyle(activeTab === 'hours')}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('hours')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'hours')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'hours')}
+          >
             Hours
           </button>
         )}
@@ -1189,6 +1241,74 @@ export default function People() {
                 </tbody>
               </table>
             </div>
+            {isDev && (
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+                  {costMatrixShareCandidates.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+                    <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={pinToDashboardMasterIds.has(u.id)}
+                        onChange={(e) => {
+                          setPinToDashboardMasterIds((prev) => {
+                            const next = new Set(prev)
+                            if (e.target.checked) next.add(u.id)
+                            else next.delete(u.id)
+                            return next
+                          })
+                        }}
+                        disabled={pinToDashboardSaving}
+                      />
+                      {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                    </label>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={pinToDashboardSaving || pinToDashboardMasterIds.size === 0}
+                    onClick={async () => {
+                      setPinToDashboardSaving(true)
+                      setPinToDashboardMessage(null)
+                      const item = { path: '/people', label: 'People – Cost matrix', tab: 'pay' as const }
+                      const ids = Array.from(pinToDashboardMasterIds)
+                      let ok = 0
+                      let errMsg: string | null = null
+                      for (const userId of ids) {
+                        const { error } = await addPinForUser(userId, item)
+                        if (error) errMsg = error.message
+                        else ok++
+                      }
+                      setPinToDashboardSaving(false)
+                      if (errMsg) setPinToDashboardMessage({ type: 'error', text: errMsg })
+                      else {
+                        setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}.` })
+                        setPinToDashboardMasterIds(new Set())
+                        setTimeout(() => setPinToDashboardMessage(null), 3000)
+                      }
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.875rem',
+                      background: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor: pinToDashboardSaving || pinToDashboardMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Pin To Dashboard
+                  </button>
+                </div>
+                {pinToDashboardMessage && (
+                  <p style={{ color: pinToDashboardMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                    {pinToDashboardMessage.text}
+                  </p>
+                )}
+              </div>
+            )}
           </section>
           <section>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Teams</h2>

@@ -121,7 +121,7 @@ pipetooling.github.io/
 - **`src/pages/Bids.tsx`** (~1200 lines) - 6-tab bid estimation system
 - **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
-- **`src/pages/Jobs.tsx`** - Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary tabs)
+- **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
 - **`src/contexts/AuthContext.tsx`** - Authentication state and user role
 - **`src/lib/supabaseClient.ts`** - Supabase client configuration
 - **`src/lib/errorHandling.ts`** - Retry wrappers and error utilities

@@ -3,6 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { clearPinned, clearPinnedInSupabase } from '../lib/pinnedTabs'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useUpdatePrompt } from '../contexts/UpdatePromptContext'
 
@@ -168,6 +169,7 @@ export default function Settings() {
   const [testNotificationSending, setTestNotificationSending] = useState(false)
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
+  const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -3027,6 +3029,38 @@ export default function Settings() {
             Change password
           </button>
         </div>
+      </div>
+
+      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Page pins</h2>
+        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          Pinned pages appear as shortcut links at the top of your Dashboard.
+        </p>
+        {pinsClearSuccess && (
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+            Page pins cleared.
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={async () => {
+            clearPinned(authUser?.id)
+            if (authUser?.id) await clearPinnedInSupabase(authUser.id)
+            setPinsClearSuccess(true)
+            setTimeout(() => setPinsClearSuccess(false), 3000)
+          }}
+          style={{
+            padding: '0.5rem 1rem',
+            fontSize: '0.875rem',
+            background: '#f3f4f6',
+            color: '#374151',
+            border: '1px solid #e5e7eb',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          Clear all page pins
+        </button>
       </div>
 
       {(myRole === 'master_technician' || myRole === 'dev') && (

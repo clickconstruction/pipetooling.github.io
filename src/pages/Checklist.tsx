@@ -66,6 +66,19 @@ export default function Checklist() {
     }
   }, [searchParams, role, setSearchParams])
 
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'today' || tab === 'history' || tab === 'manage' || tab === 'checklists') {
+      setActiveTab(tab)
+    } else if (!tab && !openAddFormOnMount) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'today')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams, openAddFormOnMount])
+
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
@@ -73,18 +86,62 @@ export default function Checklist() {
   return (
     <div style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setActiveTab('today')} style={tabStyle(activeTab === 'today')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('today')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'today')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'today')}
+        >
           Today
         </button>
-        <button type="button" onClick={() => setActiveTab('history')} style={tabStyle(activeTab === 'history')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('history')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'history')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'history')}
+        >
           History
         </button>
         {canManageChecklists && (
           <>
-            <button type="button" onClick={() => setActiveTab('manage')} style={tabStyle(activeTab === 'manage')}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('manage')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'manage')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'manage')}
+            >
               Review
             </button>
-            <button type="button" onClick={() => setActiveTab('checklists')} style={tabStyle(activeTab === 'checklists')}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('checklists')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'checklists')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'checklists')}
+            >
               Manage
             </button>
           </>

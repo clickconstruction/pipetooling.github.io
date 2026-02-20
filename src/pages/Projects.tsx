@@ -191,13 +191,6 @@ export default function Projects() {
 
   return (
     <div>
-      {myRole === 'dev' && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
-            Edit templates
-          </Link>
-        </div>
-      )}
       {customerId && (
         <p style={{ marginBottom: '1rem' }}>
           <Link to="/projects">Show all projects</Link>
@@ -314,6 +307,13 @@ export default function Projects() {
             </li>
           ))}
         </ul>
+      )}
+      {myRole === 'dev' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1.5rem' }}>
+          <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
+            Edit templates
+          </Link>
+        </div>
       )}
     </div>
   )

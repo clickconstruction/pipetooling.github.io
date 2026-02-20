@@ -1873,11 +1873,11 @@ user_id = auth.uid()
 
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
-- **Tabs**: **Labor**, **Sub Sheet Ledger**, **HCP Jobs**, **Upcoming**, **Teams Summary**
+- **Tabs** (in order): **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | Upcoming | Teams Summary
 - **Features**:
-  - **Labor Tab**: Add labor jobs; form fields: User (assigned_to_name, from roster), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People for the User picker.
-  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date); Edit opens modal to update job and fixture items; Delete removes job; date editable inline.
-  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search, Edit/Delete.
+  - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
+  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date); Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
+  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
 - **Data**: Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
 
@@ -2267,7 +2267,7 @@ pipetooling.github.io/
 │   │   ├── Customers.tsx       # List customers
 │   │   ├── Dashboard.tsx       # User dashboard
 │   │   ├── People.tsx          # People roster (Users, Pay, Hours)
-│   │   ├── Jobs.tsx           # Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary)
+│   │   ├── Jobs.tsx           # Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary)
 │   │   ├── ProjectForm.tsx    # Create/edit project
 │   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
 │   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
@@ -3135,7 +3135,7 @@ async function myFunction() {
 - `/projects` - Project list
 - `/workflows/:projectId` - Workflow management
 - `/people` - People roster (Users, Pay, Hours tabs)
-- `/jobs` - Jobs (Labor, Sub Sheet Ledger, HCP Jobs, Upcoming, Teams Summary tabs)
+- `/jobs` - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
 - `/calendar` - Calendar view
 - `/materials` - Materials management (devs and masters only: price book, templates, purchase orders)
 - `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup; devs, masters, assistants)

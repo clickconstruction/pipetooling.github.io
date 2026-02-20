@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import {
+  getPinned,
+  getPinnedForUserFromSupabase,
+  type PinnedItem,
+} from '../lib/pinnedTabs'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
@@ -148,6 +153,7 @@ export default function Dashboard() {
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
+  const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const isDev = role === 'dev'
@@ -159,7 +165,39 @@ export default function Dashboard() {
         setSendTaskAssignedToUserId((prev) => prev || (data?.[0]?.id ?? ''))
       })
     }
-  }, [canSendTask])
+  }, [canSendTask, isDev])
+
+  async function refreshPinned() {
+    if (!authUser?.id) {
+      setPinnedRoutes([])
+      return
+    }
+    const local = getPinned(authUser.id)
+    const fromDb = await getPinnedForUserFromSupabase(authUser.id)
+    const seen = new Set<string>()
+    const merged: PinnedItem[] = []
+    for (const p of [...local, ...fromDb]) {
+      const key = p.path + '|' + (p.tab ?? '')
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(p)
+    }
+    setPinnedRoutes(merged)
+  }
+
+  useEffect(() => {
+    refreshPinned()
+  }, [authUser?.id])
+
+  useEffect(() => {
+    const onPinsChanged = () => refreshPinned()
+    window.addEventListener('pipetooling-pins-changed', onPinsChanged)
+    window.addEventListener('focus', onPinsChanged)
+    return () => {
+      window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
+      window.removeEventListener('focus', onPinsChanged)
+    }
+  }, [authUser?.id])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -898,6 +936,30 @@ export default function Dashboard() {
           </Link>
         )}
       </div>
+      {pinnedRoutes.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            {pinnedRoutes.map((item) => (
+              <Link
+                key={item.path + (item.tab ?? '')}
+                to={item.tab ? `${item.path}?tab=${encodeURIComponent(item.tab)}` : item.path}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                {item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
@@ -1056,8 +1118,9 @@ export default function Dashboard() {
               detail send
             </Link>
           </div>
-          <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.5rem 1rem' }}>
+          <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
             <label style={{ flex: '1 1 120px', minWidth: 120 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Task</span>
               <input
                 type="text"
                 value={sendTaskTitle}
@@ -1078,23 +1141,26 @@ export default function Dashboard() {
                 ))}
               </select>
             </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <input
-                  type="checkbox"
-                  checked={sendTaskShowUntilCompleted}
-                  onChange={(e) => setSendTaskShowUntilCompleted(e.target.checked)}
-                />
-                <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Until complete</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <input
-                  type="checkbox"
-                  checked={sendTaskNotifyMe}
-                  onChange={(e) => setSendTaskNotifyMe(e.target.checked)}
-                />
-                <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Notify me</span>
-              </label>
+            <div style={{ flexShrink: 0 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Remind</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={sendTaskShowUntilCompleted}
+                    onChange={(e) => setSendTaskShowUntilCompleted(e.target.checked)}
+                  />
+                  <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Until complete</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={sendTaskNotifyMe}
+                    onChange={(e) => setSendTaskNotifyMe(e.target.checked)}
+                  />
+                  <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Notify me</span>
+                </label>
+              </div>
             </div>
             <label style={{ flex: '0 1 120px', minWidth: 90 }}>
               <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Notify</span>
@@ -1109,13 +1175,16 @@ export default function Dashboard() {
                 ))}
               </select>
             </label>
-            <button
-              type="submit"
-              disabled={sendTaskSaving || !sendTaskTitle.trim() || !sendTaskAssignedToUserId}
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: sendTaskSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-            >
-              {sendTaskSaving ? 'Sending…' : 'Send'}
-            </button>
+            <div style={{ flexShrink: 0 }}>
+              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280', visibility: 'hidden' }}>Send</span>
+              <button
+                type="submit"
+                disabled={sendTaskSaving || !sendTaskTitle.trim() || !sendTaskAssignedToUserId}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: sendTaskSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {sendTaskSaving ? 'Sending…' : 'Send'}
+              </button>
+            </div>
             {sendTaskError && <div style={{ width: '100%', color: '#b91c1c', fontSize: '0.8125rem' }}>{sendTaskError}</div>}
           </form>
         </div>

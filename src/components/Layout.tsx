@@ -3,6 +3,14 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useForceReload } from '../contexts/ForceReloadContext'
+import {
+  PINNABLE_PATHS,
+  pathToLabel,
+  getTabFromPath,
+  isPinned,
+  togglePinned,
+  addPinForUser,
+} from '../lib/pinnedTabs'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -37,9 +45,16 @@ export default function Layout() {
   const gearRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [, setPinsVersion] = useState(0)
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
+  const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [pinForUserId, setPinForUserId] = useState('')
+  const [pinForMessage, setPinForMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [pinForSaving, setPinForSaving] = useState(false)
+  const [pinForOpen, setPinForOpen] = useState(false)
+  const pinForRef = useRef<HTMLDivElement>(null)
   const forceReload = useForceReload()
 
   useEffect(() => {
@@ -58,12 +73,15 @@ export default function Layout() {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
+      if (pinForRef.current && !pinForRef.current.contains(e.target as Node)) {
+        setPinForOpen(false)
+      }
     }
-    if (gearOpen || menuOpen) {
+    if (gearOpen || menuOpen || pinForOpen) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [gearOpen, menuOpen])
+  }, [gearOpen, menuOpen, pinForOpen])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -83,6 +101,22 @@ export default function Layout() {
       navigate('/bids', { replace: true })
     }
   }, [role, location.pathname, navigate])
+
+  useEffect(() => {
+    const handler = () => setPinsVersion((v) => v + 1)
+    window.addEventListener('pipetooling-pins-changed', handler)
+    return () => window.removeEventListener('pipetooling-pins-changed', handler)
+  }, [])
+
+  useEffect(() => {
+    if (role === 'dev') {
+      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+        const users = (data ?? []) as Array<{ id: string; name: string; email: string }>
+        setPinForUsers(users)
+        if (users.length > 0 && !pinForUserId) setPinForUserId(users[0]?.id ?? '')
+      })
+    }
+  }, [role])
 
   async function handleBackToMyAccount() {
     const raw = localStorage.getItem(IMPERSONATION_KEY)
@@ -357,9 +391,185 @@ export default function Layout() {
           )}
         </span>
       </nav>
-      <main className="appMain" style={{ flex: 1 }}>
-        <Outlet />
+      <main className="appMain" style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
+        {authUser?.id && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
+          <div
+            style={{
+              padding: '0.5rem 1rem',
+              borderTop: '1px solid #e5e7eb',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+              background: '#f9fafb',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                const path = location.pathname
+                const label = pathToLabel(path)
+                const tab = getTabFromPath(path, location.search)
+                togglePinned(authUser.id, path, label, tab ?? undefined)
+              }}
+              title={isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search)) ? 'Unpin from dashboard' : 'Pin to dashboard'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search))
+                  ? '#e0e7ff'
+                  : 'transparent',
+                color: isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search))
+                  ? '#3730a3'
+                  : '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              {isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search)) ? (
+                <>
+                  <PinIcon filled />
+                  Unpin
+                </>
+              ) : (
+                <>
+                  <PinIcon filled={false} />
+                  Pin
+                </>
+              )}
+            </button>
+            {role === 'dev' && pinForUsers.length > 0 && (
+              <div ref={pinForRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setPinForOpen((o) => !o)}
+                  title="Pin for someone"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0.35rem 0.5rem',
+                    background: pinForOpen ? '#e0e7ff' : 'transparent',
+                    color: pinForOpen ? '#3730a3' : '#6b7280',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                    <path d="M128 96C110.3 96 96 110.3 96 128L96 224C96 241.7 110.3 256 128 256C145.7 256 160 241.7 160 224L160 160L224 160C241.7 160 256 145.7 256 128C256 110.3 241.7 96 224 96L128 96zM160 416C160 398.3 145.7 384 128 384C110.3 384 96 398.3 96 416L96 512C96 529.7 110.3 544 128 544L224 544C241.7 544 256 529.7 256 512C256 494.3 241.7 480 224 480L160 480L160 416zM416 96C398.3 96 384 110.3 384 128C384 145.7 398.3 160 416 160L480 160L480 224C480 241.7 494.3 256 512 256C529.7 256 544 241.7 544 224L544 128C544 110.3 529.7 96 512 96L416 96zM544 416C544 398.3 529.7 384 512 384C494.3 384 480 398.3 480 416L480 480L416 480C398.3 480 384 494.3 384 512C384 529.7 398.3 544 416 544L512 544C529.7 544 544 529.7 544 512L544 416z" />
+                  </svg>
+                </button>
+                {pinForOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '100%',
+                      left: 0,
+                      marginBottom: 4,
+                      padding: '0.5rem',
+                      background: 'white',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      zIndex: 50,
+                    }}
+                  >
+                    <select
+                      value={pinForUserId}
+                      onChange={(e) => setPinForUserId(e.target.value)}
+                      style={{
+                        padding: '0.35rem 0.5rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 6,
+                        background: '#fff',
+                        minWidth: 120,
+                      }}
+                      aria-label="Pin for user"
+                    >
+                      {pinForUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name?.trim() || u.email || u.id.slice(0, 8)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={pinForSaving}
+                      onClick={async () => {
+                        if (!pinForUserId) return
+                        const path = location.pathname
+                        const label = pathToLabel(path)
+                        const tab = getTabFromPath(path, location.search)
+                        const item = { path, label, ...(tab ? { tab } : {}) }
+                        setPinForSaving(true)
+                        setPinForMessage(null)
+                        const { error } = await addPinForUser(pinForUserId, item)
+                        setPinForSaving(false)
+                        if (error) {
+                          setPinForMessage({ type: 'error', text: error.message })
+                          setTimeout(() => setPinForMessage(null), 4000)
+                        } else {
+                          const name = pinForUsers.find((u) => u.id === pinForUserId)?.name?.trim() || pinForUsers.find((u) => u.id === pinForUserId)?.email || 'User'
+                          setPinForMessage({ type: 'success', text: `Pinned for ${name}.` })
+                          setTimeout(() => setPinForMessage(null), 3000)
+                          setPinForOpen(false)
+                          if (pinForUserId === authUser.id) {
+                            togglePinned(authUser.id, path, label, tab ?? undefined)
+                          }
+                        }
+                      }}
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.8125rem',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 6,
+                        cursor: pinForSaving ? 'not-allowed' : 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Pin for
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {pinForMessage && (
+              <span
+                style={{
+                  fontSize: '0.875rem',
+                  color: pinForMessage.type === 'success' ? '#059669' : '#b91c1c',
+                  fontWeight: 500,
+                }}
+              >
+                {pinForMessage.text}
+              </span>
+            )}
+          </div>
+        )}
       </main>
     </div>
+  )
+}
+
+function PinIcon({ filled: _filled }: { filled: boolean }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true">
+      <path d="M352 348.4C416.1 333.9 464 276.5 464 208C464 128.5 399.5 64 320 64C240.5 64 176 128.5 176 208C176 276.5 223.9 333.9 288 348.4L288 544C288 561.7 302.3 576 320 576C337.7 576 352 561.7 352 544L352 348.4zM328 160C297.1 160 272 185.1 272 216C272 229.3 261.3 240 248 240C234.7 240 224 229.3 224 216C224 158.6 270.6 112 328 112C341.3 112 352 122.7 352 136C352 149.3 341.3 160 328 160z" />
+    </svg>
   )
 }

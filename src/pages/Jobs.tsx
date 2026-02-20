@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
@@ -44,7 +45,10 @@ function formatCurrency(n: number): string {
 
 type MaterialRow = { id: string; description: string; amount: number }
 
+const JOBS_TABS: JobsTab[] = ['labor', 'ledger', 'sub_sheet_ledger', 'upcoming', 'teams-summary']
+
 export default function Jobs() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser } = useAuth()
   const [activeTab, setActiveTab] = useState<JobsTab>('ledger')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
@@ -847,6 +851,19 @@ export default function Jobs() {
   }, [authUser?.id])
 
   useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && JOBS_TABS.includes(tab as JobsTab)) {
+      setActiveTab(tab as JobsTab)
+    } else if (!tab) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'labor')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams])
+
+  useEffect(() => {
     if (activeTab === 'labor' || activeTab === 'sub_sheet_ledger') loadRoster()
   }, [authUser?.id, activeTab])
 
@@ -1004,19 +1021,74 @@ export default function Jobs() {
     <div>
       <h1>Jobs</h1>
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        <button type="button" onClick={() => setActiveTab('labor')} style={tabStyle(activeTab === 'labor')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('labor')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'labor')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'labor')}
+        >
           Labor
         </button>
-        <button type="button" onClick={() => setActiveTab('ledger')} style={tabStyle(activeTab === 'ledger')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('ledger')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'ledger')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'ledger')}
+        >
           HCP Jobs
         </button>
-        <button type="button" onClick={() => setActiveTab('sub_sheet_ledger')} style={tabStyle(activeTab === 'sub_sheet_ledger')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('sub_sheet_ledger')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'sub_sheet_ledger')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'sub_sheet_ledger')}
+        >
           Sub Sheet Ledger
         </button>
-        <button type="button" onClick={() => setActiveTab('upcoming')} style={tabStyle(activeTab === 'upcoming')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('upcoming')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'upcoming')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'upcoming')}
+        >
           Upcoming
         </button>
-        <button type="button" onClick={() => setActiveTab('teams-summary')} style={tabStyle(activeTab === 'teams-summary')}>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('teams-summary')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'teams-summary')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'teams-summary')}
+        >
           Teams Summary
         </button>
       </div>
