@@ -1337,7 +1337,7 @@ type ChecklistItem = {
   users?: { name: string; email: string } | null
 }
 
-function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
