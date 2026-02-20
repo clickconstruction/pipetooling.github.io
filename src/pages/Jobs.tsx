@@ -1773,6 +1773,9 @@ export default function Jobs() {
               }}
             />
           </div>
+          <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginBottom: '1rem' }}>
+            Assistants see jobs from their master and from other assistants adopted by the same master. If you don&apos;t see a colleague&apos;s jobs, the master must adopt both of you in Settings → Adopt Assistants.
+          </p>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {loading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
