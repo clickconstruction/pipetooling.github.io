@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { useAuth } from '../hooks/useAuth'
-import { clearPinned, clearPinnedInSupabase } from '../lib/pinnedTabs'
+import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
+import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useUpdatePrompt } from '../contexts/UpdatePromptContext'
 
@@ -171,6 +172,23 @@ export default function Settings() {
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
   const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
+  // AR pin to dashboard (dev-only)
+  const [pinARMasterIds, setPinARMasterIds] = useState<Set<string>>(new Set())
+  const [pinARSaving, setPinARSaving] = useState(false)
+  const [pinARUnpinSaving, setPinARUnpinSaving] = useState(false)
+  const [pinARMessage, setPinARMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [arTotal, setArTotal] = useState<number | null>(null)
+  // Supply Houses AP pin to dashboard (dev-only)
+  const [pinAPMasterIds, setPinAPMasterIds] = useState<Set<string>>(new Set())
+  const [pinAPSaving, setPinAPSaving] = useState(false)
+  const [pinAPUnpinSaving, setPinAPUnpinSaving] = useState(false)
+  const [pinAPMessage, setPinAPMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [apTotal, setApTotal] = useState<number | null>(null)
+  // Cost matrix pin to dashboard (dev-only)
+  const [pinCostMatrixMasterIds, setPinCostMatrixMasterIds] = useState<Set<string>>(new Set())
+  const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
+  const [pinCostMatrixUnpinSaving, setPinCostMatrixUnpinSaving] = useState(false)
+  const [pinCostMatrixMessage, setPinCostMatrixMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
@@ -610,6 +628,34 @@ export default function Settings() {
     } finally {
       setExportBidsLoading(false)
     }
+  }
+
+  async function loadArTotalAndPinnedUsers() {
+    if (myRole !== 'dev') return
+    const [arRes, pinnedRes] = await Promise.all([
+      supabase.from('jobs_receivables').select('amount'),
+      getUsersWithPin('/jobs', 'receivables'),
+    ])
+    const total = (arRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
+    setArTotal(total)
+    setPinARMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+  }
+
+  async function loadSupplyHousesAPTotalAndPinnedUsers() {
+    if (myRole !== 'dev') return
+    const [invoicesRes, pinnedRes] = await Promise.all([
+      supabase.from('supply_house_invoices').select('amount, is_paid').eq('is_paid', false),
+      getUsersWithPin('/materials', 'supply-houses'),
+    ])
+    const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
+    setApTotal(total)
+    setPinAPMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+  }
+
+  async function loadCostMatrixPinnedUsers() {
+    if (myRole !== 'dev') return
+    const rows = await getUsersWithPin('/people', 'pay')
+    setPinCostMatrixMasterIds(new Set(rows.map((r) => r.user_id)))
   }
 
   async function loadData() {
@@ -2345,6 +2391,16 @@ export default function Settings() {
     loadData()
   }, [authUser?.id])
 
+  useEffect(() => {
+    if (myRole === 'dev') {
+      loadArTotalAndPinnedUsers()
+      loadSupplyHousesAPTotalAndPinnedUsers()
+      loadCostMatrixPinnedUsers()
+    }
+  }, [myRole])
+
+  const { total: costMatrixTotal } = useCostMatrixTotal(myRole === 'dev')
+
   // Default notification test target: current user if in list, else first user
   useEffect(() => {
     if (myRole !== 'dev' || users.length === 0) return
@@ -3100,6 +3156,333 @@ export default function Settings() {
           Clear all page pins
         </button>
       </div>
+
+      {myRole === 'dev' && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin AR to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin AR total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinARMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinARMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinARMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinARMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinARSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinARSaving || pinARMasterIds.size === 0}
+              onClick={async () => {
+                setPinARSaving(true)
+                setPinARMessage(null)
+                const total = arTotal ?? 0
+                const item = { path: '/jobs', label: `AR | $${Math.round(total).toLocaleString('en-US')}`, tab: 'receivables' as const }
+                const ids = Array.from(pinARMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinARSaving(false)
+                if (errMsg) setPinARMessage({ type: 'error', text: errMsg })
+                else {
+                  loadArTotalAndPinnedUsers()
+                  setPinARMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinARMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinARSaving || pinARMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinARSaving || pinARUnpinSaving}
+              onClick={async () => {
+                setPinARUnpinSaving(true)
+                setPinARMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/jobs', 'receivables')
+                setPinARUnpinSaving(false)
+                if (error) setPinARMessage({ type: 'error', text: error.message })
+                else {
+                  loadArTotalAndPinnedUsers()
+                  setPinARMessage({ type: 'success', text: `Unpinned AR for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinARMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinARSaving || pinARUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinARMessage && (
+            <p style={{ color: pinARMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinARMessage.text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {myRole === 'dev' && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Supply Houses AP to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Material Supply Houses AP total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinAPMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinAPMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinAPMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinAPMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinAPSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinAPSaving || pinAPMasterIds.size === 0}
+              onClick={async () => {
+                setPinAPSaving(true)
+                setPinAPMessage(null)
+                const total = apTotal ?? 0
+                const item = { path: '/materials', label: `Supply House AP | $${Math.round(total).toLocaleString('en-US')}`, tab: 'supply-houses' as const }
+                const ids = Array.from(pinAPMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinAPSaving(false)
+                if (errMsg) setPinAPMessage({ type: 'error', text: errMsg })
+                else {
+                  loadSupplyHousesAPTotalAndPinnedUsers()
+                  setPinAPMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinAPMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinAPSaving || pinAPMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinAPSaving || pinAPUnpinSaving}
+              onClick={async () => {
+                setPinAPUnpinSaving(true)
+                setPinAPMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/materials', 'supply-houses')
+                setPinAPUnpinSaving(false)
+                if (error) setPinAPMessage({ type: 'error', text: error.message })
+                else {
+                  loadSupplyHousesAPTotalAndPinnedUsers()
+                  setPinAPMessage({ type: 'success', text: `Unpinned Supply Houses AP for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinAPMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinAPSaving || pinAPUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinAPMessage && (
+            <p style={{ color: pinAPMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinAPMessage.text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {myRole === 'dev' && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Cost matrix to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinCostMatrixMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinCostMatrixMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinCostMatrixMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinCostMatrixMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinCostMatrixSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0}
+              onClick={async () => {
+                setPinCostMatrixSaving(true)
+                setPinCostMatrixMessage(null)
+                const total = costMatrixTotal ?? 0
+                const item = { path: '/people', label: `Internal Team: $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
+                const ids = Array.from(pinCostMatrixMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinCostMatrixSaving(false)
+                if (errMsg) setPinCostMatrixMessage({ type: 'error', text: errMsg })
+                else {
+                  loadCostMatrixPinnedUsers()
+                  setPinCostMatrixMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinCostMatrixSaving || pinCostMatrixMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinCostMatrixSaving || pinCostMatrixUnpinSaving}
+              onClick={async () => {
+                setPinCostMatrixUnpinSaving(true)
+                setPinCostMatrixMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/people', 'pay')
+                setPinCostMatrixUnpinSaving(false)
+                if (error) setPinCostMatrixMessage({ type: 'error', text: error.message })
+                else {
+                  loadCostMatrixPinnedUsers()
+                  setPinCostMatrixMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinCostMatrixMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinCostMatrixMessage && (
+            <p style={{ color: pinCostMatrixMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinCostMatrixMessage.text}
+            </p>
+          )}
+        </div>
+      )}
 
       {(myRole === 'master_technician' || myRole === 'dev') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>

@@ -4,7 +4,6 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { useAuth } from '../hooks/useAuth'
-import { addPinForUser, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string }
@@ -78,10 +77,6 @@ export default function People() {
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
-  const [pinToDashboardMasterIds, setPinToDashboardMasterIds] = useState<Set<string>>(new Set())
-  const [pinToDashboardSaving, setPinToDashboardSaving] = useState(false)
-  const [pinToDashboardUnpinSaving, setPinToDashboardUnpinSaving] = useState(false)
-  const [pinToDashboardMessage, setPinToDashboardMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
@@ -612,16 +607,9 @@ export default function People() {
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
 
-  async function loadCostMatrixPinnedUsers() {
-    if (!isDev) return
-    const rows = await getUsersWithPin('/people', 'pay')
-    setPinToDashboardMasterIds(new Set(rows.map((r) => r.user_id)))
-  }
-
   useEffect(() => {
     if (activeTab === 'pay' && isDev) {
       loadCostMatrixShares()
-      loadCostMatrixPinnedUsers()
     }
   }, [activeTab, isDev])
 
@@ -1202,7 +1190,7 @@ export default function People() {
             if (sortedTags.length === 0) return null
             return (
               <section style={{ marginBottom: '1rem' }}>
-                <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Tag</div>
+                <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Trade</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
                   {sortedTags.map(([tag, total]) => {
                     const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
@@ -1633,7 +1621,7 @@ export default function People() {
                   })}
                   <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
                     <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
-                      Total | ${Math.round(
+                      Internal Team: ${Math.round(
                         matrixDays.reduce(
                           (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
                           0
@@ -1933,114 +1921,6 @@ export default function People() {
                   ))}
                 </div>
                 {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
-                  </p>
-                  {pinToDashboardMasterIds.size > 0 && (
-                    <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
-                      Pinned for:{' '}
-                      {costMatrixShareCandidates
-                        .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                        .filter((u) => pinToDashboardMasterIds.has(u.id))
-                        .map((u) => u.name || u.email || 'Unknown')
-                        .join(', ')}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
-                    {costMatrixShareCandidates.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
-                      <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={pinToDashboardMasterIds.has(u.id)}
-                          onChange={(e) => {
-                            setPinToDashboardMasterIds((prev) => {
-                              const next = new Set(prev)
-                              if (e.target.checked) next.add(u.id)
-                              else next.delete(u.id)
-                              return next
-                            })
-                          }}
-                          disabled={pinToDashboardSaving}
-                        />
-                        {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
-                      </label>
-                    ))}
-                    <button
-                      type="button"
-                      disabled={pinToDashboardSaving || pinToDashboardMasterIds.size === 0}
-                      onClick={async () => {
-                        setPinToDashboardSaving(true)
-                        setPinToDashboardMessage(null)
-                        const total = matrixDays.reduce(
-                          (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),
-                          0
-                        )
-                        const item = { path: '/people', label: `Total | $${Math.round(total).toLocaleString('en-US')}`, tab: 'pay' as const }
-                        const ids = Array.from(pinToDashboardMasterIds)
-                        let ok = 0
-                        let errMsg: string | null = null
-                        for (const userId of ids) {
-                          const { error } = await addPinForUser(userId, item)
-                          if (error) errMsg = error.message
-                          else ok++
-                        }
-                        setPinToDashboardSaving(false)
-                        if (errMsg) setPinToDashboardMessage({ type: 'error', text: errMsg })
-                        else {
-                          loadCostMatrixPinnedUsers()
-                          setPinToDashboardMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                          setTimeout(() => setPinToDashboardMessage(null), 5000)
-                        }
-                      }}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.875rem',
-                        background: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: pinToDashboardSaving || pinToDashboardMasterIds.size === 0 ? 'not-allowed' : 'pointer',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Pin To Dashboard
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pinToDashboardSaving || pinToDashboardUnpinSaving}
-                      onClick={async () => {
-                        setPinToDashboardUnpinSaving(true)
-                        setPinToDashboardMessage(null)
-                        const { count, error } = await deletePinForPathAndTab('/people', 'pay')
-                        setPinToDashboardUnpinSaving(false)
-                        if (error) setPinToDashboardMessage({ type: 'error', text: error.message })
-                        else {
-                          loadCostMatrixPinnedUsers()
-                          setPinToDashboardMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
-                          setTimeout(() => setPinToDashboardMessage(null), 5000)
-                        }
-                      }}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        cursor: pinToDashboardSaving || pinToDashboardUnpinSaving ? 'not-allowed' : 'pointer',
-                        fontWeight: 500,
-                      }}
-                    >
-                      Unpin All
-                    </button>
-                  </div>
-                  {pinToDashboardMessage && (
-                    <p style={{ color: pinToDashboardMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                      {pinToDashboardMessage.text}
-                    </p>
-                  )}
-                </div>
               </div>
             )}
           </section>

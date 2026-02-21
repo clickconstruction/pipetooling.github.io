@@ -42,7 +42,7 @@ export const PATH_TO_LABEL: Record<string, string> = {
 /** Tab param values per path (for validation and storing tab when pinning). */
 export const PATH_TABS: Record<string, readonly string[]> = {
   '/people': ['users', 'pay', 'hours'],
-  '/jobs': ['labor', 'ledger', 'sub_sheet_ledger', 'upcoming', 'teams-summary'],
+  '/jobs': ['labor', 'ledger', 'sub_sheet_ledger', 'upcoming', 'teams-summary', 'receivables'],
   '/bids': [
     'bid-board',
     'builder-review',
@@ -54,7 +54,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'submission-followup',
   ],
   '/checklist': ['today', 'history', 'manage', 'checklists'],
-  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders'],
+  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
 }
 
 export function getStorageKey(userId: string): string {

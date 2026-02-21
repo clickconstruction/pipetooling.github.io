@@ -1187,6 +1187,47 @@ export type Database = {
           },
         ]
       }
+      jobs_receivables: {
+        Row: {
+          account_rep_name: string | null
+          amount: number
+          created_at: string | null
+          id: string
+          master_user_id: string
+          payer: string
+          point_of_contact: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_rep_name?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          master_user_id: string
+          payer?: string
+          point_of_contact?: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_rep_name?: string | null
+          amount?: number
+          created_at?: string | null
+          id?: string
+          master_user_id?: string
+          payer?: string
+          point_of_contact?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_receivables_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -2445,6 +2486,7 @@ export type Database = {
           service_type_id: string
           stage: string | null
           status: string
+          supply_house_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2459,6 +2501,7 @@ export type Database = {
           service_type_id: string
           stage?: string | null
           status?: string
+          supply_house_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2473,6 +2516,7 @@ export type Database = {
           service_type_id?: string
           stage?: string | null
           status?: string
+          supply_house_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -2495,6 +2539,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
             referencedColumns: ["id"]
           },
         ]
@@ -2600,6 +2651,53 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          due_date: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          is_paid: boolean
+          link: string | null
+          supply_house_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_date: string
+          invoice_number: string
+          is_paid?: boolean
+          link?: string | null
+          supply_house_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          is_paid?: boolean
+          link?: string | null
+          supply_house_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_invoices_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
             referencedColumns: ["id"]
           },
         ]

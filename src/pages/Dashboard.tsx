@@ -963,12 +963,16 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             {pinnedRoutes.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
+              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
+              const isAR = item.path === '/jobs' && item.tab === 'receivables'
               const to = item.tab
                 ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
                 : item.path
               const displayLabel = isCostMatrix
-                ? (costMatrixTotal != null ? `Total | $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
+                : (isSupplyHouseAP || isAR)
+                  ? item.label
+                  : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
                 <Link
                   key={item.path + (item.tab ?? '')}

@@ -7,6 +7,7 @@ import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
+type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type MaterialPartPrice = Database['public']['Tables']['material_part_prices']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
@@ -106,7 +107,7 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const MATERIALS_TABS = ['price-book', 'assembly-book', 'templates-po', 'purchase-orders'] as const
+const MATERIALS_TABS = ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'] as const
 
 export default function Materials() {
   const { user: authUser } = useAuth()
@@ -114,7 +115,7 @@ export default function Materials() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [activeTab, setActiveTab] = useState<'price-book' | 'assembly-book' | 'templates-po' | 'purchase-orders'>('price-book')
+  const [activeTab, setActiveTab] = useState<'price-book' | 'assembly-book' | 'templates-po' | 'purchase-orders' | 'supply-houses'>('price-book')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -177,6 +178,25 @@ export default function Materials() {
   const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
   const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
+
+  // Supply Houses tab state
+  type SupplyHouseSummaryRow = { supply_house_id: string; name: string; outstanding: number; dueDate: string | null }
+  const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
+  const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
+  const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
+  const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoice[]>([])
+  const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
+  const [supplyHouseDetailLoading, setSupplyHouseDetailLoading] = useState(false)
+  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
+  const [editingInvoice, setEditingInvoice] = useState<SupplyHouseInvoice | null>(null)
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [invoiceDate, setInvoiceDate] = useState('')
+  const [invoiceDueDate, setInvoiceDueDate] = useState('')
+  const [invoiceAmount, setInvoiceAmount] = useState('')
+  const [invoiceLink, setInvoiceLink] = useState('')
+  const [invoiceIsPaid, setInvoiceIsPaid] = useState(false)
+  const [savingInvoice, setSavingInvoice] = useState(false)
+  const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
 
   // Templates & PO Builder state
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplate[]>([])
@@ -369,6 +389,187 @@ export default function Materials() {
       return
     }
     setSupplyHouses((data as SupplyHouse[]) ?? [])
+  }
+
+  async function loadSupplyHouseSummary() {
+    setSupplyHouseSummaryLoading(true)
+    const { data: houses } = await supabase.from('supply_houses').select('id, name').order('name')
+    const { data: invoices } = await supabase
+      .from('supply_house_invoices')
+      .select('supply_house_id, amount, due_date, is_paid')
+    const housesList = (houses ?? []) as { id: string; name: string }[]
+    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; due_date: string | null; is_paid: boolean }[]
+    const byHouse = new Map<string, { outstanding: number; dueDate: string | null }>()
+    for (const h of housesList) {
+      byHouse.set(h.id, { outstanding: 0, dueDate: null })
+    }
+    for (const inv of invoicesList) {
+      if (inv.is_paid) continue
+      const cur = byHouse.get(inv.supply_house_id)
+      if (cur) {
+        cur.outstanding += inv.amount
+        if (inv.due_date && (!cur.dueDate || inv.due_date < cur.dueDate)) {
+          cur.dueDate = inv.due_date
+        }
+      }
+    }
+    const rows: SupplyHouseSummaryRow[] = housesList.map((h) => {
+      const c = byHouse.get(h.id) ?? { outstanding: 0, dueDate: null }
+      return { supply_house_id: h.id, name: h.name, outstanding: c.outstanding, dueDate: c.dueDate }
+    })
+    rows.sort((a, b) => b.outstanding - a.outstanding)
+    setSupplyHouseSummary(rows)
+    setSupplyHouseSummaryLoading(false)
+  }
+
+  async function loadSupplyHouseDetail(sh: SupplyHouse) {
+    setSupplyHouseDetailLoading(true)
+    const { data: shData } = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
+    setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
+    const [invRes, poRes] = await Promise.all([
+      supabase.from('supply_house_invoices').select('*').eq('supply_house_id', sh.id).order('invoice_date', { ascending: false }),
+      supabase.from('purchase_orders').select('*').eq('supply_house_id', sh.id).order('created_at', { ascending: false }),
+    ])
+    setSupplyHouseInvoices((invRes.data as SupplyHouseInvoice[]) ?? [])
+    const pos = (poRes.data as PurchaseOrder[]) ?? []
+    const posWithItems: PurchaseOrderWithItems[] = await Promise.all(
+      pos.map(async (po) => {
+        const { data: itemsData } = await supabase
+          .from('purchase_order_items')
+          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
+          .eq('purchase_order_id', po.id)
+          .order('sequence_order', { ascending: true })
+        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
+        const itemsWithDetails: POItemWithDetails[] = items.map((item) => ({
+          ...item,
+          part: item.material_parts,
+          supply_house: item.supply_houses ?? undefined,
+          source_template: item.source_template ?? null,
+        }))
+        return { ...po, items: itemsWithDetails }
+      })
+    )
+    setSupplyHousePOs(posWithItems)
+    setSupplyHouseDetailLoading(false)
+  }
+
+  async function createBlankPOForSupplyHouse(supplyHouseId: string) {
+    if (!authUser?.id || !selectedServiceTypeId) return
+    setCreatingPOForSupplyHouse(true)
+    setError(null)
+    const currentDate = new Date().toLocaleDateString()
+    const sh = supplyHouses.find((s) => s.id === supplyHouseId)
+    const { data: poData, error: poError } = await supabase
+      .from('purchase_orders')
+      .insert({
+        name: `PO: ${sh?.name ?? 'Supply House'} [${currentDate}]`,
+        status: 'draft',
+        created_by: authUser.id,
+        notes: null,
+        service_type_id: selectedServiceTypeId,
+        supply_house_id: supplyHouseId,
+      })
+      .select('id')
+      .single()
+    setCreatingPOForSupplyHouse(false)
+    if (poError) {
+      setError(`Failed to create PO: ${poError.message}`)
+      return
+    }
+    await loadSupplyHouseDetail(sh!)
+    await loadPurchaseOrders()
+    const { data: newPO } = await supabase.from('purchase_orders').select('*').eq('id', poData.id).single()
+    if (newPO) {
+      const poWithItems: PurchaseOrderWithItems = { ...(newPO as PurchaseOrder), items: [] }
+      setEditingPO(poWithItems)
+      setActiveTab('purchase-orders')
+    }
+  }
+
+  function openAddInvoice() {
+    setEditingInvoice(null)
+    setInvoiceNumber('')
+    setInvoiceDate(new Date().toISOString().slice(0, 10))
+    setInvoiceDueDate('')
+    setInvoiceAmount('')
+    setInvoiceLink('')
+    setInvoiceIsPaid(false)
+    setInvoiceFormOpen(true)
+  }
+
+  function openEditInvoice(inv: SupplyHouseInvoice) {
+    setEditingInvoice(inv)
+    setInvoiceNumber(inv.invoice_number)
+    setInvoiceDate(inv.invoice_date)
+    setInvoiceDueDate(inv.due_date ?? '')
+    setInvoiceAmount(inv.amount.toString())
+    setInvoiceLink(inv.link ?? '')
+    setInvoiceIsPaid(inv.is_paid)
+    setInvoiceFormOpen(true)
+  }
+
+  function closeInvoiceForm() {
+    setInvoiceFormOpen(false)
+    setEditingInvoice(null)
+  }
+
+  async function saveInvoice(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedSupplyHouseForDetail || !invoiceNumber.trim() || !invoiceDate) return
+    const amt = parseFloat(invoiceAmount)
+    if (isNaN(amt) || amt < 0) {
+      setError('Amount must be a non-negative number')
+      return
+    }
+    setSavingInvoice(true)
+    setError(null)
+    const payload = {
+      supply_house_id: selectedSupplyHouseForDetail.id,
+      invoice_number: invoiceNumber.trim(),
+      invoice_date: invoiceDate,
+      due_date: invoiceDueDate.trim() || null,
+      amount: amt,
+      link: invoiceLink.trim() || null,
+      is_paid: invoiceIsPaid,
+    }
+    if (editingInvoice) {
+      const { error: err } = await supabase.from('supply_house_invoices').update(payload).eq('id', editingInvoice.id)
+      if (err) setError(err.message)
+      else {
+        await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+        await loadSupplyHouseSummary()
+        closeInvoiceForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('supply_house_invoices').insert(payload)
+      if (err) setError(err.message)
+      else {
+        await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+        await loadSupplyHouseSummary()
+        closeInvoiceForm()
+      }
+    }
+    setSavingInvoice(false)
+  }
+
+  async function toggleInvoicePaid(inv: SupplyHouseInvoice) {
+    const { error } = await supabase
+      .from('supply_house_invoices')
+      .update({ is_paid: !inv.is_paid })
+      .eq('id', inv.id)
+    if (!error && selectedSupplyHouseForDetail) {
+      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+      await loadSupplyHouseSummary()
+    }
+  }
+
+  async function deleteInvoice(inv: SupplyHouseInvoice) {
+    if (!confirm('Delete this invoice?')) return
+    const { error } = await supabase.from('supply_house_invoices').delete().eq('id', inv.id)
+    if (!error && selectedSupplyHouseForDetail) {
+      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+      await loadSupplyHouseSummary()
+    }
   }
 
   async function loadParts(page = 0, options?: {
@@ -941,6 +1142,13 @@ export default function Materials() {
   }, [activeTab, selectedServiceTypeId])
 
   useEffect(() => {
+    if (activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant')) {
+      loadSupplyHouses()
+      loadSupplyHouseSummary()
+    }
+  }, [activeTab, myRole])
+
+  useEffect(() => {
     if (editingPO?.id) {
       // Reload PO to get latest items
       const loadPODetails = async () => {
@@ -1315,10 +1523,13 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await Promise.all([
-          loadSupplyHouses(),
-          reloadPartsFirstPage(),
-        ])
+        const loads = [loadSupplyHouses()]
+        if (activeTab === 'supply-houses') loads.push(loadSupplyHouseSummary())
+        else loads.push(reloadPartsFirstPage())
+        await Promise.all(loads)
+        if (activeTab === 'supply-houses' && editingSupplyHouse && selectedSupplyHouseForDetail?.id === editingSupplyHouse.id) {
+          await loadSupplyHouseDetail(editingSupplyHouse)
+        }
         closeSupplyHouseForm()
       }
     } else {
@@ -1335,10 +1546,10 @@ export default function Materials() {
       if (e) {
         setError(e.message)
       } else {
-        await Promise.all([
-          loadSupplyHouses(),
-          reloadPartsFirstPage(),
-        ])
+        const loads = [loadSupplyHouses()]
+        if (activeTab === 'supply-houses') loads.push(loadSupplyHouseSummary())
+        else loads.push(reloadPartsFirstPage())
+        await Promise.all(loads)
         closeSupplyHouseForm()
       }
     }
@@ -2348,6 +2559,7 @@ export default function Materials() {
         created_by: authUser.id,
         notes: sourcePO.notes,
         service_type_id: (sourcePO as { service_type_id?: string }).service_type_id ?? selectedServiceTypeId,
+        supply_house_id: (sourcePO as { supply_house_id?: string | null }).supply_house_id ?? null,
       })
       .select('id')
       .single()
@@ -2689,6 +2901,30 @@ export default function Materials() {
         >
           Purchase Orders
         </button>
+        {myRole !== 'estimator' && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('supply-houses')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'supply-houses')
+                return next
+              })
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'supply-houses' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeTab === 'supply-houses' ? '#3b82f6' : '#6b7280',
+              fontWeight: activeTab === 'supply-houses' ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            Supply Houses
+          </button>
+        )}
       </div>
 
       {/* Price Book Tab */}
@@ -5612,6 +5848,341 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Supply Houses Tab */}
+      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+
+          {/* Supply house table at top */}
+          <section style={{ marginBottom: '2rem' }}>
+            {supplyHouseSummaryLoading ? (
+              <p style={{ color: '#6b7280' }}>Loading…</p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
+                  AP: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>Supply House</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right' }}>Outstanding</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left' }}>Due</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', width: 80 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplyHouseSummary.map((row) => {
+                      const sh = supplyHouses.find((s) => s.id === row.supply_house_id)
+                      const isExpanded = selectedSupplyHouseForDetail?.id === row.supply_house_id
+                      return (
+                        <Fragment key={row.supply_house_id}>
+                          <tr
+                            onClick={() => {
+                              if (!sh) return
+                              if (isExpanded) {
+                                setSelectedSupplyHouseForDetail(null)
+                              } else {
+                                loadSupplyHouseDetail(sh)
+                              }
+                            }}
+                            style={{
+                              borderBottom: '1px solid #e5e7eb',
+                              cursor: 'pointer',
+                              background: isExpanded ? '#f0f9ff' : undefined,
+                            }}
+                          >
+                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>{row.name}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: row.outstanding > 0 ? 600 : 400 }}>
+                              ${formatCurrency(row.outstanding)}
+                            </td>
+                            <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                              {row.dueDate ? new Date(row.dueDate).toLocaleDateString() : '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {isExpanded && selectedSupplyHouseForDetail && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setEditingSupplyHouse(selectedSupplyHouseForDetail)
+                                    setSupplyHouseName(selectedSupplyHouseForDetail.name)
+                                    setSupplyHouseContactName(selectedSupplyHouseForDetail.contact_name ?? '')
+                                    setSupplyHousePhone(selectedSupplyHouseForDetail.phone ?? '')
+                                    setSupplyHouseEmail(selectedSupplyHouseForDetail.email ?? '')
+                                    setSupplyHouseAddress(selectedSupplyHouseForDetail.address ?? '')
+                                    setSupplyHouseNotes(selectedSupplyHouseForDetail.notes ?? '')
+                                    setSupplyHouseFormOpen(true)
+                                  }}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                >
+                                  Edit
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                          {isExpanded && selectedSupplyHouseForDetail && (
+                            <tr>
+                              <td colSpan={4} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+                                <div style={{ padding: '1rem 1.5rem', background: '#f9fafb', borderLeft: '3px solid #3b82f6' }}>
+                                  {supplyHouseDetailLoading ? (
+                                    <p>Loading…</p>
+                                  ) : (
+                                    <>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                                        {selectedSupplyHouseForDetail.address && (
+                                          <div><strong>Address:</strong> {selectedSupplyHouseForDetail.address}</div>
+                                        )}
+                                        {selectedSupplyHouseForDetail.phone && (
+                                          <div><strong>Phone:</strong> {selectedSupplyHouseForDetail.phone}</div>
+                                        )}
+                                        {selectedSupplyHouseForDetail.email && (
+                                          <div><strong>Email:</strong> {selectedSupplyHouseForDetail.email}</div>
+                                        )}
+                                        {selectedSupplyHouseForDetail.contact_name && (
+                                          <div><strong>Contact:</strong> {selectedSupplyHouseForDetail.contact_name}</div>
+                                        )}
+                                      </div>
+                                      <section style={{ marginBottom: '1.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                          <h3 style={{ margin: 0, fontSize: '1rem' }}>Invoices</h3>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); openAddInvoice() }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                          >
+                                            Add Invoice
+                                          </button>
+                                        </div>
+                                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                            <thead style={{ background: '#f9fafb' }}>
+                                              <tr>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Invoice #</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Due</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {supplyHouseInvoices.length === 0 ? (
+                                                <tr><td colSpan={7} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
+                                              ) : (
+                                                supplyHouseInvoices.map((inv) => (
+                                                  <tr key={inv.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{inv.invoice_number}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(inv.amount)}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={inv.is_paid}
+                                                        onChange={() => toggleInvoicePaid(inv)}
+                                                      />
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      {inv.link ? (
+                                                        <a href={inv.link} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>View</a>
+                                                      ) : (
+                                                        '—'
+                                                      )}
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      <button type="button" onClick={(e) => { e.stopPropagation(); openEditInvoice(inv) }} title="Edit" aria-label="Edit" style={{ marginRight: '0.5rem', padding: '0.25rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
+                                                          <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
+                                                        </svg>
+                                                      </button>
+                                                      <button type="button" onClick={(e) => { e.stopPropagation(); deleteInvoice(inv) }} title="Delete" aria-label="Delete" style={{ padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
+                                                          <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                                                        </svg>
+                                                      </button>
+                                                    </td>
+                                                  </tr>
+                                                ))
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </section>
+                                      <section>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                          <h3 style={{ margin: 0, fontSize: '1rem' }}>Purchase Orders</h3>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); createBlankPOForSupplyHouse(selectedSupplyHouseForDetail.id) }}
+                                            disabled={creatingPOForSupplyHouse || !selectedServiceTypeId}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPOForSupplyHouse || !selectedServiceTypeId ? 'not-allowed' : 'pointer' }}
+                                          >
+                                            {creatingPOForSupplyHouse ? 'Creating…' : 'Create PO'}
+                                          </button>
+                                        </div>
+                                        {!selectedServiceTypeId && (
+                                          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Select a service type above to create POs.</p>
+                                        )}
+                                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                            <thead style={{ background: '#f9fafb' }}>
+                                              <tr>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Name</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
+                                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {supplyHousePOs.length === 0 ? (
+                                                <tr><td colSpan={3} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No purchase orders</td></tr>
+                                              ) : (
+                                                supplyHousePOs.map((po) => (
+                                                  <tr key={po.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{po.name}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{po.status}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedPO(po); setEditingPO(po) }}
+                                                        style={{ marginRight: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}
+                                                      >
+                                                        View
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setEditingPO(po); setActiveTab('purchase-orders') }}
+                                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}
+                                                      >
+                                                        Edit
+                                                      </button>
+                                                    </td>
+                                                  </tr>
+                                                ))
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </section>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingSupplyHouse(null)
+                setSupplyHouseName('')
+                setSupplyHouseContactName('')
+                setSupplyHousePhone('')
+                setSupplyHouseEmail('')
+                setSupplyHouseAddress('')
+                setSupplyHouseNotes('')
+                setSupplyHouseFormOpen(true)
+                setError(null)
+              }}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Add Supply House
+            </button>
+          </div>
+
+          {/* Supply House Add/Edit modal (for Supply Houses tab) */}
+          {supplyHouseFormOpen && activeTab === 'supply-houses' && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
+                <h3 style={{ margin: '0 0 1rem 0' }}>{editingSupplyHouse ? 'Edit Supply House' : 'Add Supply House'}</h3>
+                <form onSubmit={saveSupplyHouse}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name *</label>
+                    <input type="text" value={supplyHouseName} onChange={(e) => setSupplyHouseName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Contact Name</label>
+                    <input type="text" value={supplyHouseContactName} onChange={(e) => setSupplyHouseContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone</label>
+                    <input type="tel" value={supplyHousePhone} onChange={(e) => setSupplyHousePhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Email</label>
+                    <input type="email" value={supplyHouseEmail} onChange={(e) => setSupplyHouseEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Address</label>
+                    <textarea value={supplyHouseAddress} onChange={(e) => setSupplyHouseAddress(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Notes</label>
+                    <textarea value={supplyHouseNotes} onChange={(e) => setSupplyHouseNotes(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeSupplyHouseForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingSupplyHouse} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingSupplyHouse ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Invoice form modal */}
+          {invoiceFormOpen && selectedSupplyHouseForDetail && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+                <h3 style={{ margin: '0 0 1rem 0' }}>{editingInvoice ? 'Edit Invoice' : 'Add Invoice'}</h3>
+                <form onSubmit={saveInvoice}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Number *</label>
+                    <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Date *</label>
+                    <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Due Date</label>
+                    <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Amount *</label>
+                    <input type="number" step="0.01" min={0} value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link (URL)</label>
+                    <input type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
+                      <input type="checkbox" checked={invoiceIsPaid} onChange={(e) => setInvoiceIsPaid(e.target.checked)} />
+                      Paid
+                    </label>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingInvoice ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
