@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-21
+last_updated: 2026-02-20
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -1874,6 +1874,7 @@ user_id = auth.uid()
 
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
+- **Header**: "Jobs" title on the right of the tab bar (matches People page pattern)
 - **Tabs** (in order): **Receivables** | **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | Upcoming | Teams Summary
 - **Features**:
   - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
@@ -1897,6 +1898,7 @@ user_id = auth.uid()
 
 ### 8. Dashboard
 - **Page**: `Dashboard.tsx`
+- **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "AR | $X,XXX", "Supply Houses: $X", "External Team: $X,XXX", "Internal Team: $X,XXX". Links navigate to Jobs Receivables, Materials Supply Houses, Materials External Team section, People Pay Cost matrix.
   - **User Role Display**: Shows current user's role
@@ -1917,8 +1919,8 @@ user_id = auth.uid()
     - Can only Start and Complete their stages
     - Cannot see private notes or financials
     - Cannot add, edit, delete, or assign stages
-    - When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages below:
-  - **My Assigned Stages**: Lists all steps assigned to current user (by `assigned_to_name`)
+    - When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Projects: Subscribed Stages below:
+  - **Projects: Assigned Stages**: Lists all steps assigned to current user (by `assigned_to_name`)
     - Shows project name, stage name, status
     - Displays start/end times
     - Clickable project address opens Google Maps in new tab
@@ -1927,9 +1929,10 @@ user_id = auth.uid()
     - Displays notes and rejection reasons if present
     - Shows next step rejection notices if present
     - Action buttons: Set Start, Complete, Approve, Reject (based on role and status)
-  - **Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
+  - **Projects: Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
-  - **Notification history**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
+  - **My Notification History**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
+  - **Recently Completed Tasks (7 days)**: Expandable section showing checklist items completed in the last 7 days, grouped by completer
   - **Performance**: Parallel fetches and progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
   - **Checklist FWD (dev-only)**: Each checklist item shows a light grey "fwd" link on the far right; opens modal to edit title and assign to another user; creates new task and removes original
   - **Card Layout**: 

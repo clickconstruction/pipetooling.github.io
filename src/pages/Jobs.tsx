@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import NewReportModal from '../components/NewReportModal'
 import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
@@ -17,7 +18,7 @@ type JobWithDetails = JobsLedgerRow & {
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
 }
 
-type JobsTab = 'receivables' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary'
+type JobsTab = 'receivables' | 'reports' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -49,7 +50,7 @@ function formatCurrency(n: number): string {
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['receivables', 'ledger', 'sub_sheet_ledger', 'teams-summary']
+const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'ledger', 'sub_sheet_ledger', 'teams-summary']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
@@ -132,6 +133,34 @@ export default function Jobs() {
   const [receivablesAmount, setReceivablesAmount] = useState('')
   const [receivablesSaving, setReceivablesSaving] = useState(false)
   const [receivablesDeletingId, setReceivablesDeletingId] = useState<string | null>(null)
+
+  // Reports tab state
+  type ReportWithJob = {
+    id: string
+    template_id: string
+    template_name: string
+    created_by_user_id: string
+    created_by_name: string
+    created_at: string
+    updated_at: string
+    field_values: Record<string, string>
+    job_ledger_id: string | null
+    project_id: string | null
+    job_display_name: string
+    job_hcp_number: string
+  }
+  const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
+  const [reportsLoading, setReportsLoading] = useState(false)
+  const [reportsSearch, setReportsSearch] = useState('')
+  const [reportsViewMode, setReportsViewMode] = useState<'job' | 'person'>('job')
+  const [reportsExpandedJobs, setReportsExpandedJobs] = useState<Set<string>>(new Set())
+  const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
+  const [newReportModalOpen, setNewReportModalOpen] = useState(false)
+  const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
+  const [templateFormOpen, setTemplateFormOpen] = useState(false)
+  const [newTemplateName, setNewTemplateName] = useState('')
+  const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
+  const [templateSaving, setTemplateSaving] = useState(false)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -230,6 +259,65 @@ export default function Jobs() {
       setReceivables((data as JobsReceivableRow[]) ?? [])
     }
     setReceivablesLoading(false)
+  }
+
+  async function loadReports() {
+    if (!authUser?.id) return
+    setReportsLoading(true)
+    setError(null)
+    const { data, error: err } = await supabase.rpc('list_reports_with_job_info')
+    if (err) {
+      setError(`Failed to load reports: ${err.message}`)
+    } else {
+      setReportsList((Array.isArray(data) ? data : []) as ReportWithJob[])
+    }
+    setReportsLoading(false)
+  }
+
+  async function loadReportEnabledOnlyStatus() {
+    if (!authUser?.id) return
+    const { data } = await supabase.from('report_enabled_users').select('user_id').eq('user_id', authUser.id).maybeSingle()
+    setIsReportEnabledOnlyUser(!!data)
+  }
+
+  const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+
+  function openAddTemplate() {
+    setNewTemplateName('')
+    setNewTemplateFields([''])
+    setTemplateFormOpen(true)
+  }
+
+  async function saveTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newTemplateName.trim()) return
+    setTemplateSaving(true)
+    setError(null)
+    const { data: t, error: tErr } = await supabase
+      .from('report_templates')
+      .insert({ name: newTemplateName.trim(), sequence_order: 999 })
+      .select('id')
+      .single()
+    if (tErr) {
+      setError(tErr.message)
+      setTemplateSaving(false)
+      return
+    }
+    const templateId = (t as { id: string }).id
+    const fields = newTemplateFields.map((l) => l.trim()).filter(Boolean)
+    if (fields.length > 0) {
+      const { error: fErr } = await supabase.from('report_template_fields').insert(
+        fields.map((label, i) => ({ template_id: templateId, label, sequence_order: i }))
+      )
+      if (fErr) {
+        setError(fErr.message)
+        setTemplateSaving(false)
+        return
+      }
+    }
+    setTemplateFormOpen(false)
+    setTemplateSaving(false)
+    loadReports()
   }
 
   async function getEffectiveMasterId(): Promise<string | null> {
@@ -1065,6 +1153,13 @@ export default function Jobs() {
         return next
       }, { replace: true })
       setActiveTab('sub_sheet_ledger')
+    } else if (tab === 'reports' && isReportEnabledOnlyUser) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'receivables')
+        return next
+      }, { replace: true })
+      setActiveTab('receivables')
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
@@ -1074,7 +1169,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, isReportEnabledOnlyUser])
 
   useEffect(() => {
     if (activeTab === 'sub_sheet_ledger' || activeTab === 'receivables') loadRoster()
@@ -1155,6 +1250,14 @@ export default function Jobs() {
   useEffect(() => {
     if (activeTab === 'receivables' && authUser?.id) loadReceivables()
   }, [activeTab, authUser?.id])
+
+  useEffect(() => {
+    if (activeTab === 'reports' && authUser?.id) loadReports()
+  }, [activeTab, authUser?.id])
+
+  useEffect(() => {
+    if (authUser?.id) loadReportEnabledOnlyStatus()
+  }, [authUser?.id])
 
   useEffect(() => {
     if ((laborModalOpen || editingLaborJob) && !editingLaborJob && authUser?.id && laborRate === '') {
@@ -1459,7 +1562,7 @@ export default function Jobs() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => {
@@ -1474,6 +1577,22 @@ export default function Jobs() {
         >
           Receivables
         </button>
+        {!isReportEnabledOnlyUser && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('reports')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'reports')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'reports')}
+          >
+            Reports
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -1516,6 +1635,7 @@ export default function Jobs() {
         >
           Teams Summary
         </button>
+        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
       </div>
 
       {activeTab === 'receivables' && (
@@ -1612,6 +1732,238 @@ export default function Jobs() {
                 </form>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'reports' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setNewReportModalOpen(true)}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              New report
+            </button>
+            {canManageTemplates && (
+              <button
+                type="button"
+                onClick={openAddTemplate}
+                title="Add template"
+                style={{ padding: '0.35rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor">
+                  <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
+                </svg>
+              </button>
+            )}
+            <input
+              type="text"
+              placeholder={reportsViewMode === 'person' ? 'Search by job, HCP, or person' : 'Search by job name, HCP, or address'}
+              value={reportsSearch}
+              onChange={(e) => setReportsSearch(e.target.value)}
+              style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 200 }}
+            />
+            <div style={{ display: 'flex', gap: 0, border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', marginLeft: 'auto' }}>
+              <button
+                type="button"
+                onClick={() => setReportsViewMode('job')}
+                style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'job' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'job' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                By Job
+              </button>
+              <button
+                type="button"
+                onClick={() => setReportsViewMode('person')}
+                style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'person' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'person' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                By Person
+              </button>
+            </div>
+          </div>
+          {templateFormOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+                <h3 style={{ margin: '0 0 1rem 0' }}>Add template</h3>
+                <form onSubmit={saveTemplate}>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template name *</label>
+                    <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field labels</label>
+                    {newTemplateFields.map((val, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                        <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setTemplateFormOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={templateSaving || !newTemplateName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: templateSaving ? 'not-allowed' : 'pointer' }}>{templateSaving ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {reportsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading reports…</p>
+          ) : (
+            (() => {
+              const q = reportsSearch.trim().toLowerCase()
+              const filtered = q
+                ? reportsList.filter(
+                    (r) =>
+                      (r.job_display_name ?? '').toLowerCase().includes(q) ||
+                      (r.job_hcp_number ?? '').toLowerCase().includes(q) ||
+                      (r.created_by_name ?? '').toLowerCase().includes(q)
+                  )
+                : reportsList
+              if (reportsViewMode === 'person') {
+                const byPersonKey = new Map<string, ReportWithJob[]>()
+                for (const r of filtered) {
+                  const key = r.created_by_user_id
+                  const arr = byPersonKey.get(key) ?? []
+                  arr.push(r)
+                  byPersonKey.set(key, arr)
+                }
+                const personGroups = Array.from(byPersonKey.entries())
+                  .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
+                  .filter(({ reps }) => reps.length > 0)
+                  .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
+                if (personGroups.length === 0) {
+                  return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {personGroups.map(({ key, reps }) => {
+                      const person = reps[0]!
+                      const displayName = person.created_by_name || 'Unknown'
+                      const isExpanded = reportsExpandedPersons.has(key)
+                      return (
+                        <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReportsExpandedPersons((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(key)) next.delete(key)
+                                else next.add(key)
+                                return next
+                              })
+                            }
+                            style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.875rem' }}
+                          >
+                            <span>{displayName}</span>
+                            <span style={{ color: '#6b7280' }}>{reps.length} report{reps.length !== 1 ? 's' : ''}</span>
+                            <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
+                          </button>
+                          {isExpanded && (
+                            <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                              {reps.map((r) => (
+                                <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                      {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
+                                      {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
+                                    </span>
+                                  </div>
+                                  {r.field_values && Object.keys(r.field_values).length > 0 && (
+                                    <div style={{ fontSize: '0.875rem' }}>
+                                      {Object.entries(r.field_values).map(([label, val]) =>
+                                        val ? (
+                                          <div key={label} style={{ marginBottom: '0.25rem' }}>
+                                            <span style={{ color: '#6b7280' }}>{label}:</span> {String(val)}
+                                          </div>
+                                        ) : null
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              }
+              const byJobKey = new Map<string, ReportWithJob[]>()
+              for (const r of filtered) {
+                const key = `${r.job_ledger_id ?? ''}-${r.project_id ?? ''}`
+                const arr = byJobKey.get(key) ?? []
+                arr.push(r)
+                byJobKey.set(key, arr)
+              }
+              const jobGroups = Array.from(byJobKey.entries())
+                .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
+                .filter(({ reps }) => reps.length > 0)
+                .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
+              if (jobGroups.length === 0) {
+                return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {jobGroups.map(({ key, reps }) => {
+                    const job = reps[0]!
+                    const displayName = job.job_display_name || 'Unknown job'
+                    const hcp = job.job_hcp_number ? ` (HCP: ${job.job_hcp_number})` : ''
+                    const isExpanded = reportsExpandedJobs.has(key)
+                    return (
+                      <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setReportsExpandedJobs((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(key)) next.delete(key)
+                              else next.add(key)
+                              return next
+                            })
+                          }
+                          style={{ width: '100%', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '0.875rem' }}
+                        >
+                          <span>{displayName}{hcp}</span>
+                          <span style={{ color: '#6b7280' }}>{reps.length} report{reps.length !== 1 ? 's' : ''}</span>
+                          <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none' }}>▼</span>
+                        </button>
+                        {isExpanded && (
+                          <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                            {reps.map((r) => (
+                              <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                  <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                  <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                    {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                                  </span>
+                                </div>
+                                {r.field_values && Object.keys(r.field_values).length > 0 && (
+                                  <div style={{ fontSize: '0.875rem' }}>
+                                    {Object.entries(r.field_values).map(([label, val]) =>
+                                      val ? (
+                                        <div key={label} style={{ marginBottom: '0.25rem' }}>
+                                          <span style={{ color: '#6b7280' }}>{label}:</span> {String(val)}
+                                        </div>
+                                      ) : null
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()
           )}
         </div>
       )}
@@ -2747,6 +3099,12 @@ export default function Jobs() {
           </div>
         </div>
       )}
+      <NewReportModal
+        open={newReportModalOpen}
+        onClose={() => setNewReportModalOpen(false)}
+        onSaved={() => { setNewReportModalOpen(false); loadReports(); }}
+        authUserId={authUser?.id ?? null}
+      />
     </div>
   )
 }

@@ -28,6 +28,13 @@ function decimalToHms(decimal: number): string {
 function hmsToDecimal(str: string): number {
   const trimmed = str.trim()
   if (!trimmed) return 0
+  // "8.5" (one digit after dot) = 8.5 decimal hours. "8.30" (two digits, ≤59) = 8:30.
+  if (!trimmed.includes(':') && /^\d+\.(\d+)$/.test(trimmed)) {
+    const m = trimmed.match(/^\d+\.(\d+)$/)!
+    const frac = m[1]!
+    if (frac.length === 1) return parseFloat(trimmed) // 8.5 → 8.5 hrs
+    if (parseInt(frac, 10) > 59) return parseFloat(trimmed) // 8.75 → 8.75 hrs
+  }
   const normalized = trimmed.replace(/\./g, ':').replace(/\s+/g, ':')
   const parts = normalized.split(':').map((p) => parseInt(p, 10) || 0)
   const [h = 0, m = 0, s = 0] = parts

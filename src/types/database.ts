@@ -1254,6 +1254,147 @@ export type Database = {
           },
         ]
       }
+      report_enabled_users: {
+        Row: {
+          created_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_enabled_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_template_fields: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          sequence_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          sequence_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          sequence_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          sequence_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string | null
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_ledger_id: string | null
+          project_id: string | null
+          template_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_user_id: string
+          field_values?: Json
+          id?: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          template_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_user_id?: string
+          field_values?: Json
+          id?: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          template_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -3312,6 +3453,31 @@ export type Database = {
           supply_house_name: string
           total_parts: number
         }[]
+      }
+      get_job_display_for_report: {
+        Args: { p_source: string; p_id: string }
+        Returns: { id: string; source: string; display_name: string; hcp_number: string }[]
+      }
+      list_reports_with_job_info: {
+        Args: never
+        Returns: {
+          id: string
+          template_id: string
+          template_name: string
+          created_by_user_id: string
+          created_by_name: string
+          created_at: string
+          updated_at: string
+          field_values: Record<string, string>
+          job_ledger_id: string | null
+          project_id: string | null
+          job_display_name: string
+          job_hcp_number: string
+        }[]
+      }
+      search_jobs_for_reports: {
+        Args: { search_text?: string }
+        Returns: { id: string; source: string; display_name: string; hcp_number: string }[]
       }
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }

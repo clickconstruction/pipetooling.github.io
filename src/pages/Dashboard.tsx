@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import NewReportModal from '../components/NewReportModal'
 import {
   getPinned,
   getPinnedForUserFromSupabase,
@@ -163,6 +164,10 @@ export default function Dashboard() {
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
+  const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>>([])
+  const [recentReportsLoading, setRecentReportsLoading] = useState(false)
+  const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
+  const [newReportModalOpen, setNewReportModalOpen] = useState(false)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const isDev = role === 'dev'
@@ -227,6 +232,37 @@ export default function Dashboard() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    supabase.from('report_enabled_users').select('user_id').eq('user_id', authUser.id).maybeSingle().then(({ data }) => {
+      setIsReportEnabledOnlyUser(!!data)
+    })
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser
+    if (!showRecent) return
+    setRecentReportsLoading(true)
+    const load = async () => {
+      try {
+        const { data } = await supabase.rpc('list_reports_with_job_info')
+        const arr = Array.isArray(data) ? data : []
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }) => ({
+          id: r.id,
+          template_name: r.template_name,
+          job_display_name: r.job_display_name,
+          created_at: r.created_at,
+          created_by_name: r.created_by_name,
+        }))
+        setRecentReports(list)
+      } finally {
+        setRecentReportsLoading(false)
+      }
+    }
+    load()
+  }, [authUser?.id, role, isReportEnabledOnlyUser])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1005,9 +1041,8 @@ export default function Dashboard() {
 
   return (
     <div>
+      {role === 'master_technician' && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-        <h1 style={{ margin: 0 }}>Dashboard</h1>
-        {role === 'master_technician' && (
           <Link
             to="/bids?tab=builder-review"
             style={{
@@ -1021,8 +1056,51 @@ export default function Dashboard() {
           >
             Builder Review
           </Link>
-        )}
       </div>
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser && (
+        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>New report</button>
+            <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+          </div>
+        </div>
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser && (
+        <div style={{ marginBottom: '1rem' }}>
+          {recentReportsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+          ) : recentReports.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {recentReports.map((r) => (
+                <li key={r.id} style={{ padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
+                  <Link to="/jobs?tab=reports" style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link></p>
+          )}
+        </div>
+      )}
+      {isReportEnabledOnlyUser && (
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setNewReportModalOpen(true)}
+            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+          >
+            New report
+          </button>
+        </div>
+      )}
       {pinnedRoutes.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -1308,7 +1386,7 @@ export default function Dashboard() {
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
           >
-            {completedItemsOpen ? '▼' : '▶'} Completed (last 7 days)
+            {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks (7 days)
           </h2>
           {completedItemsOpen && (
             <>
@@ -1427,7 +1505,7 @@ export default function Dashboard() {
 
       {(userLoading || showAssigned) && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Assigned Stages</h2>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Projects: Assigned Stages</h2>
           {assignedLoading && assignedSteps.length === 0 ? (
             <AssignedSkeleton />
           ) : (
@@ -1582,7 +1660,7 @@ export default function Dashboard() {
       
       {showSubscribed && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Subscribed Stages</h2>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Projects: Subscribed Stages</h2>
           {subscribedLoading && subscribedSteps.length === 0 ? (
             <SubscribedSkeleton />
           ) : subscribedSteps.length === 0 ? (
@@ -1640,7 +1718,7 @@ export default function Dashboard() {
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && setNotificationHistoryOpen((o) => !o)}
         >
-          {notificationHistoryOpen ? '▼' : '▶'} Notification history
+          {notificationHistoryOpen ? '▼' : '▶'} My Notification History
         </h2>
         {notificationHistoryOpen && (
           <>
@@ -1700,6 +1778,12 @@ export default function Dashboard() {
           </>
         )}
       </div>
+      <NewReportModal
+        open={newReportModalOpen}
+        onClose={() => setNewReportModalOpen(false)}
+        onSaved={() => setNewReportModalOpen(false)}
+        authUserId={authUser?.id ?? null}
+      />
     </div>
   )
 }

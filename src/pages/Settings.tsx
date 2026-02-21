@@ -397,6 +397,11 @@ export default function Settings() {
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
   const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
+  const [reportSettingsSectionOpen, setReportSettingsSectionOpen] = useState(false)
+  const [reportEditWindowDays, setReportEditWindowDays] = useState<string>('2')
+  const [reportSubVisibilityMonths, setReportSubVisibilityMonths] = useState<string>('3')
+  const [reportEnabledUserIds, setReportEnabledUserIds] = useState<Set<string>>(new Set())
+  const [reportSettingsSaving, setReportSettingsSaving] = useState(false)
   const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
   const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
   const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
@@ -791,6 +796,12 @@ export default function Settings() {
       const { data: appSettings } = await supabase.from('app_settings').select('key, value_num').eq('key', 'default_labor_rate').maybeSingle()
       const val = (appSettings as { value_num: number | null } | null)?.value_num
       setDefaultLaborRate(val != null ? String(val) : '')
+      const { data: reportSettings } = await supabase.from('app_settings').select('key, value_num').in('key', ['report_edit_window_days', 'report_sub_visibility_months'])
+      const byKey = new Map((reportSettings ?? []).map((r: { key: string; value_num: number | null }) => [r.key, r.value_num ?? 0]))
+      setReportEditWindowDays(String(byKey.get('report_edit_window_days') ?? 2))
+      setReportSubVisibilityMonths(String(byKey.get('report_sub_visibility_months') ?? 3))
+      const { data: enabled } = await supabase.from('report_enabled_users').select('user_id')
+      setReportEnabledUserIds(new Set((enabled ?? []).map((r: { user_id: string }) => r.user_id)))
     }
     
     setLoading(false)
@@ -804,6 +815,49 @@ export default function Settings() {
     const { error } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
     setDefaultLaborRateSaving(false)
     if (error) setError(error.message)
+  }
+
+  async function saveReportSettings(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setReportSettingsSaving(true)
+    const editDays = Math.max(0, Math.floor(parseFloat(reportEditWindowDays) || 0))
+    const visMonths = Math.max(0, Math.floor(parseFloat(reportSubVisibilityMonths) || 0))
+    const { error: appErr } = await supabase.from('app_settings').upsert(
+      [
+        { key: 'report_edit_window_days', value_num: editDays },
+        { key: 'report_sub_visibility_months', value_num: visMonths },
+      ],
+      { onConflict: 'key' }
+    )
+    if (appErr) {
+      setError(appErr.message)
+      setReportSettingsSaving(false)
+      return
+    }
+    const currentIds = reportEnabledUserIds
+    const { data: existing } = await supabase.from('report_enabled_users').select('user_id')
+    const existingIds = new Set((existing ?? []).map((r: { user_id: string }) => r.user_id))
+    for (const uid of currentIds) {
+      if (!existingIds.has(uid)) {
+        await supabase.from('report_enabled_users').insert({ user_id: uid })
+      }
+    }
+    for (const uid of existingIds) {
+      if (!currentIds.has(uid)) {
+        await supabase.from('report_enabled_users').delete().eq('user_id', uid)
+      }
+    }
+    setReportSettingsSaving(false)
+  }
+
+  function toggleReportEnabledUser(userId: string) {
+    setReportEnabledUserIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) next.delete(userId)
+      else next.add(userId)
+      return next
+    })
   }
 
   async function loadPeopleForDev() {
@@ -6486,6 +6540,66 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          {/* Report settings - collapsible, dev-only */}
+          <div style={{ marginTop: '2rem' }}>
+            <button
+              type="button"
+              onClick={() => setReportSettingsSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{reportSettingsSectionOpen ? '▼' : '▶'}</span>
+              Report settings
+            </button>
+            {reportSettingsSectionOpen && (
+              <div style={{ padding: '1rem 0 0 0' }}>
+                <form onSubmit={saveReportSettings}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Report edit window (days)</label>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Days subcontractors can edit their own reports after creation.</p>
+                    <input type="number" min={0} step={1} value={reportEditWindowDays} onChange={(e) => setReportEditWindowDays(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Subcontractor report visibility (months)</label>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Months subcontractors can see their own reports.</p>
+                    <input type="number" min={0} step={1} value={reportSubVisibilityMonths} onChange={(e) => setReportSubVisibilityMonths(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and estimators selected here get the New Report button on Dashboard but cannot see the Reports section on Jobs.</p>
+                    <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator').map((u) => (
+                        <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={reportEnabledUserIds.has(u.id)} onChange={() => toggleReportEnabledUser(u.id)} />
+                          <span>{u.name || u.email}</span>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({u.role})</span>
+                        </label>
+                      ))}
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator').length === 0 && (
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors or estimators.</p>
+                      )}
+                    </div>
+                  </div>
+                  <button type="submit" disabled={reportSettingsSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportSettingsSaving ? 'not-allowed' : 'pointer' }}>
+                    {reportSettingsSaving ? 'Saving…' : 'Save report settings'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
