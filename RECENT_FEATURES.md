@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.50 → v2.4"
+version_range: "v2.54 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.53)"
+  - name: "Latest Version (v2.54)"
     line: ~132
+    description: "Quickfill page, nav icon, section order"
+  - name: "v2.53"
+    line: ~165
     description: "Supply Houses & External Subs, Jobs Receivables, Dashboard pins"
   - name: "v2.52"
     line: ~165
@@ -85,60 +88,84 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-2. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-3. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-4. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-5. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-6. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-7. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-8. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-9. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-9. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-10. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-11. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-12. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-13. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-14. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-15. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-16. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-15. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-16. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-17. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-18. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-19. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-20. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-21. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-22. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-23. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-24. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-25. [Latest Updates (v2.26)](#latest-updates-v226)
-26. [Latest Updates (v2.25)](#latest-updates-v225)
-27. [Latest Updates (v2.24)](#latest-updates-v224)
-28. [Latest Updates (v2.23)](#latest-updates-v223)
-29. [Latest Updates (v2.22)](#latest-updates-v222)
-30. [Latest Updates (v2.21)](#latest-updates-v221)
-31. [Latest Updates (v2.20)](#latest-updates-v220)
-32. [Latest Updates (v2.19)](#latest-updates-v219)
-33. [Latest Updates (v2.18)](#latest-updates-v218)
-34. [Latest Updates (v2.17)](#latest-updates-v217)
-35. [Latest Updates (v2.16)](#latest-updates-v216)
-36. [Latest Updates (v2.15)](#latest-updates-v215)
-37. [Latest Updates (v2.14)](#latest-updates-v214)
-38. [Latest Updates (v2.13)](#latest-updates-v213)
-39. [Latest Updates (v2.12)](#latest-updates-v212)
-40. [Latest Updates (v2.11)](#latest-updates-v211)
-41. [Latest Updates (v2.10)](#latest-updates-v210)
-42. [Latest Updates (v2.9)](#latest-updates-v29)
-43. [Latest Updates (v2.8)](#latest-updates-v28)
-44. [Latest Updates (v2.7)](#latest-updates-v27)
-45. [Latest Updates (v2.6)](#latest-updates-v26)
-44. [Workflow Features](#workflow-features)
-45. [Calendar Updates](#calendar-updates)
-46. [Access Control](#access-control)
-47. [Email Templates](#email-templates)
-48. [Financial Tracking](#financial-tracking)
-49. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+2. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+3. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+4. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+5. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+6. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+7. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+8. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+9. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+10. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+11. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+12. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+13. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+14. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+15. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+16. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+17. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+18. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+19. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+20. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+21. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+22. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+23. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+24. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+25. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+26. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+27. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+28. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+29. [Latest Updates (v2.26)](#latest-updates-v226)
+30. [Latest Updates (v2.25)](#latest-updates-v225)
+31. [Latest Updates (v2.24)](#latest-updates-v224)
+32. [Latest Updates (v2.23)](#latest-updates-v223)
+33. [Latest Updates (v2.22)](#latest-updates-v222)
+34. [Latest Updates (v2.21)](#latest-updates-v221)
+35. [Latest Updates (v2.20)](#latest-updates-v220)
+36. [Latest Updates (v2.19)](#latest-updates-v219)
+37. [Latest Updates (v2.18)](#latest-updates-v218)
+38. [Latest Updates (v2.17)](#latest-updates-v217)
+39. [Latest Updates (v2.16)](#latest-updates-v216)
+40. [Latest Updates (v2.15)](#latest-updates-v215)
+41. [Latest Updates (v2.14)](#latest-updates-v214)
+42. [Latest Updates (v2.13)](#latest-updates-v213)
+43. [Latest Updates (v2.12)](#latest-updates-v212)
+44. [Latest Updates (v2.11)](#latest-updates-v211)
+45. [Latest Updates (v2.10)](#latest-updates-v210)
+46. [Latest Updates (v2.9)](#latest-updates-v29)
+47. [Latest Updates (v2.8)](#latest-updates-v28)
+48. [Latest Updates (v2.7)](#latest-updates-v27)
+49. [Latest Updates (v2.6)](#latest-updates-v26)
+50. [Workflow Features](#workflow-features)
+51. [Calendar Updates](#calendar-updates)
+52. [Access Control](#access-control)
+53. [Email Templates](#email-templates)
+54. [Financial Tracking](#financial-tracking)
+55. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.54)
+
+### Quickfill page, nav icon, section order
+
+**Date**: 2026-02-21
+
+**Overview**:
+New Quickfill page at `/quickfill` combining People Hours, Jobs Receivables, and Materials Supply Houses & External Subs on one page for assistants. Nav bar shows icon-only link (heart icon) to the left of Dashboard. Access restricted to Assistants, Masters, and Devs.
+
+**Quickfill page**:
+- **Route**: `/quickfill`; pinnable from Settings.
+- **Sections** (top to bottom): People Hours (timesheet with date range, HH:MM:SS inputs); Jobs Receivables (AR total, payer table, Add Payer); Materials Supply Houses & External Subs (expandable supply houses, invoices, External Team with job payments).
+- **Add Payer**: Button aligned to the right in Receivables section.
+- **Access**: Visible only to dev, master_technician, assistant roles.
+
+**Navigation**:
+- **Quickfill link**: Heart icon only (no text) to the left of Dashboard; `title="Quickfill"` and `aria-label="Quickfill"` for accessibility.
+- **Icon alignment**: Uses `1em` size and `inline-flex` / `alignItems: center` to align with other nav text.
+
+**Files**: `src/pages/Quickfill.tsx`, `src/components/quickfill/HoursSection.tsx`, `src/components/quickfill/ReceivablesSection.tsx`, `src/components/quickfill/SupplyHousesSection.tsx`, `src/components/Layout.tsx`, `src/App.tsx`, `src/lib/pinnedTabs.ts`, `src/lib/format.ts`
 
 ---
 
