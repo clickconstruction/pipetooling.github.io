@@ -184,6 +184,12 @@ export default function Settings() {
   const [pinAPUnpinSaving, setPinAPUnpinSaving] = useState(false)
   const [pinAPMessage, setPinAPMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [apTotal, setApTotal] = useState<number | null>(null)
+  // External Team pin to dashboard (dev-only)
+  const [pinExternalTeamMasterIds, setPinExternalTeamMasterIds] = useState<Set<string>>(new Set())
+  const [pinExternalTeamSaving, setPinExternalTeamSaving] = useState(false)
+  const [pinExternalTeamUnpinSaving, setPinExternalTeamUnpinSaving] = useState(false)
+  const [pinExternalTeamMessage, setPinExternalTeamMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [externalTeamTotal, setExternalTeamTotal] = useState<number | null>(null)
   // Cost matrix pin to dashboard (dev-only)
   const [pinCostMatrixMasterIds, setPinCostMatrixMasterIds] = useState<Set<string>>(new Set())
   const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
@@ -650,6 +656,17 @@ export default function Settings() {
     const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
     setApTotal(total)
     setPinAPMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+  }
+
+  async function loadExternalTeamTotalAndPinnedUsers() {
+    if (myRole !== 'dev') return
+    const [paymentsRes, pinnedRes] = await Promise.all([
+      supabase.from('external_team_job_payments').select('amount, is_paid').eq('is_paid', false),
+      getUsersWithPin('/materials', 'external-team'),
+    ])
+    const total = (paymentsRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
+    setExternalTeamTotal(total)
+    setPinExternalTeamMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
   }
 
   async function loadCostMatrixPinnedUsers() {
@@ -2395,6 +2412,7 @@ export default function Settings() {
     if (myRole === 'dev') {
       loadArTotalAndPinnedUsers()
       loadSupplyHousesAPTotalAndPinnedUsers()
+      loadExternalTeamTotalAndPinnedUsers()
       loadCostMatrixPinnedUsers()
     }
   }, [myRole])
@@ -3370,6 +3388,116 @@ export default function Settings() {
           {pinAPMessage && (
             <p style={{ color: pinAPMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               {pinAPMessage.text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {myRole === 'dev' && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin External Team to Dashboard</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Pin External Team outstanding total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+          </p>
+          {pinExternalTeamMasterIds.size > 0 && (
+            <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
+              Pinned for:{' '}
+              {users
+                .filter((u) => u.role === 'master_technician' || u.role === 'dev')
+                .filter((u) => pinExternalTeamMasterIds.has(u.id))
+                .map((u) => u.name || u.email || 'Unknown')
+                .join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+            {users.filter((u) => u.role === 'master_technician' || u.role === 'dev').map((u) => (
+              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                <input
+                  type="checkbox"
+                  checked={pinExternalTeamMasterIds.has(u.id)}
+                  onChange={(e) => {
+                    setPinExternalTeamMasterIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(u.id)
+                      else next.delete(u.id)
+                      return next
+                    })
+                  }}
+                  disabled={pinExternalTeamSaving}
+                />
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+              </label>
+            ))}
+            <button
+              type="button"
+              disabled={pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0}
+              onClick={async () => {
+                setPinExternalTeamSaving(true)
+                setPinExternalTeamMessage(null)
+                const total = externalTeamTotal ?? 0
+                const formatTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                const item = { path: '/materials', label: `External Team: $${formatTotal}`, tab: 'external-team' as const }
+                const ids = Array.from(pinExternalTeamMasterIds)
+                let ok = 0
+                let errMsg: string | null = null
+                for (const userId of ids) {
+                  const { error } = await addPinForUser(userId, item)
+                  if (error) errMsg = error.message
+                  else ok++
+                }
+                setPinExternalTeamSaving(false)
+                if (errMsg) setPinExternalTeamMessage({ type: 'error', text: errMsg })
+                else {
+                  loadExternalTeamTotalAndPinnedUsers()
+                  setPinExternalTeamMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pinExternalTeamSaving || pinExternalTeamMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Pin To Dashboard
+            </button>
+            <button
+              type="button"
+              disabled={pinExternalTeamSaving || pinExternalTeamUnpinSaving}
+              onClick={async () => {
+                setPinExternalTeamUnpinSaving(true)
+                setPinExternalTeamMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/materials', 'external-team')
+                setPinExternalTeamUnpinSaving(false)
+                if (error) setPinExternalTeamMessage({ type: 'error', text: error.message })
+                else {
+                  loadExternalTeamTotalAndPinnedUsers()
+                  setPinExternalTeamMessage({ type: 'success', text: `Unpinned External Team for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinExternalTeamMessage(null), 5000)
+                }
+              }}
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Unpin All
+            </button>
+          </div>
+          {pinExternalTeamMessage && (
+            <p style={{ color: pinExternalTeamMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinExternalTeamMessage.text}
             </p>
           )}
         </div>

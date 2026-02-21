@@ -965,13 +965,14 @@ export default function Dashboard() {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
               const isAR = item.path === '/jobs' && item.tab === 'receivables'
+              const isExternalTeam = item.path === '/materials' && item.tab === 'external-team'
               const to = item.tab
                 ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
                 : item.path
               const displayLabel = isCostMatrix
                 ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : (isSupplyHouseAP || isAR)
-                  ? item.label
+                : (isSupplyHouseAP || isAR || isExternalTeam)
+                  ? (isSupplyHouseAP ? item.label.replace(/^(?:Supply House AP \| |AP: )/, 'Supply Houses: ') : isExternalTeam ? item.label.replace(/\$([\d,]+)\.00\b/g, '$$$1') : item.label)
                   : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
                 <Link
