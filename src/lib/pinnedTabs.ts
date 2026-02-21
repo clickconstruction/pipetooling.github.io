@@ -9,6 +9,7 @@ export type PinnedItem = { path: string; label: string; tab?: string }
 
 export const PINNABLE_PATHS = [
   '/dashboard',
+  '/quickfill',
   '/customers',
   '/projects',
   '/people',
@@ -26,6 +27,7 @@ export type PinnablePath = (typeof PINNABLE_PATHS)[number]
 
 export const PATH_TO_LABEL: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/quickfill': 'Quickfill',
   '/customers': 'Customers',
   '/projects': 'Projects',
   '/people': 'People',

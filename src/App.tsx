@@ -19,6 +19,7 @@ import Templates from './pages/Templates'
 import People from './pages/People'
 import Jobs from './pages/Jobs'
 import Materials from './pages/Materials'
+import Quickfill from './pages/Quickfill'
 import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
@@ -137,6 +138,7 @@ export default function App() {
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="quickfill" element={<Quickfill />} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="templates" element={<Templates />} />
