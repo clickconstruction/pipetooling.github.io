@@ -954,6 +954,32 @@ export type Database = {
           },
         ]
       }
+      dev_read_completed_items: {
+        Row: {
+          dev_user_id: string
+          checklist_instance_id: string
+          read_at: string
+        }
+        Insert: {
+          dev_user_id: string
+          checklist_instance_id: string
+          read_at?: string
+        }
+        Update: {
+          dev_user_id?: string
+          checklist_instance_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_read_completed_items_checklist_instance_id_fkey"
+            columns: ["checklist_instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string
@@ -1948,6 +1974,7 @@ export type Database = {
           address: string
           assigned_to_name: string
           created_at: string | null
+          distance_miles: number | null
           id: string
           job_date: string | null
           job_number: string | null
@@ -1958,6 +1985,7 @@ export type Database = {
           address?: string
           assigned_to_name: string
           created_at?: string | null
+          distance_miles?: number | null
           id?: string
           job_date?: string | null
           job_number?: string | null
@@ -1968,6 +1996,7 @@ export type Database = {
           address?: string
           assigned_to_name?: string
           created_at?: string | null
+          distance_miles?: number | null
           id?: string
           job_date?: string | null
           job_number?: string | null

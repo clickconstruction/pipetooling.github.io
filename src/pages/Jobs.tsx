@@ -17,7 +17,7 @@ type JobWithDetails = JobsLedgerRow & {
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
 }
 
-type JobsTab = 'receivables' | 'ledger' | 'labor' | 'sub_sheet_ledger' | 'teams-summary'
+type JobsTab = 'receivables' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -30,7 +30,7 @@ type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type LaborBookEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
 type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean }
-type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
+type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
 
 const tabStyle = (active: boolean) => ({
   padding: '0.75rem 1.5rem',
@@ -49,7 +49,7 @@ function formatCurrency(n: number): string {
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['receivables', 'ledger', 'labor', 'sub_sheet_ledger', 'teams-summary']
+const JOBS_TABS: JobsTab[] = ['receivables', 'ledger', 'sub_sheet_ledger', 'teams-summary']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
@@ -100,9 +100,10 @@ export default function Jobs() {
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
   const [laborAssignedTo, setLaborAssignedTo] = useState<string[]>([])
   const [laborAddress, setLaborAddress] = useState('')
+  const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
   const [laborRate, setLaborRate] = useState('')
-  const [laborDate, setLaborDate] = useState('')
+  const [laborDate, setLaborDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
   const [laborSaving, setLaborSaving] = useState(false)
   // Sub Sheet Ledger state
@@ -110,13 +111,15 @@ export default function Jobs() {
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
-  const [editAssignedTo, setEditAssignedTo] = useState<string[]>([])
-  const [editAddress, setEditAddress] = useState('')
-  const [editJobNumber, setEditJobNumber] = useState('')
-  const [editJobDate, setEditJobDate] = useState('')
-  const [editLaborRate, setEditLaborRate] = useState('')
-  const [editFixtureRows, setEditFixtureRows] = useState<LaborFixtureRow[]>([])
-  const [editLaborSaving, setEditLaborSaving] = useState(false)
+  const [laborModalOpen, setLaborModalOpen] = useState(false)
+  const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
+  const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
+  const [driveTimePerMile, setDriveTimePerMile] = useState<number | null>(null)
+  const [driveSettingsSaving, setDriveSettingsSaving] = useState(false)
+  const [defaultLaborRateModalOpen, setDefaultLaborRateModalOpen] = useState(false)
+  const [defaultLaborRateValue, setDefaultLaborRateValue] = useState('')
+  const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
+  const [myRole, setMyRole] = useState<string | null>(null)
 
   // Receivables tab state
   const [receivables, setReceivables] = useState<JobsReceivableRow[]>([])
@@ -196,8 +199,9 @@ export default function Jobs() {
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
-    const myRole = (meRes.data as { role?: string } | null)?.role
-    if (myRole === 'dev') {
+    const role = (meRes.data as { role?: string } | null)?.role
+    setMyRole(role ?? null)
+    if (role === 'dev') {
       const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
       if (devUsers?.length) {
         const existingIds = new Set(usersList.map((u) => u.id))
@@ -426,7 +430,7 @@ export default function Jobs() {
     setError(null)
     const { data: jobs, error: jobsErr } = await supabase
       .from('people_labor_jobs')
-      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at')
+      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles')
       .order('created_at', { ascending: false })
     if (jobsErr) {
       setError(jobsErr.message)
@@ -696,13 +700,17 @@ export default function Jobs() {
     const assignedNames = laborAssignedTo.map((n) => n.trim()).filter(Boolean)
     const assigned = assignedNames.join(LABOR_ASSIGNED_DELIMITER)
     const address = laborAddress.trim()
+
+    const errors: string[] = []
     if (assignedNames.length === 0) {
-      setError('Select at least one user.')
-      return
+      errors.push('Select at least one subcontractor or team member.')
     }
     if (!address) {
-      setError('Address is required.')
-      return
+      errors.push('Enter a job address.')
+    }
+    const distanceNum = laborDistance.trim() ? parseFloat(laborDistance) : NaN
+    if (laborDistance.trim() === '' || isNaN(distanceNum) || distanceNum < 0) {
+      errors.push('Enter distance (mi) as a number 0 or greater.')
     }
     const validRows = laborFixtureRows.filter((r) => {
       const hasFixture = (r.fixture ?? '').trim()
@@ -710,7 +718,27 @@ export default function Jobs() {
       return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
     })
     if (validRows.length === 0) {
-      setError('Add at least one fixture or tie-in with count > 0.')
+      const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+      const hasInvalidCount = laborFixtureRows.some((r) => {
+        const isFixed = r.is_fixed ?? false
+        return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
+      })
+      const hasInvalidHrs = laborFixtureRows.some((r) => {
+        const isFixed = r.is_fixed ?? false
+        return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
+      })
+      if (!hasAnyFixture) {
+        errors.push('Add at least one fixture or tie-in with a name.')
+      } else if (hasInvalidCount) {
+        errors.push('For each fixture (non-fixed), enter a count greater than 0.')
+      } else if (hasInvalidHrs) {
+        errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+      } else {
+        errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+      }
+    }
+    if (errors.length > 0) {
+      setError(errors.length === 1 ? errors[0]! : `To save this job:\n• ${errors.join('\n• ')}`)
       return
     }
     setLaborSaving(true)
@@ -725,6 +753,7 @@ export default function Jobs() {
         job_number: laborJobNumber.trim().slice(0, 10) || null,
         labor_rate: laborRateNum,
         job_date: laborDate.trim() ? laborDate.trim() : null,
+        distance_miles: parseFloat(laborDistance) || 0,
       })
       .select('id')
       .single()
@@ -751,9 +780,10 @@ export default function Jobs() {
     }
     setLaborAssignedTo([])
     setLaborAddress('')
+    setLaborDistance('0')
     setLaborJobNumber('')
     setLaborRate('')
-    setLaborDate('')
+    setLaborDate(new Date().toISOString().slice(0, 10))
     setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
     setLaborSaving(false)
     setActiveTab('sub_sheet_ledger')
@@ -779,16 +809,33 @@ export default function Jobs() {
     }
   }
 
+  function resetLaborForm() {
+    setLaborAssignedTo([])
+    setLaborAddress('')
+    setLaborDistance('0')
+    setLaborJobNumber('')
+    setLaborRate('')
+    setLaborDate(new Date().toISOString().slice(0, 10))
+    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+  }
+
+  function closeLaborModal() {
+    setEditingLaborJob(null)
+    setLaborModalOpen(false)
+    resetLaborForm()
+  }
+
   function openEditLaborJob(job: LaborJob) {
     setEditingLaborJob(job)
     const names = job.assigned_to_name
       ? job.assigned_to_name.split(LABOR_ASSIGNED_DELIMITER).map((s) => s.trim()).filter(Boolean)
       : []
-    setEditAssignedTo(names)
-    setEditAddress(job.address)
-    setEditJobNumber(job.job_number ?? '')
-    setEditJobDate(job.job_date ?? '')
-    setEditLaborRate(job.labor_rate != null ? String(job.labor_rate) : '')
+    setLaborAssignedTo(names)
+    setLaborAddress(job.address)
+    setLaborDistance(job.distance_miles != null ? String(job.distance_miles) : '0')
+    setLaborJobNumber(job.job_number ?? '')
+    setLaborDate(job.job_date ?? new Date().toISOString().slice(0, 10))
+    setLaborRate(job.labor_rate != null ? String(job.labor_rate) : '')
     const rows = (job.items ?? []).map((i) => ({
       id: crypto.randomUUID(),
       fixture: i.fixture ?? '',
@@ -796,77 +843,87 @@ export default function Jobs() {
       hrs_per_unit: Number(i.hrs_per_unit) || 0,
       is_fixed: i.is_fixed ?? false,
     }))
-    setEditFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    setLaborFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
     setError(null)
   }
 
-  function closeEditLaborJob() {
+  function openNewLaborJob() {
     setEditingLaborJob(null)
-    setEditAssignedTo([])
-    setEditAddress('')
-    setEditJobNumber('')
-    setEditJobDate('')
-    setEditLaborRate('')
-    setEditFixtureRows([])
-  }
-
-  function addEditFixtureRow() {
-    setEditFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
-  }
-
-  function removeEditFixtureRow(id: string) {
-    setEditFixtureRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev))
-  }
-
-  function updateEditFixtureRow(id: string, updates: Partial<LaborFixtureRow>) {
-    setEditFixtureRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+    resetLaborForm()
+    setLaborModalOpen(true)
+    setError(null)
   }
 
   async function saveEditedLaborJob(e: React.FormEvent) {
     e.preventDefault()
     if (!editingLaborJob) return
-    const assignedNames = editAssignedTo.map((n) => n.trim()).filter(Boolean)
+    const assignedNames = laborAssignedTo.map((n) => n.trim()).filter(Boolean)
     const assigned = assignedNames.join(LABOR_ASSIGNED_DELIMITER)
-    const address = editAddress.trim()
+    const address = laborAddress.trim()
+
+    const errors: string[] = []
     if (assignedNames.length === 0) {
-      setError('Select at least one user.')
-      return
+      errors.push('Select at least one subcontractor or team member.')
     }
     if (!address) {
-      setError('Address is required.')
-      return
+      errors.push('Enter a job address.')
     }
-    const validRows = editFixtureRows.filter((r) => {
+    const distanceNum = laborDistance.trim() ? parseFloat(laborDistance) : NaN
+    if (laborDistance.trim() === '' || isNaN(distanceNum) || distanceNum < 0) {
+      errors.push('Enter distance (mi) as a number 0 or greater.')
+    }
+    const validRows = laborFixtureRows.filter((r) => {
       const hasFixture = (r.fixture ?? '').trim()
       const isFixed = r.is_fixed ?? false
       return hasFixture && (isFixed ? Number(r.hrs_per_unit) >= 0 : Number(r.count) > 0)
     })
     if (validRows.length === 0) {
-      setError('Add at least one fixture or tie-in with count > 0.')
+      const hasAnyFixture = laborFixtureRows.some((r) => (r.fixture ?? '').trim())
+      const hasInvalidCount = laborFixtureRows.some((r) => {
+        const isFixed = r.is_fixed ?? false
+        return (r.fixture ?? '').trim() && !isFixed && (Number(r.count) || 0) <= 0
+      })
+      const hasInvalidHrs = laborFixtureRows.some((r) => {
+        const isFixed = r.is_fixed ?? false
+        return (r.fixture ?? '').trim() && isFixed && Number(r.hrs_per_unit) < 0
+      })
+      if (!hasAnyFixture) {
+        errors.push('Add at least one fixture or tie-in with a name.')
+      } else if (hasInvalidCount) {
+        errors.push('For each fixture (non-fixed), enter a count greater than 0.')
+      } else if (hasInvalidHrs) {
+        errors.push('For fixed fixtures, enter hours per unit of 0 or more.')
+      } else {
+        errors.push('Add at least one fixture or tie-in with a name and valid count or hours.')
+      }
+    }
+    if (errors.length > 0) {
+      setError(errors.length === 1 ? errors[0]! : `To save this job:\n• ${errors.join('\n• ')}`)
       return
     }
-    setEditLaborSaving(true)
+    setLaborSaving(true)
     setError(null)
-    const laborRateNum = editLaborRate.trim() === '' ? null : parseFloat(editLaborRate) || null
+    const laborRateNum = laborRate.trim() === '' ? null : parseFloat(laborRate) || null
     const { error: jobErr } = await supabase
       .from('people_labor_jobs')
       .update({
         assigned_to_name: assigned,
         address,
-        job_number: editJobNumber.trim().slice(0, 10) || null,
+        job_number: laborJobNumber.trim().slice(0, 10) || null,
         labor_rate: laborRateNum,
-        job_date: editJobDate.trim() ? editJobDate.trim() : null,
+        job_date: laborDate.trim() ? laborDate.trim() : null,
+        distance_miles: parseFloat(laborDistance) || 0,
       })
       .eq('id', editingLaborJob.id)
     if (jobErr) {
       setError(jobErr.message)
-      setEditLaborSaving(false)
+      setLaborSaving(false)
       return
     }
     const { error: delErr } = await supabase.from('people_labor_job_items').delete().eq('job_id', editingLaborJob.id)
     if (delErr) {
       setError(delErr.message)
-      setEditLaborSaving(false)
+      setLaborSaving(false)
       return
     }
     for (let i = 0; i < validRows.length; i++) {
@@ -881,12 +938,12 @@ export default function Jobs() {
       })
       if (itemErr) {
         setError(itemErr.message)
-        setEditLaborSaving(false)
+        setLaborSaving(false)
         return
       }
     }
-    setEditLaborSaving(false)
-    closeEditLaborJob()
+    setLaborSaving(false)
+    closeLaborModal()
     await loadLaborJobs()
   }
 
@@ -1001,7 +1058,14 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab && JOBS_TABS.includes(tab as JobsTab)) {
+    if (tab === 'labor') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'sub_sheet_ledger')
+        return next
+      }, { replace: true })
+      setActiveTab('sub_sheet_ledger')
+    } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -1013,20 +1077,20 @@ export default function Jobs() {
   }, [searchParams])
 
   useEffect(() => {
-    if (activeTab === 'labor' || activeTab === 'sub_sheet_ledger' || activeTab === 'receivables') loadRoster()
+    if (activeTab === 'sub_sheet_ledger' || activeTab === 'receivables') loadRoster()
   }, [authUser?.id, activeTab])
 
   useEffect(() => {
-    if (activeTab === 'labor') loadServiceTypes()
-  }, [authUser?.id, activeTab])
+    if ((laborModalOpen || editingLaborJob) && authUser?.id) loadServiceTypes()
+  }, [authUser?.id, laborModalOpen, editingLaborJob])
 
   useEffect(() => {
-    if (selectedServiceTypeId && authUser?.id && activeTab === 'labor') {
+    if ((laborModalOpen || editingLaborJob) && selectedServiceTypeId && authUser?.id) {
       setLaborBookEntriesVersionId(null)
       loadFixtureTypes()
       loadLaborBookVersions()
     }
-  }, [selectedServiceTypeId, authUser?.id, activeTab])
+  }, [laborModalOpen, editingLaborJob, selectedServiceTypeId, authUser?.id])
 
   useEffect(() => {
     if (laborBookEntriesVersionId) loadLaborBookEntries(laborBookEntriesVersionId)
@@ -1037,18 +1101,69 @@ export default function Jobs() {
     if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary') && authUser?.id) loadLaborJobs()
   }, [activeTab, authUser?.id])
 
+  async function loadDriveSettings() {
+    if (!authUser?.id) return
+    const { data: rows } = await supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile'])
+    const byKey = new Map((rows ?? []).map((r) => [r.key, r.value_num]))
+    setDriveMileageCost(byKey.get('drive_mileage_cost') ?? null)
+    setDriveTimePerMile(byKey.get('drive_time_per_mile') ?? null)
+  }
+
+  useEffect(() => {
+    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary') && authUser?.id) loadDriveSettings()
+  }, [activeTab, authUser?.id])
+
+  async function saveDriveSettings(e: React.FormEvent) {
+    e.preventDefault()
+    setDriveSettingsSaving(true)
+    setError(null)
+    const mileageCost = driveMileageCost ?? 0.70
+    const timePerMile = driveTimePerMile ?? 0.02
+    const { error: err } = await supabase.from('app_settings').upsert(
+      [
+        { key: 'drive_mileage_cost', value_num: mileageCost },
+        { key: 'drive_time_per_mile', value_num: timePerMile },
+      ],
+      { onConflict: 'key' }
+    )
+    setDriveSettingsSaving(false)
+    if (err) setError(err.message)
+    else setDriveSettingsOpen(false)
+  }
+
+  async function loadDefaultLaborRate() {
+    const { data } = await supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle()
+    const val = (data as { value_num: number | null } | null)?.value_num
+    setDefaultLaborRateValue(val != null ? String(val) : '')
+  }
+
+  async function saveDefaultLaborRate(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') {
+      setError('Only devs can change the default labor rate.')
+      return
+    }
+    setDefaultLaborRateSaving(true)
+    setError(null)
+    const val = defaultLaborRateValue.trim() === '' ? null : parseFloat(defaultLaborRateValue) || null
+    const { error: err } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
+    setDefaultLaborRateSaving(false)
+    if (err) setError(err.message)
+    else setDefaultLaborRateModalOpen(false)
+  }
+
   useEffect(() => {
     if (activeTab === 'receivables' && authUser?.id) loadReceivables()
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if (activeTab === 'labor' && authUser?.id && laborRate === '') {
+    if ((laborModalOpen || editingLaborJob) && !editingLaborJob && authUser?.id && laborRate === '') {
       supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle().then(({ data }) => {
         const val = (data as { value_num: number | null } | null)?.value_num
         if (val != null) setLaborRate(String(val))
       })
     }
-  }, [activeTab, authUser?.id])
+  }, [laborModalOpen, editingLaborJob, authUser?.id, laborRate])
 
   const laborJobHcps = useMemo(
     () => new Set(laborJobs.map((j) => (j.job_number ?? '').trim().toLowerCase()).filter(Boolean)),
@@ -1085,7 +1200,13 @@ export default function Jobs() {
         return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
       }, 0)
       const rate = job.labor_rate ?? 0
-      const laborCost = totalHrs * rate
+      const miles = Number(job.distance_miles) || 0
+      const mileageCost = driveMileageCost ?? 0.70
+      const timePerMile = driveTimePerMile ?? 0.02
+      const driveCost = miles > 0 && rate > 0
+        ? miles * mileageCost + miles * timePerMile * rate
+        : miles > 0 ? miles * mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
       const names = (job.assigned_to_name ?? '')
         .split(LABOR_ASSIGNED_DELIMITER)
         .map((n) => n.trim())
@@ -1124,6 +1245,8 @@ export default function Jobs() {
 
     let matchedLaborTotal = 0
     let matchedBillingTotal = 0
+    const mileageCost = driveMileageCost ?? 0.70
+    const timePerMile = driveTimePerMile ?? 0.02
     for (const job of laborJobs) {
       const hcp = (job.job_number ?? '').trim().toLowerCase()
       if (!hcp || !matchedHcps.has(hcp)) continue
@@ -1131,7 +1254,12 @@ export default function Jobs() {
         const hrs = Number(i.hrs_per_unit) || 0
         return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
       }, 0)
-      matchedLaborTotal += totalHrs * (job.labor_rate ?? 0)
+      const rate = job.labor_rate ?? 0
+      const miles = Number(job.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0
+        ? miles * mileageCost + miles * timePerMile * rate
+        : miles > 0 ? miles * mileageCost : 0
+      matchedLaborTotal += totalHrs * rate + driveCost
     }
     for (const job of jobs) {
       const hcp = (job.hcp_number ?? '').trim().toLowerCase()
@@ -1140,7 +1268,7 @@ export default function Jobs() {
     }
 
     return { rows, matchedLaborTotal, matchedBillingTotal }
-  }, [jobs, laborJobs])
+  }, [jobs, laborJobs, driveMileageCost, driveTimePerMile])
 
   function openNew() {
     setEditing(null)
@@ -1217,6 +1345,13 @@ export default function Jobs() {
   }
 
   function fillLaborFromBillingJobAndSwitch(job: JobWithDetails) {
+    setActiveTab('sub_sheet_ledger')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'sub_sheet_ledger')
+      return next
+    })
+    resetLaborForm()
     setLaborJobNumber(job.hcp_number ?? '')
     setLaborAddress(job.job_address ?? '')
     const rosterNames = [...rosterNamesSubcontractors(), ...rosterNamesEveryoneElse()]
@@ -1224,12 +1359,7 @@ export default function Jobs() {
       .map((t) => t.users?.name?.trim())
       .filter((n): n is string => !!n && rosterNames.includes(n))
     setLaborAssignedTo(teamNames)
-    setActiveTab('labor')
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('tab', 'labor')
-      return next
-    })
+    setLaborModalOpen(true)
   }
 
   async function saveJob() {
@@ -1361,20 +1491,6 @@ export default function Jobs() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab('labor')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'labor')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'labor')}
-        >
-          + Labor
-        </button>
-        <button
-          type="button"
-          onClick={() => {
             setActiveTab('sub_sheet_ledger')
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
@@ -1384,7 +1500,7 @@ export default function Jobs() {
           }}
           style={tabStyle(activeTab === 'sub_sheet_ledger')}
         >
-          Labor Ledger
+          Labor
         </button>
         <button
           type="button"
@@ -1500,412 +1616,38 @@ export default function Jobs() {
         </div>
       )}
 
-      {activeTab === 'labor' && (
-        <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 720 }}>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, marginBottom: '0.25rem' }}>calculate, save, and match the labor rate for a job</p>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: '0 0 120px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-                  <label style={{ fontWeight: 500, margin: 0 }}>HCP</label>
-                  <button
-                    type="button"
-                    onClick={fillLaborFromBilling}
-                    disabled={!laborJobNumber.trim()}
-                    title="Fill Contractors and Address from Billing if HCP matches"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: laborJobNumber.trim() ? 'pointer' : 'default',
-                      fontSize: '0.8125rem',
-                      color: laborJobNumber.trim() ? '#2563eb' : '#9ca3af',
-                    }}
-                  >
-                    fill
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  value={laborJobNumber}
-                  onChange={(e) => setLaborJobNumber(e.target.value)}
-                  maxLength={10}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
-                <input
-                  type="text"
-                  value={laborAddress}
-                  onChange={(e) => setLaborAddress(e.target.value)}
-                  placeholder="Job address"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-            </div>
-            <div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                    {rosterNamesSubcontractors().map((n) => (
-                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="checkbox"
-                          checked={laborAssignedTo.includes(n)}
-                          onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                        />
-                        <span>{n}</span>
-                      </label>
-                    ))}
-                    {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                    {rosterNamesEveryoneElse().map((n) => (
-                      <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        <input
-                          type="checkbox"
-                          checked={laborAssignedTo.includes(n)}
-                          onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
-                          style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                        />
-                        <span>{n}</span>
-                      </label>
-                    ))}
-                    {rosterNamesEveryoneElse().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: '#f9fafb' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items)</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
-                      <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {laborFixtureRows.map((row) => {
-                      const hrsPerUnit = Number(row.hrs_per_unit) || 0
-                      const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
-                      return (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <input
-                              type="text"
-                              value={row.fixture}
-                              onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
-                              placeholder="e.g. Toilet, Sink"
-                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={row.count || ''}
-                              onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
-                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.25}
-                              value={row.hrs_per_unit || ''}
-                              onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
-                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              <input
-                                type="checkbox"
-                                checked={!!row.is_fixed}
-                                onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
-                                style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                              />
-                              <span style={{ color: '#6b7280' }}>fixed</span>
-                            </label>
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                    <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>Totals</td>
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
-                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                        {laborFixtureRows.reduce((s, r) => {
-                          const hrs = Number(r.hrs_per_unit) || 0
-                          return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
-                        }, 0).toFixed(2)} hrs
-                      </td>
-                      <td style={{ padding: '0.5rem' }} />
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <select
-                    value={selectedLaborBookVersionId ?? ''}
-                    onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
-                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', minWidth: '10rem' }}
-                  >
-                    <option value="">— Labor book version —</option>
-                    {laborBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={applyLaborBookHoursToPeople}
-                    disabled={applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim())}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      background: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? '#9ca3af' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? 'not-allowed' : 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
-                  </button>
-                  {laborBookApplyMessage && (
-                    <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
-                  )}
-                </div>
-                <button type="button" onClick={addLaborFixtureRow} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  Add additional fixture or tie-in
-                </button>
-              </div>
-              {laborRate.trim() !== '' && !isNaN(parseFloat(laborRate)) && (
-                <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Total labor cost: ${formatCurrency(
-                    laborFixtureRows.reduce((s, r) => {
-                      const hrs = Number(r.hrs_per_unit) || 0
-                      return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
-                    }, 0) * (parseFloat(laborRate) || 0)
-                  )}
-                </p>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-              {serviceTypes.length > 1 && (
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
-                  <select
-                    value={selectedServiceTypeId}
-                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  >
-                    {serviceTypes.map((st) => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={laborRate}
-                  onChange={(e) => setLaborRate(e.target.value)}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
-                <input
-                  type="date"
-                  value={laborDate}
-                  onChange={(e) => setLaborDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={saveLaborJob}
-                disabled={laborSaving || laborAssignedTo.length === 0 || !laborAddress.trim() || laborFixtureRows.every((r) => {
-                  const hasFixture = (r.fixture ?? '').trim()
-                  const isFixed = r.is_fixed ?? false
-                  return !hasFixture || (!isFixed && Number(r.count) <= 0)
-                })}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: laborSaving ? 'not-allowed' : 'pointer' }}
-              >
-                {laborSaving ? 'Saving…' : 'Save Job'}
-              </button>
-              <button
-                type="button"
-                onClick={printLaborSubSheet}
-                style={{ padding: '0.5rem 1rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Print
-              </button>
-            </div>
-            <div style={{ marginTop: '1.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setLaborBookSectionOpen((prev) => !prev)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  margin: 0,
-                  marginBottom: laborBookSectionOpen ? '0.75rem' : 0,
-                  padding: 0,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                }}
-              >
-                <span style={{ fontSize: '0.75rem' }}>{laborBookSectionOpen ? '▼' : '▶'}</span>
-                Labor book
-              </button>
-              {laborBookSectionOpen && (
-                <>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Version</label>
-                      <select
-                        value={selectedLaborBookVersionId ?? ''}
-                        onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
-                        style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
-                      >
-                        {laborBookVersions.map((v) => (
-                          <option key={v.id} value={v.id}>{v.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    {laborBookVersions.map((v) => (
-                      <span
-                        key={v.id}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          padding: '0.35rem 0.5rem',
-                          background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                          border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
-                          borderRadius: 4,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => { setLaborBookEntriesVersionId(v.id); loadLaborBookEntries(v.id) }}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: laborBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
-                        >
-                          {v.name}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditLaborVersion(v)}
-                          style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                          title="Edit version name"
-                        >
-                          ✎
-                        </button>
-                      </span>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={openNewLaborVersion}
-                      style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Add version
-                    </button>
-                  </div>
-                  {laborBookEntriesVersionId && (
-                    <>
-                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                          <thead style={{ background: '#f9fafb' }}>
-                            <tr>
-                              <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
-                              <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
-                              <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {laborBookEntries.map((entry) => (
-                              <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                <td style={{ padding: '0.5rem' }}>
-                                  {entry.fixture_types?.name ?? ''}
-                                  {entry.alias_names?.length ? (
-                                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
-                                  ) : null}
-                                </td>
-                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
-                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
-                                <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
-                                <td style={{ padding: '0.5rem' }}>
-                                  <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={openNewLaborEntry}
-                        style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                      >
-                        Add entry
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {activeTab === 'sub_sheet_ledger' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={openNewLaborJob}
+              style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              New Job
+            </button>
+            <button
+              type="button"
+              onClick={() => { loadDriveSettings(); setDriveSettingsOpen(true); }}
+              style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Drive Settings
+            </button>
+            {myRole === 'dev' && (
+              <button
+                type="button"
+                onClick={() => { loadDefaultLaborRate(); setDefaultLaborRateModalOpen(true); }}
+                style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                Default Labor Rate
+              </button>
+            )}
+          </div>
           {laborJobsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading sub sheet ledger…</p>
           ) : laborJobs.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No jobs yet. Add one in the Labor tab.</p>
+            <p style={{ color: '#6b7280' }}>No jobs yet. Click New Job to add one.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
               <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -1916,6 +1658,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Drive</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sub Sheet</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
@@ -1929,7 +1672,13 @@ export default function Jobs() {
                       return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
                     }, 0)
                     const rate = job.labor_rate ?? 0
-                    const totalCost = totalHrs * rate
+                    const miles = Number(job.distance_miles) || 0
+                    const mileageCost = driveMileageCost ?? 0.70
+                    const timePerMile = driveTimePerMile ?? 0.02
+                    const driveCost = miles > 0 && rate > 0
+                      ? miles * mileageCost + miles * timePerMile * rate
+                      : miles > 0 ? miles * mileageCost : 0
+                    const totalCost = totalHrs * rate + driveCost
                     const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                     return (
                       <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -1952,7 +1701,8 @@ export default function Jobs() {
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{job.labor_rate != null ? `$${formatCurrency(job.labor_rate)}/hr` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalHrs.toFixed(2)}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{rate > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{driveCost > 0 ? `$${formatCurrency(driveCost)}` : '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{rate > 0 || driveCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <button type="button" onClick={() => printJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
                             Print
@@ -2048,7 +1798,7 @@ export default function Jobs() {
                           <button
                             type="button"
                             onClick={() => fillLaborFromBillingJobAndSwitch(job)}
-                            title="Add Labor: fill from Billing and go to Labor tab"
+                            title="Add Labor: fill from Billing and open Labor"
                             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="#b91c1c" aria-hidden="true">
@@ -2155,43 +1905,86 @@ export default function Jobs() {
         </div>
       )}
 
-      {editingLaborJob && (
+      {(laborModalOpen || editingLaborJob) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginTop: 0 }}>Edit job</h2>
-            <form onSubmit={saveEditedLaborJob}>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                <div style={{ flex: '0 0 100px' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>HCP</label>
+            <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit job' : 'New Job'}</h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (editingLaborJob) saveEditedLaborJob(e)
+                else saveLaborJob()
+              }}
+            >
+              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
+              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>Required: Address, Distance (mi), at least one contractor (Subcontractors or Everyone else), and at least one fixture with a name and count &gt; 0 (or hrs/unit for fixed items).</p>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: '0 0 120px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
+                    <label style={{ fontWeight: 500, margin: 0 }}>HCP</label>
+                    {!editingLaborJob && (
+                      <button
+                        type="button"
+                        onClick={fillLaborFromBilling}
+                        disabled={!laborJobNumber.trim()}
+                        title="Fill Contractors and Address from Billing if HCP matches"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: laborJobNumber.trim() ? 'pointer' : 'default',
+                          fontSize: '0.8125rem',
+                          color: laborJobNumber.trim() ? '#2563eb' : '#9ca3af',
+                        }}
+                      >
+                        fill
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    value={editJobNumber}
-                    onChange={(e) => setEditJobNumber(e.target.value)}
+                    value={laborJobNumber}
+                    onChange={(e) => setLaborJobNumber(e.target.value)}
                     maxLength={10}
+                    placeholder="Optional"
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                 </div>
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address</label>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: '#b91c1c' }}>*</span></label>
                   <input
                     type="text"
-                    value={editAddress}
-                    onChange={(e) => setEditAddress(e.target.value)}
+                    value={laborAddress}
+                    onChange={(e) => setLaborAddress(e.target.value)}
+                    placeholder="Job address"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={9999}
+                    step={0.1}
+                    value={laborDistance}
+                    onChange={(e) => setLaborDistance(e.target.value)}
+                    placeholder="0"
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Subcontractors</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: '#b91c1c' }}>*</span></div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
                       {rosterNamesSubcontractors().map((n) => (
                         <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <input
                             type="checkbox"
-                            checked={editAssignedTo.includes(n)}
-                            onChange={() => setEditAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                            checked={laborAssignedTo.includes(n)}
+                            onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
                             style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
                           />
                           <span>{n}</span>
@@ -2201,14 +1994,14 @@ export default function Jobs() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>Everyone else</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 80, overflowY: 'auto' }}>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
                       {rosterNamesEveryoneElse().map((n) => (
                         <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <input
                             type="checkbox"
-                            checked={editAssignedTo.includes(n)}
-                            onChange={() => setEditAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                            checked={laborAssignedTo.includes(n)}
+                            onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
                             style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
                           />
                           <span>{n}</span>
@@ -2219,99 +2012,396 @@ export default function Jobs() {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                <div style={{ flex: '1 1 120px', minWidth: 0 }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date of Labor</label>
+                  <input
+                    type="date"
+                    value={laborDate}
+                    onChange={(e) => setLaborDate(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
                   <input
                     type="number"
                     min={0}
                     step={0.01}
-                    value={editLaborRate}
-                    onChange={(e) => setEditLaborRate(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date</label>
-                  <input
-                    type="date"
-                    value={editJobDate}
-                    onChange={(e) => setEditJobDate(e.target.value)}
+                    value={laborRate}
+                    onChange={(e) => setLaborRate(e.target.value)}
+                    placeholder="Optional"
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                   />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
+              {serviceTypes.length > 1 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
+                  <select
+                    value={selectedServiceTypeId}
+                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
+                    style={{ width: '100%', maxWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  >
+                    {serviceTypes.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div style={{ marginTop: '1rem' }}>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items)</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins (Line Items) <span style={{ color: '#b91c1c' }}>*</span></th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>fixed</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
                         <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
                     </thead>
                     <tbody>
-                      {editFixtureRows.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <input
-                              type="text"
-                              value={row.fixture}
-                              onChange={(e) => updateEditFixtureRow(row.id, { fixture: e.target.value })}
-                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              min={0}
-                              step={1}
-                              value={row.count || ''}
-                              onChange={(e) => updateEditFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
-                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.25}
-                              value={row.hrs_per_unit || ''}
-                              onChange={(e) => updateEditFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
-                              style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={!!row.is_fixed}
-                              onChange={(e) => updateEditFixtureRow(row.id, { is_fixed: e.target.checked })}
-                              style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <button type="button" onClick={() => removeEditFixtureRow(row.id)} disabled={editFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {laborFixtureRows.map((row) => {
+                        const hrsPerUnit = Number(row.hrs_per_unit) || 0
+                        const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
+                        return (
+                          <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <input
+                                type="text"
+                                value={row.fixture}
+                                onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
+                                placeholder="e.g. Toilet, Sink"
+                                style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={row.count || ''}
+                                onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                                style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.25}
+                                value={row.hrs_per_unit || ''}
+                                onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!row.is_fixed}
+                                  onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
+                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                />
+                                <span style={{ color: '#6b7280' }}>fixed</span>
+                              </label>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>Totals</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          {laborFixtureRows.reduce((s, r) => {
+                            const hrs = Number(r.hrs_per_unit) || 0
+                            return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                          }, 0).toFixed(2)} hrs
+                        </td>
+                        <td style={{ padding: '0.5rem' }} />
+                      </tr>
                     </tbody>
                   </table>
                 </div>
-                <button type="button" onClick={addEditFixtureRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  Add fixture or tie-in
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <select
+                      value={selectedLaborBookVersionId ?? ''}
+                      onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
+                      style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', minWidth: '10rem' }}
+                    >
+                      <option value="">— Labor book version —</option>
+                      {laborBookVersions.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={applyLaborBookHoursToPeople}
+                      disabled={applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim())}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: applyingLaborBookHours || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? 'not-allowed' : 'pointer',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
+                    </button>
+                    {laborBookApplyMessage && (
+                      <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                    )}
+                  </div>
+                  <button type="button" onClick={addLaborFixtureRow} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                    Add additional fixture or tie-in
+                  </button>
+                </div>
+                {laborRate.trim() !== '' && !isNaN(parseFloat(laborRate)) && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    Total labor cost: ${formatCurrency(
+                      laborFixtureRows.reduce((s, r) => {
+                        const hrs = Number(r.hrs_per_unit) || 0
+                        return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
+                      }, 0) * (parseFloat(laborRate) || 0)
+                    )}
+                  </p>
+                )}
+              </div>
+              <div style={{ marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setLaborBookSectionOpen((prev) => !prev)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    margin: 0,
+                    marginBottom: laborBookSectionOpen ? '0.75rem' : 0,
+                    padding: 0,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  <span style={{ fontSize: '0.75rem' }}>{laborBookSectionOpen ? '▼' : '▶'}</span>
+                  Labor book
+                </button>
+                {laborBookSectionOpen && (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Version</label>
+                        <select
+                          value={selectedLaborBookVersionId ?? ''}
+                          onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
+                          style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                        >
+                          {laborBookVersions.map((v) => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      {laborBookVersions.map((v) => (
+                        <span
+                          key={v.id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            padding: '0.35rem 0.5rem',
+                            background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                            border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                            borderRadius: 4,
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => { setLaborBookEntriesVersionId(v.id); loadLaborBookEntries(v.id) }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: laborBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
+                          >
+                            {v.name}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditLaborVersion(v)}
+                            style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                            title="Edit version name"
+                          >
+                            ✎
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={openNewLaborVersion}
+                        style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Add version
+                      </button>
+                    </div>
+                    {laborBookEntriesVersionId && (
+                      <>
+                        <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
+                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead style={{ background: '#f9fafb' }}>
+                              <tr>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
+                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {laborBookEntries.map((entry) => (
+                                <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.5rem' }}>
+                                    {entry.fixture_types?.name ?? ''}
+                                    {entry.alias_names?.length ? (
+                                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                                    ) : null}
+                                  </td>
+                                  <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
+                                  <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
+                                  <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
+                                  <td style={{ padding: '0.5rem' }}>
+                                    <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openNewLaborEntry}
+                          style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                          Add entry
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                <button
+                  type="submit"
+                  disabled={laborSaving || laborAssignedTo.length === 0 || !laborAddress.trim() || (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) || laborFixtureRows.every((r) => {
+                    const hasFixture = (r.fixture ?? '').trim()
+                    const isFixed = r.is_fixed ?? false
+                    return !hasFixture || (!isFixed && Number(r.count) <= 0)
+                  })}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: laborSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {laborSaving ? 'Saving…' : (editingLaborJob ? 'Save' : 'Save Job')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editingLaborJob ? printJobSubSheet(editingLaborJob) : printLaborSubSheet()}
+                  style={{ padding: '0.5rem 1rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Print
+                </button>
+                <button type="button" onClick={closeLaborModal} disabled={laborSaving} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
                 </button>
               </div>
-              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>}
+            </form>
+          </div>
+        </div>
+      )}
+
+      {defaultLaborRateModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>Default Labor Rate</h2>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+              This rate is pre-filled when adding a new job. Leave empty for no default.
+            </p>
+            <form onSubmit={saveDefaultLaborRate}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={defaultLaborRateValue}
+                  onChange={(e) => setDefaultLaborRateValue(e.target.value)}
+                  placeholder="e.g. 75.00"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" disabled={editLaborSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: editLaborSaving ? 'not-allowed' : 'pointer' }}>
-                  {editLaborSaving ? 'Saving…' : 'Save'}
+                <button type="submit" disabled={defaultLaborRateSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer' }}>
+                  {defaultLaborRateSaving ? 'Saving…' : 'Save'}
                 </button>
-                <button type="button" onClick={closeEditLaborJob} disabled={editLaborSaving} style={{ padding: '0.5rem 1rem' }}>
+                <button type="button" onClick={() => setDefaultLaborRateModalOpen(false)} disabled={defaultLaborRateSaving} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {driveSettingsOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>Drive Settings</h2>
+            <form onSubmit={saveDriveSettings}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Mileage cost ($/mi)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={driveMileageCost ?? ''}
+                    onChange={(e) => setDriveMileageCost(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
+                    placeholder="0.70"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Time per mile (hrs/mi)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={driveTimePerMile ?? ''}
+                    onChange={(e) => setDriveTimePerMile(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
+                    placeholder="0.02"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                </div>
+              </div>
+              <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem' }}>
+                Drive cost = (miles × mileage cost) + (miles × time per mile × labor rate). Defaults: $0.70/mi, 0.02 hrs/mi (~1.2 min/mi).
+              </p>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" disabled={driveSettingsSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: driveSettingsSaving ? 'not-allowed' : 'pointer' }}>
+                  {driveSettingsSaving ? 'Saving…' : 'Save'}
+                </button>
+                <button type="button" onClick={() => setDriveSettingsOpen(false)} disabled={driveSettingsSaving} style={{ padding: '0.5rem 1rem' }}>
                   Cancel
                 </button>
               </div>

@@ -202,7 +202,7 @@ export default function Workflow() {
     return promise
   }
 
-  async function loadProject(pid: string) {
+  async function loadProject(pid: string): Promise<boolean> {
     const { data, error: e } = await supabase
       .from('projects')
       .select('*')
@@ -211,7 +211,7 @@ export default function Workflow() {
     if (e) {
       setError(e.message)
       setLoading(false)
-      return
+      return false
     }
 
     const projectData = data as Project
@@ -232,6 +232,7 @@ export default function Workflow() {
     } else {
       setProjectMaster(null)
     }
+    return true
   }
 
   async function loadSteps(wfId: string) {
@@ -331,18 +332,25 @@ export default function Workflow() {
       return
     }
 
-    // Calculate totals for each PO
-    const posWithTotals = await Promise.all(
-      ((data as Array<{ id: string; name: string }>) ?? []).map(async (po) => {
-        const { data: items } = await supabase
-          .from('purchase_order_items')
-          .select('price_at_time, quantity')
-          .eq('purchase_order_id', po.id)
-        
-        const total = (items ?? []).reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
-        return { ...po, total }
-      })
-    )
+    const pos = (data as Array<{ id: string; name: string }>) ?? []
+    if (pos.length === 0) {
+      setAvailablePOs([])
+      return
+    }
+
+    // Single query for all PO items (avoids N+1)
+    const poIds = pos.map((p) => p.id)
+    const { data: itemsData } = await supabase
+      .from('purchase_order_items')
+      .select('purchase_order_id, price_at_time, quantity')
+      .in('purchase_order_id', poIds)
+
+    const totalsByPo: Record<string, number> = {}
+    ;(itemsData ?? []).forEach((item: { purchase_order_id: string; price_at_time: number; quantity: number }) => {
+      const id = item.purchase_order_id
+      totalsByPo[id] = (totalsByPo[id] ?? 0) + item.price_at_time * item.quantity
+    })
+    const posWithTotals = pos.map((po) => ({ ...po, total: totalsByPo[po.id] ?? 0 }))
 
     setAvailablePOs(posWithTotals)
   }
@@ -478,20 +486,31 @@ export default function Workflow() {
       lastLoadedWorkflowId.current = null
       return
     }
+    // Skip redundant run: we already have project, workflow, and steps for this project.
+    // Exception: subcontractors must re-run when userRole becomes available (filter by assigned steps).
+    if (project?.id === projectId && workflow?.id && lastLoadedWorkflowId.current === workflow.id && userRole !== 'subcontractor') {
+      setLoading(false)
+      return
+    }
     let cancelled = false
     ;(async () => {
       // Reset tracking when projectId changes (new project = need to load)
-      lastLoadedWorkflowId.current = null
-      await loadProject(projectId)
+      if (project?.id !== projectId) lastLoadedWorkflowId.current = null
+      // Run loadProject and ensureWorkflow in parallel (saves ~1 round-trip)
+      const [projectOk, wfIdOrNull] = await Promise.all([
+        loadProject(projectId),
+        workflow?.id ? Promise.resolve(workflow.id) : ensureWorkflow(projectId),
+      ])
       if (cancelled) return
-      // Use existing workflow state if available, otherwise ensure it exists
-      let wfId: string | null = workflow?.id ?? null
+      if (!projectOk) return
+      const wfId = wfIdOrNull
+      if (cancelled) return
       if (!wfId) {
-        wfId = await ensureWorkflow(projectId)
+        setLoading(false)
+        return
       }
-      if (cancelled) return
       // Skip loadSteps if we've already loaded for this workflow_id
-      if (wfId && lastLoadedWorkflowId.current !== wfId) {
+      if (lastLoadedWorkflowId.current !== wfId) {
         await loadSteps(wfId)
       }
       if (!cancelled) {
@@ -1693,7 +1712,7 @@ export default function Workflow() {
           )}
         </div>
         {canManageStages && (
-          <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}>
+          <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
             Add step
           </button>
         )}

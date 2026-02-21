@@ -654,8 +654,7 @@ export function SupplyHousesSection() {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <button type="button" onClick={openAddExternalSub} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add External Subcontractor</button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <button type="button" onClick={() => { setEditingSupplyHouse(null); setSupplyHouseName(''); setSupplyHouseContactName(''); setSupplyHousePhone(''); setSupplyHouseEmail(''); setSupplyHouseAddress(''); setSupplyHouseNotes(''); setSupplyHouseFormOpen(true); setError(null) }} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add Supply House</button>
       </div>
 
@@ -769,6 +768,10 @@ export function SupplyHousesSection() {
             </table>
           </>
         )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+        <button type="button" onClick={openAddExternalSub} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add External Subcontractor</button>
       </div>
 
       {supplyHouseFormOpen && (

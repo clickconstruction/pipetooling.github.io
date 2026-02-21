@@ -935,7 +935,7 @@ export default function People() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => {
@@ -982,6 +982,7 @@ export default function People() {
             Hours
           </button>
         )}
+        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>People</h1>
       </div>
       {activeTab === 'users' && (
         <>

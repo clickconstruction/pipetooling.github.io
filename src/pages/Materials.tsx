@@ -6101,7 +6101,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               <div style={{ overflowX: 'auto' }}>
                 <div style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
                   Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
-                </div>
+    </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>

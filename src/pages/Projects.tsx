@@ -37,67 +37,86 @@ export default function Projects() {
 
   useEffect(() => {
     async function fetchProjects() {
-      // Fetch customer name if filtering by customer
+      setError(null)
+
+      // Parallelize: fetch customer name and projects together when filtering by customer
+      let projectsWithMasters: ProjectWithCustomer[]
       if (customerId) {
-        const { data: customerData } = await supabase
-          .from('customers')
-          .select('name')
-          .eq('id', customerId)
-          .single()
-        setCustomerName(customerData?.name ?? null)
+        const [customerRes, projectsRes] = await Promise.all([
+          supabase.from('customers').select('name').eq('id', customerId).single(),
+          supabase
+            .from('projects')
+            .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
+            .order('name')
+            .eq('customer_id', customerId),
+        ])
+        setCustomerName((customerRes.data as { name?: string } | null)?.name ?? null)
+        const { data, error: err } = projectsRes
+        if (err) {
+          setError(err.message)
+          setLoading(false)
+          return
+        }
+        const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
+        projectsWithMasters = rows.map((row) => {
+          const { users, ...rest } = row
+          return { ...rest, master_user: users ?? null }
+        })
       } else {
         setCustomerName(null)
+        const q = supabase
+          .from('projects')
+          .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
+          .order('name')
+        const { data, error: err } = await q
+        if (err) {
+          setError(err.message)
+          setLoading(false)
+          return
+        }
+        const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
+        projectsWithMasters = rows.map((row) => {
+          const { users, ...rest } = row
+          return { ...rest, master_user: users ?? null }
+        })
       }
 
-      let q = supabase
-        .from('projects')
-        .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
-        .order('name')
-      if (customerId) q = q.eq('customer_id', customerId)
-      const { data, error: err } = await q
-      if (err) {
-        setError(err.message)
-        setLoading(false)
-        return
-      }
-      const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
-      const projectsWithMasters: ProjectWithCustomer[] = rows.map((row) => {
-        const { users, ...rest } = row
-        return { ...rest, master_user: users ?? null }
-      })
-      
       setProjects(projectsWithMasters)
-      
-      // Load active steps and step summaries for all projects
+      setLoading(false)
+
+      // Load active steps and step summaries in background (progressive loading)
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
-        
-        // Get workflows for these projects
-        const { data: workflows } = await supabase
+
+        // Single query: workflows with nested steps (reduces round-trips)
+        const { data: workflows, error: workflowsErr } = await supabase
           .from('project_workflows')
-          .select('id, project_id')
+          .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
           .in('project_id', projectIds)
-        
+
+        if (workflowsErr) {
+          console.error('Projects: workflows+steps query failed', workflowsErr)
+        }
+
         if (workflows && workflows.length > 0) {
-          const workflowIds = workflows.map((w) => w.id)
-          const workflowToProject = new Map<string, string>()
-          workflows.forEach((w) => workflowToProject.set(w.id, w.project_id))
-          
-          // Get all steps for these workflows (for summaries)
-          const { data: allSteps } = await supabase
-            .from('project_workflow_steps')
-            .select('workflow_id, name, status, sequence_order')
-            .in('workflow_id', workflowIds)
-            .order('sequence_order', { ascending: true })
-          
-          if (allSteps) {
-            // Build step summaries (all steps) and active steps (pending/in_progress/rejected)
+          // Flatten nested steps with project_id
+          type StepRow = { name: string; status: string; sequence_order: number }
+          const allSteps: Array<StepRow & { workflow_id: string; project_id: string }> = []
+          workflows.forEach((w) => {
+            const steps = (w as { project_workflow_steps?: StepRow[] }).project_workflow_steps ?? []
+            steps.forEach((s) => {
+              allSteps.push({ ...s, workflow_id: w.id, project_id: w.project_id })
+            })
+          })
+          allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
+
+          if (allSteps.length > 0) {
             const stepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
             const activeStepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
             const rejectedStepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
-            
+
             allSteps.forEach((s) => {
-              const projectId = workflowToProject.get(s.workflow_id)
+              const projectId = s.project_id
               if (projectId) {
                 if (!stepsByProject[projectId]) stepsByProject[projectId] = []
                 stepsByProject[projectId].push(s as { name: string; status: string; sequence_order: number })
@@ -180,8 +199,6 @@ export default function Projects() {
           }
         }
       }
-      
-      setLoading(false)
     }
     fetchProjects()
   }, [customerId])

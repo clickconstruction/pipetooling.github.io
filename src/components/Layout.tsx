@@ -144,8 +144,6 @@ export default function Layout() {
           <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
-          <NavLink to="/calendar" style={linkStyle} onClick={onNavClick}>Calendar</NavLink>
-          <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
         </>
       )
     }
@@ -161,12 +159,10 @@ export default function Layout() {
         <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
         {role !== 'subcontractor' && (
           <>
-            <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
             <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
             )}
-            <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink>
             {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
               <>
                 <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
@@ -175,8 +171,6 @@ export default function Layout() {
             )}
           </>
         )}
-        <NavLink to="/calendar" style={linkStyle} onClick={onNavClick}>Calendar</NavLink>
-        <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
       </>
     )
   }
@@ -287,7 +281,80 @@ export default function Layout() {
               Bid
             </button>
           )}
-          <div ref={gearRef} style={{ position: 'relative' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+          <NavLink
+            to="/calendar"
+            style={({ isActive }) => ({
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.5rem',
+              color: 'inherit',
+              textDecoration: 'none',
+              ...(isActive && { borderBottom: '1px solid currentColor' }),
+            })}
+            title="Calendar"
+            aria-label="Calendar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM160 304L160 336C160 344.8 167.2 352 176 352L208 352C216.8 352 224 344.8 224 336L224 304C224 295.2 216.8 288 208 288L176 288C167.2 288 160 295.2 160 304zM288 304L288 336C288 344.8 295.2 352 304 352L336 352C344.8 352 352 344.8 352 336L352 304C352 295.2 344.8 288 336 288L304 288C295.2 288 288 295.2 288 304zM432 288C423.2 288 416 295.2 416 304L416 336C416 344.8 423.2 352 432 352L464 352C472.8 352 480 344.8 480 336L480 304C480 295.2 472.8 288 464 288L432 288zM160 432L160 464C160 472.8 167.2 480 176 480L208 480C216.8 480 224 472.8 224 464L224 432C224 423.2 216.8 416 208 416L176 416C167.2 416 160 423.2 160 432zM304 416C295.2 416 288 423.2 288 432L288 464C288 472.8 295.2 480 304 480L336 480C344.8 480 352 472.8 352 464L352 432C352 423.2 344.8 416 336 416L304 416zM416 432L416 464C416 472.8 423.2 480 432 480L464 480C472.8 480 480 472.8 480 464L480 432C480 423.2 472.8 416 464 416L432 416C423.2 416 416 423.2 416 432z" />
+            </svg>
+          </NavLink>
+          <NavLink
+            to="/checklist"
+            style={({ isActive }) => ({
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '0.5rem',
+              color: 'inherit',
+              textDecoration: 'none',
+              ...(isActive && { borderBottom: '1px solid currentColor' }),
+            })}
+            title="Checklist"
+            aria-label="Checklist"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z" />
+            </svg>
+          </NavLink>
+          {role !== 'subcontractor' && (
+            <>
+              <NavLink
+                to="/customers"
+                style={({ isActive }) => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  ...(isActive && { borderBottom: '1px solid currentColor' }),
+                })}
+                title="Customers"
+                aria-label="Customers"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
+                </svg>
+              </NavLink>
+              <NavLink
+              to="/people"
+              style={({ isActive }) => ({
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '0.5rem',
+                color: 'inherit',
+                textDecoration: 'none',
+                ...(isActive && { borderBottom: '1px solid currentColor' }),
+              })}
+              title="People"
+              aria-label="People"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M320 80C377.4 80 424 126.6 424 184C424 241.4 377.4 288 320 288C262.6 288 216 241.4 216 184C216 126.6 262.6 80 320 80zM96 152C135.8 152 168 184.2 168 224C168 263.8 135.8 296 96 296C56.2 296 24 263.8 24 224C24 184.2 56.2 152 96 152zM0 480C0 409.3 57.3 352 128 352C140.8 352 153.2 353.9 164.9 357.4C132 394.2 112 442.8 112 496L112 512C112 523.4 114.4 534.2 118.7 544L32 544C14.3 544 0 529.7 0 512L0 480zM521.3 544C525.6 534.2 528 523.4 528 512L528 496C528 442.8 508 394.2 475.1 357.4C486.8 353.9 499.2 352 512 352C582.7 352 640 409.3 640 480L640 512C640 529.7 625.7 544 608 544L521.3 544zM472 224C472 184.2 504.2 152 544 152C583.8 152 616 184.2 616 224C616 263.8 583.8 296 544 296C504.2 296 472 263.8 472 224zM160 496C160 407.6 231.6 336 320 336C408.4 336 480 407.6 480 496L480 512C480 529.7 465.7 544 448 544L192 544C174.3 544 160 529.7 160 512L160 496z" />
+              </svg>
+            </NavLink>
+            </>
+          )}
+            <div ref={gearRef} style={{ position: 'relative' }}>
             <button
               type="button"
               onClick={() => setGearOpen((o) => !o)}
@@ -383,6 +450,7 @@ export default function Layout() {
               </div>
             )}
           </div>
+          </span>
           {impersonating && (
             <button
               type="button"

@@ -156,6 +156,13 @@ export default function Dashboard() {
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
+  const [completedItemsOpen, setCompletedItemsOpen] = useState(false)
+  const [completedItems, setCompletedItems] = useState<ChecklistInstance[]>([])
+  const [completedItemsLoading, setCompletedItemsLoading] = useState(false)
+  const [readInstanceIds, setReadInstanceIds] = useState<Set<string>>(new Set())
+  const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
+  const [markingReadId, setMarkingReadId] = useState<string | null>(null)
+  const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const isDev = role === 'dev'
@@ -417,6 +424,63 @@ export default function Dashboard() {
       })
   }, [notificationHistoryOpen, authUser?.id])
 
+  useEffect(() => {
+    if (!completedItemsOpen || !authUser?.id || !isDev) return
+    setCompletedItemsLoading(true)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    Promise.all([
+      supabase
+        .from('checklist_instances')
+        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, completed_by_user_id, checklist_items(title)')
+        .not('completed_at', 'is', null)
+        .gte('completed_at', sevenDaysAgo)
+        .order('completed_at', { ascending: false }),
+      supabase
+        .from('dev_read_completed_items')
+        .select('checklist_instance_id')
+        .eq('dev_user_id', authUser.id),
+    ]).then(async ([instRes, readRes]) => {
+      if (instRes.error) {
+        setCompletedItemsLoading(false)
+        return
+      }
+      const instances = (instRes.data ?? []) as ChecklistInstance[]
+      const userIds = new Set<string>()
+      instances.forEach((i) => {
+        if (i.assigned_to_user_id) userIds.add(i.assigned_to_user_id)
+        if (i.completed_by_user_id) userIds.add(i.completed_by_user_id)
+      })
+      let userMap = new Map<string, string>()
+      if (userIds.size > 0) {
+        const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', Array.from(userIds))
+        ;(usersData ?? []).forEach((u: { id: string; name: string | null; email: string | null }) => {
+          userMap.set(u.id, u.name || u.email || 'Unknown')
+        })
+      }
+      setCompletedItems(instances)
+      setCompletedItemsUserMap(userMap)
+      const readSet = new Set<string>()
+      ;(readRes.data ?? []).forEach((r: { checklist_instance_id: string }) => readSet.add(r.checklist_instance_id))
+      setReadInstanceIds(readSet)
+      if (instances.length > 0) {
+        const completerIds = new Set(instances.map((i) => i.completed_by_user_id).filter(Boolean) as string[])
+        setExpandedCompleterIds((prev) => (prev.size === 0 ? completerIds : prev))
+      }
+      setCompletedItemsLoading(false)
+    })
+  }, [completedItemsOpen, authUser?.id, isDev])
+
+  async function markCompletedItemAsRead(inst: ChecklistInstance) {
+    if (!authUser?.id || markingReadId) return
+    setMarkingReadId(inst.id)
+    await supabase.from('dev_read_completed_items').insert({
+      dev_user_id: authUser.id,
+      checklist_instance_id: inst.id,
+    })
+    setMarkingReadId(null)
+    setReadInstanceIds((prev) => new Set(prev).add(inst.id))
+  }
+
   async function loadAssignedSteps() {
     if (!authUser?.id) return
     const { data: userData } = await supabase
@@ -612,10 +676,10 @@ export default function Dashboard() {
     try {
       const { data: sourceItem } = await supabase
         .from('checklist_items')
-        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope')
+        .select('notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, show_until_completed')
         .eq('id', fwdInstance.checklist_item_id)
         .single()
-      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null } | null
+      const src = sourceItem as { notify_on_complete_user_id: string | null; notify_creator_on_complete: boolean; reminder_time: string | null; reminder_scope: string | null; show_until_completed?: boolean } | null
       const { data: newItem, error: itemErr } = await supabase
         .from('checklist_items')
         .insert({
@@ -624,6 +688,7 @@ export default function Dashboard() {
           created_by_user_id: authUser.id,
           repeat_type: 'once',
           start_date: fwdInstance.scheduled_date,
+          show_until_completed: src?.show_until_completed ?? true,
           notify_on_complete_user_id: src?.notify_on_complete_user_id ?? null,
           notify_creator_on_complete: src?.notify_creator_on_complete ?? false,
           reminder_time: src?.reminder_time ?? null,
@@ -1226,6 +1291,140 @@ export default function Dashboard() {
           </form>
         </div>
       )}
+
+      {isDev && (
+        <div style={{ marginTop: '2rem' }}>
+          <h2
+            style={{
+              fontSize: '1.125rem',
+              marginBottom: completedItemsOpen ? '0.75rem' : 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+            onClick={() => setCompletedItemsOpen((o) => !o)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
+          >
+            {completedItemsOpen ? '▼' : '▶'} Completed (last 7 days)
+          </h2>
+          {completedItemsOpen && (
+            <>
+              {completedItemsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : completedItems.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
+              ) : (
+                (() => {
+                  const byCompleter = new Map<string, ChecklistInstance[]>()
+                  completedItems.forEach((inst) => {
+                    const cid = inst.completed_by_user_id ?? 'unknown'
+                    if (!byCompleter.has(cid)) byCompleter.set(cid, [])
+                    byCompleter.get(cid)!.push(inst)
+                  })
+                  const getUserName = (id: string | null) => {
+                    if (!id) return 'Unknown'
+                    return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
+                  }
+                  return (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {Array.from(byCompleter.entries()).map(([completerId, items]) => {
+                        const isExpanded = expandedCompleterIds.has(completerId)
+                        const completerName = getUserName(completerId === 'unknown' ? null : completerId)
+                        return (
+                          <li key={completerId} style={{ marginBottom: '0.5rem' }}>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setExpandedCompleterIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(completerId)) next.delete(completerId)
+                                else next.add(completerId)
+                                return next
+                              })}
+                              onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(completerId)) next.delete(completerId)
+                                else next.add(completerId)
+                                return next
+                              })}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                background: '#f9fafb',
+                              }}
+                            >
+                              <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
+                              <span style={{ fontWeight: 500 }}>{completerName}</span>
+                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
+                            </div>
+                            {isExpanded && (
+                              <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
+                                {items.map((inst) => {
+                                  const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+                                  const isRead = readInstanceIds.has(inst.id)
+                                  const assigneeName = getUserName(inst.assigned_to_user_id)
+                                  return (
+                                    <li
+                                      key={inst.id}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.5rem 0.75rem',
+                                        border: '1px solid #e5e7eb',
+                                        borderRadius: 8,
+                                        marginTop: '0.5rem',
+                                        background: isRead ? '#fff' : '#f0f9ff',
+                                      }}
+                                    >
+                                      <span style={{ flex: 1, fontWeight: 500 }}>{title}</span>
+                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                        {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                      </span>
+                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                      {!isRead && (
+                                        <button
+                                          type="button"
+                                          onClick={() => markCompletedItemAsRead(inst)}
+                                          disabled={!!markingReadId}
+                                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: markingReadId ? 'not-allowed' : 'pointer' }}
+                                        >
+                                          Mark as read
+                                        </button>
+                                      )}
+                                      {isRead && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Read</span>}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+                                      >
+                                        Re-send
+                                      </button>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )
+                })()
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {(userLoading || showAssigned) && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Assigned Stages</h2>
