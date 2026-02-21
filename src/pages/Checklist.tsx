@@ -20,18 +20,15 @@ type ChecklistInstance = {
   checklist_items?: { title: string } | null
 }
 
-function tabStyle(active: boolean) {
-  return {
-    padding: '0.5rem 0.6rem' as const,
-    border: 'none' as const,
-    background: 'none' as const,
-    borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-    color: active ? '#3b82f6' : '#6b7280',
-    fontWeight: active ? 600 : 400,
-    cursor: 'pointer' as const,
-    fontSize: '0.9375rem',
-  }
-}
+const tabStyle = (active: boolean) => ({
+  padding: '0.75rem 1.5rem',
+  border: 'none' as const,
+  background: 'none' as const,
+  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
+  color: active ? '#3b82f6' : '#6b7280',
+  fontWeight: active ? 600 : 400,
+  cursor: 'pointer' as const,
+})
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -78,8 +75,8 @@ export default function Checklist() {
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
   return (
-    <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
+    <div style={{ padding: '0.25rem 1.5rem 1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => {
@@ -140,6 +137,7 @@ export default function Checklist() {
             </button>
           </>
         )}
+        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Checklist</h1>
       </div>
 
       {activeTab === 'today' && (
