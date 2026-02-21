@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-18
+last_updated: 2026-02-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,88 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 20–21, 2026
+
+**`20260220210000_create_external_team.sql`**
+- **Purpose**: External Team section in Materials Supply Houses & External Subs tab
+- **Changes**: Created `external_team_sub_managers` (person_id, user_id) and `external_team_job_payments` (person_id, note, amount, is_paid); RLS for dev, master, assistant
+- **Impact**: Subcontractors (people kind='sub') can have Sub Manager assigned and job payments tracked; unpaid payments contribute to Outstanding total
+- **Category**: Materials / External Team
+
+**`20260220200000_create_jobs_receivables.sql`**
+- **Purpose**: Jobs Receivables tab for AR tracking
+- **Changes**: Created `jobs_receivables` (master_user_id, payer, point_of_contact, account_rep_name, amount); RLS mirrors jobs_ledger (dev, master, assistant; assistants_share_master)
+- **Impact**: Assistants enter Payer, Point Of Contact, Account Rep, Amount to Collect; total displayed at top
+- **Category**: Jobs / Receivables
+
+**`20260220190000_create_supply_house_invoices_and_po_link.sql`**
+- **Purpose**: Supply Houses tab with invoices and PO linkage
+- **Changes**: Created `supply_house_invoices` (supply_house_id, invoice_number, invoice_date, due_date, amount, link, is_paid); added `supply_house_id` to `purchase_orders`; RLS for dev, master, assistant
+- **Impact**: Per-supply-house invoice tracking; unpaid invoices sum to AP total; POs can be linked to supply house
+- **Category**: Materials / Supply Houses
+
+**`20260220180000_create_app_settings.sql`**
+- **Purpose**: App-level settings storage
+- **Changes**: Created `app_settings` table
+- **Impact**: Centralized app configuration
+- **Category**: Settings
+
+**`20260219280000_allow_devs_read_user_pinned_tabs.sql`**
+- **Purpose**: Allow devs to read user_pinned_tabs for "Pin for" and Unpin All
+- **Changes**: RLS policy for devs to SELECT user_pinned_tabs
+- **Category**: Dashboard / Pins
+
+**`20260219270001_fix_jobs_ledger_assistant_visibility_rls.sql`**
+- **Purpose**: Fix assistants seeing jobs_ledger for their master
+- **Changes**: Updated RLS to use assistants_share_master
+- **Category**: Jobs / RLS
+
+**`20260219270000_allow_assistants_see_all_jobs_ledger.sql`**
+- **Purpose**: Allow assistants to see jobs_ledger entries for their master
+- **Changes**: RLS policy for assistants
+- **Category**: Jobs / RLS
+
+**`20260219260000_create_cost_matrix_tag_colors.sql`**
+- **Purpose**: Tag colors for Cost matrix
+- **Changes**: Created cost_matrix_tag_colors table
+- **Category**: People / Pay
+
+**`20260219250000_create_people_cost_matrix_tags.sql`**
+- **Purpose**: Cost matrix tags per person
+- **Changes**: Created people_cost_matrix_tags table
+- **Category**: People / Pay
+
+**`20260219240000_create_jobs_ledger_fixtures.sql`**
+- **Purpose**: Jobs ledger fixture tracking
+- **Changes**: Created jobs_ledger_fixtures table
+- **Category**: Jobs
+
+**`20260219230000_allow_devs_delete_user_pinned_tabs.sql`**
+- **Purpose**: Allow devs to delete pins (Unpin All)
+- **Changes**: RLS policy for devs to DELETE user_pinned_tabs
+- **Category**: Dashboard / Pins
+
+**`20260219220000_add_user_pinned_tabs_to_realtime.sql`**
+- **Purpose**: Realtime for Dashboard pins
+- **Changes**: Added user_pinned_tabs to supabase_realtime publication
+- **Category**: Dashboard / Realtime
+
+**`20260219210000_create_customer_contact_persons.sql`**
+- **Purpose**: Customer contact persons
+- **Changes**: Created customer_contact_persons table
+- **Category**: Customers
+
+**`20260219200000_create_user_pinned_tabs.sql`**
+- **Purpose**: Store pins for users (e.g. dev "Pin for")
+- **Changes**: Created user_pinned_tabs (user_id, path, label, tab); RLS for own pins, dev manage
+- **Impact**: Dashboard shows pinned links; dev can pin AR, Supply Houses AP, External Team, Cost matrix for masters/devs
+- **Category**: Dashboard / Pins
+
+**`20260219180000_allow_all_to_see_labor_jobs_in_scope.sql`**
+- **Purpose**: Broaden labor jobs visibility
+- **Changes**: RLS for people_labor_jobs and people_labor_job_items
+- **Category**: Jobs / Labor
 
 #### February 18, 2026
 

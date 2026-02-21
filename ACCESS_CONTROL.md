@@ -148,9 +148,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
+- Jobs page — Receivables tab: Enter Payer, Point Of Contact, Account Rep, Amount to Collect (AR tracking)
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
-- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Tag, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams, Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via "Share Cost Matrix and Teams" section
+- Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (in Settings), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via Settings "Share Cost Matrix and Teams" section
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
 **Bids**:
@@ -161,6 +162,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
+- Supply Houses & External Subs tab: supply house invoices (AP), external subcontractors with job payments, sub managers
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
@@ -171,6 +173,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 - View adopted assistants and shared masters
 - Change own password
 - No user management
+- (Dev only) Pin AR, Supply Houses AP, External Team, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
 
 **Edge Functions**:
 - Can call `login-as-user` (impersonate assistants/subs)
@@ -215,6 +218,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 **People**:
 - View people they created and people shared with their master (via master_shares)
+- Jobs page — Receivables tab: Enter Payer, Point Of Contact, Account Rep, Amount (for master's AR)
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 - Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)

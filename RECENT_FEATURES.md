@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-19
+last_updated: 2026-02-21
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.50 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.52)"
+  - name: "Latest Version (v2.53)"
     line: ~132
+    description: "Supply Houses & External Subs, Jobs Receivables, Dashboard pins"
+  - name: "v2.52"
+    line: ~165
     description: "People Pay layout, Cost matrix mobile dates, Builder Review PIA"
   - name: "v2.51"
     line: ~165
@@ -82,14 +85,15 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-2. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-3. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-4. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-5. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-6. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-7. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-8. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+1. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+2. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+3. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+4. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+5. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+6. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+7. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+8. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+9. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
 9. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
 10. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
 11. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
@@ -135,6 +139,41 @@ when_to_read:
 47. [Email Templates](#email-templates)
 48. [Financial Tracking](#financial-tracking)
 49. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.53)
+
+### Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+
+**Date**: 2026-02-21
+
+**Overview**:
+Materials tab renamed to Supply Houses & External Subs with full vendor/invoice management and External Team (subcontractors with job payments). Jobs Receivables tab for AR tracking. Settings sections for pinning AR, Supply Houses AP, External Team, and Cost matrix to Dashboard. People Pay "Due by Tag" renamed to "Due by Trade". Dashboard pin labels updated.
+
+**Materials – Supply Houses & External Subs tab**:
+- **Tab name**: "Supply Houses" renamed to "Supply Houses & External Subs" (hidden from estimators).
+- **Supply Houses section**: Summary table at top with AP total (Supply Houses: $X); expandable rows per supply house; Add Supply House button; per-supply-house invoices (Invoice #, Date, Due Date, Amount, Link, Paid); purchase orders linked via `supply_house_id`.
+- **External Team section**: Table of external subcontractors (from `people` kind='sub') with External Subcontractor, Sub Manager (User), Outstanding, Add Job Payment; expandable rows show job payments (note, amount, paid checkbox); Add External Subcontractor button; Sub Manager assignable from users dropdown.
+- **Tables**: `supply_house_invoices`, `external_team_sub_managers`, `external_team_job_payments`; `purchase_orders.supply_house_id` added.
+
+**Jobs – Receivables tab**:
+- **New tab**: Receivables tab (first tab, left of Billing) for assistants to enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect.
+- **AR total**: Displayed at top (AR: $X,XXX.XX).
+- **Table**: `jobs_receivables` with RLS matching jobs_ledger visibility (dev, master, assistant; assistants see master's data).
+- **Add Payer button**: At bottom to add new receivables entries.
+
+**Settings – Pin to Dashboard** (dev-only):
+- **Pin AR to Dashboard**: Pin Jobs Receivables total to masters/devs; label "AR | $X,XXX".
+- **Pin Supply Houses AP to Dashboard**: Pin Materials Supply Houses AP total; label "Supply Houses: $X".
+- **Pin External Team to Dashboard**: Pin External Team outstanding total; label "External Team: $X,XXX".
+- **Pin Cost matrix / Share Cost Matrix**: Moved from People Pay to Settings; "Share Cost Matrix and Teams" and "Pin Cost matrix to Dashboard" sections below AR pin.
+- **Display labels**: Internal Team: $X (Cost matrix), Supply Houses: $X, AR | $X, External Team: $X.
+
+**People Pay**:
+- **Due by Tag** renamed to **Due by Trade**.
+
+**Files**: `src/pages/Materials.tsx`, `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`, `src/pages/Dashboard.tsx`, `src/lib/pinnedTabs.ts`, `supabase/migrations/20260220190000_create_supply_house_invoices_and_po_link.sql`, `supabase/migrations/20260220200000_create_jobs_receivables.sql`, `supabase/migrations/20260220210000_create_external_team.sql`
 
 ---
 

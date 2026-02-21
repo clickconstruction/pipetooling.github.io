@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-20
+last_updated: 2026-02-21
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -1866,7 +1866,7 @@ user_id = auth.uid()
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
-  - **Pay Tab** (dev, approved masters, or shared by dev): Due by Tag, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
+  - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
 - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
@@ -1874,13 +1874,14 @@ user_id = auth.uid()
 
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
-- **Tabs** (in order): **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | Upcoming | Teams Summary
+- **Tabs** (in order): **Receivables** | **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | Upcoming | Teams Summary
 - **Features**:
+  - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
   - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
   - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date); Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
   - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
-- **Data**: Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
+- **Data**: Receivables use `jobs_receivables`; Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
 
 ### 7. Calendar View
 - **Page**: `Calendar.tsx`
@@ -1897,6 +1898,7 @@ user_id = auth.uid()
 ### 8. Dashboard
 - **Page**: `Dashboard.tsx`
 - **Features**:
+  - **Pinned Links** (from Settings or Layout Pin): Dev can pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "AR | $X,XXX", "Supply Houses: $X", "External Team: $X,XXX", "Internal Team: $X,XXX". Links navigate to Jobs Receivables, Materials Supply Houses, Materials External Team section, People Pay Cost matrix.
   - **User Role Display**: Shows current user's role
   - **How It Works** (Masters/Devs only): Explains system structure
     - PipeTooling helps Masters better manage Projects with Subs.
@@ -1969,6 +1971,7 @@ user_id = auth.uid()
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
   - View all people entries (not just own entries)
+  - **Pin to Dashboard** (dev-only): Pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (AR | $X, Supply Houses: $X, External Team: $X, Internal Team: $X). Share Cost Matrix and Teams section moved from People Pay to Settings (below AR pin).
   - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.
   - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
@@ -2005,7 +2008,7 @@ user_id = auth.uid()
 ### 11. Materials Management
 - **Page**: `Materials.tsx`
 - **Route**: `/materials`
-- **Access**: Devs and master_technicians only
+- **Access**: Devs, master_technicians, assistants, and estimators (estimators see Price Book, Assembly Book, Templates, Purchase Orders; Supply Houses & External Subs tab hidden from estimators)
 - **Purpose**: Comprehensive system for managing parts, prices, templates, and purchase orders
 
 #### Features
@@ -2112,6 +2115,11 @@ user_id = auth.uid()
     - **Add to Workflow**: Link to add PO as line item to workflow steps
   - **Delete button**: Located in selected PO section (left side)
 
+**Supply Houses & External Subs Tab** (dev, master, assistant only; hidden from estimators):
+- **Supply Houses section**: Summary at top with AP total (Supply Houses: $X); expandable rows per supply house; Add Supply House button (top right). Per supply house: name, address, phone, email; invoices (Invoice #, Date, Due Date, Amount, Link, Paid checkbox); purchase orders linked via `supply_house_id`. Unpaid invoices sum to outstanding; paid invoices excluded. Tables: `supply_house_invoices`, `supply_houses`; `purchase_orders.supply_house_id`.
+- **External Team section**: Table of external subcontractors (from `people` kind='sub') with External Subcontractor, Sub Manager (User), Outstanding, Add Job Payment. Expandable rows show job payments (note, amount, paid checkbox); Add External Subcontractor button. Sub Manager assignable from users dropdown. Unpaid job payments sum to Outstanding. Tables: `external_team_sub_managers`, `external_team_job_payments`.
+- **Dev-only Settings**: Pin Supply Houses AP and Pin External Team to Dashboard (like Pin AR); pins show on masters/devs Dashboards.
+
 **Integration with Workflows**:
 - Finalized purchase orders can be added as line items to workflow steps
 - PO details (name, item count, total) displayed in line item memo
@@ -2123,12 +2131,15 @@ user_id = auth.uid()
 
 **Tables**:
 - `supply_houses` - Supply house information (name, contact_name, phone, email, address, notes)
+- `supply_house_invoices` - Invoices per supply house (invoice_number, invoice_date, due_date, amount, link, is_paid); unpaid sum = AP
+- `external_team_sub_managers` - Sub Manager (user) per subcontractor (person_id, user_id)
+- `external_team_job_payments` - Job payments per subcontractor (person_id, note, amount, is_paid); unpaid sum = Outstanding
 - `material_parts` - Parts catalog (name, manufacturer, fixture_type, notes)
 - `material_part_prices` - Prices for parts by supply house (with effective_date, unique constraint on part_id + supply_house_id)
 - `material_part_price_history` - Historical price changes (old_price, new_price, price_change_percent, changed_at, changed_by, notes)
 - `material_templates` - Reusable material templates (name, description)
 - `material_template_items` - Items within templates (supports nested templates and parts with quantities)
-- `purchase_orders` - Purchase orders (name, status: draft/finalized, notes, notes_added_by, notes_added_at, created_by, finalized_at)
+- `purchase_orders` - Purchase orders (name, status: draft/finalized, notes, notes_added_by, notes_added_at, created_by, finalized_at, supply_house_id)
 - `purchase_order_items` - Items in purchase orders (part_id, quantity, selected_supply_house_id, price_at_time, price_confirmed_at, price_confirmed_by, sequence_order, notes)
 
 **Database Functions**:
