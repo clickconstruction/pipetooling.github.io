@@ -1202,8 +1202,11 @@ export default function Jobs() {
     const tab = searchParams.get('tab')
     const isPrimary = myRole === 'primary' || authRole === 'primary'
     if (isPrimary) {
-      setActiveTab('reports')
-      if (tab !== 'reports') {
+      const primaryTabs = ['reports', 'ledger', 'parts', 'job-summary']
+      if (tab && primaryTabs.includes(tab)) {
+        setActiveTab(tab as JobsTab)
+      } else if (!tab || !primaryTabs.includes(tab)) {
+        setActiveTab('reports')
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'reports')
@@ -1720,9 +1723,7 @@ export default function Jobs() {
             Reports
           </button>
         )}
-        {myRole !== 'primary' && (
-          <>
-          <button
+        <button
             type="button"
             onClick={() => {
               setActiveTab('ledger')
@@ -1736,6 +1737,36 @@ export default function Jobs() {
           >
             Billing
           </button>
+        <button
+            type="button"
+            onClick={() => {
+              setActiveTab('parts')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'parts')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'parts')}
+          >
+            Parts
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('job-summary')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'job-summary')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'job-summary')}
+          >
+            Job Summary
+          </button>
+        {myRole !== 'primary' && (
+          <>
           <button
             type="button"
             onClick={() => {
@@ -1763,34 +1794,6 @@ export default function Jobs() {
             style={tabStyle(activeTab === 'teams-summary')}
           >
             Teams Summary
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('parts')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'parts')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'parts')}
-          >
-            Parts
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('job-summary')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'job-summary')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'job-summary')}
-          >
-            Job Summary
           </button>
           </>
         )}
