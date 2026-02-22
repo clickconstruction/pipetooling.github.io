@@ -2363,6 +2363,7 @@ export default function Jobs() {
                         {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
                       </td>
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
+                        {authRole !== 'primary' && (
                         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                         <button
                           type="button"
@@ -2386,6 +2387,7 @@ export default function Jobs() {
                           </svg>
                         </button>
                         </div>
+                        )}
                       </td>
                     </tr>
                   ))}

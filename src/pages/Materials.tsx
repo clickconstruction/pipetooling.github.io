@@ -4139,7 +4139,7 @@ export default function Materials() {
                                     {(part.prices ?? [])
                                       .sort((a, b) => a.price - b.price)
                                       .map(price => {
-                                        const supplyHouse = supplyHouses.find(sh => sh.id === price.supply_house_id)
+                                        const supplyHouseName = price.supply_house?.name ?? supplyHouses.find(sh => sh.id === price.supply_house_id)?.name ?? 'Unknown'
                                         const isLowest = price.price === lowestPrice
                                         
                                         return (
@@ -4156,7 +4156,7 @@ export default function Materials() {
                                             }}
                                           >
                                             <span style={{ fontWeight: 500, color: '#374151' }}>
-                                              {supplyHouse?.name || 'Unknown'}
+                                              {supplyHouseName}
                                               {isLowest && (
                                                 <span style={{ marginLeft: '0.5rem', padding: '0.125rem 0.375rem', background: '#059669', color: 'white', borderRadius: 3, fontSize: '0.625rem', fontWeight: 600 }}>
                                                   LOWEST

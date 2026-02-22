@@ -105,7 +105,7 @@ export default function JobTally() {
     if (!selectedPart || !fixtureName.trim()) return
     setSaved(false)
     setPoCreateError(null)
-    const qty = Math.max(0.01, quantity)
+    const qty = Math.max(1, Math.round(quantity))
     setEntries((prev) => [
       ...prev,
       {
@@ -130,7 +130,7 @@ export default function JobTally() {
   function adjustEntryQuantity(id: string, delta: number) {
     setEntries((prev) =>
       prev.map((e) =>
-        e.id === id ? { ...e, quantity: Math.max(0.01, e.quantity + delta) } : e
+        e.id === id ? { ...e, quantity: Math.max(1, Math.round(e.quantity) + delta) } : e
       )
     )
   }
@@ -459,23 +459,25 @@ export default function JobTally() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => adjustEntryQuantity(e.id, -1)}
-                        style={{
-                          width: TOUCH_MIN,
-                          height: TOUCH_MIN,
-                          padding: 0,
-                          fontSize: '1rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 8,
-                          background: '#fff',
-                          cursor: 'pointer',
-                        }}
-                        title="Decrease by 1"
-                      >
-                        ↓
-                      </button>
+                      {e.quantity > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => adjustEntryQuantity(e.id, -1)}
+                          style={{
+                            width: TOUCH_MIN,
+                            height: TOUCH_MIN,
+                            padding: 0,
+                            fontSize: '1rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 8,
+                            background: '#fff',
+                            cursor: 'pointer',
+                          }}
+                          title="Decrease by 1"
+                        >
+                          ↓
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => adjustEntryQuantity(e.id, 1)}
