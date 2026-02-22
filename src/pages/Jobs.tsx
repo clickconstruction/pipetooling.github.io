@@ -69,6 +69,25 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function formatTimeSince(iso: string | null): string {
+  if (!iso) return '—'
+  const now = new Date()
+  const then = new Date(iso)
+  const diffMs = now.getTime() - then.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  const diffWeeks = Math.floor(diffMs / 604800000)
+  const diffMonths = Math.floor(diffMs / 2592000000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''}`
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`
+  return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
+}
+
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
@@ -1698,12 +1717,17 @@ export default function Jobs() {
     }
   }
 
-  async function deleteJob(id: string) {
+  async function deleteJob(id: string): Promise<boolean> {
     setDeletingId(id)
     const { error: err } = await supabase.from('jobs_ledger').delete().eq('id', id)
-    if (err) setError(err.message)
-    else await loadJobs()
+    if (err) {
+      setError(err.message)
+      setDeletingId(null)
+      return false
+    }
+    await loadJobs()
     setDeletingId(null)
+    return true
   }
 
   // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
@@ -2235,7 +2259,7 @@ export default function Jobs() {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void) {
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -2273,22 +2297,29 @@ export default function Jobs() {
                             </td>
                             {actionLabel && (
                               <td style={{ padding: '0.75rem' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => onAction(j)}
-                                  disabled={stagesStatusUpdatingId === j.id}
-                                  style={{
-                                    padding: '0.35rem 0.75rem',
-                                    fontSize: '0.8125rem',
-                                    background: '#3b82f6',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                  }}
-                                >
-                                  {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  {showTimeOpen && (
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Time since job created">
+                                      Open {formatTimeSince(j.created_at ?? null)}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => onAction(j)}
+                                    disabled={stagesStatusUpdatingId === j.id}
+                                    style={{
+                                      padding: '0.35rem 0.75rem',
+                                      fontSize: '0.8125rem',
+                                      background: '#3b82f6',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                    }}
+                                  >
+                                    {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
+                                  </button>
+                                </div>
                               </td>
                             )}
                           </tr>
@@ -2311,7 +2342,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
                   Working ({working.length})
                 </button>
-                {stagesSectionOpen.working && renderStagesTable(working, 'Mark Ready for Billing', (j) => updateJobStatus(j.id, 'ready_to_bill'))}
+                {stagesSectionOpen.working && renderStagesTable(working, 'Mark Ready for Billing', (j) => updateJobStatus(j.id, 'ready_to_bill'), true)}
 
                 <button
                   type="button"
@@ -2322,7 +2353,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
                   Ready to Bill ({readyToBill.length})
                 </button>
-                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => updateJobStatus(j.id, 'billed'))}
+                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => updateJobStatus(j.id, 'billed'), true)}
 
                 <button
                   type="button"
@@ -2333,7 +2364,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
                   Billed ({billed.length})
                 </button>
-                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => updateJobStatus(j.id, 'paid'))}
+                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => updateJobStatus(j.id, 'paid'), true)}
 
                 <button
                   type="button"
@@ -2574,29 +2605,16 @@ export default function Jobs() {
                       </td>
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
                         {authRole !== 'primary' && (
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                         <button
                           type="button"
                           onClick={() => openEdit(job)}
                           title="Edit"
-                          style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                             <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
                           </svg>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteJob(job.id)}
-                          disabled={deletingId === job.id}
-                          title="Delete"
-                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: deletingId === job.id ? 'not-allowed' : 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                            <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
-                          </svg>
-                        </button>
-                        </div>
                         )}
                       </td>
                     </tr>
@@ -3676,7 +3694,7 @@ export default function Jobs() {
                 />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={saveJob}
@@ -3696,6 +3714,29 @@ export default function Jobs() {
               <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
+              {editing && authRole !== 'primary' && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!editing) return
+                    if (!confirm('Delete this job from Billing?')) return
+                    const ok = await deleteJob(editing.id)
+                    if (ok) closeForm()
+                  }}
+                  disabled={deletingId === editing?.id}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: deletingId === editing?.id ? '#f3f4f6' : '#fee2e2',
+                    color: deletingId === editing?.id ? '#9ca3af' : '#b91c1c',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: deletingId === editing?.id ? 'not-allowed' : 'pointer',
+                    marginLeft: 'auto',
+                  }}
+                >
+                  {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
             </div>
           </div>
         </div>

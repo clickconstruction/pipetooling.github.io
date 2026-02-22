@@ -26,6 +26,25 @@ function toDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function formatTimeSince(iso: string | null): string {
+  if (!iso) return '—'
+  const now = new Date()
+  const then = new Date(iso)
+  const diffMs = now.getTime() - then.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  const diffWeeks = Math.floor(diffMs / 604800000)
+  const diffMonths = Math.floor(diffMs / 2592000000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''}`
+  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
+  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
+  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
+  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`
+  return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
+}
+
 function fromDatetimeLocal(value: string): string | null {
   const v = value.trim()
   if (!v) return null
@@ -196,11 +215,11 @@ export default function Dashboard() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
-  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
 
@@ -600,13 +619,13 @@ export default function Dashboard() {
     setReadyToBillLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, revenue')
+      .select('id, hcp_number, job_name, job_address, revenue, created_at')
       .eq('status', 'ready_to_bill')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
         setReadyToBillLoading(false)
         if (error) return
-        setReadyToBillJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+        setReadyToBillJobs((data ?? []) as typeof readyToBillJobs)
       })
   }, [authUser?.id, role])
 
@@ -615,13 +634,13 @@ export default function Dashboard() {
     setWaitingForPaymentLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, revenue')
+      .select('id, hcp_number, job_name, job_address, revenue, created_at')
       .eq('status', 'billed')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
         setWaitingForPaymentLoading(false)
         if (error) return
-        setWaitingForPaymentJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+        setWaitingForPaymentJobs((data ?? []) as typeof waitingForPaymentJobs)
       })
   }, [authUser?.id, role])
 
@@ -643,9 +662,9 @@ export default function Dashboard() {
     setReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
     setWaitingForPaymentJobs((prev) => prev.filter((j) => j.id !== jobId))
     if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
-      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
+      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
       if (readyData) setReadyToBillJobs(readyData as typeof readyToBillJobs)
-      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').eq('status', 'billed').order('hcp_number', { ascending: false })
+      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
       if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
     }
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
@@ -2053,7 +2072,12 @@ export default function Dashboard() {
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open {formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                           View
@@ -2119,7 +2143,12 @@ export default function Dashboard() {
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open {formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                       <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                         View
                       </Link>
@@ -2183,7 +2212,12 @@ export default function Dashboard() {
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open {formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                       <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                         View
                       </Link>
