@@ -1187,11 +1187,14 @@ export default function People() {
               0
             )
             const tagTotals = new Map<string, number>()
+            const tagHours = new Map<string, number>()
             for (const personName of showPeopleForMatrix) {
               const periodCost = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
+              const periodHrs = matrixDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)
               const tags = (costMatrixTags[personName] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
               for (const tag of tags) {
                 tagTotals.set(tag, (tagTotals.get(tag) ?? 0) + periodCost)
+                tagHours.set(tag, (tagHours.get(tag) ?? 0) + periodHrs)
               }
             }
             const sortedTags = [...tagTotals.entries()].sort((a, b) => b[1] - a[1])
@@ -1202,6 +1205,8 @@ export default function People() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
                   {sortedTags.map(([tag, total]) => {
                     const pct = matrixTotal > 0 ? Math.round((total / matrixTotal) * 100) : 0
+                    const hrs = tagHours.get(tag) ?? 0
+                    const costPerHr = hrs > 0 ? `$${(total / hrs).toFixed(1)}/hr` : '—'
                     return (
                       <span
                         key={tag}
@@ -1212,7 +1217,7 @@ export default function People() {
                         style={{ fontWeight: 500, cursor: 'pointer' }}
                         title="Click to view ledger"
                       >
-                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}%
+                        {tag} ${Math.round(total).toLocaleString('en-US')} | {pct}% | {costPerHr}
                       </span>
                     )
                   })}

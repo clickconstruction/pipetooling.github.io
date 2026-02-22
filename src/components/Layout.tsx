@@ -30,7 +30,7 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/jobs', '/calendar', '/checklist', '/settings', '/tally']
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally']
 const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally']
 const PRIMARY_PATHS = ['/dashboard', '/projects', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
 
@@ -282,23 +282,6 @@ export default function Layout() {
               }}
             >
               Bid
-            </button>
-          )}
-          {role === 'subcontractor' && (
-            <button
-              type="button"
-              onClick={() => navigate('/jobs?tab=sub_sheet_ledger&newJob=true')}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Job
             </button>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>

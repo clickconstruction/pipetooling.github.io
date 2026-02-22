@@ -3319,17 +3319,6 @@ export default function Settings() {
         </div>
       </div>
 
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
-        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-          If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
-          <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
-            Fix app
-          </a>{' '}
-          to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
-        </p>
-      </div>
-
       <div style={{ marginBottom: '2rem' }}>
         <h2
           style={{
@@ -3763,7 +3752,6 @@ export default function Settings() {
           </form>
         )}
 
-      {myRole !== 'dev' && <p style={{ marginBottom: '1.5rem' }}>Only devs can manage user roles.</p>}
 
       {myRole === 'dev' && (
         <>
@@ -5045,6 +5033,16 @@ export default function Settings() {
         </button>
         {advancedSectionOpen && (
           <div style={{ padding: '1rem 0 0 0' }}>
+            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
+                <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
+                  Fix app
+                </a>{' '}
+                to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
+              </p>
+            </div>
             <form onSubmit={handleClaimCode}>
               <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

@@ -87,7 +87,7 @@ type ChecklistInstance = {
 const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/jobs', '/calendar', '/checklist', '/settings', '/tally'])
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
 const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/projects', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 

@@ -1,3 +1,4 @@
+import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { ReceivablesSection } from '../components/quickfill/ReceivablesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
 import { HoursSection } from '../components/quickfill/HoursSection'
@@ -9,6 +10,7 @@ export default function Quickfill() {
       <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
         Reference and update Jobs Receivables, Materials Supply Houses & External Subs, and People Hours in one place.
       </p>
+      <JobsBillingReminderSection />
       <HoursSection />
       <ReceivablesSection />
       <SupplyHousesSection />
