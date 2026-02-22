@@ -1223,6 +1223,7 @@ export type Database = {
           sequence_order: number
           created_by_user_id: string
           created_at: string | null
+          purchase_order_id: string | null
         }
         Insert: {
           id?: string
@@ -1233,6 +1234,7 @@ export type Database = {
           sequence_order?: number
           created_by_user_id: string
           created_at?: string | null
+          purchase_order_id?: string | null
         }
         Update: {
           id?: string
@@ -1243,6 +1245,7 @@ export type Database = {
           sequence_order?: number
           created_by_user_id?: string
           created_at?: string | null
+          purchase_order_id?: string | null
         }
         Relationships: [
           {

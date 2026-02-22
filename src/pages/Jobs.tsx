@@ -2461,8 +2461,9 @@ export default function Jobs() {
                     }
                     const jobRows = Array.from(byJob.entries()).map(([jobId, parts]) => {
                       const first = parts[0]
+                      if (!first) return null
                       return { jobId, hcpNumber: first.hcp_number, jobName: first.job_name, parts }
-                    })
+                    }).filter((r): r is NonNullable<typeof r> => r != null)
                     if (jobRows.length === 0) {
                       return (
                         <tr>

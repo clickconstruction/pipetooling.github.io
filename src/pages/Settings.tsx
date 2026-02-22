@@ -6648,7 +6648,7 @@ export default function Settings() {
                 setPinAPSaving(false)
                 if (errMsg) setPinAPMessage({ type: 'error', text: errMsg })
                 else {
-                  loadAPTotalAndPinnedUsers()
+                  loadSupplyHousesAPTotalAndPinnedUsers()
                   setPinAPMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
                   setTimeout(() => setPinAPMessage(null), 5000)
                 }
@@ -6676,7 +6676,7 @@ export default function Settings() {
                 setPinAPUnpinSaving(false)
                 if (error) setPinAPMessage({ type: 'error', text: error.message })
                 else {
-                  loadAPTotalAndPinnedUsers()
+                  loadSupplyHousesAPTotalAndPinnedUsers()
                   setPinAPMessage({ type: 'success', text: `Unpinned Supply Houses AP for ${count} user${count !== 1 ? 's' : ''}.` })
                   setTimeout(() => setPinAPMessage(null), 5000)
                 }
