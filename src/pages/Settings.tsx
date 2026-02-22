@@ -266,6 +266,10 @@ export default function Settings() {
   const [adoptedAssistantIds, setAdoptedAssistantIds] = useState<Set<string>>(new Set())
   const [adoptionSaving, setAdoptionSaving] = useState(false)
   const [adoptionError, setAdoptionError] = useState<string | null>(null)
+  const [primaries, setPrimaries] = useState<UserRow[]>([])
+  const [adoptedPrimaryIds, setAdoptedPrimaryIds] = useState<Set<string>>(new Set())
+  const [primaryAdoptionSaving, setPrimaryAdoptionSaving] = useState(false)
+  const [primaryAdoptionError, setPrimaryAdoptionError] = useState<string | null>(null)
   // Dev-only: which master's adoptions we're managing (null = current user)
   const [selectedMasterIdForAdoptions, setSelectedMasterIdForAdoptions] = useState<string | null>(null)
   const [masters, setMasters] = useState<UserRow[]>([])
@@ -733,9 +737,10 @@ export default function Settings() {
       setEstimatorServiceTypeIds(null)
     }
     
-    // Load assistants and adoptions for masters and devs
+    // Load assistants, primaries, and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
       await loadAssistantsAndAdoptions(authUser.id)
+      await loadPrimariesAndAdoptions(authUser.id)
       await loadMastersAndShares(authUser.id)
     }
     
@@ -1001,6 +1006,35 @@ export default function Settings() {
     }
   }
 
+  async function loadPrimariesAndAdoptions(masterId: string) {
+    const { data: primariesData, error: primariesErr } = await supabase
+      .from('users')
+      .select('id, email, name, role')
+      .eq('role', 'primary')
+      .order('name')
+
+    if (primariesErr) {
+      console.error('Error loading primaries:', primariesErr)
+      setPrimaryAdoptionError(primariesErr.message)
+    } else {
+      setPrimaries((primariesData as UserRow[]) ?? [])
+    }
+
+    const { data: adoptions, error: adoptionsErr } = await supabase
+      .from('master_primaries')
+      .select('primary_id')
+      .eq('master_id', masterId)
+
+    if (adoptionsErr) {
+      console.error('Error loading primary adoptions:', adoptionsErr)
+      setPrimaryAdoptionError(adoptionsErr.message)
+    } else {
+      const adoptedSet = new Set<string>()
+      adoptions?.forEach(a => adoptedSet.add(a.primary_id))
+      setAdoptedPrimaryIds(adoptedSet)
+    }
+  }
+
   // When dev has selected another master, we manage that master's adoptions; otherwise current user's
   const adoptionMasterId = (myRole === 'dev' && selectedMasterIdForAdoptions) ? selectedMasterIdForAdoptions : authUser?.id ?? null
 
@@ -1047,10 +1081,53 @@ export default function Settings() {
     setAdoptionSaving(false)
   }
 
+  async function togglePrimaryAdoption(primaryId: string, isAdopted: boolean) {
+    const masterId = adoptionMasterId ?? authUser?.id
+    if (!masterId) return
+
+    setPrimaryAdoptionSaving(true)
+    setPrimaryAdoptionError(null)
+
+    if (isAdopted) {
+      const { error } = await supabase
+        .from('master_primaries')
+        .delete()
+        .eq('master_id', masterId)
+        .eq('primary_id', primaryId)
+
+      if (error) {
+        setPrimaryAdoptionError(error.message)
+      } else {
+        setAdoptedPrimaryIds(prev => {
+          const next = new Set(prev)
+          next.delete(primaryId)
+          return next
+        })
+      }
+    } else {
+      const { error } = await supabase
+        .from('master_primaries')
+        .insert({
+          master_id: masterId,
+          primary_id: primaryId,
+        })
+
+      if (error) {
+        setPrimaryAdoptionError(error.message)
+      } else {
+        setAdoptedPrimaryIds(prev => new Set(prev).add(primaryId))
+      }
+    }
+
+    setPrimaryAdoptionSaving(false)
+  }
+
   async function handleAdoptionMasterChange(masterId: string | null) {
     setSelectedMasterIdForAdoptions(masterId)
     if (authUser?.id) {
-      await loadAssistantsAndAdoptions(masterId ?? authUser.id)
+      const targetMasterId = masterId ?? authUser.id
+      await loadAssistantsAndAdoptions(targetMasterId)
+      await loadPrimariesAndAdoptions(targetMasterId)
     }
   }
 
@@ -4140,6 +4217,79 @@ export default function Settings() {
                       {assistant.email && assistant.name && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                           ({assistant.email})
+                        </span>
+                      )}
+                    </span>
+                    {isAdopted && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        Adopted
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {(myRole === 'master_technician' || myRole === 'dev') && (
+        <>
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Primaries</h2>
+          {myRole === 'dev' && (
+            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+              <label htmlFor="adoption-master-select-primaries" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
+              <select
+                id="adoption-master-select-primaries"
+                value={selectedMasterIdForAdoptions ?? ''}
+                onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+              >
+                <option value="">Myself</option>
+                {masters.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name || m.email || m.id}</option>
+                ))}
+              </select>
+            </p>
+          )}
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
+              ? `Adopt or unadopt primaries for the selected master. Changes apply to that master's access.`
+              : 'Adopt primaries to associate them with your organization. Primaries can add materials to jobs in the Jobs Billing tab.'}
+          </p>
+          {primaryAdoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{primaryAdoptionError}</p>}
+          {primaries.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No primaries found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+              {primaries.map((primary) => {
+                const isAdopted = adoptedPrimaryIds.has(primary.id)
+                return (
+                  <label
+                    key={primary.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      cursor: primaryAdoptionSaving ? 'not-allowed' : 'pointer',
+                      background: isAdopted ? '#f0fdf4' : 'white',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAdopted}
+                      onChange={() => togglePrimaryAdoption(primary.id, isAdopted)}
+                      disabled={primaryAdoptionSaving}
+                      style={{ cursor: primaryAdoptionSaving ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500 }}>{primary.name || primary.email}</span>
+                      {primary.email && primary.name && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({primary.email})
                         </span>
                       )}
                     </span>

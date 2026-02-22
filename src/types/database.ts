@@ -1566,6 +1566,39 @@ export type Database = {
           },
         ]
       }
+      master_primaries: {
+        Row: {
+          created_at: string | null
+          master_id: string
+          primary_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          master_id: string
+          primary_id: string
+        }
+        Update: {
+          created_at?: string | null
+          master_id?: string
+          primary_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_primaries_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_primaries_primary_id_fkey"
+            columns: ["primary_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_shares: {
         Row: {
           created_at: string | null
