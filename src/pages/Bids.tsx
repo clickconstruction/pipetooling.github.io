@@ -31,7 +31,7 @@ type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions'][
 type TakeoffBookEntry = Database['public']['Tables']['takeoff_book_entries']['Row']
 type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_items']['Row']
 type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
