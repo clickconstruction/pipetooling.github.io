@@ -1200,8 +1200,9 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    const isPrimary = myRole === 'primary' || authRole === 'primary'
-    if (isPrimary) {
+    // Treat unknown role as primary to avoid flash of wrong tabs before role loads
+    const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
+    if (isPrimaryOrUnknown) {
       const primaryTabs = ['reports', 'ledger']
       if (tab && primaryTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
@@ -1688,10 +1689,14 @@ export default function Jobs() {
     setDeletingId(null)
   }
 
+  // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
+  const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
+  const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        {myRole !== 'primary' && (
+        {showPrimaryRestrictedTabs && (
           <button
             type="button"
             onClick={() => {
@@ -1737,7 +1742,7 @@ export default function Jobs() {
           >
             Billing
           </button>
-        {authRole !== 'primary' && (
+        {showPrimaryRestrictedTabs && (
           <button
             type="button"
             onClick={() => {
@@ -1753,7 +1758,7 @@ export default function Jobs() {
             Parts
           </button>
         )}
-        {authRole !== 'primary' && (
+        {showPrimaryRestrictedTabs && (
           <button
             type="button"
             onClick={() => {
@@ -1769,7 +1774,7 @@ export default function Jobs() {
             Job Summary
           </button>
         )}
-        {myRole !== 'primary' && (
+        {showPrimaryRestrictedTabs && (
           <>
           <button
             type="button"

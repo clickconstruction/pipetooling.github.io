@@ -89,7 +89,7 @@ export default function CustomerForm() {
           .from('users')
           .select('id, name, email')
           .in('id', masterIds)
-          .in('role', ['master_technician', 'dev'])
+          .in('role', ['master_technician'])
           .order('name')
         if (mastersErr) {
           setAvailableMasters([])
@@ -100,7 +100,7 @@ export default function CustomerForm() {
         const { data: masters, error: mastersErr } = await supabase
           .from('users')
           .select('id, name, email')
-          .in('role', ['master_technician', 'dev'])
+          .in('role', ['master_technician'])
           .order('name')
         if (mastersErr) {
           setAvailableMasters([])

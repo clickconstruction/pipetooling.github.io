@@ -920,9 +920,6 @@ export default function Bids() {
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     const primIds = (me as { primary_service_type_ids?: string[] | null } | null)?.primary_service_type_ids
     setMyRole(role)
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:loadRole',message:'loadRole completed',data:{role},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
     } else {

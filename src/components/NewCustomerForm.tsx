@@ -132,7 +132,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
           .from('users')
           .select('id, name, email')
           .in('id', masterIds)
-          .in('role', ['master_technician', 'dev'])
+          .in('role', ['master_technician'])
           .order('name')
         if (mastersErr) {
           setAvailableMasters([])
@@ -150,7 +150,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         const { data: masters, error: mastersErr } = await supabase
           .from('users')
           .select('id, name, email')
-          .in('role', ['master_technician', 'dev'])
+          .in('role', ['master_technician'])
           .order('name')
         if (mastersErr) {
           setAvailableMasters([])
