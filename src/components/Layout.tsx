@@ -91,7 +91,7 @@ export default function Layout() {
     if (role === 'estimator' && (location.pathname === '/' || !ESTIMATOR_PATHS.includes(location.pathname))) {
       navigate('/bids', { replace: true })
     }
-    if (role === 'primary' && (location.pathname === '/' || !PRIMARY_PATHS.includes(location.pathname))) {
+    if (role === 'primary' && (location.pathname === '/' || (!PRIMARY_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
       navigate('/dashboard', { replace: true })
     }
   }, [role, location.pathname, navigate])
