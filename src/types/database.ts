@@ -3219,6 +3219,7 @@ export type Database = {
           id: string
           last_sign_in_at: string | null
           name: string
+          primary_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
@@ -3229,6 +3230,7 @@ export type Database = {
           id: string
           last_sign_in_at?: string | null
           name: string
+          primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -3239,6 +3241,7 @@ export type Database = {
           id?: string
           last_sign_in_at?: string | null
           name?: string
+          primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }

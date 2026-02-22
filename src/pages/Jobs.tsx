@@ -1202,7 +1202,7 @@ export default function Jobs() {
     const tab = searchParams.get('tab')
     const isPrimary = myRole === 'primary' || authRole === 'primary'
     if (isPrimary) {
-      const primaryTabs = ['reports', 'ledger', 'parts', 'job-summary']
+      const primaryTabs = ['reports', 'ledger']
       if (tab && primaryTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
       } else if (!tab || !primaryTabs.includes(tab)) {
@@ -1737,7 +1737,8 @@ export default function Jobs() {
           >
             Billing
           </button>
-        <button
+        {authRole !== 'primary' && (
+          <button
             type="button"
             onClick={() => {
               setActiveTab('parts')
@@ -1751,6 +1752,8 @@ export default function Jobs() {
           >
             Parts
           </button>
+        )}
+        {authRole !== 'primary' && (
           <button
             type="button"
             onClick={() => {
@@ -1765,6 +1768,7 @@ export default function Jobs() {
           >
             Job Summary
           </button>
+        )}
         {myRole !== 'primary' && (
           <>
           <button
@@ -2310,7 +2314,7 @@ export default function Jobs() {
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {job.hcp_number || '—'}
-                        {job.hcp_number && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
+                        {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
                           <button
                             type="button"
                             onClick={() => fillLaborFromBillingJobAndSwitch(job)}

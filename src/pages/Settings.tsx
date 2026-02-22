@@ -28,6 +28,7 @@ type UserRow = {
   role: UserRole
   last_sign_in_at: string | null
   estimator_service_type_ids?: string[] | null
+  primary_service_type_ids?: string[] | null
 }
 
 type PersonRow = {
@@ -117,7 +118,7 @@ const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant:
   { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no' },
   { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only' },
   { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'no', primary: 'yes' },
-  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'no' },
+  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board only' },
   { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes' },
   { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no' },
   { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', estimator: 'yes limited', primary: 'yes limited' },
@@ -284,6 +285,7 @@ export default function Settings() {
   const [editEmail, setEditEmail] = useState('')
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
+  const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
@@ -748,7 +750,7 @@ export default function Settings() {
     if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids')
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
@@ -2704,6 +2706,7 @@ export default function Settings() {
     setEditEmail(u.email)
     setEditName(u.name)
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
+    setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
     setEditError(null)
   }
 
@@ -2712,12 +2715,13 @@ export default function Settings() {
     setEditEmail('')
     setEditName('')
     setEditEstimatorServiceTypeIds([])
+    setEditPrimaryServiceTypeIds([])
     setEditError(null)
   }
 
   async function updateUserProfile(
     id: string,
-    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null },
+    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null },
     oldName?: string
   ) {
     setUpdatingId(id)
@@ -2726,6 +2730,9 @@ export default function Settings() {
     const updatePayload: Record<string, unknown> = { name: updates.name, email: updates.email }
     if (updates.estimator_service_type_ids !== undefined) {
       updatePayload.estimator_service_type_ids = updates.estimator_service_type_ids?.length ? updates.estimator_service_type_ids : null
+    }
+    if (updates.primary_service_type_ids !== undefined) {
+      updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
     }
     const { error: e } = await supabase
       .from('users')
@@ -2740,7 +2747,7 @@ export default function Settings() {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === id
-            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}) }
+            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}) }
             : u
         ),
       )
@@ -2769,18 +2776,22 @@ export default function Settings() {
       }
     }
 
-    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null } = {
+    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } = {
       name: trimmedName,
       email: trimmedEmail,
     }
     if (editingUser?.role === 'estimator') {
       updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
     }
+    if (editingUser?.role === 'primary') {
+      updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
+    }
     await updateUserProfile(editingUserId, updates, editingUser?.name)
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
     setEditEstimatorServiceTypeIds([])
+    setEditPrimaryServiceTypeIds([])
     setEditError(null)
   }
 
@@ -3836,7 +3847,14 @@ export default function Settings() {
                               .filter(Boolean)
                               .join(', ') || '—')
                           : 'All')
-                        : '—'}
+                        : u.role === 'primary'
+                          ? (u.primary_service_type_ids?.length
+                            ? (u.primary_service_type_ids
+                                .map((id) => serviceTypes.find((st) => st.id === id)?.name)
+                                .filter(Boolean)
+                                .join(', ') || '—')
+                            : 'All')
+                          : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -3905,7 +3923,7 @@ export default function Settings() {
                     <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
                       <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
-                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types</div>
+                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                             {serviceTypes.map((st) => (
@@ -3918,6 +3936,35 @@ export default function Settings() {
                                       setEditEstimatorServiceTypeIds((prev) => [...prev, st.id])
                                     } else {
                                       setEditEstimatorServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                                    }
+                                  }}
+                                  disabled={updatingId === u.id}
+                                />
+                                {st.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingUserId === u.id && u.role === 'primary' && (
+                    <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
+                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                            {serviceTypes.map((st) => (
+                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editPrimaryServiceTypeIds.includes(st.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditPrimaryServiceTypeIds((prev) => [...prev, st.id])
+                                    } else {
+                                      setEditPrimaryServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
                                     }
                                   }}
                                   disabled={updatingId === u.id}

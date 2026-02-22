@@ -521,6 +521,7 @@ export default function Bids() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
+  const [primaryServiceTypeIds, setPrimaryServiceTypeIds] = useState<string[] | null>(null)
   const [fixtureTypes, setFixtureTypes] = useState<Array<{ id: string; name: string }>>([])
   
   // Helper function to find fixture_type_id by name
@@ -907,7 +908,7 @@ export default function Bids() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids')
+      .select('role, estimator_service_type_ids, primary_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -915,8 +916,9 @@ export default function Bids() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null)?.role ?? null
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
+    const primIds = (me as { primary_service_type_ids?: string[] | null } | null)?.primary_service_type_ids
     setMyRole(role)
     // #region agent log
     fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:loadRole',message:'loadRole completed',data:{role},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
@@ -926,7 +928,12 @@ export default function Bids() {
     } else {
       setEstimatorServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator') {
+    if (role === 'primary' && primIds && primIds.length > 0) {
+      setPrimaryServiceTypeIds(primIds)
+    } else {
+      setPrimaryServiceTypeIds(null)
+    }
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary') {
       setLoading(false)
       return
     }
@@ -967,10 +974,12 @@ export default function Bids() {
     const types = (data as unknown as ServiceType[]) ?? []
     setServiceTypes(types)
     
-    // For estimators with restrictions, filter to allowed types
-    const visibleTypes = estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+    // For estimators/primaries with restrictions, filter to allowed types
+    const visibleTypes = (estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
       ? types.filter((st) => estimatorServiceTypeIds.includes(st.id))
-      : types
+      : (primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
+        ? types.filter((st) => primaryServiceTypeIds.includes(st.id))
+        : types
     const firstId = visibleTypes[0]?.id
     if (firstId) {
       setSelectedServiceTypeId((prev) => {
@@ -4967,6 +4976,15 @@ export default function Bids() {
     }
     const bidId = params.get('bidId')
     const tab = params.get('tab')
+    if (myRole === 'primary' && tab && tab !== 'bid-board') {
+      setActiveTab('bid-board')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      return
+    }
     if (tab === 'builder-review') {
       // #region agent log
       fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:urlParams',message:'URL set activeTab to builder-review',data:{tab},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
@@ -5010,10 +5028,10 @@ export default function Bids() {
         return next
       }, { replace: true })
     }
-  }, [location.search, bids, serviceTypes.length, selectedServiceTypeId])
+  }, [location.search, bids, serviceTypes.length, selectedServiceTypeId, myRole])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
       const load = async () => {
         try {
           // Load service types first
@@ -5025,11 +5043,11 @@ export default function Bids() {
       }
       load()
     }
-  }, [myRole, estimatorServiceTypeIds])
+  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds])
   
   // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
-    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
       const loadForServiceType = async () => {
         await Promise.all([loadCustomers(), loadBids(), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }
@@ -6188,10 +6206,12 @@ export default function Bids() {
     return 'Not yet won or lost'
   }
 
-  // For estimators with restrictions, only show allowed service types
-  const visibleServiceTypes = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+  // For estimators or primaries with restrictions, only show allowed service types
+  const visibleServiceTypes = (myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
-    : serviceTypes
+    : (myRole === 'primary' && primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
+      ? serviceTypes.filter((st) => primaryServiceTypeIds.includes(st.id))
+      : serviceTypes
 
   if (loading) {
     return (
@@ -6201,7 +6221,7 @@ export default function Bids() {
     )
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator') {
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary') {
     return (
       <div style={{ padding: '2rem' }}>
         <p>You do not have access to Bids.</p>
@@ -6279,6 +6299,8 @@ export default function Bids() {
         >
           Bid Board
         </button>
+        {myRole !== 'primary' && (
+          <>
         <button
           type="button"
           onClick={() => {
@@ -6378,6 +6400,8 @@ export default function Bids() {
         >
           Submission & Followup
         </button>
+          </>
+        )}
       </div>
 
       {/* Bid Board Tab */}
@@ -6391,6 +6415,7 @@ export default function Bids() {
               onChange={(e) => setBidBoardSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
+            {myRole !== 'primary' && (
             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
               <button
                 type="button"
@@ -6407,6 +6432,7 @@ export default function Bids() {
                 New
               </button>
             </div>
+            )}
           </div>
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
@@ -6422,13 +6448,13 @@ export default function Bids() {
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last<br />Contact</th>
-                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
+                  {myRole !== 'primary' && <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />}
                 </tr>
               </thead>
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={11} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={myRole === 'primary' ? 10 : 11} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
@@ -6541,6 +6567,7 @@ export default function Bids() {
                           })() : '+'}
                         </button>
                       </td>
+                      {myRole !== 'primary' && (
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
                         <button
                           type="button"
@@ -6553,6 +6580,7 @@ export default function Bids() {
                           </svg>
                         </button>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}

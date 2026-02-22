@@ -125,6 +125,7 @@ export default function Materials() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
+  const [primaryServiceTypeIds, setPrimaryServiceTypeIds] = useState<string[] | null>(null)
 
   // Part Types state
   const [partTypes, setPartTypes] = useState<PartType[]>([])
@@ -315,7 +316,7 @@ export default function Materials() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids')
+      .select('role, estimator_service_type_ids, primary_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -323,13 +324,19 @@ export default function Materials() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null)?.role ?? null
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
+    const primIds = (me as { primary_service_type_ids?: string[] | null } | null)?.primary_service_type_ids
     setMyRole(role)
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
     } else {
       setEstimatorServiceTypeIds(null)
+    }
+    if (role === 'primary' && primIds && primIds.length > 0) {
+      setPrimaryServiceTypeIds(primIds)
+    } else {
+      setPrimaryServiceTypeIds(null)
     }
     if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary') {
       setLoading(false)
@@ -352,10 +359,13 @@ export default function Materials() {
     const types = (data as unknown as ServiceType[]) ?? []
     setServiceTypes(types)
     
-    // For estimators with restrictions, filter to allowed types
-    const visibleTypes = estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
-      ? types.filter((st) => estimatorServiceTypeIds.includes(st.id))
-      : types
+    // For estimators or primaries with restrictions, filter to allowed types
+    let visibleTypes = types
+    if (estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0) {
+      visibleTypes = types.filter((st) => estimatorServiceTypeIds.includes(st.id))
+    } else if (primaryServiceTypeIds && primaryServiceTypeIds.length > 0) {
+      visibleTypes = types.filter((st) => primaryServiceTypeIds.includes(st.id))
+    }
     const firstId = visibleTypes[0]?.id
     if (firstId) {
       // Set or adjust selected: use first allowed, or keep current if still valid
@@ -1283,6 +1293,13 @@ export default function Materials() {
     const tab = searchParams.get('tab')
     if (tab === 'external-team') {
       setActiveTab('supply-houses')
+    } else if (myRole === 'primary' && (tab === 'supply-houses' || tab === 'templates-po' || tab === 'purchase-orders')) {
+      setActiveTab('price-book')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'price-book')
+        return next
+      }, { replace: true })
     } else if (tab && MATERIALS_TABS.includes(tab as typeof MATERIALS_TABS[number])) {
       setActiveTab(tab as typeof activeTab)
     } else if (!tab) {
@@ -1292,7 +1309,7 @@ export default function Materials() {
         return next
       }, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, myRole])
 
   useEffect(() => {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
@@ -1308,7 +1325,7 @@ export default function Materials() {
       }
       loadInitial()
     }
-  }, [myRole, estimatorServiceTypeIds])
+  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds])
 
   // Restore Load All mode preference from localStorage (per user); default off so filter dropdowns work
   useEffect(() => {
@@ -1374,7 +1391,7 @@ export default function Materials() {
   }, [activeTab, selectedServiceTypeId])
 
   useEffect(() => {
-    if (activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary')) {
+    if (activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant')) {
       loadSupplyHouses()
       loadSupplyHouseSummary()
       // External Team (people, external_team_*) requires dev/master/assistant; Primary has no RLS access
@@ -3041,10 +3058,12 @@ export default function Materials() {
     }
   }
 
-  // For estimators with restrictions, only show allowed service types
-  const visibleServiceTypes = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
+  // For estimators or primaries with restrictions, only show allowed service types
+  const visibleServiceTypes = (myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
-    : serviceTypes
+    : (myRole === 'primary' && primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
+      ? serviceTypes.filter((st) => primaryServiceTypeIds.includes(st.id))
+      : serviceTypes
 
   return (
     <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -3124,51 +3143,55 @@ export default function Materials() {
         >
           Assembly Book
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('templates-po')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'templates-po')
-              return next
-            })
-          }}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'templates-po' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'templates-po' ? '#3b82f6' : '#6b7280',
-            fontWeight: activeTab === 'templates-po' ? 600 : 400,
-            cursor: 'pointer',
-          }}
-        >
-          Assemblies & Purchase Orders
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('purchase-orders')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'purchase-orders')
-              return next
-            })
-          }}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'purchase-orders' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'purchase-orders' ? '#3b82f6' : '#6b7280',
-            fontWeight: activeTab === 'purchase-orders' ? 600 : 400,
-            cursor: 'pointer',
-          }}
-        >
-          Purchase Orders
-        </button>
-        {myRole !== 'estimator' && (
+        {myRole !== 'primary' && (
+          <>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('templates-po')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'templates-po')
+                return next
+              })
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'templates-po' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeTab === 'templates-po' ? '#3b82f6' : '#6b7280',
+              fontWeight: activeTab === 'templates-po' ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            Assemblies & Purchase Orders
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('purchase-orders')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'purchase-orders')
+                return next
+              })
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'purchase-orders' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeTab === 'purchase-orders' ? '#3b82f6' : '#6b7280',
+              fontWeight: activeTab === 'purchase-orders' ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            Purchase Orders
+          </button>
+          </>
+        )}
+        {myRole !== 'estimator' && myRole !== 'primary' && (
           <button
             type="button"
             onClick={() => {
@@ -6119,7 +6142,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       )}
 
       {/* Supply Houses Tab */}
-      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary') && (
+      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
