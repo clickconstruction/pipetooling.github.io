@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
@@ -77,7 +78,7 @@ const LABOR_ASSIGNED_DELIMITER = ' | '
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const [activeTab, setActiveTab] = useState<JobsTab>('receivables')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -1199,7 +1200,8 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (myRole === 'primary') {
+    const isPrimary = myRole === 'primary' || authRole === 'primary'
+    if (isPrimary) {
       setActiveTab('reports')
       if (tab !== 'reports') {
         setSearchParams((p) => {
@@ -1233,7 +1235,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, isReportEnabledOnlyUser, myRole])
+  }, [searchParams, isReportEnabledOnlyUser, myRole, authRole])
 
   useEffect(() => {
     const newJob = searchParams.get('newJob') === 'true'
@@ -1894,6 +1896,7 @@ export default function Jobs() {
       )}
 
       {activeTab === 'reports' && (
+        <ErrorBoundary>
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2123,6 +2126,7 @@ export default function Jobs() {
             })()
           )}
         </div>
+        </ErrorBoundary>
       )}
 
       {activeTab === 'sub_sheet_ledger' && (
