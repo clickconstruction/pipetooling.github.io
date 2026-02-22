@@ -3347,12 +3347,12 @@ export default function Materials() {
                             <span style={{ marginRight: '0.5rem', display: 'inline-block', width: '1rem', textAlign: 'center' }}>
                               {isExpanded ? '\u25BC' : '\u25B6'}
                             </span>
-                            {part.name}
+                            {part?.name ?? '-'}
                           </td>
                           <td style={{ padding: '0.75rem' }}>{part.manufacturer || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>{part.part_type?.name || '-'}</td>
                           <td style={{ padding: '0.75rem' }}>
-                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house.name})` : ''}
+                            {bestPrice ? `$${bestPrice.price.toFixed(2)} (${bestPrice.supply_house?.name ?? 'Unknown'})` : ''}
                           </td>
                           <td style={{ padding: '0.75rem' }}>{priceCount}</td>
                           <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
@@ -3397,7 +3397,7 @@ export default function Materials() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
                                         {part.prices.map((price) => (
                                           <div key={price.id}>
-                                            ${price.price.toFixed(2)} {price.supply_house.name}
+                                            ${price.price.toFixed(2)} {price.supply_house?.name ?? 'Unknown'}
                                           </div>
                                         ))}
                                       </div>
@@ -5041,7 +5041,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           }
                           return (
                             <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                              <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
+                              <td style={{ padding: '0.75rem' }}>{item.part?.name ?? '-'}</td>
                               <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                               <td style={{ padding: '0.75rem' }}>
                                 <select
@@ -5083,8 +5083,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                               <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                               <td style={{ padding: '0.75rem' }}>
                                 {item.source_template ? (
-                                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
-                                    From: {item.source_template.name}
+                                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
+                                    From: {item.source_template?.name ?? 'Unknown'}
                                   </span>
                                 ) : '—'}
                               </td>
@@ -5624,7 +5624,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       const isEditing = editingPOItemSupplyHouseView === item.id
                       return (
                         <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
+                          <td style={{ padding: '0.75rem' }}>{item.part?.name ?? '-'}</td>
                           <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {isEditing ? (
@@ -5840,8 +5840,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {item.source_template ? (
-                              <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template.name}`}>
-                                From: {item.source_template.name}
+                              <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
+                                From: {item.source_template?.name ?? 'Unknown'}
                               </span>
                             ) : '—'}
                           </td>
