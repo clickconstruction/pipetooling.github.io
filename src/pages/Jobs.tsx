@@ -39,7 +39,7 @@ type TallyPartRow = {
   created_by_name: string | null
 }
 
-type JobsTab = 'receivables' | 'reports' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary' | 'parts' | 'job-summary'
+type JobsTab = 'receivables' | 'reports' | 'stages' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary' | 'parts' | 'job-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -72,7 +72,7 @@ function formatCurrency(n: number): string {
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'ledger', 'sub_sheet_ledger', 'teams-summary', 'parts', 'job-summary']
+const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub_sheet_ledger', 'teams-summary', 'parts', 'job-summary']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
@@ -189,6 +189,9 @@ export default function Jobs() {
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
   const [templateSaving, setTemplateSaving] = useState(false)
+  const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
+  const [stagesSearchQuery, setStagesSearchQuery] = useState('')
+  const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -247,6 +250,23 @@ export default function Jobs() {
     }))
     setJobs(jobsWithDetails)
     setLoading(false)
+  }
+
+  async function updateJobStatus(jobId: string, toStatus: 'ready_to_bill' | 'billed' | 'paid') {
+    setStagesStatusUpdatingId(jobId)
+    setError(null)
+    const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
+    setStagesStatusUpdatingId(null)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    const result = data as { error?: string } | null
+    if (result?.error) {
+      setError(result.error)
+      return
+    }
+    await loadJobs()
   }
 
   async function loadUsers() {
@@ -1275,6 +1295,10 @@ export default function Jobs() {
   }, [laborBookEntriesVersionId])
 
   useEffect(() => {
+    if (activeTab === 'stages' && authUser?.id) loadJobs()
+  }, [activeTab, authUser?.id])
+
+  useEffect(() => {
     if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
   }, [activeTab, authUser?.id])
 
@@ -1707,6 +1731,22 @@ export default function Jobs() {
             AR
           </button>
         )}
+        {showPrimaryRestrictedTabs && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('teams-summary')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'teams-summary')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'teams-summary')}
+          >
+            Teams Summary
+          </button>
+        )}
         <button
             type="button"
             onClick={() => {
@@ -1721,6 +1761,55 @@ export default function Jobs() {
           >
             Reports
           </button>
+        {showPrimaryRestrictedTabs && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('stages')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'stages')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'stages')}
+          >
+            Stages
+          </button>
+        )}
+        {showPrimaryRestrictedTabs && (
+          <>
+          <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('sub_sheet_ledger')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'sub_sheet_ledger')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'sub_sheet_ledger')}
+          >
+            Labor
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('parts')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'parts')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'parts')}
+          >
+            Parts
+          </button>
+          </>
+        )}
         <button
             type="button"
             onClick={() => {
@@ -1739,22 +1828,6 @@ export default function Jobs() {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('parts')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'parts')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'parts')}
-          >
-            Parts
-          </button>
-        )}
-        {showPrimaryRestrictedTabs && (
-          <button
-            type="button"
-            onClick={() => {
               setActiveTab('job-summary')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
@@ -1766,38 +1839,6 @@ export default function Jobs() {
           >
             Job Summary
           </button>
-        )}
-        {showPrimaryRestrictedTabs && (
-          <>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('sub_sheet_ledger')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'sub_sheet_ledger')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'sub_sheet_ledger')}
-          >
-            Labor
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('teams-summary')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'teams-summary')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'teams-summary')}
-          >
-            Teams Summary
-          </button>
-          </>
         )}
           </div>
         </div>
@@ -2162,6 +2203,152 @@ export default function Jobs() {
           )}
         </div>
         </ErrorBoundary>
+      )}
+
+      {activeTab === 'stages' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <input
+            type="text"
+            placeholder="Search by HCP, job name, or address"
+            value={stagesSearchQuery}
+            onChange={(e) => setStagesSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+          />
+          {(() => {
+            const q = stagesSearchQuery.trim().toLowerCase()
+            const filtered = q
+              ? jobs.filter(
+                  (j) =>
+                    (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                    (j.job_name ?? '').toLowerCase().includes(q) ||
+                    (j.job_address ?? '').toLowerCase().includes(q)
+                )
+              : jobs
+            const status = (j: JobWithDetails) => (j.status ?? 'working') as string
+            const working = filtered.filter((j) => status(j) === 'working')
+            const readyToBill = filtered.filter((j) => status(j) === 'ready_to_bill')
+            const billed = filtered.filter((j) => status(j) === 'billed')
+            const paid = filtered.filter((j) => status(j) === 'paid')
+
+            function toggleStages(key: keyof typeof stagesSectionOpen) {
+              setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
+            }
+
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void) {
+              return (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job Name</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
+                        {actionLabel && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {jobList.length === 0 ? (
+                        <tr>
+                          <td colSpan={actionLabel ? 6 : 5} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                            No jobs in this group
+                          </td>
+                        </tr>
+                      ) : (
+                        jobList.map((j) => (
+                          <tr key={j.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.75rem' }}>{j.hcp_number || '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>{j.job_name || '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>{j.job_address || '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {(j.team_members ?? [])
+                                .map((t) => t.users?.name?.trim())
+                                .filter(Boolean)
+                                .join(', ') || '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                              {j.revenue != null ? formatCurrency(Number(j.revenue)) : '—'}
+                            </td>
+                            {actionLabel && (
+                              <td style={{ padding: '0.75rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => onAction(j)}
+                                  disabled={stagesStatusUpdatingId === j.id}
+                                  style={{
+                                    padding: '0.35rem 0.75rem',
+                                    fontSize: '0.8125rem',
+                                    background: '#3b82f6',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                  }}
+                                >
+                                  {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            }
+
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => toggleStages('working')}
+                  aria-expanded={stagesSectionOpen.working}
+                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
+                  Working ({working.length})
+                </button>
+                {stagesSectionOpen.working && renderStagesTable(working, 'Mark Ready for Billing', (j) => updateJobStatus(j.id, 'ready_to_bill'))}
+
+                <button
+                  type="button"
+                  onClick={() => toggleStages('readyToBill')}
+                  aria-expanded={stagesSectionOpen.readyToBill}
+                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
+                  Ready to Bill ({readyToBill.length})
+                </button>
+                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => updateJobStatus(j.id, 'billed'))}
+
+                <button
+                  type="button"
+                  onClick={() => toggleStages('billed')}
+                  aria-expanded={stagesSectionOpen.billed}
+                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
+                  Billed ({billed.length})
+                </button>
+                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => updateJobStatus(j.id, 'paid'))}
+
+                <button
+                  type="button"
+                  onClick={() => toggleStages('paid')}
+                  aria-expanded={stagesSectionOpen.paid}
+                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                >
+                  <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
+                  Paid ({paid.length})
+                </button>
+                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {})}
+              </>
+            )
+          })()}
+        </div>
       )}
 
       {activeTab === 'sub_sheet_ledger' && (

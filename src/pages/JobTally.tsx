@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 
 type JobForTally = { id: string; hcp_number: string; job_name: string; job_address: string }
+type ServiceType = { id: string; name: string }
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type TallyEntry = { id: string; fixtureName: string; partId: string; partName: string; manufacturer: string | null; quantity: number }
 
@@ -13,6 +14,8 @@ const TOUCH_MIN = 48
 export default function JobTally() {
   const { user: authUser } = useAuth()
   const [role, setRole] = useState<string | null>(null)
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
+  const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | null>(null)
   const [jobs, setJobs] = useState<JobForTally[]>([])
   const [jobsLoading, setJobsLoading] = useState(true)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
@@ -70,9 +73,31 @@ export default function JobTally() {
     }
   }, [role])
 
+  useEffect(() => {
+    supabase
+      .from('service_types')
+      .select('id, name')
+      .order('sequence_order', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (err) {
+          setError(err.message)
+          return
+        }
+        const types = (data ?? []) as ServiceType[]
+        setServiceTypes(types)
+        const plumbing = types.find((st) => st.name === 'Plumbing')
+        const defaultId = plumbing?.id ?? types[0]?.id ?? null
+        if (defaultId) setSelectedServiceTypeId((prev) => (prev && types.some((st) => st.id === prev) ? prev : defaultId))
+      })
+  }, [])
+
   const searchParts = useCallback(
     (term: string) => {
       if (!term.trim()) {
+        setPartResults([])
+        return
+      }
+      if (!selectedServiceTypeId) {
         setPartResults([])
         return
       }
@@ -81,6 +106,7 @@ export default function JobTally() {
       supabase
         .from('material_parts')
         .select('id, name, manufacturer, notes')
+        .eq('service_type_id', selectedServiceTypeId)
         .or(`name.ilike.%${q}%,manufacturer.ilike.%${q}%,notes.ilike.%${q}%`)
         .limit(30)
         .order('name')
@@ -93,7 +119,7 @@ export default function JobTally() {
           setPartResults((data ?? []) as MaterialPart[])
         })
     },
-    []
+    [selectedServiceTypeId]
   )
 
   useEffect(() => {
@@ -190,11 +216,39 @@ export default function JobTally() {
 
   return (
     <div style={{ padding: '1rem', maxWidth: 480, margin: '0 auto' }}>
-      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <Link to="/dashboard" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
-        <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Job Parts Tally</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+          <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Job Parts Tally</h1>
+          {serviceTypes.length === 0 ? (
+            <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>Loading…</span>
+          ) : (
+            <select
+              value={selectedServiceTypeId ?? ''}
+              onChange={(e) => {
+                const id = e.target.value || null
+                setSelectedServiceTypeId(id)
+                setPartResults([])
+                setPartSearch('')
+              }}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.8125rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: '#fff',
+              }}
+            >
+            {serviceTypes.map((st) => (
+              <option key={st.id} value={st.id}>
+                {st.name}
+              </option>
+            ))}
+          </select>
+          )}
+        </div>
       </div>
 
       {error && (

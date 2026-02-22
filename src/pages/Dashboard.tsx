@@ -196,6 +196,13 @@ export default function Dashboard() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
+  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [readyToBillLoading, setReadyToBillLoading] = useState(false)
+  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>>([])
+  const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
+  const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -575,6 +582,75 @@ export default function Dashboard() {
     })
     return () => { cancelled = true }
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    setAssignedJobsLoading(true)
+    supabase
+      .rpc('list_assigned_jobs_for_dashboard')
+      .then(({ data, error }) => {
+        setAssignedJobsLoading(false)
+        if (error) return
+        setAssignedJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+      })
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
+    setReadyToBillLoading(true)
+    supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, job_name, job_address, revenue')
+      .eq('status', 'ready_to_bill')
+      .order('hcp_number', { ascending: false })
+      .then(({ data, error }) => {
+        setReadyToBillLoading(false)
+        if (error) return
+        setReadyToBillJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+      })
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
+    setWaitingForPaymentLoading(true)
+    supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, job_name, job_address, revenue')
+      .eq('status', 'billed')
+      .order('hcp_number', { ascending: false })
+      .then(({ data, error }) => {
+        setWaitingForPaymentLoading(false)
+        if (error) return
+        setWaitingForPaymentJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+      })
+  }, [authUser?.id, role])
+
+  async function updateJobStatus(jobId: string, toStatus: 'ready_to_bill' | 'billed' | 'paid') {
+    setJobStatusUpdatingId(jobId)
+    const { data, error } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
+    setJobStatusUpdatingId(null)
+    if (error) {
+      showToast?.(error.message, 'error')
+      return
+    }
+    const result = data as { error?: string } | null
+    if (result?.error) {
+      showToast?.(result.error, 'error')
+      return
+    }
+    showToast?.('Status updated', 'success')
+    setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
+    setReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
+    setWaitingForPaymentJobs((prev) => prev.filter((j) => j.id !== jobId))
+    if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
+      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
+      if (readyData) setReadyToBillJobs(readyData as typeof readyToBillJobs)
+      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').eq('status', 'billed').order('hcp_number', { ascending: false })
+      if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
+    }
+    const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
+    if (assignedData) setAssignedJobs(assignedData as typeof assignedJobs)
+  }
 
   useEffect(() => {
     if (!completedItemsOpen || !authUser?.id || !isDev) return
@@ -1820,7 +1896,11 @@ export default function Dashboard() {
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
           >
-            {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks (7 days)
+            {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks (last 7 days)
+            {(() => {
+              const n = completedItems.filter((inst) => !readInstanceIds.has(inst.id)).length
+              return n > 0 ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{' - '}{n} UNREAD</span> : null
+            })()}
           </h2>
           {completedItemsOpen && (
             <>
@@ -1845,6 +1925,7 @@ export default function Dashboard() {
                       {Array.from(byCompleter.entries()).map(([completerId, items]) => {
                         const isExpanded = expandedCompleterIds.has(completerId)
                         const completerName = getUserName(completerId === 'unknown' ? null : completerId)
+                        const unreadCount = items.filter((inst) => !readInstanceIds.has(inst.id)).length
                         return (
                           <li key={completerId} style={{ marginBottom: '0.5rem' }}>
                             <div
@@ -1875,7 +1956,7 @@ export default function Dashboard() {
                             >
                               <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                               <span style={{ fontWeight: 500 }}>{completerName}</span>
-                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
+                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''}{unreadCount > 0 ? ` · ${unreadCount} unread` : ''})</span>
                             </div>
                             {isExpanded && (
                               <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
@@ -1933,6 +2014,200 @@ export default function Dashboard() {
                 })()
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {(assignedJobsLoading || assignedJobs.length > 0) && (
+        <div style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Assigned Jobs</h2>
+          {assignedJobsLoading && assignedJobs.length === 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {[1, 2].map((i) => (
+                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div>
+              {assignedJobs.map((j) => (
+                <div
+                  key={j.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
+                      {j.revenue != null && (
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
+                        <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                          View
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => updateJobStatus(j.id, 'ready_to_bill')}
+                        disabled={jobStatusUpdatingId === j.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {jobStatusUpdatingId === j.id ? '…' : 'Ready for billing'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (readyToBillLoading || readyToBillJobs.length > 0) && (
+        <div style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Ready to Bill</h2>
+          {readyToBillLoading && readyToBillJobs.length === 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {[1, 2].map((i) => (
+                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div>
+              {readyToBillJobs.map((j) => (
+                <div
+                  key={j.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
+                      {j.revenue != null && (
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => updateJobStatus(j.id, 'billed')}
+                        disabled={jobStatusUpdatingId === j.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {jobStatusUpdatingId === j.id ? '…' : 'Mark as Billed'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentJobs.length > 0) && (
+        <div style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Waiting for Payment</h2>
+          {waitingForPaymentLoading && waitingForPaymentJobs.length === 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {[1, 2].map((i) => (
+                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div>
+              {waitingForPaymentJobs.map((j) => (
+                <div
+                  key={j.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
+                      {j.revenue != null && (
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => updateJobStatus(j.id, 'paid')}
+                        disabled={jobStatusUpdatingId === j.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {jobStatusUpdatingId === j.id ? '…' : 'Mark as Paid'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

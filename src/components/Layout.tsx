@@ -459,7 +459,7 @@ export default function Layout() {
         <div style={{ flex: 1 }}>
           <Outlet />
         </div>
-        {authUser?.id && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
+        {authUser?.id && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
             style={{
               padding: '0.5rem 1rem',

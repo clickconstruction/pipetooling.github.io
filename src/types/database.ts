@@ -1075,6 +1075,7 @@ export type Database = {
           job_name: string
           master_user_id: string
           revenue: number | null
+          status: string
           updated_at: string | null
         }
         Insert: {
@@ -1085,6 +1086,7 @@ export type Database = {
           job_name?: string
           master_user_id: string
           revenue?: number | null
+          status?: string
           updated_at?: string | null
         }
         Update: {
@@ -1095,6 +1097,7 @@ export type Database = {
           job_name?: string
           master_user_id?: string
           revenue?: number | null
+          status?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -1209,6 +1212,48 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_status_events: {
+        Row: {
+          id: string
+          job_id: string
+          from_status: string | null
+          to_status: string
+          changed_at: string
+          changed_by_user_id: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          from_status?: string | null
+          to_status: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          from_status?: string | null
+          to_status?: string
+          changed_at?: string
+          changed_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_status_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_status_events_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3589,6 +3634,22 @@ export type Database = {
       list_jobs_for_tally: {
         Args: never
         Returns: { id: string; hcp_number: string; job_name: string; job_address: string }[]
+      }
+      list_assigned_jobs_for_dashboard: {
+        Args: never
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          revenue: number | null
+          master_user_id: string
+          created_at: string | null
+        }[]
+      }
+      update_job_status: {
+        Args: { p_job_id: string; p_to_status: string }
+        Returns: Record<string, unknown>
       }
       list_tally_parts_with_po: {
         Args: never
