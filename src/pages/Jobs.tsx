@@ -179,7 +179,6 @@ export default function Jobs() {
   const [reportsExpandedJobs, setReportsExpandedJobs] = useState<Set<string>>(new Set())
   const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
-  const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
@@ -301,12 +300,6 @@ export default function Jobs() {
       setReportsList((Array.isArray(data) ? data : []) as ReportWithJob[])
     }
     setReportsLoading(false)
-  }
-
-  async function loadReportEnabledOnlyStatus() {
-    if (!authUser?.id) return
-    const { data } = await supabase.from('report_enabled_users').select('user_id').eq('user_id', authUser.id).maybeSingle()
-    setIsReportEnabledOnlyUser(!!data)
   }
 
   async function deleteReport(id: string) {
@@ -1234,13 +1227,6 @@ export default function Jobs() {
         return next
       }, { replace: true })
       setActiveTab('sub_sheet_ledger')
-    } else if (tab === 'reports' && isReportEnabledOnlyUser) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'receivables')
-        return next
-      }, { replace: true })
-      setActiveTab('receivables')
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
@@ -1250,7 +1236,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, isReportEnabledOnlyUser, myRole, authRole])
+  }, [searchParams, myRole, authRole])
 
   useEffect(() => {
     const newJob = searchParams.get('newJob') === 'true'
@@ -1354,10 +1340,6 @@ export default function Jobs() {
   useEffect(() => {
     if (activeTab === 'reports' && authUser?.id) loadReports()
   }, [activeTab, authUser?.id])
-
-  useEffect(() => {
-    if (authUser?.id) loadReportEnabledOnlyStatus()
-  }, [authUser?.id])
 
   useEffect(() => {
     if ((laborModalOpen || editingLaborJob) && !editingLaborJob && authUser?.id && laborRate === '') {
@@ -1725,8 +1707,7 @@ export default function Jobs() {
             AR
           </button>
         )}
-        {(!isReportEnabledOnlyUser || myRole === 'primary') && (
-          <button
+        <button
             type="button"
             onClick={() => {
               setActiveTab('reports')
@@ -1740,7 +1721,6 @@ export default function Jobs() {
           >
             Reports
           </button>
-        )}
         <button
             type="button"
             onClick={() => {

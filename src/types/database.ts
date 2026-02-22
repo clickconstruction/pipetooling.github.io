@@ -3569,6 +3569,23 @@ export type Database = {
           job_hcp_number: string
         }[]
       }
+      list_my_reports: {
+        Args: never
+        Returns: {
+          id: string
+          template_id: string
+          template_name: string
+          created_by_user_id: string
+          created_by_name: string
+          created_at: string
+          updated_at: string
+          field_values: Record<string, string>
+          job_ledger_id: string | null
+          project_id: string | null
+          job_display_name: string
+          job_hcp_number: string
+        }[]
+      }
       list_jobs_for_tally: {
         Args: never
         Returns: { id: string; hcp_number: string; job_name: string; job_address: string }[]

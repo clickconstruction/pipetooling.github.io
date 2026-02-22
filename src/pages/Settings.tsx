@@ -365,7 +365,6 @@ export default function Settings() {
   }
 
   const [viewingOrphanPrices, setViewingOrphanPrices] = useState(false)
-  const [maintenanceMaterialsPricesExpanded, setMaintenanceMaterialsPricesExpanded] = useState(false)
   const [roleVisibilityExpanded, setRoleVisibilityExpanded] = useState(false)
   const [orphanPrices, setOrphanPrices] = useState<OrphanedPriceRow[]>([])
   const [loadingOrphanPrices, setLoadingOrphanPrices] = useState(false)
@@ -426,6 +425,10 @@ export default function Settings() {
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
+  const [activeAccountsSectionOpen, setActiveAccountsSectionOpen] = useState(false)
+  const [roleSharingSectionOpen, setRoleSharingSectionOpen] = useState(false)
+  const [managePartsSectionOpen, setManagePartsSectionOpen] = useState(false)
+  const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
   const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
   const [reportSettingsSectionOpen, setReportSettingsSectionOpen] = useState(false)
@@ -3328,9 +3331,6 @@ export default function Settings() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '1rem',
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
           }}
           onClick={() => setNotificationHistoryOpen((o) => !o)}
           role="button"
@@ -3514,37 +3514,12 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
-          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Default Labor Rate (dev)</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
-          </p>
-          <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-            <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
-            <input
-              id="default-labor-rate"
-              type="number"
-              min={0}
-              step={0.01}
-              value={defaultLaborRate}
-              onChange={(e) => setDefaultLaborRate(e.target.value)}
-              placeholder="e.g. 75"
-              style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-            />
-            <button
-              type="submit"
-              disabled={defaultLaborRateSaving}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-            >
-              {defaultLaborRateSaving ? 'Saving…' : 'Save'}
-            </button>
-          </form>
-
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Data backup (dev)</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
             Export projects (customers, projects, workflows, steps, line items, projections), materials (supply houses, parts, prices, assemblies, assembly items), or bids (bids, counts, takeoffs, cost estimates, pricing / price book, purchase orders and PO items) as JSON for backup. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
           </p>
           {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
             <button
               type="button"
               onClick={exportProjectsBackup}
@@ -3571,121 +3546,147 @@ export default function Settings() {
             </button>
           </div>
 
-          <h3 style={{ marginTop: '2rem', marginBottom: '0.5rem' }}>Duplicate Materials</h3>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Default Labor Rate (dev)</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Find and delete duplicate material parts in the price book (matching names or 80%+ similarity).
+            Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
           </p>
-          <Link
-            to="/duplicates"
-            style={{ padding: '0.5rem 1rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, textDecoration: 'none', fontWeight: 500, display: 'inline-block' }}
-          >
-            View Duplicate Materials
-          </Link>
+          <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+            <label htmlFor="default-labor-rate" style={{ fontWeight: 500 }}>Labor rate ($/hr)</label>
+            <input
+              id="default-labor-rate"
+              type="number"
+              min={0}
+              step={0.01}
+              value={defaultLaborRate}
+              onChange={(e) => setDefaultLaborRate(e.target.value)}
+              placeholder="e.g. 75"
+              style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            />
+            <button
+              type="submit"
+              disabled={defaultLaborRateSaving}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            >
+              {defaultLaborRateSaving ? 'Saving…' : 'Save'}
+            </button>
+          </form>
 
-          <h3
-            style={{
-              marginTop: '2rem',
-              marginBottom: maintenanceMaterialsPricesExpanded ? '0.5rem' : 0,
-              cursor: 'pointer',
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-            onClick={() => setMaintenanceMaterialsPricesExpanded(prev => !prev)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setMaintenanceMaterialsPricesExpanded(prev => !prev)
-              }
-            }}
-          >
-            <span style={{ transform: maintenanceMaterialsPricesExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
-            Maintenance: Materials prices
-          </h3>
-          {maintenanceMaterialsPricesExpanded && (
-            <>
-              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setViewingOrphanPrices(true)
-                  loadOrphanMaterialPrices()
-                }}
-                style={{ padding: '0.5rem 1rem', background: '#92400e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-              >
-                Review orphaned material prices
-              </button>
-            </>
-          )}
-
-          <h3
-            style={{
-              marginTop: '2rem',
-              marginBottom: roleVisibilityExpanded ? '0.5rem' : 0,
-              cursor: 'pointer',
-              userSelect: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-            onClick={() => setRoleVisibilityExpanded(prev => !prev)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                setRoleVisibilityExpanded(prev => !prev)
-              }
-            }}
-          >
-            <span style={{ transform: roleVisibilityExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
-            Role visibility (what each role can see)
-          </h3>
-          {roleVisibilityExpanded && (
-            <>
-              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
-              </p>
-              <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
-                <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
-                      <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PAGE_ACCESS.map((row) => (
-                      <tr key={row.page}>
-                        <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                        {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary'] as const).map((role) => {
-                          const val = row[role]
-                          return (
-                            <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                              {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
-                            </td>
-                          )
-                        })}
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{roleVisibilityExpanded ? '▼' : '▶'}</span>
+              Role visibility (what each role can see)
+            </button>
+            {roleVisibilityExpanded && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
+                </p>
+                <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
+                  <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
+                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {PAGE_ACCESS.map((row) => (
+                        <tr key={row.page}>
+                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
+                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary'] as const).map((role) => {
+                            const val = row[role]
+                            return (
+                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                                {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                  Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only).
+                </p>
+                <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
+                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+                  Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
+                </p>
+                {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
+                {payApprovedMasters.length === 0 ? (
+                  <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+                    {payApprovedMasters.map((m) => {
+                      const isApproved = payApprovedMasterIds.has(m.id)
+                      return (
+                        <label
+                          key={m.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.5rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 4,
+                            cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
+                            background: isApproved ? '#f0fdf4' : 'white',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isApproved}
+                            onChange={() => togglePayApproved(m.id, isApproved)}
+                            disabled={payApprovedSaving}
+                            style={{ cursor: payApprovedSaving ? 'not-allowed' : 'pointer' }}
+                          />
+                          <span style={{ flex: 1 }}>
+                            <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
+                            {m.email && m.name && (
+                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                ({m.email})
+                              </span>
+                            )}
+                            {m.role === 'dev' && (
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
+                            )}
+                          </span>
+                          {isApproved && (
+                            <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                              Approved
+                            </span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
-                Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only).
-              </p>
-            </>
-          )}
+            )}
+          </div>
         </>
       )}
 
@@ -3755,10 +3756,34 @@ export default function Settings() {
 
       {myRole === 'dev' && (
         <>
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setActiveAccountsSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{activeAccountsSectionOpen ? '▼' : '▶'}</span>
+              Active Accounts
+            </button>
+            {activeAccountsSectionOpen && (
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             Set user class for everyone who has signed up. Only owners can change these.
           </p>
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" onClick={openInvite} style={{ padding: '0.5rem 1rem' }}>
               Invite via email
             </button>
@@ -4107,6 +4132,9 @@ export default function Settings() {
               )}
             </div>
           )}
+            </div>
+            )}
+          </div>
         </>
       )}
 
@@ -4196,8 +4224,31 @@ export default function Settings() {
       )}
 
       {(myRole === 'master_technician' || myRole === 'dev') && (
-        <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Assistants</h2>
+        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button
+            type="button"
+            onClick={() => setRoleSharingSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{roleSharingSectionOpen ? '▼' : '▶'}</span>
+            Sharing and Adoption
+          </button>
+          {roleSharingSectionOpen && (
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Adopt Assistants</h2>
           {myRole === 'dev' && (
             <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
               <label htmlFor="adoption-master-select" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
@@ -4265,11 +4316,6 @@ export default function Settings() {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {(myRole === 'master_technician' || myRole === 'dev') && (
-        <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Primaries</h2>
           {myRole === 'dev' && (
             <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
@@ -4338,11 +4384,6 @@ export default function Settings() {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {(myRole === 'master_technician' || myRole === 'dev') && (
-        <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Share with other Master</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             Share your customers and projects with another master. They will see your jobs with assistant-level access (cannot see private notes or financials).
@@ -4393,70 +4434,37 @@ export default function Settings() {
               })}
             </div>
           )}
-        </>
-      )}
-
-      {myRole === 'dev' && (
-        <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Pay Approved Masters</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
-          </p>
-          {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
-          {payApprovedMasters.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
-              {payApprovedMasters.map((m) => {
-                const isApproved = payApprovedMasterIds.has(m.id)
-                return (
-                  <label
-                    key={m.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 4,
-                      cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
-                      background: isApproved ? '#f0fdf4' : 'white',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isApproved}
-                      onChange={() => togglePayApproved(m.id, isApproved)}
-                      disabled={payApprovedSaving}
-                      style={{ cursor: payApprovedSaving ? 'not-allowed' : 'pointer' }}
-                    />
-                    <span style={{ flex: 1 }}>
-                      <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
-                      {m.email && m.name && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                          ({m.email})
-                        </span>
-                      )}
-                      {m.role === 'dev' && (
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
-                      )}
-                    </span>
-                    {isApproved && (
-                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
-                        Approved
-                      </span>
-                    )}
-                  </label>
-                )
-              })}
-            </div>
+          </div>
           )}
-        </>
+        </div>
       )}
 
       {myRole === 'dev' && (
-        <>
-          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Me</h2>
+        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button
+            type="button"
+            onClick={() => setAdditionalPeopleSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{additionalPeopleSectionOpen ? '▼' : '▶'}</span>
+            Additional People
+          </button>
+          {additionalPeopleSectionOpen && (
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>People Created by Me</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             People entries in your roster.
           </p>
@@ -4642,7 +4650,9 @@ export default function Settings() {
             </div>
           )}
           {nonUserPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by other users.</p>}
-        </>
+          </div>
+          )}
+        </div>
       )}
 
       {inviteOpen && (
@@ -5008,65 +5018,42 @@ export default function Settings() {
         </div>
       )}
 
-      <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
-        <button
-          type="button"
-          onClick={() => setAdvancedSectionOpen((prev) => !prev)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            margin: 0,
-            padding: '1rem',
-            width: '100%',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '0.9375rem',
-            fontWeight: 500,
-            textAlign: 'left',
-            color: '#6b7280',
-          }}
-        >
-          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
-          Advanced
-        </button>
-        {advancedSectionOpen && (
-          <div style={{ padding: '1rem 0 0 0' }}>
-            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
-                <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
-                  Fix app
-                </a>{' '}
-                to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
-              </p>
-            </div>
-            <form onSubmit={handleClaimCode}>
-              <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input
-                  id="code"
-                  type="text"
-                  value={code}
-                  onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
-                  disabled={codeSubmitting}
-                  placeholder="Admin code"
-                  style={{ padding: '0.5rem', minWidth: 160 }}
-                  autoComplete="one-time-code"
-                />
-                <button type="submit" disabled={codeSubmitting || !code.trim()}>
-                  {codeSubmitting ? 'Checking…' : 'Submit'}
-                </button>
-              </div>
-              {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
-            </form>
-          </div>
-        )}
-      </div>
-
-      {myRole === 'dev' && (
+      {(myRole === 'dev' || myRole === 'estimator') && (
+        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button
+            type="button"
+            onClick={() => setManagePartsSectionOpen((prev) => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              margin: 0,
+              padding: '1rem',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem' }}>{managePartsSectionOpen ? '▼' : '▶'}</span>
+            Manage Parts
+          </button>
+          {managePartsSectionOpen && (
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Duplicate Materials</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Find and delete duplicate material parts in the price book (matching names or 80%+ similarity).
+          </p>
+          <Link
+            to="/duplicates"
+            style={{ padding: '0.5rem 1rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, textDecoration: 'none', fontWeight: 500, display: 'inline-block' }}
+          >
+            View Duplicate Materials
+          </Link>
+          {myRole === 'dev' && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Service Types</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
@@ -5953,11 +5940,29 @@ export default function Settings() {
           )}
         </>
       )}
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Maintenance: Materials prices</h2>
+          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setViewingOrphanPrices(true)
+              loadOrphanMaterialPrices()
+            }}
+            style={{ padding: '0.5rem 1rem', background: '#92400e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+          >
+            Review orphaned material prices
+          </button>
+          </div>
+          )}
+        </div>
+      )}
 
       {myRole === 'dev' && (
         <>
           {/* Notification Templates - collapsible, above Email Templates */}
-          <div style={{ marginTop: '2rem' }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setNotificationTemplatesSectionOpen((prev) => !prev)}
@@ -5980,7 +5985,7 @@ export default function Settings() {
               Notification Templates
             </button>
             {notificationTemplatesSectionOpen && (
-              <div style={{ padding: '1rem 0 0 0' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Customize push notification title and body shown to users. Use variables like {NOTIFICATION_VARIABLE_HINT}.
                 </p>
@@ -6074,7 +6079,7 @@ export default function Settings() {
           </div>
 
           {/* Email Templates - collapsible, collapsed by default */}
-          <div style={{ marginTop: '2rem' }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEmailTemplatesSectionOpen((prev) => !prev)}
@@ -6097,7 +6102,7 @@ export default function Settings() {
               Email Templates
             </button>
             {emailTemplatesSectionOpen && (
-              <div style={{ padding: '1rem 0 0 0' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
                 </p>
@@ -6456,8 +6461,8 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Report settings - collapsible, dev-only */}
-          <div style={{ marginTop: '2rem' }}>
+          {/* Dashboard: Report Review - collapsible, dev-only */}
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setReportSettingsSectionOpen((prev) => !prev)}
@@ -6477,10 +6482,10 @@ export default function Settings() {
               }}
             >
               <span style={{ fontSize: '0.75rem' }}>{reportSettingsSectionOpen ? '▼' : '▶'}</span>
-              Report settings
+              Dashboard: Report Review
             </button>
             {reportSettingsSectionOpen && (
-              <div style={{ padding: '1rem 0 0 0' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <form onSubmit={saveReportSettings}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Report edit window (days)</label>
@@ -6494,7 +6499,7 @@ export default function Settings() {
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and estimators selected here get the New Report button on Dashboard but cannot see the Reports section on Jobs.</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and estimators selected here can see the Recent Reports section on their Dashboard. Unselected subcontractors and estimators do not see Recent Reports. All users can create reports via the Job Report button.</p>
                     <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
                       {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator').map((u) => (
                         <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
@@ -6540,7 +6545,7 @@ export default function Settings() {
             }}
           >
             <span style={{ fontSize: '0.75rem' }}>{financialPinsSectionOpen ? '▼' : '▶'}</span>
-            Financial Pins
+            Dashboard Page Pins
           </button>
           {financialPinsSectionOpen && (
             <div style={{ padding: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -7009,6 +7014,64 @@ export default function Settings() {
           )}
         </div>
       )}
+
+      <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+        <button
+          type="button"
+          onClick={() => setAdvancedSectionOpen((prev) => !prev)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            margin: 0,
+            padding: '1rem',
+            width: '100%',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '0.9375rem',
+            fontWeight: 500,
+            textAlign: 'left',
+            color: '#6b7280',
+          }}
+        >
+          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
+          Advanced
+        </button>
+        {advancedSectionOpen && (
+          <div style={{ padding: '1rem 0 0 0' }}>
+            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
+                <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
+                  Fix app
+                </a>{' '}
+                to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
+              </p>
+            </div>
+            <form onSubmit={handleClaimCode}>
+              <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  id="code"
+                  type="text"
+                  value={code}
+                  onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
+                  disabled={codeSubmitting}
+                  placeholder="Admin code"
+                  style={{ padding: '0.5rem', minWidth: 160 }}
+                  autoComplete="one-time-code"
+                />
+                <button type="submit" disabled={codeSubmitting || !code.trim()}>
+                  {codeSubmitting ? 'Checking…' : 'Submit'}
+                </button>
+              </div>
+              {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
+            </form>
+          </div>
+        )}
+      </div>
 
     </div>
   )

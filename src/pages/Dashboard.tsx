@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
 import ReportViewModal from '../components/ReportViewModal'
+import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
+import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import {
   getPinned,
   getPinnedForUserFromSupabase,
@@ -186,6 +188,12 @@ export default function Dashboard() {
   const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> } | null>(null)
   const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
   const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(new Set())
+  const [myReports, setMyReports] = useState<Array<{ id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string> }>>([])
+  const [myReportsLoading, setMyReportsLoading] = useState(false)
+  const [reportEditWindowDays, setReportEditWindowDays] = useState(2)
+  const [editReportModalOpen, setEditReportModalOpen] = useState(false)
+  const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
+  const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -287,10 +295,13 @@ export default function Dashboard() {
   }, [authUser?.id])
 
   const loadRecentReportsRef = useRef<() => void>(() => {})
+  const loadMyReportsRef = useRef<() => void>(() => {})
+
+  const showMyReports = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary' || role === 'subcontractor'
 
   useEffect(() => {
     if (!authUser?.id) return
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -315,18 +326,51 @@ export default function Dashboard() {
   }, [authUser?.id, role, isReportEnabledOnlyUser])
 
   useEffect(() => {
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser
-    if (!showRecent) return
+    if (!authUser?.id || !showMyReports) return
+    setMyReportsLoading(true)
+    const load = async () => {
+      try {
+        const [{ data: reportSettings }, { data }] = await Promise.all([
+          supabase.from('app_settings').select('key, value_num').eq('key', 'report_edit_window_days').maybeSingle(),
+          supabase.rpc('list_my_reports'),
+        ])
+        const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
+        setReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
+        const arr = Array.isArray(data) ? data : []
+        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string> }) => ({
+          id: r.id,
+          template_id: r.template_id,
+          template_name: r.template_name,
+          job_display_name: r.job_display_name,
+          job_ledger_id: r.job_ledger_id ?? null,
+          project_id: r.project_id ?? null,
+          created_at: r.created_at,
+          created_by_name: r.created_by_name,
+          field_values: r.field_values as Record<string, string> | undefined,
+        }))
+        setMyReports(list)
+      } finally {
+        setMyReportsLoading(false)
+      }
+    }
+    loadMyReportsRef.current = load
+    load()
+  }, [authUser?.id, showMyReports])
+
+  useEffect(() => {
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
+    if (!showRecent && !showMyReports) return
     const channel = supabase
       .channel('dashboard-reports-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
         loadRecentReportsRef.current?.()
+        loadMyReportsRef.current?.()
       })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [role, isReportEnabledOnlyUser])
+  }, [role, isReportEnabledOnlyUser, showMyReports])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1085,6 +1129,7 @@ export default function Dashboard() {
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
 
   return (
     <div>
@@ -1224,16 +1269,18 @@ export default function Dashboard() {
           </Link>
       </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser && (
+      {showRecent && (
         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>New report</button>
-            <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+            {!isReportEnabledOnlyUser && (
+              <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+            )}
           </div>
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser && (
+      {showRecent && (
         <div style={{ marginBottom: '1rem' }}>
           {recentReportsLoading ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
@@ -1296,19 +1343,83 @@ export default function Dashboard() {
               })}
             </ul>
           ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link></p>
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              No reports yet.{' '}
+              {isReportEnabledOnlyUser ? (
+                'Create one above.'
+              ) : (
+                <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
+              )}
+            </p>
           )}
         </div>
       )}
-      {isReportEnabledOnlyUser && (
+      {showMyReports && (
         <div style={{ marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setNewReportModalOpen(true)}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-          >
-            New report
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Reports</h2>
+            {!myReportsLoading && myReports.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setMyReportsModalOpen(true)}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+              >
+                Show more →
+              </button>
+            )}
+          </div>
+          {myReportsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+          ) : myReports.length > 0 ? (
+            (() => {
+              const r = myReports[0]!
+              const editWindowMs = reportEditWindowDays * 24 * 60 * 60 * 1000
+              const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
+              return (
+                <div
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    background: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <div
+                    style={{ flex: 1, minWidth: 0 }}
+                    onClick={() => {
+                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values })
+                      setViewReportModalOpen(true)
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      {new Date(r.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  {isWithinEditWindow && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                        setEditReportModalOpen(true)
+                      }}
+                      style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              )
+            })()
+          ) : (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one with the Job Report button above.</p>
+          )}
         </div>
       )}
       {visiblePins.length > 0 && (
@@ -1930,6 +2041,32 @@ export default function Dashboard() {
           if (selectedReport) setReadReportIds((prev) => new Set(prev).add(selectedReport.id))
           setViewReportModalOpen(false)
           setSelectedReport(null)
+        }}
+      />
+      <ReportEditModal
+        open={editReportModalOpen}
+        report={reportForEdit}
+        onClose={() => {
+          setEditReportModalOpen(false)
+          setReportForEdit(null)
+        }}
+        onSaved={() => {
+          loadMyReportsRef.current?.()
+        }}
+      />
+      <MyReportsModal
+        open={myReportsModalOpen}
+        onClose={() => setMyReportsModalOpen(false)}
+        reports={myReports as ReportForMyReports[]}
+        reportEditWindowDays={reportEditWindowDays}
+        onViewReport={(r) => {
+          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values })
+          setViewReportModalOpen(true)
+        }}
+        onEditReport={(r) => {
+          setMyReportsModalOpen(false)
+          setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+          setEditReportModalOpen(true)
         }}
       />
     </div>
