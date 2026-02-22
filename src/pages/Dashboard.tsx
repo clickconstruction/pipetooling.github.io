@@ -12,6 +12,7 @@ import {
   getPinnedForUserFromSupabase,
   type PinnedItem,
 } from '../lib/pinnedTabs'
+import { useToastContext } from '../contexts/ToastContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useARTotal } from '../hooks/useARTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
@@ -168,6 +169,7 @@ export default function Dashboard() {
   const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
   const [sendTaskSaving, setSendTaskSaving] = useState(false)
   const [sendTaskError, setSendTaskError] = useState<string | null>(null)
+  const [adoptedAssistants, setAdoptedAssistants] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
@@ -197,6 +199,8 @@ export default function Dashboard() {
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
+  const isMaster = role === 'master_technician'
+  const { showToast } = useToastContext()
   const checklistAddModal = useChecklistAddModal()
   const visiblePins = filterPinnedByRole(pinnedRoutes, role)
   const pinsToShow = visiblePins.filter((p) => p.path !== '/dashboard' && p.path !== '/')
@@ -218,6 +222,26 @@ export default function Dashboard() {
       })
     }
   }, [canSendTask, isDev])
+
+  useEffect(() => {
+    if (isMaster && authUser?.id) {
+      supabase
+        .from('master_assistants')
+        .select('assistant_id')
+        .eq('master_id', authUser.id)
+        .then(async ({ data: adoptions }) => {
+          if (!adoptions?.length) {
+            setAdoptedAssistants([])
+            return
+          }
+          const ids = (adoptions as { assistant_id: string }[]).map((a) => a.assistant_id)
+          const { data: users } = await supabase.from('users').select('id, name, email').in('id', ids).order('name')
+          setAdoptedAssistants((users ?? []) as Array<{ id: string; name: string; email: string }>)
+        })
+    } else {
+      setAdoptedAssistants([])
+    }
+  }, [isMaster, authUser?.id])
 
   async function refreshPinned() {
     if (!authUser?.id) {
@@ -770,6 +794,69 @@ export default function Dashboard() {
     }
   }
 
+  async function sendTaskToAssistant(assistantId: string, assistantName: string) {
+    if (!authUser?.id || sendTaskSaving) return
+    const title = sendTaskTitle.trim()
+    if (!title) {
+      setSendTaskError('Enter a task first.')
+      return
+    }
+    setSendTaskError(null)
+    setSendTaskSaving(true)
+    const today = toLocalDateString(new Date())
+    const { data: itemData, error: itemErr } = await supabase
+      .from('checklist_items')
+      .insert({
+        title,
+        assigned_to_user_id: assistantId,
+        created_by_user_id: authUser.id,
+        repeat_type: 'once',
+        repeat_days_of_week: null,
+        repeat_days_after: null,
+        repeat_end_date: null,
+        start_date: today,
+        show_until_completed: sendTaskShowUntilCompleted,
+        notify_on_complete_user_id: sendTaskNotifyOnCompleteUserId || null,
+        notify_creator_on_complete: sendTaskNotifyMe,
+      })
+      .select('id')
+      .single()
+    setSendTaskSaving(false)
+    if (itemErr) {
+      setSendTaskError(itemErr.message)
+      return
+    }
+    const itemId = (itemData as { id: string })?.id
+    if (!itemId) return
+    const { error: instErr } = await supabase.from('checklist_instances').insert({
+      checklist_item_id: itemId,
+      scheduled_date: today,
+      assigned_to_user_id: assistantId,
+    })
+    if (instErr) {
+      setSendTaskError(instErr.message)
+      return
+    }
+    try {
+      await supabase.functions.invoke('send-checklist-notification', {
+        body: {
+          recipient_user_id: assistantId,
+          push_title: 'New task assigned',
+          push_body: `You have a new task: ${title}`,
+          push_url: '/checklist',
+          tag: 'task-assigned',
+        },
+      })
+    } catch {
+      // Non-blocking
+    }
+    setSendTaskTitle('')
+    showToast(`Task sent to ${assistantName}.`, 'success')
+    if (authUser.id === assistantId) {
+      await loadTodayChecklist()
+    }
+  }
+
   async function toggleChecklistComplete(inst: ChecklistInstance) {
     if (!authUser?.id || completingChecklistId) return
     setCompletingChecklistId(inst.id)
@@ -1227,7 +1314,7 @@ export default function Dashboard() {
               boxSizing: 'border-box',
             }}
           >
-            Job Tally
+            Job Parts Tally
           </Link>
           <button
             type="button"
@@ -1690,6 +1777,30 @@ export default function Dashboard() {
             </div>
             {sendTaskError && <div style={{ width: '100%', color: '#b91c1c', fontSize: '0.8125rem' }}>{sendTaskError}</div>}
           </form>
+          {isMaster && adoptedAssistants.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginRight: '0.25rem' }}>Send to:</span>
+              {adoptedAssistants.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => sendTaskToAssistant(a.id, a.name || a.email || 'Assistant')}
+                  disabled={sendTaskSaving || !sendTaskTitle.trim()}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    background: sendTaskSaving || !sendTaskTitle.trim() ? '#e5e7eb' : '#3b82f6',
+                    color: sendTaskSaving || !sendTaskTitle.trim() ? '#9ca3af' : 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: sendTaskSaving || !sendTaskTitle.trim() ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {a.name || a.email || a.id.slice(0, 8)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

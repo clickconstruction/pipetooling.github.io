@@ -2509,7 +2509,7 @@ export default function Jobs() {
                       return (
                         <tr>
                           <td colSpan={5} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
-                            No tally parts yet. Subs can record parts via the Job Tally flow on the Dashboard.
+                            No tally parts yet. Subs can record parts via the Job Parts Tally flow on the Dashboard.
                           </td>
                         </tr>
                       )

@@ -194,7 +194,7 @@ export default function JobTally() {
         <Link to="/dashboard" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
-        <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Job Tally</h1>
+        <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Job Parts Tally</h1>
       </div>
 
       {error && (
@@ -462,11 +462,30 @@ export default function JobTally() {
                         Qty: {e.quantity}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {e.quantity > 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {e.quantity > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => adjustEntryQuantity(e.id, -1)}
+                            style={{
+                              width: TOUCH_MIN,
+                              height: TOUCH_MIN,
+                              padding: 0,
+                              fontSize: '1rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 8,
+                              background: '#fff',
+                              cursor: 'pointer',
+                            }}
+                            title="Decrease by 1"
+                          >
+                            ↓
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => adjustEntryQuantity(e.id, -1)}
+                          onClick={() => adjustEntryQuantity(e.id, 1)}
                           style={{
                             width: TOUCH_MIN,
                             height: TOUCH_MIN,
@@ -477,45 +496,29 @@ export default function JobTally() {
                             background: '#fff',
                             cursor: 'pointer',
                           }}
-                          title="Decrease by 1"
+                          title="Increase by 1"
                         >
-                          ↓
+                          ↑
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => adjustEntryQuantity(e.id, 1)}
-                        style={{
-                          width: TOUCH_MIN,
-                          height: TOUCH_MIN,
-                          padding: 0,
-                          fontSize: '1rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 8,
-                          background: '#fff',
-                          cursor: 'pointer',
-                        }}
-                        title="Increase by 1"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeEntry(e.id)}
-                        style={{
-                          padding: '0.5rem',
-                        minWidth: TOUCH_MIN,
-                        minHeight: TOUCH_MIN,
-                        fontSize: '0.875rem',
-                        background: '#fee2e2',
-                        color: '#991b1b',
-                        border: 'none',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                      }}
-                      >
-                        Remove
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => removeEntry(e.id)}
+                          style={{
+                            padding: '0.5rem',
+                            minWidth: TOUCH_MIN,
+                            minHeight: TOUCH_MIN,
+                            fontSize: '0.875rem',
+                            background: '#fee2e2',
+                            color: '#991b1b',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{e.fixtureName}</span>
                     </div>
                   </li>
                 ))}

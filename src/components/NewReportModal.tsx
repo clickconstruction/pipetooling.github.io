@@ -139,14 +139,30 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>Select job</p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <p style={{ margin: 0, fontWeight: 500 }}>Select job</p>
               {lastReportJob && (
-                <button type="button" onClick={() => { setSearchMode('last'); setSelectedJob(lastReportJob); setSearchResults([]); setJobSearchText('') }} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}>Same job as last report</button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (searchMode === 'last') {
+                      setSelectedJob(null)
+                      setSearchMode('search')
+                    } else {
+                      setSearchMode('last')
+                      setSelectedJob(lastReportJob)
+                      setSearchResults([])
+                      setJobSearchText('')
+                    }
+                  }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Same job as last report
+                </button>
               )}
             </div>
-            {searchMode === 'last' && lastReportJob && (
-              <p style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>Selected: {lastReportJob.display_name} (HCP: {lastReportJob.hcp_number || '—'})</p>
+            {selectedJob && (
+              <p style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'})</p>
             )}
             <input
               type="text"
@@ -168,9 +184,6 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
                   </button>
                 ))}
               </div>
-            )}
-            {searchMode === 'search' && selectedJob && (
-              <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: '#059669' }}>Selected: {selectedJob.display_name}</p>
             )}
           </div>
 
