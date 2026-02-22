@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-19
+last_updated: 2026-02-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -78,7 +78,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
-6. **primary** - Materials and job reports specialist (Reports tab only, Dashboard with Recent Reports and Send task)
+6. **primary** - Materials and job reports specialist (Reports and Ledger tabs on Jobs; Dashboard with Recent Reports and Send task)
 
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
@@ -343,25 +343,35 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ### primary (Primary)
 
-**Purpose**: Materials and job reports specialist with access to Reports tab only on Jobs, plus Dashboard with Recent Reports and Send task.
+**Purpose**: Materials and job reports specialist with access to Reports and Ledger (Billing) tabs on Jobs, plus Dashboard with Recent Reports and Send task.
 
 **Access**:
-- Dashboard, Materials, Jobs (Reports tab only), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Bids, Quickfill, other Jobs tabs (Receivables, Ledger, Sub Sheet Ledger, Teams Summary)
+- Dashboard, Materials, Jobs (Reports and Ledger tabs), Calendar, Checklist, Settings
+- **Blocked**: Customers, Projects, People, Bids, Quickfill, other Jobs tabs (Receivables, Sub Sheet Ledger, Teams Summary)
+
+**Service Type Filtering**:
+- Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
+- **NULL or empty array** = primary sees all service types
+- **Non-empty array** = primary sees only those service types in Materials
+
+**Master-Primaries Adoption**:
+- Masters can adopt primaries via `master_primaries` table (Settings → Adopt primaries)
+- Adopted primaries can add materials to jobs in Jobs Ledger (Billing) tab
+- Primaries appear in task assignee dropdown when adopted by the viewing user's master
 
 **Permissions**:
 
 **Materials - Full Access**:
-- Same as estimator/master_technician
+- Same as estimator/master_technician (subject to primary_service_type_ids if set)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
 - Price history viewing
 
-**Jobs - Reports Tab Only**:
-- View all reports via `list_reports_with_job_info` RPC
-- Full CRUD on reports table (create, edit, delete reports)
-- Other Jobs tabs hidden (Receivables, Ledger, Sub Sheet Ledger, Teams Summary)
+**Jobs - Reports and Ledger Tabs**:
+- **Reports tab**: View all reports via `list_reports_with_job_info` RPC; full CRUD on reports table
+- **Ledger (Billing) tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
+- Other Jobs tabs hidden (Receivables, Sub Sheet Ledger, Teams Summary)
 
 **Dashboard**:
 - Recent Reports section (same as masters)
@@ -370,7 +380,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **What They Cannot Do**:
 - Cannot access Customers, Projects, People, Bids
-- Cannot access Jobs tabs other than Reports
+- Cannot access Jobs tabs other than Reports and Ledger (no Edit/Delete on Ledger)
 - No Quickfill
 - No user management (can change own password via Settings)
 
@@ -393,7 +403,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports only |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Ledger |
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
@@ -406,7 +416,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Jobs/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports tab only
+**Primary**: Any page except Dashboard/Materials/Jobs/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Ledger tabs only
 
 **Assistants**: Can access most pages but see filtered data
 

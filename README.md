@@ -111,9 +111,10 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - People roster (with or without user accounts)
 - Workflow templates
 - **Calendar view** (Central Time, two-line display)
-- **Role-based access control** (Dev, Master, Assistant, Subcontractor, Estimator)
+- **Role-based access control** (Dev, Master, Assistant, Subcontractor, Estimator, Primary)
   - Assistants/subcontractors only see assigned stages
   - Estimators: Materials and Bids only; can see and add customers from Bids (no access to /customers or /projects)
+  - Primaries: Materials and Jobs (Reports + Ledger); can add materials to jobs
 - **Private notes and line items** (owners/masters only)
 - **Projections and Ledger** (financial tracking)
 - **Action Ledger** (complete stage history)
@@ -130,6 +131,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Bids Pricing**: **Pricing** tab (between Cost Estimate and Cover Letter): named price book versions with fixture/tie-in entries per stage (Rough In, Top Out, Trim Set, Total); **searchable price book entries** with inline "Add to Price Book" when no matches found; **searchable assignment dropdowns** for quickly assigning fixtures to price book entries; compare our cost (labor + allocated materials) to price book revenue; margin % and flags (red &lt; 20%, yellow &lt; 40%, green ≥ 40%)
 - **Purchase Orders**: Grand Total and With Tax row (editable %); column headers use "Qty"; Materials page opens a specific PO when navigating from Bids (openPOId). PO items can have notes and a "From template" tag when added via a template
 - **Materials Price Book**: 
+  - **Service type abbreviations** at top: Plumbing → PLUM, Electrical → ELEC (hover for full name)
   - Per-part best price with expandable rows showing notes and all prices
   - **Search all parts**: Server-side search across entire database (name, manufacturer, fixture type, notes)
   - **Infinite scroll**: Automatically loads more parts as you scroll
@@ -139,6 +141,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
   - Inline **Edit prices** action in expanded rows
   - Auto-refreshing stats when modal opens
 - **Materials Templates & Purchase Orders**: Summary at bottom (# templates, % with unpriced parts, % with no missing prices). Template items use Remove / Edit / Price icon buttons; price icon colored by part price count (red / yellow / gray)
+- **Job Tally**: Add parts to jobs by fixture; quantity stepper (1→2→3, whole numbers only); down arrow hidden when quantity is 1; create PO from tally for review
 
 ## Deployment
 

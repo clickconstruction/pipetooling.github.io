@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-20
+last_updated: 2026-02-21
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.55 → v2.4"
+version_range: "v2.56 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.55)"
+  - name: "Latest Version (v2.56)"
     line: ~132
+    description: "Job Tally quantity, Materials abbreviations, Primary role"
+  - name: "v2.55"
+    line: ~165
     description: "Dashboard and Jobs UI label updates"
   - name: "v2.53"
     line: ~165
@@ -71,7 +74,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.55)"
+  - "Latest features at top (v2.56)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -88,17 +91,18 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-2. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-3. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-4. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-5. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-6. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-7. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-8. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-9. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-10. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-11. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+1. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+2. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+3. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+4. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+5. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+6. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+7. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+8. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+9. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+10. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+11. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+12. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
 12. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
 13. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
 14. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
@@ -144,6 +148,68 @@ when_to_read:
 54. [Email Templates](#email-templates)
 55. [Financial Tracking](#financial-tracking)
 56. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.56)
+
+### Job Tally quantity, Materials abbreviations, Primary role
+
+**Date**: 2026-02-21
+
+**Overview**:
+Job Tally quantity controls now use whole numbers with improved UX; Materials page shows abbreviated service type labels; Primary role enhancements including service type filtering and adoption-based access.
+
+**Job Tally**:
+- **Quantity arrows**: Up/down arrows increment/decrement by 1 (1 → 2 → 3 → …); minimum quantity is 1
+- **Hide down arrow when 1**: Down arrow hidden when quantity is 1 (both in add-part section and in entries list)
+- **Whole numbers only**: Quantity input and entry adjustments enforce integers; no fractional quantities
+
+**Materials**:
+- **Service type abbreviations**: Top service type buttons show abbreviated labels: Plumbing → PLUM, Electrical → ELEC; hover shows full name
+- **Fallback**: Service types without a mapping display full name
+
+**Primary role** (migrations and UI):
+- **primary_service_type_ids**: Devs can restrict primaries to specific service types in Materials (like estimator_service_type_ids)
+- **Adoption-based access**: master_primaries table; primaries see bids, projects, materials from adopting masters
+- **Jobs Billing**: Edit/Delete hidden for primaries
+- **Materials Price Book**: Supply house name fallback for primaries when supply house not loaded
+- **Task assignees**: Primaries appear in task assignee dropdown
+- **Layout**: Treat `role === null` as primary during load to avoid header flash; hide Customers/People while role loads
+- **Dashboard**: Filter pinned routes by role; treat `role === null` as primary
+
+**Files**: `src/pages/JobTally.tsx`, `src/pages/Materials.tsx`, `src/components/Layout.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`
+
+**Migrations**: `20260224000000_add_primary_service_type_ids.sql`, `20260223100000_create_master_primaries.sql`, `20260223000000_primary_add_materials_to_jobs.sql`, `20260224100000_primary_bids_bid_board_access.sql`, `20260224110000_primary_bids_adoption_access.sql`, `20260224120000_primary_projects_adoption_access.sql`, `20260224130000_allow_users_see_primaries.sql`, `20260224140000_primary_supply_houses_read.sql`, `20260224150000_primary_assembly_book_read.sql`
+
+---
+
+## Latest Updates (v2.56)
+
+### Job Tally quantity, Materials abbreviations, Primary role
+
+**Date**: 2026-02-21
+
+**Overview**:
+Job Tally quantity controls now use whole numbers only with improved UX; Materials page shows abbreviated service type labels; Primary role enhancements including service type filtering and adoption-based access.
+
+**Job Tally**:
+- **Quantity arrows**: Up/down arrows increment/decrement in whole steps (1 → 2 → 3 → …); minimum quantity is 1
+- **Hide down arrow when 1**: Down arrow (↓) hidden when quantity is 1 in both the add-part section and the entries list
+- **Whole numbers only**: Quantity input and entry adjustments enforce integers; new entries use `Math.max(1, Math.round(quantity))`
+
+**Materials**:
+- **Service type abbreviations**: Top service type buttons show abbreviated labels: Plumbing → PLUM, Electrical → ELEC (hover shows full name)
+- **Fallback**: Service types without a mapping display full name
+
+**Primary role** (from prior migrations):
+- **primary_service_type_ids**: Primaries can be restricted to specific service types in Materials (like estimators); NULL or empty = all types
+- **Master-primaries adoption**: `master_primaries` table; primaries adoptable by masters for Jobs Billing access
+- **Jobs Billing**: Primaries can add materials to jobs when adopted; Edit/Delete hidden for primaries
+- **RLS**: Adoption-based access for bids, projects; supply houses, material templates, assembly book read access for primaries
+- **Task assignees**: Primaries appear in task assignee dropdown when adopted
+
+**Files**: `src/pages/JobTally.tsx`, `src/pages/Materials.tsx`
 
 ---
 

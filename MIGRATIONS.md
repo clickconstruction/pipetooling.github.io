@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 18, 2026"
+date_range: "Through February 25, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,89 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### February 2026
+
+#### February 21–25, 2026 (Primary Role)
+
+**`20260225000000_primary_jobs_tally_parts.sql`**
+- **Purpose**: Allow primaries to add parts in Job Tally page
+- **Changes**: Add primary to jobs_tally_parts RLS policies (SELECT, INSERT, UPDATE, DELETE)
+- **Impact**: Primaries can save tally parts when adding parts to jobs; fixes "new row violates row-level security policy" error
+- **Category**: Jobs / Job Tally / Primary / RLS
+
+**`20260224150000_primary_assembly_book_read.sql`**
+- **Purpose**: Allow primaries to read assembly types and templates for adopted masters
+- **Changes**: RLS policies for material_templates, material_template_items, assembly_types
+- **Category**: Materials / Primary / RLS
+
+**`20260224140000_primary_supply_houses_read.sql`**
+- **Purpose**: Allow primaries to read supply houses
+- **Changes**: RLS policy for supply_houses
+- **Category**: Materials / Primary / RLS
+
+**`20260224130000_allow_users_see_primaries.sql`**
+- **Purpose**: Allow users to see primaries in task assignee dropdown and similar pickers
+- **Changes**: RLS or view updates for users table
+- **Category**: Primary / RLS
+
+**`20260224120000_primary_projects_adoption_access.sql`**
+- **Purpose**: Primaries see projects from adopting masters (adoption-based access)
+- **Changes**: RLS policies for projects
+- **Category**: Primary / Adoption
+
+**`20260224110000_primary_bids_adoption_access.sql`**
+- **Purpose**: Primaries see bids from adopting masters
+- **Changes**: RLS policies for bids
+- **Category**: Primary / Adoption
+
+**`20260224100000_primary_bids_bid_board_access.sql`**
+- **Purpose**: Primaries can access bid board for adopted masters
+- **Changes**: RLS policies for bid-related tables
+- **Category**: Primary / Bids
+
+**`20260224000000_add_primary_service_type_ids.sql`**
+- **Purpose**: Restrict primaries to specific service types in Materials (like estimator_service_type_ids)
+- **Changes**: Added `primary_service_type_ids` UUID[] to users table
+- **Impact**: Devs can limit which service types (Plumbing, Electrical, etc.) a primary sees in Materials
+- **Category**: Primary / Materials
+
+**`20260223100000_create_master_primaries.sql`**
+- **Purpose**: Track which masters have adopted which primaries
+- **Changes**: Created `master_primaries` table (master_id, primary_id); RLS for masters and devs
+- **Impact**: Enables adoption-based access for primaries (mirrors master_assistants)
+- **Category**: Primary / Adoption
+
+**`20260223000000_primary_add_materials_to_jobs.sql`**
+- **Purpose**: Allow primaries to view jobs and add materials to jobs_ledger
+- **Changes**: RLS policies for jobs_ledger and jobs_ledger_materials (SELECT, INSERT, UPDATE, DELETE for primaries)
+- **Impact**: Primaries can add materials to jobs in Jobs Ledger (Billing) tab; Edit/Delete hidden in UI
+- **Category**: Jobs / Primary / RLS
+
+**`20260221210002_primary_materials_access.sql`**
+- **Purpose**: Allow primaries to read materials (parts, prices, supply houses)
+- **Changes**: RLS policies for material_parts, material_part_prices, supply_houses
+- **Category**: Materials / Primary / RLS
+
+**`20260221210001_primary_reports_access.sql`**
+- **Purpose**: Allow primaries to access reports
+- **Changes**: RLS policies for reports table; list_reports_with_job_info RPC
+- **Category**: Jobs / Primary / RLS
+
+**`20260221210000_add_user_role_primary.sql`**
+- **Purpose**: Add primary role to users
+- **Changes**: Extended role enum or users.role to include 'primary'
+- **Category**: Primary / Auth
+
+**`20260222160000_tally_parts_po_status.sql`**, **`20260222150000_tally_parts_po_name.sql`**, **`20260222140000_tally_parts_po_link.sql`**
+- **Purpose**: Job Tally PO enhancements (status, name, link)
+- **Category**: Jobs / Job Tally
+
+**`20260222120000_create_po_from_job_tally.sql`**, **`20260222130000_po_name_include_time.sql`**
+- **Purpose**: Create PO from Job Tally; PO name includes timestamp
+- **Category**: Jobs / Job Tally / Materials
+
+**`20260222000000_create_jobs_tally_parts.sql`**
+- **Purpose**: Job Tally parts table for tallying materials per job
+- **Category**: Jobs / Job Tally
 
 #### February 20–21, 2026
 

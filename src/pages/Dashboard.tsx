@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
@@ -281,6 +281,8 @@ export default function Dashboard() {
     })
   }, [authUser?.id])
 
+  const loadRecentReportsRef = useRef<() => void>(() => {})
+
   useEffect(() => {
     if (!authUser?.id) return
     const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser
@@ -302,8 +304,23 @@ export default function Dashboard() {
         setRecentReportsLoading(false)
       }
     }
+    loadRecentReportsRef.current = load
     load()
   }, [authUser?.id, role, isReportEnabledOnlyUser])
+
+  useEffect(() => {
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser
+    if (!showRecent) return
+    const channel = supabase
+      .channel('dashboard-reports-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
+        loadRecentReportsRef.current?.()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [role, isReportEnabledOnlyUser])
 
   useEffect(() => {
     if (!authUser?.id) {
