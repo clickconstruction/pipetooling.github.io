@@ -85,6 +85,24 @@ type ChecklistInstance = {
 
 const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
+// Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/jobs', '/calendar', '/checklist', '/settings', '/tally'])
+const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+const PRIMARY_PATHS = new Set(['/dashboard', '/projects', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+
+function getAllowedPathsForRole(role: string | null): Set<string> | null {
+  if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
+  if (role === 'estimator') return ESTIMATOR_PATHS
+  if (role === 'primary' || role === null) return PRIMARY_PATHS
+  return null // dev, master_technician, assistant: no filter (all paths allowed)
+}
+
+function filterPinnedByRole(pins: PinnedItem[], role: string | null): PinnedItem[] {
+  const allowed = getAllowedPathsForRole(role)
+  if (!allowed) return pins
+  return pins.filter((p) => allowed.has(p.path))
+}
+
 function ChecklistSkeleton() {
   return (
     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -167,10 +185,11 @@ export default function Dashboard() {
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
   const checklistAddModal = useChecklistAddModal()
-  const hasCostMatrixPin = pinnedRoutes.some((p) => p.path === '/people' && p.tab === 'pay')
-  const hasARPin = pinnedRoutes.some((p) => p.path === '/jobs' && p.tab === 'receivables')
-  const hasSupplyHousesAPPin = pinnedRoutes.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
-  const hasExternalTeamPin = pinnedRoutes.some((p) => p.path === '/materials' && p.tab === 'external-team')
+  const visiblePins = filterPinnedByRole(pinnedRoutes, role)
+  const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
+  const hasARPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'receivables')
+  const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
+  const hasExternalTeamPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'external-team')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { total: arTotal } = useARTotal(hasARPin, financialRefreshKey)
@@ -1151,10 +1170,10 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-      {pinnedRoutes.length > 0 && (
+      {visiblePins.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {pinnedRoutes.map((item) => {
+            {visiblePins.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
               const isAR = item.path === '/jobs' && item.tab === 'receivables'
