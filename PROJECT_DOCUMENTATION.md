@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-20
+last_updated: 2026-02-22
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -2309,6 +2309,11 @@ pipetooling.github.io/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
 │   │   └── NewCustomerForm.tsx # Shared create-only customer form (Bids Add Customer modal, /customers/new)
+│   ├── contexts/
+│   │   ├── ToastContext.tsx       # Shared toast notifications; useToastContext()
+│   │   ├── UpdatePromptContext.tsx # PWA update prompt
+│   │   ├── ForceReloadContext.tsx  # Global reload trigger
+│   │   └── ChecklistAddModalContext.tsx
 │   ├── hooks/
 │   │   └── useAuth.ts          # Authentication hook
 │   ├── lib/
@@ -2366,6 +2371,11 @@ pipetooling.github.io/
 - Provides `{ user, loading }` from Supabase Auth
 - Subscribes to auth state changes
 - Used throughout app for authentication checks
+
+#### `src/contexts/ToastContext.tsx`
+- Shared toast notification system; `ToastProvider` wraps the app; `useToastContext()` provides `showToast(message, type)` where type is `'info'|'warning'|'error'|'success'`
+- Used by Settings (e.g. "Report settings saved." green confirmation), App (session-expiring warning), and any component needing user feedback
+- Toasts auto-dismiss after 5 seconds; rendered in top-right corner
 
 #### `src/components/Layout.tsx`
 - Main navigation bar

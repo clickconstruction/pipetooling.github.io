@@ -8,6 +8,7 @@ import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndT
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useUpdatePrompt } from '../contexts/UpdatePromptContext'
+import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
@@ -176,6 +177,7 @@ export default function Settings() {
   const { user: authUser } = useAuth()
   const pushNotifications = usePushNotifications(authUser?.id)
   const updatePrompt = useUpdatePrompt()
+  const { showToast } = useToastContext()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -888,6 +890,7 @@ export default function Settings() {
       }
     }
     setReportSettingsSaving(false)
+    showToast('Report settings saved.', 'success')
   }
 
   function toggleReportEnabledUser(userId: string) {

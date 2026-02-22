@@ -92,7 +92,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
-#### February 21–26, 2026
+#### February 21–28, 2026
+
+**`20260228100000_subcontractors_read_jobs_ledger_team_members.sql`**
+- **Purpose**: Fix subcontractor "Submit for review" in Job Tally (RLS violation)
+- **Changes**: Add policy allowing subcontractors to read their own rows in jobs_ledger_team_members (user_id = auth.uid())
+- **Impact**: Subcontractors can now insert into jobs_tally_parts; the INSERT policy checks team membership via jobs_ledger_team_members, which previously blocked subs from reading that table
+- **Category**: Jobs / Job Tally / RLS
 
 **`20260226000000_reports_delete_dev_only.sql`**
 - **Purpose**: Restrict report DELETE to devs only

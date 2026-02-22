@@ -24,7 +24,7 @@ import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
 import JobTally from './pages/JobTally'
-import { Toast, useToast } from './components/Toast'
+import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
@@ -88,11 +88,10 @@ function AuthHandler() {
   return null
 }
 
-export default function App() {
-  const { toasts, showToast, removeToast } = useToast()
+function AppContent() {
+  const { showToast } = useToastContext()
 
   useEffect(() => {
-    // Listen for session expiring events
     const handleSessionExpiring = ((event: CustomEvent) => {
       const minutes = event.detail.minutesRemaining
       showToast(
@@ -102,10 +101,7 @@ export default function App() {
     }) as EventListener
 
     window.addEventListener('session-expiring', handleSessionExpiring)
-    
-    return () => {
-      window.removeEventListener('session-expiring', handleSessionExpiring)
-    }
+    return () => window.removeEventListener('session-expiring', handleSessionExpiring)
   }, [showToast])
 
   return (
@@ -152,15 +148,14 @@ export default function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {/* Toast notifications */}
-      {toasts.map(toast => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => removeToast(toast.id)}
-        />
-      ))}
     </UpdatePromptProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   )
 }

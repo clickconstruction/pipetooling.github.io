@@ -15,9 +15,12 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.57 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.57)"
-    line: ~132
-    description: "Dashboard reports modal, icons, hide, delete dev-only"
+  - name: "Latest Version (v2.58)"
+    line: ~185
+    description: "Subcontractor Job Tally Submit for Review RLS fix"
+  - name: "v2.57"
+    line: ~200
+    description: "Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation toast; ToastContext"
   - name: "v2.56"
     line: ~165
     description: "Job Tally quantity, Materials abbreviations, Primary role"
@@ -94,8 +97,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only
-2. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+1. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+2. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+3. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
 3. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
 4. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
 4. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
@@ -162,7 +166,11 @@ when_to_read:
 **Date**: 2026-02-22
 
 **Overview**:
-Dashboard Recent Reports: click to view in modal, envelope icon on unread, hide button on read reports; Reports realtime updates; Primary Job Tally RLS; devs-only report delete on Jobs page.
+Dashboard Recent Reports: click to view in modal, envelope icon on unread, hide button on read reports; Reports realtime updates; Primary Job Tally RLS; devs-only report delete on Jobs page; Settings Save report settings green confirmation toast; shared ToastContext for app-wide toasts.
+
+**Settings Report Settings**:
+- **Save confirmation**: Clicking "Save report settings" shows a green success toast ("Report settings saved.") in the top-right
+- **ToastContext**: New shared toast system so any component (e.g. Settings) can trigger toasts that App displays; `useToastContext()` provides `showToast(message, type)`; types: info, warning, error, success
 
 **Dashboard Recent Reports**:
 - **ReportViewModal**: Click a report to open a modal showing full contents (template, job, created by, field values)
@@ -177,9 +185,26 @@ Dashboard Recent Reports: click to view in modal, envelope icon on unread, hide 
 **Primary Job Tally**:
 - **RLS**: Primaries can add parts in Job Tally (jobs_tally_parts policies updated)
 
-**Files**: `src/pages/Dashboard.tsx`, `src/components/ReportViewModal.tsx`, `src/pages/Jobs.tsx`
+**Files**: `src/pages/Dashboard.tsx`, `src/components/ReportViewModal.tsx`, `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`, `src/App.tsx`, `src/contexts/ToastContext.tsx`
 
 **Migrations**: `20260225000000_primary_jobs_tally_parts.sql`, `20260225000001_reports_to_realtime.sql`, `20260226000000_reports_delete_dev_only.sql`
+
+---
+
+## Latest Updates (v2.58)
+
+### Subcontractor Job Tally Submit for Review RLS fix
+
+**Date**: 2026-02-22
+
+**Overview**:
+Subcontractors (e.g. Abraham) could not submit for review in Job Tally; they saw "new row violates row-level security policy for table jobs_tally_parts". The jobs_tally_parts INSERT policy for subcontractors checks team membership via `jobs_ledger_team_members`, but subcontractors had no SELECT policy on that table, so the subquery returned no rows and the INSERT failed.
+
+**Fix**:
+- Add policy "Subcontractors can read own jobs ledger team member rows" on jobs_ledger_team_members: subcontractors can SELECT rows where user_id = auth.uid()
+- Allows subs to verify they are on a job's team without exposing other team members
+
+**Files**: `supabase/migrations/20260228100000_subcontractors_read_jobs_ledger_team_members.sql`
 
 ---
 

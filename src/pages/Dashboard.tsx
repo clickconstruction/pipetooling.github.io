@@ -199,6 +199,7 @@ export default function Dashboard() {
   const isDev = role === 'dev'
   const checklistAddModal = useChecklistAddModal()
   const visiblePins = filterPinnedByRole(pinnedRoutes, role)
+  const pinsToShow = visiblePins.filter((p) => p.path !== '/dashboard' && p.path !== '/')
   const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
   const hasARPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'receivables')
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
@@ -1272,12 +1273,9 @@ export default function Dashboard() {
       {showRecent && (
         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>New report</button>
-            {!isReportEnabledOnlyUser && (
-              <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
-            )}
-          </div>
+          {!isReportEnabledOnlyUser && (
+            <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+          )}
         </div>
       )}
       {showRecent && (
@@ -1422,10 +1420,10 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {visiblePins.length > 0 && (
+      {pinsToShow.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {visiblePins.map((item) => {
+            {pinsToShow.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
               const isAR = item.path === '/jobs' && item.tab === 'receivables'

@@ -277,59 +277,61 @@ export default function JobTally() {
             />
           </div>
 
-          {/* Step 3: Search part */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '1rem' }}>
-              Search part
-            </label>
-            <input
-              type="text"
-              value={partSearch}
-              onChange={(e) => setPartSearch(e.target.value)}
-              placeholder="Part name or manufacturer"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                fontSize: '1rem',
-                minHeight: TOUCH_MIN,
-                boxSizing: 'border-box',
-                border: '1px solid #d1d5db',
-                borderRadius: 8,
-              }}
-            />
-            {partSearching && <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>}
-            {partResults.length > 0 && !selectedPart && (
-              <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0', border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
-                {partResults.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPart(p)}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        textAlign: 'left',
-                        border: 'none',
-                        borderBottom: '1px solid #e5e7eb',
-                        background: '#fff',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        minHeight: TOUCH_MIN,
-                      }}
-                    >
-                      {p.name}
-                      {p.manufacturer && (
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
-                          {' · '}{p.manufacturer}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {/* Step 3: Search part (hidden when part selected; re-shown after Add or Cancel) */}
+          {!selectedPart && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, fontSize: '1rem' }}>
+                Search part
+              </label>
+              <input
+                type="text"
+                value={partSearch}
+                onChange={(e) => setPartSearch(e.target.value)}
+                placeholder="Part name or manufacturer"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
+                  minHeight: TOUCH_MIN,
+                  boxSizing: 'border-box',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 8,
+                }}
+              />
+              {partSearching && <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>}
+              {partResults.length > 0 && (
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0', border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
+                  {partResults.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPart(p)}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          textAlign: 'left',
+                          border: 'none',
+                          borderBottom: '1px solid #e5e7eb',
+                          background: '#fff',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          minHeight: TOUCH_MIN,
+                        }}
+                      >
+                        {p.name}
+                        {p.manufacturer && (
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+                            {' · '}{p.manufacturer}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {/* Step 4: Quantity + Add */}
           {selectedPart && (
@@ -536,7 +538,7 @@ export default function JobTally() {
                   minHeight: TOUCH_MIN,
                 }}
               >
-                {saving ? 'Saving…' : 'Save for review'}
+                {saving ? 'Sending…' : 'Send to Office'}
               </button>
             </div>
           )}

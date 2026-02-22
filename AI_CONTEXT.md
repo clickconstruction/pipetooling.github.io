@@ -101,7 +101,7 @@ pipetooling.github.io/
 ├── src/
 │   ├── pages/              # Main UI pages (Customers, Projects, Workflow, People, Jobs, Bids, Materials, Checklist, etc.)
 │   ├── components/         # Reusable UI components
-│   ├── contexts/           # React contexts (AuthContext, etc.)
+│   ├── contexts/           # React contexts (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext)
 │   ├── lib/               # Utilities (supabaseClient, errorHandling, etc.)
 │   ├── types/             # TypeScript type definitions
 │   └── App.tsx            # Root component with routing
@@ -122,8 +122,10 @@ pipetooling.github.io/
 - **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
-- **`src/contexts/AuthContext.tsx`** - Authentication state and user role
-- **`src/lib/supabaseClient.ts`** - Supabase client configuration
+- **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
+- **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
+- **`src/contexts/UpdatePromptContext.tsx`** - PWA update prompt (service worker refresh)
+- **`src/lib/supabase.ts`** - Supabase client configuration
 - **`src/lib/errorHandling.ts`** - Retry wrappers and error utilities
 
 ### Documentation (Start Here)
@@ -224,10 +226,11 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### State Management
-- **Global**: React Context (`AuthContext`)
+- **Global**: React Context (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext)
 - **Page-level**: `useState`, `useEffect` hooks
 - **No global state library**: No Redux, MobX, or Zustand
 - **Server state**: Direct Supabase queries (no React Query)
+- **Toasts**: Use `useToastContext()` from any component; `showToast(message, 'success'|'info'|'warning'|'error')`
 
 ### Type Safety
 ```typescript
@@ -460,7 +463,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 ---
 
-**Last Updated**: 2026-02-07
+**Last Updated**: 2026-02-22
 
 **Maintained By**: Documentation generated during comprehensive documentation update project
 

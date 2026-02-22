@@ -79,13 +79,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
   useEffect(() => {
     if (!open || searchMode !== 'search') return
     const q = jobSearchText.trim()
-    if (q.length >= 1) {
-      supabase.rpc('search_jobs_for_reports', { search_text: q }).then(({ data }) => {
-        setSearchResults((data as JobSearchResult[]) ?? [])
-      })
-    } else {
-      setSearchResults([])
-    }
+    supabase.rpc('search_jobs_for_reports', { search_text: q }).then(({ data }) => {
+      setSearchResults((data as JobSearchResult[]) ?? [])
+    })
   }, [open, jobSearchText, searchMode])
 
   function reset() {
