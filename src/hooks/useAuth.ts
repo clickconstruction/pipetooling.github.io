@@ -2,8 +2,11 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
+
 interface UseAuthReturn {
   user: User | null
+  role: UserRole | null
   loading: boolean
   checkSession: () => Promise<boolean>
   sessionExpiresAt: number | null
@@ -11,6 +14,7 @@ interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null)
+  const [role, setRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
   const warningShownRef = useRef(false)
@@ -26,10 +30,11 @@ export function useAuth(): UseAuthReturn {
     if (error || !session) {
       await supabase.auth.signOut()
       setUser(null)
+      setRole(null)
       setSessionExpiresAt(null)
       return false
     }
-    
+
     setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null)
     return true
   }, [])
@@ -56,30 +61,38 @@ export function useAuth(): UseAuthReturn {
     })
   }, [])
 
+  function applySession(session: { user: User; expires_at?: number } | null) {
+    setUser(session?.user ?? null)
+    setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
+    if (session?.user?.id) {
+      supabase.from('users').select('role').eq('id', session.user.id).single().then(({ data }) => {
+        setRole((data as { role: UserRole } | null)?.role ?? null)
+      })
+    } else {
+      setRole(null)
+    }
+  }
+
   useEffect(() => {
     // Initial session check
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error && error.message?.includes('Refresh Token')) {
         void supabase.auth.signOut()
       }
-      setUser(session?.user ?? null)
-      setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
+      applySession(session)
       setLoading(false)
     }).catch(() => {
       setUser(null)
+      setRole(null)
       setSessionExpiresAt(null)
       setLoading(false)
     })
 
-    // Listen for auth state changes
+    // Listen for auth state changes - fetch role when session is set (fixes direct sign-in role timing)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
-
-      // Skip reload: SIGNED_IN fires on session restore and token refresh too, causing reload loops.
-      // Cache clearing after explicit sign-in can be done in SignIn.tsx after successful login if needed.
+      applySession(session)
     })
 
     // Track user activity to refresh session
@@ -141,5 +154,5 @@ export function useAuth(): UseAuthReturn {
     }
   }, [checkSession])
 
-  return { user, loading, checkSession, sessionExpiresAt }
+  return { user, role, loading, checkSession, sessionExpiresAt }
 }

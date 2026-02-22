@@ -11,14 +11,14 @@ last_updated: 2026-02-13
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~122
+total_terms: ~123
 categories: 9
 
 key_sections:
   - name: "User Roles"
     line: ~17
     anchor: "#user-roles"
-    terms: 5
+    terms: 6
   - name: "Project Management"
     line: ~66
     anchor: "#project-management"
@@ -115,6 +115,13 @@ Bid estimation specialist with access only to Bids and Materials systems. Cannot
 **Capabilities**: Full Bids system, full Materials system, view/create customers (via Bids)
 
 **Key Restriction**: No access to Projects, Workflows, Dashboard, Calendar, or Settings pages
+
+### primary (Primary)
+Materials and job reports specialist with access to Materials (full), Jobs (Reports tab only), and Dashboard with Recent Reports and Send task. Cannot access Customers, Projects, People, Bids, or other Jobs tabs.
+
+**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send")
+
+**Key Restriction**: No access to Customers, Projects, People, Bids, or Jobs tabs other than Reports
 
 ---
 

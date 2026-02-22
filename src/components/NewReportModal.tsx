@@ -146,7 +146,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
             <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>Select job</p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               {lastReportJob && (
-                <button type="button" onClick={() => { setSearchMode('last'); setSelectedJob(lastReportJob); setSearchResults([]); setJobSearchText('') }} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}>Last report job</button>
+                <button type="button" onClick={() => { setSearchMode('last'); setSelectedJob(lastReportJob); setSearchResults([]); setJobSearchText('') }} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}>Same job as last report</button>
               )}
             </div>
             {searchMode === 'last' && lastReportJob && (

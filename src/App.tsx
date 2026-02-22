@@ -23,6 +23,7 @@ import Quickfill from './pages/Quickfill'
 import Bids from './pages/Bids'
 import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
+import JobTally from './pages/JobTally'
 import { Toast, useToast } from './components/Toast'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
@@ -146,6 +147,7 @@ export default function App() {
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
           <Route path="checklist" element={<Checklist />} />
+          <Route path="tally" element={<JobTally />} />
           <Route path="settings" element={<Settings />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

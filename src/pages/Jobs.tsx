@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
@@ -18,7 +18,27 @@ type JobWithDetails = JobsLedgerRow & {
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
 }
 
-type JobsTab = 'receivables' | 'reports' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary'
+type TallyPartRow = {
+  id: string
+  job_id: string
+  fixture_name: string
+  part_id: string
+  quantity: number
+  created_by_user_id: string
+  created_at: string
+  price_at_time: number | null
+  purchase_order_id: string | null
+  purchase_order_name: string | null
+  purchase_order_status: string | null
+  hcp_number: string | null
+  job_name: string | null
+  job_address: string | null
+  part_name: string | null
+  part_manufacturer: string | null
+  created_by_name: string | null
+}
+
+type JobsTab = 'receivables' | 'reports' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary' | 'parts' | 'job-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -50,11 +70,12 @@ function formatCurrency(n: number): string {
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'ledger', 'sub_sheet_ledger', 'teams-summary']
+const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'ledger', 'sub_sheet_ledger', 'teams-summary', 'parts', 'job-summary']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
 export default function Jobs() {
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser } = useAuth()
   const [activeTab, setActiveTab] = useState<JobsTab>('receivables')
@@ -157,6 +178,11 @@ export default function Jobs() {
   const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
+  const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
+  const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
+  const [tallyPartsSearch, setTallyPartsSearch] = useState('')
+  const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
+  const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
   const [templateFormOpen, setTemplateFormOpen] = useState(false)
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
@@ -542,6 +568,33 @@ export default function Jobs() {
       setLaborJobs([])
     }
     setLaborJobsLoading(false)
+  }
+
+  async function loadTallyParts() {
+    if (!authUser?.id) return
+    setTallyPartsLoading(true)
+    setError(null)
+    const { data, error: err } = await supabase.rpc('list_tally_parts_with_po')
+    if (err) {
+      setError(err.message)
+      setTallyParts([])
+    } else {
+      setTallyParts((data ?? []) as TallyPartRow[])
+    }
+    setTallyPartsLoading(false)
+  }
+
+  async function deleteTallyPart(id: string) {
+    if (!confirm('Remove this part from the tally?')) return
+    setDeletingTallyPartId(id)
+    setError(null)
+    const { error: err } = await supabase.from('jobs_tally_parts').delete().eq('id', id)
+    if (err) {
+      setError(err.message)
+    } else {
+      setTallyParts((prev) => prev.filter((r) => r.id !== id))
+    }
+    setDeletingTallyPartId(null)
   }
 
   function getFixtureTypeIdByName(name: string): string | null {
@@ -1146,6 +1199,17 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
+    if (myRole === 'primary') {
+      setActiveTab('reports')
+      if (tab !== 'reports') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'reports')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
     if (tab === 'labor') {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -1169,7 +1233,22 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, isReportEnabledOnlyUser])
+  }, [searchParams, isReportEnabledOnlyUser, myRole])
+
+  useEffect(() => {
+    const newJob = searchParams.get('newJob') === 'true'
+    const tab = searchParams.get('tab')
+    if (newJob && (tab === 'sub_sheet_ledger' || tab === 'labor')) {
+      setActiveTab('sub_sheet_ledger')
+      setLaborModalOpen(true)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('newJob')
+        if (tab === 'labor') next.set('tab', 'sub_sheet_ledger')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (activeTab === 'sub_sheet_ledger' || activeTab === 'receivables') loadRoster()
@@ -1193,7 +1272,11 @@ export default function Jobs() {
   }, [laborBookEntriesVersionId])
 
   useEffect(() => {
-    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary') && authUser?.id) loadLaborJobs()
+    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
+  }, [activeTab, authUser?.id])
+
+  useEffect(() => {
+    if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) loadTallyParts()
   }, [activeTab, authUser?.id])
 
   async function loadDriveSettings() {
@@ -1205,7 +1288,7 @@ export default function Jobs() {
   }
 
   useEffect(() => {
-    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary') && authUser?.id) loadDriveSettings()
+    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadDriveSettings()
   }, [activeTab, authUser?.id])
 
   async function saveDriveSettings(e: React.FormEvent) {
@@ -1372,6 +1455,46 @@ export default function Jobs() {
 
     return { rows, matchedLaborTotal, matchedBillingTotal }
   }, [jobs, laborJobs, driveMileageCost, driveTimePerMile])
+
+  const jobSummaryData = useMemo(() => {
+    const partsCostByJobId = new Map<string, number>()
+    for (const r of tallyParts) {
+      const cost = Number(r.price_at_time ?? 0) * Number(r.quantity)
+      partsCostByJobId.set(r.job_id, (partsCostByJobId.get(r.job_id) ?? 0) + cost)
+    }
+    const laborCostByHcp = new Map<string, number>()
+    const mileageCost = driveMileageCost ?? 0.70
+    const timePerMile = driveTimePerMile ?? 0.02
+    for (const job of laborJobs) {
+      const hcp = (job.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const totalHrs = (job.items ?? []).reduce((s, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+      }, 0)
+      const rate = job.labor_rate ?? 0
+      const miles = Number(job.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0
+        ? miles * mileageCost + miles * timePerMile * rate
+        : miles > 0 ? miles * mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
+      laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
+    }
+    return jobs.map((job) => {
+      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
+      const laborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+      const partsCost = partsCostByJobId.get(job.id) ?? 0
+      const totalBill = job.revenue != null ? Number(job.revenue) : 0
+      const profit = totalBill - partsCost - laborCost
+      return {
+        job,
+        laborCost,
+        partsCost,
+        totalBill,
+        profit,
+      }
+    })
+  }, [jobs, laborJobs, tallyParts, driveMileageCost, driveTimePerMile])
 
   function openNew() {
     setEditing(null)
@@ -1563,21 +1686,23 @@ export default function Jobs() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('receivables')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'receivables')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'receivables')}
-        >
-          Receivables
-        </button>
-        {!isReportEnabledOnlyUser && (
+        {myRole !== 'primary' && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('receivables')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'receivables')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'receivables')}
+          >
+            AR
+          </button>
+        )}
+        {(!isReportEnabledOnlyUser || myRole === 'primary') && (
           <button
             type="button"
             onClick={() => {
@@ -1593,48 +1718,80 @@ export default function Jobs() {
             Reports
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('ledger')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'ledger')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'ledger')}
-        >
-          Billing
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('sub_sheet_ledger')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'sub_sheet_ledger')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'sub_sheet_ledger')}
-        >
-          Labor
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('teams-summary')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'teams-summary')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'teams-summary')}
-        >
-          Teams Summary
-        </button>
+        {myRole !== 'primary' && (
+          <>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('ledger')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'ledger')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'ledger')}
+          >
+            Billing
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('sub_sheet_ledger')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'sub_sheet_ledger')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'sub_sheet_ledger')}
+          >
+            Labor
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('teams-summary')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'teams-summary')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'teams-summary')}
+          >
+            Teams Summary
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('parts')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'parts')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'parts')}
+          >
+            Parts
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('job-summary')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'job-summary')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'job-summary')}
+          >
+            Job Summary
+          </button>
+          </>
+        )}
         <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
       </div>
 
@@ -2135,7 +2292,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture /Tie-ins</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Materials</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Billed Materials</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractors</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid #e5e7eb' }} />
@@ -2250,6 +2407,221 @@ export default function Jobs() {
                     <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedLaborTotal)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedBillingTotal)}</td>
                   </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'parts' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ marginBottom: '0.75rem' }}>
+            <input
+              type="search"
+              placeholder="Search HCP, job name, fixture, part name…"
+              value={tallyPartsSearch}
+              onChange={(e) => setTallyPartsSearch(e.target.value)}
+              style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            />
+          </div>
+          {tallyPartsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }}></th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Total</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const q = tallyPartsSearch.trim().toLowerCase()
+                    const filtered = q
+                      ? tallyParts.filter((r) => {
+                          const hcp = (r.hcp_number ?? '').toLowerCase()
+                          const job = (r.job_name ?? '').toLowerCase()
+                          const fixture = (r.fixture_name ?? '').toLowerCase()
+                          const part = (r.part_name ?? '').toLowerCase()
+                          const mfr = (r.part_manufacturer ?? '').toLowerCase()
+                          return hcp.includes(q) || job.includes(q) || fixture.includes(q) || part.includes(q) || mfr.includes(q)
+                        })
+                      : tallyParts
+                    const byJob = new Map<string, TallyPartRow[]>()
+                    for (const r of filtered) {
+                      const list = byJob.get(r.job_id) ?? []
+                      list.push(r)
+                      byJob.set(r.job_id, list)
+                    }
+                    const jobRows = Array.from(byJob.entries()).map(([jobId, parts]) => {
+                      const first = parts[0]
+                      return { jobId, hcpNumber: first.hcp_number, jobName: first.job_name, parts }
+                    })
+                    if (jobRows.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                            No tally parts yet. Subs can record parts via the Job Tally flow on the Dashboard.
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return jobRows.flatMap(({ jobId, hcpNumber, jobName, parts }) => {
+                      const expanded = expandedPartsJobIds.has(jobId)
+                      const partsTotal = parts.reduce((sum, r) => sum + (Number(r.price_at_time ?? 0) * Number(r.quantity)), 0)
+                      const toggle = () => {
+                        setExpandedPartsJobIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(jobId)) next.delete(jobId)
+                          else next.add(jobId)
+                          return next
+                        })
+                      }
+                      return [
+                        <tr
+                          key={jobId}
+                          style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: expanded ? '#f9fafb' : undefined }}
+                          onClick={toggle}
+                        >
+                          <td style={{ padding: '0.75rem', width: 32 }}>
+                            {expanded ? '▼' : '▶'}
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>{hcpNumber ?? '—'}</td>
+                          <td style={{ padding: '0.75rem' }}>{jobName ?? '—'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
+                        </tr>,
+                        ...(expanded
+                          ? [
+                              <tr key={`${jobId}-parts`}>
+                                <td colSpan={5} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                    <thead>
+                                      <tr style={{ background: '#f3f4f6' }}>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Fixture</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Part</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Qty</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Price</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Purchase Order</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Entered by</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date</th>
+                                        <th style={{ padding: '0.5rem 0.75rem', width: 1 }}></th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {parts.map((r) => (
+                                        <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }} onClick={(e) => e.stopPropagation()}>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{r.fixture_name || '—'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                                            {r.part_name ?? '—'}
+                                            {r.part_manufacturer ? ` (${r.part_manufacturer})` : ''}
+                                          </td>
+                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{Number(r.quantity)}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                                            {r.purchase_order_id && r.price_at_time != null ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => navigate(`/materials?tab=purchase-orders&po=${r.purchase_order_id}`)}
+                                                style={{
+                                                  background: 'none',
+                                                  border: 'none',
+                                                  padding: 0,
+                                                  cursor: 'pointer',
+                                                  color: '#2563eb',
+                                                  textDecoration: 'underline',
+                                                  fontSize: 'inherit',
+                                                }}
+                                              >
+                                                {formatCurrency(Number(r.price_at_time))}
+                                              </button>
+                                            ) : (
+                                              '—'
+                                            )}
+                                          </td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                                            {r.purchase_order_name
+                                              ? `${r.purchase_order_name}${r.purchase_order_status ? ` [${r.purchase_order_status === 'finalized' ? 'Finalized' : 'Draft'}]` : ''}`
+                                              : '—'}
+                                          </td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{r.created_by_name ?? '—'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => deleteTallyPart(r.id)}
+                                              disabled={deletingTallyPartId === r.id}
+                                              style={{
+                                                padding: '0.25rem 0.5rem',
+                                                fontSize: '0.75rem',
+                                                background: '#fee2e2',
+                                                color: '#991b1b',
+                                                border: 'none',
+                                                borderRadius: 4,
+                                                cursor: deletingTallyPartId === r.id ? 'not-allowed' : 'pointer',
+                                              }}
+                                            >
+                                              {deletingTallyPartId === r.id ? '…' : 'Delete'}
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>,
+                            ]
+                          : []),
+                      ]
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'job-summary' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {(loading || tallyPartsLoading || laborJobsLoading) ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : jobSummaryData.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
+          ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor Cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jobSummaryData.map(({ job, laborCost, partsCost, totalBill, profit }) => (
+                    <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem' }}>{job.hcp_number ?? '—'}</td>
+                      <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
+                      <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{laborCost === 0 ? '—' : `$${formatCurrency(laborCost)}`}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: profit >= 0 ? undefined : '#b91c1c' }}>
+                        ${formatCurrency(profit)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -2923,7 +3295,7 @@ export default function Jobs() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Materials (Line Items)</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Billed Materials (Line Items)</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount ($)</th>
                         <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
@@ -2975,7 +3347,7 @@ export default function Jobs() {
                   </table>
                 </div>
                 <button type="button" onClick={addMaterialRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  Add Material
+                  Add Billed Material
                 </button>
               </div>
               <div>

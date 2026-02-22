@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
@@ -13,6 +13,7 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
 
 export default function Projects() {
   const { user: authUser } = useAuth()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const customerId = searchParams.get('customer')
 
@@ -208,6 +209,25 @@ export default function Projects() {
 
   return (
     <div>
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => navigate(customerId ? `/projects/new?customer=${customerId}` : '/projects/new')}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            New Project
+          </button>
+        </div>
+      )}
       {customerId && (
         <p style={{ marginBottom: '1rem' }}>
           <Link to="/projects">Show all projects</Link>

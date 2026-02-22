@@ -10,9 +10,10 @@ import {
   type PinnedItem,
 } from '../lib/pinnedTabs'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
+import { useARTotal } from '../hooks/useARTotal'
+import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
+import { useExternalTeamTotal } from '../hooks/useExternalTeamTotal'
 import type { Database } from '../types/database'
-
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -82,8 +83,6 @@ type ChecklistInstance = {
   checklist_items?: { title: string } | null
 }
 
-type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
-
 const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
 function ChecklistSkeleton() {
@@ -127,8 +126,7 @@ function SubscribedSkeleton() {
 }
 
 export default function Dashboard() {
-  const { user: authUser } = useAuth()
-  const [role, setRole] = useState<UserRole | null>(null)
+  const { user: authUser, role } = useAuth()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
@@ -141,9 +139,6 @@ export default function Dashboard() {
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
   const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
-  const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
-  const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
-  const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [sendTaskTitle, setSendTaskTitle] = useState('')
   const [sendTaskAssignedToUserId, setSendTaskAssignedToUserId] = useState('')
@@ -169,11 +164,18 @@ export default function Dashboard() {
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
 
-  const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
   const checklistAddModal = useChecklistAddModal()
   const hasCostMatrixPin = pinnedRoutes.some((p) => p.path === '/people' && p.tab === 'pay')
+  const hasARPin = pinnedRoutes.some((p) => p.path === '/jobs' && p.tab === 'receivables')
+  const hasSupplyHousesAPPin = pinnedRoutes.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
+  const hasExternalTeamPin = pinnedRoutes.some((p) => p.path === '/materials' && p.tab === 'external-team')
+  const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
+  const { total: arTotal } = useARTotal(hasARPin, financialRefreshKey)
+  const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
+  const { total: externalTeamTotal } = useExternalTeamTotal(hasExternalTeamPin, financialRefreshKey)
 
   useEffect(() => {
     if (canSendTask) {
@@ -207,10 +209,18 @@ export default function Dashboard() {
   }, [authUser?.id])
 
   useEffect(() => {
-    const onPinsChanged = () => refreshPinned()
+    const onPinsChanged = () => {
+      refreshPinned()
+      setFinancialRefreshKey((k) => k + 1)
+    }
     window.addEventListener('pipetooling-pins-changed', onPinsChanged)
     window.addEventListener('focus', onPinsChanged)
-    const onVisibilityChange = () => { if (document.visibilityState === 'visible') refreshPinned() }
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshPinned()
+        setFinancialRefreshKey((k) => k + 1)
+      }
+    }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => {
       window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
@@ -233,6 +243,18 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [authUser?.id])
 
+  // Realtime: refresh financial pin totals when underlying data changes
+  useEffect(() => {
+    if (!authUser?.id || (!hasARPin && !hasSupplyHousesAPPin && !hasExternalTeamPin)) return
+    const channel = supabase
+      .channel('dashboard-financial-pins')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_receivables' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'external_team_job_payments' }, () => setFinancialRefreshKey((k) => k + 1))
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [authUser?.id, hasARPin, hasSupplyHousesAPPin, hasExternalTeamPin])
+
   useEffect(() => {
     if (!authUser?.id) return
     supabase.from('report_enabled_users').select('user_id').eq('user_id', authUser.id).maybeSingle().then(({ data }) => {
@@ -242,7 +264,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authUser?.id) return
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -278,9 +300,9 @@ export default function Dashboard() {
 
     const today = toLocalDateString(new Date())
 
-    // Phase 1: Parallel fetch user, allUsers, subs, checklist
+    // Phase 1: Parallel fetch user name, allUsers, subs, checklist (role from useAuth)
     Promise.all([
-      supabase.from('users').select('role, name').eq('id', authUser.id).single(),
+      supabase.from('users').select('name').eq('id', authUser.id).single(),
       supabase.from('users').select('name'),
       supabase
         .from('step_subscriptions')
@@ -306,8 +328,7 @@ export default function Dashboard() {
         return
       }
 
-      const user = userData as { role: UserRole | 'subcontractor' | 'estimator'; name: string | null } | null
-      setRole((user?.role === 'subcontractor' ? null : (user?.role ?? null)) as UserRole | null)
+      const user = userData as { name: string | null } | null
       setUserLoading(false)
 
       const userNamesSet = new Set<string>()
@@ -443,22 +464,6 @@ export default function Dashboard() {
     })
     return () => { cancelled = true }
   }, [authUser?.id])
-
-  useEffect(() => {
-    if (!notificationHistoryOpen || !authUser?.id) return
-    setNotificationHistoryLoading(true)
-    supabase
-      .from('notification_history')
-      .select('*')
-      .eq('recipient_user_id', authUser.id)
-      .order('sent_at', { ascending: false })
-      .limit(100)
-      .then(({ data, error }) => {
-        setNotificationHistoryLoading(false)
-        if (error) return
-        setNotificationHistory((data ?? []) as NotificationHistoryRow[])
-      })
-  }, [notificationHistoryOpen, authUser?.id])
 
   useEffect(() => {
     if (!completedItemsOpen || !authUser?.id || !isDev) return
@@ -1041,6 +1046,51 @@ export default function Dashboard() {
 
   return (
     <div>
+      {role != null && (
+        <>
+          <Link
+            to="/tally"
+            style={{
+              display: 'block',
+              padding: '1rem 1.5rem',
+              marginBottom: '1rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1.125rem',
+              textAlign: 'center',
+              minHeight: 48,
+              boxSizing: 'border-box',
+            }}
+          >
+            Job Tally
+          </Link>
+          <button
+            type="button"
+            onClick={() => setNewReportModalOpen(true)}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '1rem 1.5rem',
+              marginBottom: '1rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '1.125rem',
+              textAlign: 'center',
+              minHeight: 48,
+              boxSizing: 'border-box',
+              cursor: 'pointer',
+            }}
+          >
+            Job Report
+          </button>
+        </>
+      )}
       {role === 'master_technician' && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link
@@ -1058,7 +1108,7 @@ export default function Dashboard() {
           </Link>
       </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser && (
         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -1067,7 +1117,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && !isReportEnabledOnlyUser && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && !isReportEnabledOnlyUser && (
         <div style={{ marginBottom: '1rem' }}>
           {recentReportsLoading ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
@@ -1114,9 +1164,13 @@ export default function Dashboard() {
                 : item.path
               const displayLabel = isCostMatrix
                 ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : (isSupplyHouseAP || isAR || isExternalTeam)
-                  ? (isSupplyHouseAP ? item.label.replace(/^(?:Supply House AP \| |AP: )/, 'Supply Houses: ') : isExternalTeam ? item.label.replace(/\$([\d,]+)\.00\b/g, '$$$1') : item.label)
-                  : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+                : isAR
+                  ? (arTotal != null ? `AR: $${Math.round(arTotal).toLocaleString('en-US')}` : item.label)
+                  : isSupplyHouseAP
+                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
+                    : isExternalTeam
+                      ? (externalTeamTotal != null ? `External Team: $${Math.round(externalTeamTotal).toLocaleString('en-US')}` : item.label)
+                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
                 <Link
                   key={item.path + (item.tab ?? '')}
@@ -1703,81 +1757,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div style={{ marginTop: '2rem' }}>
-        <h2
-          style={{
-            fontSize: '1.125rem',
-            marginBottom: notificationHistoryOpen ? '0.75rem' : 0,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-          }}
-          onClick={() => setNotificationHistoryOpen((o) => !o)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setNotificationHistoryOpen((o) => !o)}
-        >
-          {notificationHistoryOpen ? '▼' : '▶'} My Notification History
-        </h2>
-        {notificationHistoryOpen && (
-          <>
-            {notificationHistoryLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
-            ) : notificationHistory.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
-            ) : (
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {notificationHistory.map((row) => {
-                  const channelLabel = row.channel === 'both' ? 'Email + Push' : row.channel === 'email' ? 'Email' : 'Push'
-                  const link =
-                    row.project_id && row.step_id
-                      ? `/workflows/${row.project_id}#step-${row.step_id}`
-                      : row.checklist_instance_id
-                        ? '/checklist'
-                        : null
-                  return (
-                    <li
-                      key={row.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        marginBottom: '0.5rem',
-                        background: '#fff',
-                      }}
-                    >
-                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140 }}>
-                        {formatDatetime(row.sent_at)}
-                      </span>
-                      <span style={{ flex: 1, fontWeight: 500 }}>{row.title}</span>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '2px 6px',
-                          borderRadius: 4,
-                          background: '#f3f4f6',
-                          color: '#374151',
-                        }}
-                      >
-                        {channelLabel}
-                      </span>
-                      {link && (
-                        <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb' }}>
-                          View →
-                        </Link>
-                      )}
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </>
-        )}
-      </div>
       <NewReportModal
         open={newReportModalOpen}
         onClose={() => setNewReportModalOpen(false)}

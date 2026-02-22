@@ -215,27 +215,35 @@ serve(async (req) => {
       }
     }
 
-    // Delete from auth.users (requires service role)
-    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userToDelete.id)
-
-    if (deleteAuthError) {
-      return new Response(
-        JSON.stringify({ error: `Failed to delete user from auth: ${deleteAuthError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Delete from public.users (cascade should handle related records, but we'll delete explicitly)
-    // Note: The trigger should handle deleting from public.users when auth.users is deleted,
-    // but we'll delete it explicitly to be safe
+    // Delete from public.users FIRST, then auth.users.
+    // If public.users references auth.users (or vice versa via triggers), deleting auth first
+    // causes "Database error deleting user" due to FK constraints. Deleting public.users first
+    // lets cascades run, then auth.users can be deleted cleanly.
     const { error: deleteUserError } = await adminClient
       .from('users')
       .delete()
       .eq('id', userToDelete.id)
 
     if (deleteUserError) {
-      // Log but don't fail - auth user is already deleted
-      console.error('Error deleting from public.users:', deleteUserError)
+      return new Response(
+        JSON.stringify({
+          error: `Failed to delete user record: ${deleteUserError.message}. Check for related data (customers, reports, etc.) that may need reassignment.`,
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Delete from auth.users (requires service role)
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userToDelete.id)
+
+    if (deleteAuthError) {
+      // public.users is already deleted; auth delete failed (e.g. trigger, permission).
+      // Log and return - caller may need to retry or use Supabase Dashboard.
+      console.error('Auth delete failed after public.users removed:', deleteAuthError)
+      return new Response(
+        JSON.stringify({ error: `Failed to delete user from auth: ${deleteAuthError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     return new Response(

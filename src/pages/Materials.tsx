@@ -16,7 +16,7 @@ type MaterialTemplate = Database['public']['Tables']['material_templates']['Row'
 type MaterialTemplateItem = Database['public']['Tables']['material_template_items']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
 
 interface ServiceType {
   id: string
@@ -299,6 +299,8 @@ export default function Materials() {
   const templatePartPickerRef = useRef<HTMLDivElement>(null)
   const filterAssemblyTypeDropdownRef = useRef<HTMLDivElement>(null)
   const templateItemsSectionRef = useRef<HTMLDivElement>(null)
+  const editingPODetailRef = useRef<HTMLDivElement>(null)
+  const selectedPODetailRef = useRef<HTMLDivElement>(null)
 
   // Purchase Orders state
   const [allPOs, setAllPOs] = useState<PurchaseOrderWithItems[]>([])
@@ -329,7 +331,7 @@ export default function Materials() {
     } else {
       setEstimatorServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator') {
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary') {
       setLoading(false)
       return
     }
@@ -1293,7 +1295,7 @@ export default function Materials() {
   }, [searchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') {
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
       const loadInitial = async () => {
         try {
           setPartsPage(0)
@@ -1317,7 +1319,7 @@ export default function Materials() {
 
   // Reload data when service type or loadAllMode changes
   useEffect(() => {
-    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
       setFilterPartTypeId('')
       setFilterManufacturer('')
       const loadForServiceType = async () => {
@@ -1372,10 +1374,13 @@ export default function Materials() {
   }, [activeTab, selectedServiceTypeId])
 
   useEffect(() => {
-    if (activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant')) {
+    if (activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary')) {
       loadSupplyHouses()
       loadSupplyHouseSummary()
-      loadExternalTeamSummary()
+      // External Team (people, external_team_*) requires dev/master/assistant; Primary has no RLS access
+      if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') {
+        loadExternalTeamSummary()
+      }
     }
   }, [activeTab, myRole])
 
@@ -1412,9 +1417,9 @@ export default function Materials() {
     }
   }, [editingPO?.id])
 
-  // Open a specific PO when navigating from Bids (e.g. "View purchase order")
+  // Open a specific PO when navigating from Jobs Parts, Bids, Quickfill (state or ?po= URL param)
   useEffect(() => {
-    const openPOId = (location.state as { openPOId?: string } | null)?.openPOId
+    const openPOId = (location.state as { openPOId?: string } | null)?.openPOId ?? searchParams.get('po')
     if (!openPOId) return
     setActiveTab('purchase-orders')
     const loadPO = async () => {
@@ -1437,15 +1442,40 @@ export default function Materials() {
             supply_house: item.supply_houses || undefined,
             source_template: item.source_template ?? null,
           }))
-          setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
+          const poWithItems = { ...poData as PurchaseOrder, items: itemsWithDetails }
+          setEditingPO(poWithItems)
+          setSelectedPO(poWithItems)
+          setDraftPOs((prev) => (prev.some((p) => p.id === openPOId) ? prev : [poWithItems, ...prev]))
+          setAllPOs((prev) => (prev.some((p) => p.id === openPOId) ? prev : [poWithItems, ...prev]))
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              selectedPODetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            })
+          })
         } else {
-          setEditingPO({ ...poData as PurchaseOrder, items: [] })
+          const poWithItems = { ...poData as PurchaseOrder, items: [] }
+          setEditingPO(poWithItems)
+          setSelectedPO(poWithItems)
+          setDraftPOs((prev) => (prev.some((p) => p.id === openPOId) ? prev : [poWithItems, ...prev]))
+          setAllPOs((prev) => (prev.some((p) => p.id === openPOId) ? prev : [poWithItems, ...prev]))
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              selectedPODetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            })
+          })
         }
       }
-      navigate(location.pathname, { replace: true, state: {} })
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('po')
+        return next
+      }, { replace: true })
+      if ((location.state as { openPOId?: string } | null)?.openPOId) {
+        navigate('/materials?tab=purchase-orders', { replace: true, state: {} })
+      }
     }
     loadPO()
-  }, [location.state])
+  }, [location.state, searchParams])
 
   // Close part picker dropdowns when clicking outside
   useEffect(() => {
@@ -1508,8 +1538,8 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator') {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, and estimators can access materials.</div>
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary') {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, and primaries can access materials.</div>
   }
 
   // Filter parts by search query (name, manufacturer, part_type, notes) — used by part pickers
@@ -1757,7 +1787,7 @@ export default function Materials() {
         const loads = [loadSupplyHouses()]
         if (activeTab === 'supply-houses') {
           loads.push(loadSupplyHouseSummary())
-          loads.push(loadExternalTeamSummary())
+          if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') loads.push(loadExternalTeamSummary())
         }
         else loads.push(reloadPartsFirstPage())
         await Promise.all(loads)
@@ -1783,7 +1813,7 @@ export default function Materials() {
         const loads = [loadSupplyHouses()]
         if (activeTab === 'supply-houses') {
           loads.push(loadSupplyHouseSummary())
-          loads.push(loadExternalTeamSummary())
+          if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') loads.push(loadExternalTeamSummary())
         }
         else loads.push(reloadPartsFirstPage())
         await Promise.all(loads)
@@ -4838,7 +4868,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                              {po.items.length} items • ${formatCurrency(total)} total
+                              {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length} items • ${formatCurrency(total)} total
                             </div>
                           </div>
                         </div>
@@ -4851,7 +4881,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
 
             {/* Selected PO Details Section */}
             {editingPO && editingPO.status === 'draft' && (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem', background: '#f9fafb' }}>
+              <div ref={editingPODetailRef} style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem', background: '#f9fafb' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <div style={{ flex: 1 }}>
                     {editingPOName === editingPO.id ? (
@@ -4898,7 +4928,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       </div>
                     )}
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      Status: <strong>{editingPO.status}</strong> • {editingPO.items.length} items • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
+                      Status: <strong>{editingPO.status}</strong> • {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{editingPO.items.length} items • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
                     </div>
                   </div>
                   <button
@@ -5495,7 +5525,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
         <div>
           {/* Selected PO section (inline, above Search) */}
           {selectedPO && (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+            <div ref={selectedPODetailRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <h2 style={{ marginBottom: '1rem' }}>{selectedPO.name}</h2>
               
               {/* Notes section - displayed at top for finalized POs */}
@@ -6054,7 +6084,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             {po.status}
                           </span>
                         </td>
-                        <td style={{ padding: '0.75rem' }}>{po.items.length}</td>
+                        <td style={{ padding: '0.75rem' }}>{po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length}</td>
                         <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(total)}</td>
                         <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(totalWithTax)}</td>
                         <td style={{ padding: '0.75rem' }}>
@@ -6089,7 +6119,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       )}
 
       {/* Supply Houses Tab */}
-      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary') && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
@@ -6341,7 +6371,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
             </button>
           </div>
 
-          {/* External Team table */}
+          {/* External Team table - dev/master/assistant only; Primary has no RLS on people/external_team_* */}
+          {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
           <section style={{ marginBottom: '2rem' }}>
             {externalTeamSummaryLoading ? (
               <p style={{ color: '#6b7280' }}>Loading…</p>
@@ -6534,6 +6565,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               </button>
             </div>
           </section>
+          )}
 
           {/* Supply House Add/Edit modal (for Supply Houses tab) */}
           {supplyHouseFormOpen && activeTab === 'supply-houses' && (

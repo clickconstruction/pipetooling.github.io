@@ -1213,6 +1213,61 @@ export type Database = {
           },
         ]
       }
+      jobs_tally_parts: {
+        Row: {
+          id: string
+          job_id: string
+          fixture_name: string
+          part_id: string
+          quantity: number
+          sequence_order: number
+          created_by_user_id: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          fixture_name?: string
+          part_id: string
+          quantity?: number
+          sequence_order?: number
+          created_by_user_id: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          fixture_name?: string
+          part_id?: string
+          quantity?: number
+          sequence_order?: number
+          created_by_user_id?: string
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_tally_parts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_tally_parts_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_tally_parts_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_receivables: {
         Row: {
           account_rep_name: string | null
@@ -3475,6 +3530,35 @@ export type Database = {
           job_hcp_number: string
         }[]
       }
+      list_jobs_for_tally: {
+        Args: never
+        Returns: { id: string; hcp_number: string; job_name: string; job_address: string }[]
+      }
+      list_tally_parts_with_po: {
+        Args: never
+        Returns: {
+          id: string
+          job_id: string
+          fixture_name: string
+          part_id: string
+          quantity: number
+          created_by_user_id: string
+          created_at: string
+          price_at_time: number | null
+          purchase_order_id: string | null
+          purchase_order_name: string | null
+          hcp_number: string | null
+          job_name: string | null
+          job_address: string | null
+          part_name: string | null
+          part_manufacturer: string | null
+          created_by_name: string | null
+        }[]
+      }
+      create_po_from_job_tally: {
+        Args: { p_job_id: string; p_entries: { part_id: string; quantity: number }[] }
+        Returns: { po_id?: string; error?: string }
+      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: { id: string; source: string; display_name: string; hcp_number: string }[]
@@ -3514,6 +3598,7 @@ export type Database = {
         | "master_technician"
         | "dev"
         | "estimator"
+        | "primary"
       workflow_status: "draft" | "active" | "completed"
     }
     CompositeTypes: {
@@ -3659,6 +3744,7 @@ export const Constants = {
         "master_technician",
         "dev",
         "estimator",
+        "primary",
       ],
       workflow_status: ["draft", "active", "completed"],
     },

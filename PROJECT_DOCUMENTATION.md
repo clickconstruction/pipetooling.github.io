@@ -1599,6 +1599,45 @@ counts_fixture_groups (id)
 - **Security**: Cannot access ongoing projects, workflows, or sensitive operational data
 - **Flexibility**: Can work for multiple masters by creating customers for different masters
 
+#### `primary`
+
+**Purpose**: Role for users who need Materials, Jobs (Reports tab only), and Dashboard with Recent Reports and Send task—without access to Customers, Projects, People, Bids, or other Jobs tabs.
+
+##### Pages Allowed
+- **Dashboard** - Recent Reports section, Send task form, Checklist items due today
+- **Materials** - Full access (same as estimator/master)
+- **Jobs** - Reports tab only (view and create reports)
+- **Calendar** - View calendar
+- **Checklist** - Today, History, Manage tabs
+- **Settings** - Change password, push notifications
+
+##### Pages Blocked
+- Customers, Projects, People, Bids, Templates
+- **Jobs tabs other than Reports**: Receivables, Ledger, Sub Sheet Ledger, Teams Summary
+- **Layout redirects**: Attempts to access blocked pages redirect to `/dashboard`
+
+##### Materials Capabilities
+
+**Full Materials Access** (same as estimator/master_technician):
+- Price Book: View, edit, and manage all parts and prices
+- Supply Houses: Full CRUD on supply house records
+- Templates: Create and edit material templates
+- Purchase Orders: Create draft and finalized POs
+- Price History: View price change tracking
+
+##### Jobs Reports Capabilities
+
+- **Reports tab only**: View all reports via `list_reports_with_job_info` RPC
+- **Full CRUD on reports**: Create, edit, and delete reports (RLS policy grants Primary same access as dev/masters/assistants)
+- Other Jobs tabs (Receivables, Ledger, Sub Sheet Ledger, Teams Summary) are hidden
+
+##### Dashboard Capabilities
+
+- **Recent Reports**: Same section as masters (list of recent reports)
+- **Send task**: Can create and assign checklist tasks to other users (ChecklistAddModal "detail send" also available)
+
+**Use Case**: Primary users handle materials, job reports, and task assignment without access to customer/project management or bids.
+
 ### Row Level Security (RLS) Patterns
 
 #### Common Pattern: Master-Assistant Adoption and Master Sharing
@@ -3172,7 +3211,7 @@ async function myFunction() {
 - `send-workflow-notification` - Send workflow stage notifications via email (automatically called when steps change status)
 
 ### Database Enums
-- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'`
+- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'`
 - `project_status`: `'awaiting_start' | 'active' | 'completed' | 'on_hold'`
 - `workflow_status`: `'draft' | 'active' | 'completed'`
 - `step_status`: `'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved'`

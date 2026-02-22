@@ -9,7 +9,7 @@ last_updated: 2026-02-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
-total_roles: 5
+total_roles: 6
 tables_with_rls: "50+"
 access_patterns: "Ownership, Adoption, Sharing"
 
@@ -17,7 +17,7 @@ key_sections:
   - name: "User Roles"
     line: ~18
     anchor: "#user-roles"
-    description: "Detailed breakdown of all 5 roles"
+    description: "Detailed breakdown of all 6 roles"
   - name: "Page Access Matrix"
     line: ~232
     anchor: "#page-access-matrix"
@@ -70,14 +70,15 @@ when_to_read:
 
 ## Overview
 
-Pipetooling implements comprehensive role-based access control (RBAC) using five distinct user roles, each with specific permissions tailored to their responsibilities.
+Pipetooling implements comprehensive role-based access control (RBAC) using six distinct user roles, each with specific permissions tailored to their responsibilities.
 
-### Five User Roles
+### Six User Roles
 1. **dev** - System administrators with full access
 2. **master_technician** - Project managers and business owners
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
+6. **primary** - Materials and job reports specialist (Reports tab only, Dashboard with Recent Reports and Send task)
 
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
@@ -340,27 +341,72 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 ---
 
+### primary (Primary)
+
+**Purpose**: Materials and job reports specialist with access to Reports tab only on Jobs, plus Dashboard with Recent Reports and Send task.
+
+**Access**:
+- Dashboard, Materials, Jobs (Reports tab only), Calendar, Checklist, Settings
+- **Blocked**: Customers, Projects, People, Bids, Quickfill, other Jobs tabs (Receivables, Ledger, Sub Sheet Ledger, Teams Summary)
+
+**Permissions**:
+
+**Materials - Full Access**:
+- Same as estimator/master_technician
+- Price book management (parts, prices, supply houses)
+- Template creation and editing
+- Purchase order management
+- Price history viewing
+
+**Jobs - Reports Tab Only**:
+- View all reports via `list_reports_with_job_info` RPC
+- Full CRUD on reports table (create, edit, delete reports)
+- Other Jobs tabs hidden (Receivables, Ledger, Sub Sheet Ledger, Teams Summary)
+
+**Dashboard**:
+- Recent Reports section (same as masters)
+- Send task form (create and assign checklist tasks)
+- ChecklistAddModal ("detail send") available when canSendTask is true
+
+**What They Cannot Do**:
+- Cannot access Customers, Projects, People, Bids
+- Cannot access Jobs tabs other than Reports
+- No Quickfill
+- No user management (can change own password via Settings)
+
+**Use Cases**:
+- Field staff who manage materials and submit job reports
+- Users who need to send tasks without full project visibility
+
+**Layout Behavior**:
+- Navigation shows: Dashboard, Materials, Jobs, Calendar, Checklist
+- Attempts to access blocked pages redirect to `/dashboard`
+
+---
+
 ## Page Access Matrix
 
-| Page | dev | master | assistant | sub | estimator |
-|------|-----|--------|-----------|-----|-----------|
-| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
-| **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ |
-| **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited |
+| Page | dev | master | assistant | sub | estimator | primary |
+|------|-----|--------|-----------|-----|-----------|---------|
+| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
+| **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports only |
+| **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited | ✅ limited |
 
 ### Redirection Rules
 
 **Subcontractors**: Any page except Dashboard/Calendar → `/dashboard`
 
 **Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
+
+**Primary**: Any page except Dashboard/Materials/Jobs/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports tab only
 
 **Assistants**: Can access most pages but see filtered data
 
@@ -370,104 +416,104 @@ Pipetooling implements comprehensive role-based access control (RBAC) using five
 
 ### Customer Management
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ Via Bids |
-| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Via Bids modal |
-| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ |
-| Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ |
-| Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ |
-| Quick Fill | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ Via Bids | ❌ |
+| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Via Bids modal | ❌ |
+| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
+| Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
+| Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
+| Quick Fill | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### Project Management
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ |
-| Create projects | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ |
-| Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ |
-| View stage summary | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
+| Create projects | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
+| Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
+| View stage summary | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### People Management
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
-| Create people | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
-| Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ |
-| Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ |
-| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ |
-| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ |
+| Create people | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ |
+| Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ |
+| Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ |
+| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ | ❌ |
+| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
 
 ### Workflow Management
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View all stages | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View assigned stages only | - | - | - | ✅ | - |
-| Create/edit/delete stages | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Assign people | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Set Start (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Complete (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Approve/Reject | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Re-open | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View private notes | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View/edit line items | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View financial totals | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View/edit projections | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View all stages | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View assigned stages only | - | - | - | ✅ | - | - |
+| Create/edit/delete stages | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Assign people | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Set Start (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Complete (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Approve/Reject | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Re-open | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View private notes | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View/edit line items | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| View financial totals | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| View/edit projections | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Bids System
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View bids | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 
 ### Materials System
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| View price book | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Edit parts/prices | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Create/edit supply houses | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Delete supply houses | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Create templates | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Draft POs | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Finalize POs | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Confirm prices | ✅ | ✅ | ✅ | ❌ | ✅ |
-| View price history | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View price book | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Edit parts/prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Create/edit supply houses | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Delete supply houses | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create templates | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Draft POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Finalize POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Confirm prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| View price history | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
 ### User Management
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| Create users | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Delete users | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Set user passwords | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Impersonate users | ✅ | ✅ Limited | ❌ | ❌ | ❌ |
-| Adopt assistants | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Share with masters | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Change own password | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| Create users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Delete users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Set user passwords | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Impersonate users | ✅ | ✅ Limited | ❌ | ❌ | ❌ | ❌ |
+| Adopt assistants | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Share with masters | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Change own password | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Data Export
 
-| Feature | dev | master | assistant | sub | estimator |
-|---------|-----|--------|-----------|-----|-----------|
-| Export projects | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Export materials | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Export bids | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Cleanup orphaned prices | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| Export projects | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Export materials | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| Export bids | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Cleanup orphaned prices | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -614,8 +660,9 @@ master_user_id = auth.uid()
 1. **dev**: Full system access
 2. **master_technician**: Full business access (own data + shared)
 3. **estimator**: Focused access (bids + materials only)
-4. **assistant**: Conditional access (depends on adoption)
-5. **subcontractor**: Minimal access (assigned stages only)
+4. **primary**: Focused access (materials + job reports only)
+5. **assistant**: Conditional access (depends on adoption)
+6. **subcontractor**: Minimal access (assigned stages only)
 
 ### By Use Case
 
@@ -624,6 +671,8 @@ master_user_id = auth.uid()
 **Business Operations** → master_technician
 
 **Bid Estimation** → estimator
+
+**Materials & Reports** → primary
 
 **Operational Support** → assistant
 

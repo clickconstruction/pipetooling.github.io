@@ -335,7 +335,6 @@ export default function Calendar() {
 
   return (
     <div>
-      <h1 style={{ marginBottom: '1rem' }}>Calendar</h1>
       {!userName && (
         <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
           No stages assigned. Stages are assigned by name in workflow steps.

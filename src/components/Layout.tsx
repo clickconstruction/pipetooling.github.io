@@ -30,16 +30,14 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
-
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings']
-const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings']
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/jobs', '/calendar', '/checklist', '/settings', '/tally']
+const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally']
+const PRIMARY_PATHS = ['/dashboard', '/projects', '/materials', '/jobs', '/calendar', '/checklist', '/settings', '/tally']
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser } = useAuth()
-  const [role, setRole] = useState<UserRole | null>(null)
+  const { user: authUser, role } = useAuth()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
@@ -87,21 +85,14 @@ export default function Layout() {
   }, [gearOpen, menuOpen, pinForOpen])
 
   useEffect(() => {
-    if (!authUser?.id) {
-      setRole(null)
-      return
-    }
-    supabase.from('users').select('role').eq('id', authUser.id).single().then(({ data }) => {
-      setRole((data as { role: UserRole } | null)?.role ?? null)
-    })
-  }, [authUser?.id])
-
-  useEffect(() => {
     if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
     }
     if (role === 'estimator' && (location.pathname === '/' || !ESTIMATOR_PATHS.includes(location.pathname))) {
       navigate('/bids', { replace: true })
+    }
+    if (role === 'primary' && (location.pathname === '/' || !PRIMARY_PATHS.includes(location.pathname))) {
+      navigate('/dashboard', { replace: true })
     }
   }, [role, location.pathname, navigate])
 
@@ -144,6 +135,16 @@ export default function Layout() {
           <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+        </>
+      )
+    }
+    if (role === 'primary') {
+      return (
+        <>
+          <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
+          <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
+          <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
+          <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
         </>
       )
     }
@@ -234,21 +235,6 @@ export default function Layout() {
             <>
               <button
                 type="button"
-                onClick={() => navigate('/projects/new')}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                Project
-              </button>
-              <button
-                type="button"
                 onClick={() => checklistAddModal?.openAddModal()}
                 style={{
                   padding: '0.5rem 1rem',
@@ -261,6 +247,21 @@ export default function Layout() {
                 }}
               >
                 ToDo
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/jobs?tab=sub_sheet_ledger&newJob=true')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Job
               </button>
             </>
           )}
@@ -279,6 +280,23 @@ export default function Layout() {
               }}
             >
               Bid
+            </button>
+          )}
+          {role === 'subcontractor' && (
+            <button
+              type="button"
+              onClick={() => navigate('/jobs?tab=sub_sheet_ledger&newJob=true')}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Job
             </button>
           )}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -316,7 +334,7 @@ export default function Layout() {
               <path d="M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z" />
             </svg>
           </NavLink>
-          {role !== 'subcontractor' && (
+          {role !== 'subcontractor' && role !== 'primary' && (
             <>
               <NavLink
                 to="/customers"
