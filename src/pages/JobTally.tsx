@@ -342,28 +342,30 @@ export default function JobTally() {
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(0.01, q - 1))}
-                    style={{
-                      width: TOUCH_MIN,
-                      height: TOUCH_MIN,
-                      padding: 0,
-                      fontSize: '1.25rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 8,
-                      background: '#fff',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    −
-                  </button>
+                  {quantity > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      style={{
+                        width: TOUCH_MIN,
+                        height: TOUCH_MIN,
+                        padding: 0,
+                        fontSize: '1.25rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 8,
+                        background: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      −
+                    </button>
+                  )}
                   <input
                     type="number"
-                    min={0.01}
-                    step={0.5}
+                    min={1}
+                    step={1}
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(0.01, parseFloat(e.target.value) || 1))}
+                    onChange={(e) => setQuantity(Math.max(1, Math.round(parseFloat(e.target.value) || 1)))}
                     style={{
                       width: '5rem',
                       padding: '0.5rem',
