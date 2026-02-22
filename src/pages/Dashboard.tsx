@@ -1088,6 +1088,80 @@ export default function Dashboard() {
 
   return (
     <div>
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <Link
+            to="/jobs?tab=sub_sheet_ledger&newJob=true"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Job
+          </Link>
+          <Link
+            to="/bids?new=true"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Bid
+          </Link>
+          <Link
+            to="/projects/new"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Project
+          </Link>
+          <Link
+            to="/materials?tab=price-book&addPart=true"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Part
+          </Link>
+          <Link
+            to="/materials?tab=assembly-book&addAssembly=true"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Assembly
+          </Link>
+        </div>
+      )}
       {role != null && (
         <>
           <Link

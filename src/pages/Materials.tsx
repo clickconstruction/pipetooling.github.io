@@ -1312,6 +1312,34 @@ export default function Materials() {
   }, [searchParams, myRole])
 
   useEffect(() => {
+    if (searchParams.get('addPart') === 'true') {
+      setPartFormOpen(true)
+      setEditingPart(null)
+      setPartFormInitialName('')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('addPart')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (searchParams.get('addAssembly') === 'true') {
+      setEditingTemplate(null)
+      setTemplateName('')
+      setTemplateDescription('')
+      setTemplateAssemblyTypeId('')
+      setTemplateFormOpen(true)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('addAssembly')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  useEffect(() => {
     if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
       const loadInitial = async () => {
         try {
@@ -3098,7 +3126,9 @@ export default function Materials() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'flex', gap: '1rem', width: 'max-content' }}>
         <button
           type="button"
           onClick={() => {
@@ -3117,6 +3147,7 @@ export default function Materials() {
             color: activeTab === 'price-book' ? '#3b82f6' : '#6b7280',
             fontWeight: activeTab === 'price-book' ? 600 : 400,
             cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
           Price Book
@@ -3139,6 +3170,7 @@ export default function Materials() {
             color: activeTab === 'assembly-book' ? '#3b82f6' : '#6b7280',
             fontWeight: activeTab === 'assembly-book' ? 600 : 400,
             cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
           Assembly Book
@@ -3163,6 +3195,7 @@ export default function Materials() {
               color: activeTab === 'templates-po' ? '#3b82f6' : '#6b7280',
               fontWeight: activeTab === 'templates-po' ? 600 : 400,
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             Assemblies & Purchase Orders
@@ -3185,6 +3218,7 @@ export default function Materials() {
               color: activeTab === 'purchase-orders' ? '#3b82f6' : '#6b7280',
               fontWeight: activeTab === 'purchase-orders' ? 600 : 400,
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             Purchase Orders
@@ -3210,11 +3244,14 @@ export default function Materials() {
               color: activeTab === 'supply-houses' ? '#3b82f6' : '#6b7280',
               fontWeight: activeTab === 'supply-houses' ? 600 : 400,
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             Supply Houses & External Subs
           </button>
         )}
+          </div>
+        </div>
       </div>
 
       {/* Price Book Tab */}

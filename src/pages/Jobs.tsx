@@ -62,6 +62,7 @@ const tabStyle = (active: boolean) => ({
   color: active ? '#3b82f6' : '#6b7280',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
+  flexShrink: 0,
 })
 
 function formatCurrency(n: number): string {
@@ -1705,7 +1706,9 @@ export default function Jobs() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
         {showPrimaryRestrictedTabs && (
           <button
             type="button"
@@ -1816,7 +1819,9 @@ export default function Jobs() {
           </button>
           </>
         )}
-        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
+          </div>
+        </div>
+        <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
       </div>
 
       {activeTab === 'receivables' && (
