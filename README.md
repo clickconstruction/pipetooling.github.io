@@ -142,6 +142,8 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
   - Auto-refreshing stats when modal opens
 - **Materials Templates & Purchase Orders**: Summary at bottom (# templates, % with unpriced parts, % with no missing prices). Template items use Remove / Edit / Price icon buttons; price icon colored by part price count (red / yellow / gray)
 - **Job Tally**: Add parts to jobs by fixture; quantity stepper (1→2→3, whole numbers only); down arrow hidden when quantity is 1; create PO from tally for review
+- **Dashboard Recent Reports** (8 shown): Click to view in modal; envelope icon on unread; read reports grayed with hide (X) button; realtime updates when reports added
+- **Jobs Reports**: Devs can delete reports; others have full CRUD except delete
 
 ## Deployment
 

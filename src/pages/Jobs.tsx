@@ -179,6 +179,7 @@ export default function Jobs() {
   const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
+  const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
@@ -305,6 +306,15 @@ export default function Jobs() {
     if (!authUser?.id) return
     const { data } = await supabase.from('report_enabled_users').select('user_id').eq('user_id', authUser.id).maybeSingle()
     setIsReportEnabledOnlyUser(!!data)
+  }
+
+  async function deleteReport(id: string) {
+    if (!confirm('Delete this report?')) return
+    setReportsDeletingId(id)
+    const { error: err } = await supabase.from('reports').delete().eq('id', id)
+    if (err) setError(`Failed to delete report: ${err.message}`)
+    else await loadReports()
+    setReportsDeletingId(null)
   }
 
   const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
@@ -2038,12 +2048,26 @@ export default function Jobs() {
                             <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                               {reps.map((r) => (
                                 <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                                      {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
-                                      {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
-                                    </span>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                    <div>
+                                      <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                        {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
+                                        {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
+                                      </span>
+                                    </div>
+                                    {myRole === 'dev' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => deleteReport(r.id)}
+                                        disabled={reportsDeletingId === r.id}
+                                        title="Delete"
+                                        aria-label="Delete"
+                                        style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                      >
+                                        {reportsDeletingId === r.id ? '…' : 'Delete'}
+                                      </button>
+                                    )}
                                   </div>
                                   {r.field_values && Object.keys(r.field_values).length > 0 && (
                                     <div style={{ fontSize: '0.875rem' }}>
@@ -2109,11 +2133,25 @@ export default function Jobs() {
                           <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                             {reps.map((r) => (
                               <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                  <span style={{ fontWeight: 600 }}>{r.template_name}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                                    {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
-                                  </span>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                  <div>
+                                    <span style={{ fontWeight: 600 }}>{r.template_name}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                      {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                                    </span>
+                                  </div>
+                                  {myRole === 'dev' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => deleteReport(r.id)}
+                                      disabled={reportsDeletingId === r.id}
+                                      title="Delete"
+                                      aria-label="Delete"
+                                      style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                    >
+                                      {reportsDeletingId === r.id ? '…' : 'Delete'}
+                                    </button>
+                                  )}
                                 </div>
                                 {r.field_values && Object.keys(r.field_values).length > 0 && (
                                   <div style={{ fontSize: '0.875rem' }}>

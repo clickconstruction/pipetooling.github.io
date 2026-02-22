@@ -4,6 +4,7 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
+import ReportViewModal from '../components/ReportViewModal'
 import {
   getPinned,
   getPinnedForUserFromSupabase,
@@ -177,10 +178,14 @@ export default function Dashboard() {
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
-  const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>>([])
+  const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> }>>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
+  const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> } | null>(null)
+  const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
+  const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(new Set())
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -292,12 +297,13 @@ export default function Dashboard() {
       try {
         const { data } = await supabase.rpc('list_reports_with_job_info')
         const arr = Array.isArray(data) ? data : []
-        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }) => ({
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> }) => ({
           id: r.id,
           template_name: r.template_name,
           job_display_name: r.job_display_name,
           created_at: r.created_at,
           created_by_name: r.created_by_name,
+          field_values: r.field_values as Record<string, string> | undefined,
         }))
         setRecentReports(list)
       } finally {
@@ -1159,17 +1165,61 @@ export default function Dashboard() {
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
           ) : recentReports.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {recentReports.map((r) => (
-                <li key={r.id} style={{ padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff' }}>
-                  <Link to="/jobs?tab=reports" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+              {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
+                const isRead = readReportIds.has(r.id)
+                return (
+                  <li
+                    key={r.id}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      marginBottom: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      background: isRead ? '#f9fafb' : '#fff',
+                      opacity: isRead ? 0.85 : 1,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                    }}
+                    onClick={() => {
+                      setSelectedReport(r)
+                      setViewReportModalOpen(true)
+                    }}
+                  >
+                    {!isRead && (
+                      <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
+                          <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
+                        </svg>
+                      </span>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                      <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                      </div>
                     </div>
-                  </Link>
-                </li>
-              ))}
+                    {isRead && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setHiddenReportIds((prev) => new Set(prev).add(r.id))
+                        }}
+                        title="Hide from dashboard"
+                        aria-label="Hide from dashboard"
+                        style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
+                          <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                        </svg>
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           ) : (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link></p>
@@ -1798,6 +1848,15 @@ export default function Dashboard() {
         onClose={() => setNewReportModalOpen(false)}
         onSaved={() => setNewReportModalOpen(false)}
         authUserId={authUser?.id ?? null}
+      />
+      <ReportViewModal
+        open={viewReportModalOpen}
+        report={selectedReport}
+        onClose={() => {
+          if (selectedReport) setReadReportIds((prev) => new Set(prev).add(selectedReport.id))
+          setViewReportModalOpen(false)
+          setSelectedReport(null)
+        }}
       />
     </div>
   )

@@ -106,6 +106,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Export all data
 - Claim dev role with code `'admin1234'`
 - Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
+- Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
 **Use Cases**:
 - System maintenance and troubleshooting
@@ -369,7 +370,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Price history viewing
 
 **Jobs - Reports and Ledger Tabs**:
-- **Reports tab**: View all reports via `list_reports_with_job_info` RPC; full CRUD on reports table
+- **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only)
 - **Ledger (Billing) tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
 - Other Jobs tabs hidden (Receivables, Sub Sheet Ledger, Teams Summary)
 

@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-21
+last_updated: 2026-02-22
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.56 → v2.4"
+version_range: "v2.57 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.56)"
+  - name: "Latest Version (v2.57)"
     line: ~132
+    description: "Dashboard reports modal, icons, hide, delete dev-only"
+  - name: "v2.56"
+    line: ~165
     description: "Job Tally quantity, Materials abbreviations, Primary role"
   - name: "v2.55"
     line: ~165
@@ -74,7 +77,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.56)"
+  - "Latest features at top (v2.57)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -91,9 +94,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-2. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-3. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+1. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only
+2. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+3. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+4. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
 4. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
 5. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
 6. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
@@ -151,6 +155,34 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.57)
+
+### Dashboard reports modal, icons, hide, delete dev-only
+
+**Date**: 2026-02-22
+
+**Overview**:
+Dashboard Recent Reports: click to view in modal, envelope icon on unread, hide button on read reports; Reports realtime updates; Primary Job Tally RLS; devs-only report delete on Jobs page.
+
+**Dashboard Recent Reports**:
+- **ReportViewModal**: Click a report to open a modal showing full contents (template, job, created by, field values)
+- **Read state**: After opening, report is grayed (light background, reduced opacity)
+- **Envelope icon**: Unread reports show an envelope SVG on the left
+- **Hide button**: Read reports show an X icon on the right; click to remove from dashboard (session-only; refresh restores)
+- **Realtime**: Dashboard updates immediately when a report is added (reports table in supabase_realtime)
+
+**Jobs Reports**:
+- **Delete (devs only)**: Devs see a Delete button on each report; RLS restricts DELETE to dev role only
+
+**Primary Job Tally**:
+- **RLS**: Primaries can add parts in Job Tally (jobs_tally_parts policies updated)
+
+**Files**: `src/pages/Dashboard.tsx`, `src/components/ReportViewModal.tsx`, `src/pages/Jobs.tsx`
+
+**Migrations**: `20260225000000_primary_jobs_tally_parts.sql`, `20260225000001_reports_to_realtime.sql`, `20260226000000_reports_delete_dev_only.sql`
+
+---
+
 ## Latest Updates (v2.56)
 
 ### Job Tally quantity, Materials abbreviations, Primary role
@@ -181,35 +213,6 @@ Job Tally quantity controls now use whole numbers with improved UX; Materials pa
 **Files**: `src/pages/JobTally.tsx`, `src/pages/Materials.tsx`, `src/components/Layout.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`
 
 **Migrations**: `20260224000000_add_primary_service_type_ids.sql`, `20260223100000_create_master_primaries.sql`, `20260223000000_primary_add_materials_to_jobs.sql`, `20260224100000_primary_bids_bid_board_access.sql`, `20260224110000_primary_bids_adoption_access.sql`, `20260224120000_primary_projects_adoption_access.sql`, `20260224130000_allow_users_see_primaries.sql`, `20260224140000_primary_supply_houses_read.sql`, `20260224150000_primary_assembly_book_read.sql`
-
----
-
-## Latest Updates (v2.56)
-
-### Job Tally quantity, Materials abbreviations, Primary role
-
-**Date**: 2026-02-21
-
-**Overview**:
-Job Tally quantity controls now use whole numbers only with improved UX; Materials page shows abbreviated service type labels; Primary role enhancements including service type filtering and adoption-based access.
-
-**Job Tally**:
-- **Quantity arrows**: Up/down arrows increment/decrement in whole steps (1 → 2 → 3 → …); minimum quantity is 1
-- **Hide down arrow when 1**: Down arrow (↓) hidden when quantity is 1 in both the add-part section and the entries list
-- **Whole numbers only**: Quantity input and entry adjustments enforce integers; new entries use `Math.max(1, Math.round(quantity))`
-
-**Materials**:
-- **Service type abbreviations**: Top service type buttons show abbreviated labels: Plumbing → PLUM, Electrical → ELEC (hover shows full name)
-- **Fallback**: Service types without a mapping display full name
-
-**Primary role** (from prior migrations):
-- **primary_service_type_ids**: Primaries can be restricted to specific service types in Materials (like estimators); NULL or empty = all types
-- **Master-primaries adoption**: `master_primaries` table; primaries adoptable by masters for Jobs Billing access
-- **Jobs Billing**: Primaries can add materials to jobs when adopted; Edit/Delete hidden for primaries
-- **RLS**: Adoption-based access for bids, projects; supply houses, material templates, assembly book read access for primaries
-- **Task assignees**: Primaries appear in task assignee dropdown when adopted
-
-**Files**: `src/pages/JobTally.tsx`, `src/pages/Materials.tsx`
 
 ---
 

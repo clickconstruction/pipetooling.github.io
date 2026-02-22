@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 25, 2026"
+date_range: "Through February 26, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -92,7 +92,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
-#### February 21–25, 2026 (Primary Role)
+#### February 21–26, 2026
+
+**`20260226000000_reports_delete_dev_only.sql`**
+- **Purpose**: Restrict report DELETE to devs only
+- **Changes**: Split reports RLS; devs/masters/assistants/primary get SELECT, INSERT, UPDATE; devs only get DELETE
+- **Impact**: Only devs see Delete button on Jobs Reports tab; RLS blocks delete for other roles
+- **Category**: Jobs / Reports / RLS
+
+**`20260225000001_reports_to_realtime.sql`**
+- **Purpose**: Dashboard Recent Reports updates immediately when a report is added
+- **Changes**: Add reports table to supabase_realtime publication
+- **Category**: Dashboard / Realtime
 
 **`20260225000000_primary_jobs_tally_parts.sql`**
 - **Purpose**: Allow primaries to add parts in Job Tally page
