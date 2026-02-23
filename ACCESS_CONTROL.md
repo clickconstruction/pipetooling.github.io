@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-21
+last_updated: 2026-02-22
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -425,6 +425,13 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ## Feature Access Matrix
 
+### Dashboard
+
+| Feature | dev | master | assistant | sub | estimator | primary |
+|---------|-----|--------|-----------|-----|-----------|---------|
+| View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+
 ### Customer Management
 
 | Feature | dev | master | assistant | sub | estimator | primary |
@@ -512,7 +519,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | Create users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Delete users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Set user passwords | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Impersonate users | ✅ | ✅ Limited | ❌ | ❌ | ❌ | ❌ |
+| Impersonate users | ✅ | ✅ Limited (Settings) | ✅ Limited (Settings) | ❌ | ❌ | ❌ |
+| Impersonate from People (dev-only) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Adopt assistants | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Share with masters | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Change own password | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |

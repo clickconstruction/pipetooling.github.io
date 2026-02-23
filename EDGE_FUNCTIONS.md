@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 6 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-02-17
+last_updated: 2026-02-22
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -424,10 +424,19 @@ interface LoginAsUserRequest {
 #### Example Request
 
 ```typescript
+// Settings imitate: redirect to localhost for local dev
 const response = await supabase.functions.invoke('login-as-user', {
   body: {
     email: 'target@example.com',
-    redirectTo: `${window.location.origin}/dashboard`
+    redirectTo: 'http://localhost:5173/dashboard'
+  }
+})
+
+// People → Users imitate (dev-only): redirect to production
+const response = await supabase.functions.invoke('login-as-user', {
+  body: {
+    email: 'target@example.com',
+    redirectTo: 'https://pipetooling.com/dashboard'
   }
 })
 ```
@@ -502,7 +511,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 **Production URL Configuration**: For imitate to work on production (e.g. pipetooling.com), configure Supabase Auth:
 - **Authentication** → **URL Configuration**
 - **Site URL**: Set to production URL (e.g. `https://pipetooling.com`)
-- **Redirect URLs**: Add `https://pipetooling.com/**` (or your production domain). If the production URL is not in Redirect URLs, magic links will redirect to Site URL (often `http://localhost:3000`).
+- **Redirect URLs**: Add both `https://pipetooling.com/**` and `http://localhost:5173/**`. Settings imitate uses localhost; People → Users imitate (dev-only) uses pipetooling.com.
 
 **Deployment**: See [`supabase/functions/login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
 

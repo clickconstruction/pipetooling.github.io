@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-21
+last_updated: 2026-02-22
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -93,6 +93,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### February 2026
 
 #### February 21–28, 2026
+
+**`20260228190000_create_user_dashboard_buttons.sql`**
+- **Purpose**: Allow users to configure which Dashboard quick-action buttons are visible
+- **Changes**: Create `user_dashboard_buttons` table (user_id, button_key, visible); RLS for dev, master_technician, assistant
+- **Impact**: Settings → Dashboard buttons section; Dashboard filters buttons by user preferences
+- **Category**: Dashboard / Settings / RLS
 
 **`20260228100000_subcontractors_read_jobs_ledger_team_members.sql`**
 - **Purpose**: Fix subcontractor "Submit for review" in Job Tally (RLS violation)
@@ -916,6 +922,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **Customer Management**:
 - `add_customers_delete_rls.sql` - Masters can delete own customers
+
+**Dashboard Button Visibility**:
+- `20260228190000_create_user_dashboard_buttons.sql` (Feb 28, 2026) - User-configurable quick-action buttons (Job, Job Labor, Bid, Project, Part, Assembly); RLS for dev, master_technician, assistant
 
 ### Email and Notifications
 

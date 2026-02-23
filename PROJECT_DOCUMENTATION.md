@@ -1679,7 +1679,9 @@ user_id = auth.uid()
 
 ### Impersonation Flow
 1. Dev/Master/Assistant clicks "imitate" button (Settings or People → Users)
-2. Frontend calls `login-as-user` Edge Function with `redirectTo: window.location.origin + '/dashboard'`
+2. Frontend calls `login-as-user` Edge Function with `redirectTo`:
+   - **Settings**: `http://localhost:5173/dashboard` (for local dev)
+   - **People → Users**: `https://pipetooling.com/dashboard` (for production)
 3. Edge Function generates magic link for target user
 4. Frontend stores original session in `localStorage` (key: `'impersonation_original'`) so it survives reloads
 5. Browser redirects to magic link URL with tokens in hash
@@ -1694,7 +1696,9 @@ user_id = auth.uid()
 **Production (pipetooling.com)**: For imitate to work on production, configure Supabase Auth:
 - **Authentication** → **URL Configuration**
 - **Site URL**: Set to production URL (e.g. `https://pipetooling.com`)
-- **Redirect URLs**: Add `https://pipetooling.com/**` (or your production domain). If missing, magic links redirect to Site URL (often localhost).
+- **Redirect URLs**: Add `https://pipetooling.com/**` and `http://localhost:5173/**`. Both are needed for Settings (localhost) and People (pipetooling.com) imitate flows.
+
+**Back-button safeguards**: When impersonating, the app clears the magic-link hash from the URL immediately (before async work) to prevent back-button issues. A `pageshow` handler reloads on bfcache restore; a `popstate` handler redirects to dashboard when the user hits back.
 
 ---
 
@@ -1914,6 +1918,7 @@ user_id = auth.uid()
     - Email addresses are clickable (opens email client)
     - Phone numbers are clickable (opens phone dialer)
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
+  - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
   - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
@@ -1948,6 +1953,7 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
+  - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "AR | $X,XXX", "Supply Houses: $X", "External Team: $X,XXX", "Internal Team: $X,XXX". Links navigate to Jobs Receivables, Materials Supply Houses, Materials External Team section, People Pay Cost matrix.
   - **User Role Display**: Shows current user's role
   - **How It Works** (Masters/Devs only): Explains system structure
@@ -1998,6 +2004,8 @@ user_id = auth.uid()
   - **Sign out**: At top of Settings page
   - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
   - **Change Password**: Change your own password (requires current password verification)
+- **Features (Dev, Master, Assistant)**:
+  - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
 - **Features (Masters and Devs)**:
   - **Adopt Assistants**: Checkbox list to adopt/unadopt assistants
     - Shows all assistants in the system

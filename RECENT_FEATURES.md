@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.59 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.59)"
+  - name: "Latest Version (v2.60)"
     line: ~162
+    description: "Dashboard button visibility, impersonation redirects, back-button fix"
+  - name: "v2.59"
+    line: ~200
     description: "Workflow collapsible sections, notify defaults, line items total"
   - name: "v2.58"
     line: ~200
@@ -160,6 +163,38 @@ when_to_read:
 58. [Email Templates](#email-templates)
 59. [Financial Tracking](#financial-tracking)
 60. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.60)
+
+### Dashboard button visibility, impersonation redirects, back-button fix
+
+**Date**: 2026-02-22
+
+**Overview**:
+Users can configure which Dashboard quick-action buttons (Job, Job Labor, Bid, Project, Part, Assembly) are visible. Impersonation uses different redirect URLs for Settings vs People. Back-button crash when impersonating is fixed. Dev-only imitate icon on People → Users.
+
+**Dashboard button visibility**:
+- **Settings → Dashboard buttons**: Checkboxes for each button (Job, Job Labor, Bid, Project, Part, Assembly); dev, master_technician, assistant can configure
+- **Table**: `user_dashboard_buttons` (user_id, button_key, visible); migration `20260228190000_create_user_dashboard_buttons.sql`
+- **Dashboard**: Filters buttons by visibility; defaults to all visible when no preferences stored
+
+**Impersonation redirect URLs**:
+- **Settings imitate**: Redirects to `http://localhost:5173/dashboard` (for local dev)
+- **People → Users imitate** (dev-only): Redirects to `https://pipetooling.com/dashboard` (production)
+
+**Impersonation back-button fix**:
+- Hash cleared synchronously before async `setSession` to avoid bfcache issues
+- `pageshow` handler reloads when page restored from bfcache
+- `popstate` handler redirects to dashboard when user hits back
+
+**People imitate**:
+- Dev-only imitate icon on People → Users table; redirects to pipetooling.com
+
+**Files**: `src/pages/Dashboard.tsx`, `src/pages/Settings.tsx`, `src/pages/People.tsx`, `src/App.tsx`, `src/components/Layout.tsx`, `src/lib/loginAsUser.ts`
+
+**Migrations**: `20260228190000_create_user_dashboard_buttons.sql`
 
 ---
 
