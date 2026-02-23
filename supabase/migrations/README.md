@@ -28,6 +28,18 @@ supabase migration up
 
 ## Migration Files
 
+### `20260228160000_update_step_assigned_to_rpc.sql`
+Creates an RPC to update step `assigned_to_name`, bypassing RLS to avoid statement timeout.
+
+**What it does**:
+- Creates `update_step_assigned_to(p_step_id, p_assigned_to_name)` SECURITY DEFINER function
+- Performs access check then updates the step directly (no RLS evaluation)
+- Fixes "canceling statement due to statement timeout" when assigning people to workflow steps
+
+**When to run**: If you see "Failed to assign person: canceling statement due to statement timeout" or "Could not find the function public.update_step_assigned_to" in the Add person to [Stage] modal.
+
+**How to run**: Supabase Dashboard → SQL Editor → paste migration contents → Run.
+
 ### `create_email_templates.sql`
 Creates the `email_templates` table with:
 - Table schema with all 11 template types

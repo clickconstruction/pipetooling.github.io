@@ -1655,10 +1655,16 @@ export default function Workflow() {
   }
 
   async function assignPerson(step: Step, name: string | null) {
-    const { error: err } = await supabase.rpc('update_step_assigned_to', {
+    let err: { message: string } | null = null
+    const rpcRes = await supabase.rpc('update_step_assigned_to', {
       p_step_id: step.id,
       p_assigned_to_name: name,
     })
+    err = rpcRes.error
+    if (err?.message?.includes('Could not find the function')) {
+      const directRes = await supabase.from('project_workflow_steps').update({ assigned_to_name: name }).eq('id', step.id)
+      err = directRes.error
+    }
     if (err) {
       setError(`Failed to assign person: ${err.message}`)
       setAssignPersonStep(null)
