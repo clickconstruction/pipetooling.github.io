@@ -78,11 +78,31 @@ This document provides detailed information about all workflow-related features.
 
 ## Financial Tracking
 
+### Collapsible Sections (Stage Card)
+
+Each stage card has collapsible sections for Notify, Notes, Private Notes, and Line Items.
+
+**Notify when stage**:
+- Always collapsed by default
+- Cross-step checkboxes ("Notify next card assignee when complete or approved", "Notify prior card assignee when rejected") default to on (null/undefined = checked)
+- These two checkboxes do not affect section expansion
+
+**Notes, Private Notes, Line Items**:
+- Expand when stage is in progress or when section has content
+- Same font size (1rem) for all three headers
+- No blue background/border (matches Notes styling)
+
+**Line Items when collapsed**:
+- Header shows total: "Line Items (Master and Assistants only) | $3,000.00"
+- Total is sum of all line item amounts for that stage
+
+---
+
 ### Line Items (Stage-Level)
 
 **Purpose**: Track actual expenses/credits for individual workflow stages
 
-**Location**: Separate section in each stage card (visible to devs, masters, and assistants)
+**Location**: Separate collapsible section in each stage card (visible to devs, masters, and assistants)
 
 **Fields**:
 - **Memo**: Description (required)
@@ -178,8 +198,8 @@ This document provides detailed information about all workflow-related features.
 - **ME**: Controls notifications for the current user (all users)
 
 **Options**:
-- Notify when stage: started, complete, re-opened
-- Cross-step notifications (owners/masters only):
+- Notify when stage: started, complete, re-opened (section collapsed by default)
+- Cross-step notifications (owners/masters only, default to on):
   - Notify next card assignee when complete or approved
   - Notify prior card assignee when rejected
 

@@ -103,6 +103,7 @@ export default function Workflow() {
   const [rejectStep, setRejectStep] = useState<{ step: Step; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
+  const [assignPersonFilter, setAssignPersonFilter] = useState('')
   const [roster, setRoster] = useState<{ name: string }[]>([])
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
@@ -122,9 +123,26 @@ export default function Workflow() {
   const [availablePOs, setAvailablePOs] = useState<Array<{ id: string; name: string; total: number }>>([])
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
+  const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
+
+  function isSectionDefaultExpanded(step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
+    const inProgress = step.status === 'in_progress'
+    const hasNotify = !!step.notify_assigned_when_started || !!step.notify_assigned_when_complete ||
+      !!step.notify_assigned_when_reopened ||
+      !!userSubscriptions[step.id]?.notify_when_started || !!userSubscriptions[step.id]?.notify_when_complete ||
+      !!userSubscriptions[step.id]?.notify_when_reopened
+    const hasNotes = !!(step.notes?.trim())
+    const hasPrivateNotes = !!(step.private_notes?.trim())
+    const hasLineItems = !!(lineItems[step.id]?.length)
+    if (section === 'notify') return false
+    if (section === 'notes') return inProgress || hasNotes
+    if (section === 'privateNotes') return inProgress || hasPrivateNotes
+    if (section === 'lineItems') return inProgress || hasLineItems
+    return false
+  }
 
   // Mutex to prevent concurrent ensureWorkflow calls for the same project
   const ensureWorkflowPromises = useRef<Map<string, Promise<string | null>>>(new Map())
@@ -1477,18 +1495,26 @@ export default function Workflow() {
   }
 
   async function updateNotes(step: Step, notes: string) {
-    const { error } = await supabase.from('project_workflow_steps').update({ notes: notes.trim() || null }).eq('id', step.id)
-    if (error) {
-      setError(`Failed to update notes: ${error.message}`)
+    const trimmed = notes.trim() || null
+    let err = (await supabase.rpc('update_step_notes', { p_step_id: step.id, p_notes: trimmed })).error
+    if (err?.message?.includes('Could not find the function')) {
+      err = (await supabase.from('project_workflow_steps').update({ notes: trimmed }).eq('id', step.id)).error
+    }
+    if (err) {
+      setError(`Failed to update notes: ${err.message}`)
       return
     }
     await refreshSteps()
   }
 
   async function updatePrivateNotes(step: Step, privateNotes: string) {
-    const { error } = await supabase.from('project_workflow_steps').update({ private_notes: privateNotes.trim() || null }).eq('id', step.id)
-    if (error) {
-      setError(`Failed to update private notes: ${error.message}`)
+    const trimmed = privateNotes.trim() || null
+    let err = (await supabase.rpc('update_step_private_notes', { p_step_id: step.id, p_private_notes: trimmed })).error
+    if (err?.message?.includes('Could not find the function')) {
+      err = (await supabase.from('project_workflow_steps').update({ private_notes: trimmed }).eq('id', step.id)).error
+    }
+    if (err) {
+      setError(`Failed to update private notes: ${err.message}`)
       return
     }
     await refreshSteps()
@@ -1655,6 +1681,11 @@ export default function Workflow() {
   }
 
   async function assignPerson(step: Step, name: string | null) {
+    const previousName = step.assigned_to_name
+    setAssignPersonStep(null)
+    setSteps((prev) =>
+      prev.map((s) => (s.id === step.id ? { ...s, assigned_to_name: name } : s))
+    )
     let err: { message: string } | null = null
     const rpcRes = await supabase.rpc('update_step_assigned_to', {
       p_step_id: step.id,
@@ -1666,12 +1697,13 @@ export default function Workflow() {
       err = directRes.error
     }
     if (err) {
+      setSteps((prev) =>
+        prev.map((s) => (s.id === step.id ? { ...s, assigned_to_name: previousName } : s))
+      )
       setError(`Failed to assign person: ${err.message}`)
-      setAssignPersonStep(null)
       return
     }
-    await refreshSteps()
-    setAssignPersonStep(null)
+    refreshSteps()
   }
 
   if (loading) return <p>Loading...</p>
@@ -1936,12 +1968,6 @@ export default function Workflow() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Stage title */}
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>{s.name}</div>
-                    <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 8 }}>
-                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: s.status === 'rejected' ? '#b91c1c' : '#374151', marginBottom: 8, fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
-                      Status: {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}
-                    </div>
                     {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
                       <div style={{ fontSize: '0.875rem', color: '#E87600', marginBottom: 8, fontStyle: 'italic' }}>
                         (next card rejected: {s.next_step_rejected_notice})
@@ -1981,6 +2007,12 @@ export default function Workflow() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+                    <div style={{ fontSize: '0.875rem', color: s.status === 'rejected' ? '#b91c1c' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                      Status: {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
+                    </div>
                     {/* Assign (top-right) */}
                     {canManageStages && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -1991,7 +2023,24 @@ export default function Workflow() {
                     {/* Only show notification settings for owners and masters, or if user is assigned to this step */}
                     {(canManageStages || s.assigned_to_name === currentUserName) && (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
-                      <div style={{ marginBottom: 4, fontWeight: 500 }}>Notify when stage:</div>
+                      {(() => {
+                        const key = `${s.id}-notify`
+                        const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
+                        const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                        return (
+                          <>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                              onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                              style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, cursor: 'pointer' }}
+                            >
+                              <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                              <span>Notify when stage:</span>
+                            </div>
+                            {isExpanded && (
+                              <>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                         <thead>
                           <tr>
@@ -2073,7 +2122,7 @@ export default function Workflow() {
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
-                              checked={!!s.notify_next_assignee_when_complete_or_approved}
+                              checked={s.notify_next_assignee_when_complete_or_approved !== false}
                               onChange={(e) => updateCrossStepNotify(s, 'notify_next_assignee_when_complete_or_approved', e.target.checked)}
                               style={{ cursor: 'pointer' }}
                             />
@@ -2082,7 +2131,7 @@ export default function Workflow() {
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '0.25rem' }}>
                             <input
                               type="checkbox"
-                              checked={!!s.notify_prior_assignee_when_rejected}
+                              checked={s.notify_prior_assignee_when_rejected !== false}
                               onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
                               style={{ cursor: 'pointer' }}
                             />
@@ -2090,6 +2139,11 @@ export default function Workflow() {
                           </label>
                         </div>
                       )}
+                              </>
+                            )}
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                   </div>
@@ -2124,60 +2178,121 @@ export default function Workflow() {
                   </div>
                 )}
                 <div style={{ marginBottom: 8 }}>
-                  <label htmlFor={`notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500 }}>Notes</label>
-                  <textarea
-                    id={`notes-${s.id}`}
-                    key={`notes-${s.id}-${s.notes ?? ''}`}
-                    defaultValue={s.notes ?? ''}
-                    onBlur={(e) => updateNotes(s, e.target.value)}
-                    placeholder="Add notes for this stage..."
-                    rows={3}
-                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
-                  />
+                  {(() => {
+                    const key = `${s.id}-notes`
+                    const defaultExpanded = isSectionDefaultExpanded(s, 'notes')
+                    const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                    return (
+                      <>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                          onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, cursor: 'pointer' }}
+                        >
+                          <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                          <span style={{ fontSize: '1rem' }}>Notes</span>
+                        </div>
+                        {isExpanded && (
+                          <textarea
+                            id={`notes-${s.id}`}
+                            key={`notes-${s.id}-${s.notes ?? ''}`}
+                            defaultValue={s.notes ?? ''}
+                            onBlur={(e) => updateNotes(s, e.target.value)}
+                            placeholder="Add notes for this stage..."
+                            rows={3}
+                            style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
+                          />
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
                 {/* Private Notes - dev/master only */}
                 {isDevOrMaster && (
-                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                    <label htmlFor={`private-notes-${s.id}`} style={{ display: 'block', fontSize: '0.875rem', marginBottom: 4, fontWeight: 500, color: '#0369a1' }}>
-                      Private Notes (Only you can see this)
-                    </label>
-                    <textarea
-                      id={`private-notes-${s.id}`}
-                      key={`private-notes-${s.id}-${s.private_notes ?? ''}`}
-                      defaultValue={s.private_notes ?? ''}
-                      onBlur={(e) => updatePrivateNotes(s, e.target.value)}
-                      placeholder="Add private notes visible only to owners and master technicians..."
-                      rows={3}
-                      style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
-                    />
+                  <div style={{ marginBottom: 8 }}>
+                    {(() => {
+                      const key = `${s.id}-privateNotes`
+                      const defaultExpanded = isSectionDefaultExpanded(s, 'privateNotes')
+                      const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                      return (
+                        <>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                            onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, color: '#0369a1', cursor: 'pointer' }}
+                          >
+                            <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                            <span style={{ fontSize: '1rem' }}>Private Notes (Only you can see this)</span>
+                          </div>
+                          {isExpanded && (
+                            <textarea
+                              id={`private-notes-${s.id}`}
+                              key={`private-notes-${s.id}-${s.private_notes ?? ''}`}
+                              defaultValue={s.private_notes ?? ''}
+                              onBlur={(e) => updatePrivateNotes(s, e.target.value)}
+                              placeholder="Add private notes visible only to owners and master technicians..."
+                              rows={3}
+                              style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
+                            />
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
                 
                 {/* Line Items - dev/master/assistant */}
                 {canManageStages && (
-                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#0369a1' }}>Line Items (Master and Assistants only)</label>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        {availablePOs.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setAddingPOToStep(s.id)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  <div style={{ marginBottom: 8 }}>
+                    {(() => {
+                      const key = `${s.id}-lineItems`
+                      const defaultExpanded = isSectionDefaultExpanded(s, 'lineItems')
+                      const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                      return (
+                        <>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                            onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', cursor: 'pointer' }}
                           >
-                            + Add PO
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => openEditLineItem(s.id, null)}
-                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                        >
-                          + Add Line Item
-                        </button>
-                      </div>
-                    </div>
-                    {lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                              <span style={{ fontSize: '1rem', fontWeight: 500, color: '#0369a1' }}>
+                                Line Items (Master and Assistants only)
+                                {!isExpanded && (
+                                  <> | {formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))}</>
+                                )}
+                              </span>
+                            </div>
+                            {isExpanded && (
+                              <div style={{ display: 'flex', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                                {availablePOs.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAddingPOToStep(s.id)}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                  >
+                                    + Add PO
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openEditLineItem(s.id, null)}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                >
+                                  + Add Line Item
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {isExpanded && (
+                    (lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
                       <div style={{ fontSize: '0.875rem' }}>
                         {lineItems[s.id]!.map((item) => (
                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #bae6fd' }}>
@@ -2240,7 +2355,11 @@ export default function Workflow() {
                       </div>
                     ) : (
                       <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
-                    )}
+                    ))
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -2322,21 +2441,36 @@ export default function Workflow() {
       {assignPersonStep && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-          onClick={() => setAssignPersonStep(null)}
+          onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }}
         >
           <div
             style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column', color: '#111827' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ marginTop: 0, color: '#111827', flexShrink: 0 }}>Add person to: {assignPersonStep.name}</h3>
-            <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '1rem', flexShrink: 0 }}>Choose from your roster (People and signed-up users).</p>
+            <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '0.75rem', flexShrink: 0 }}>Choose from your roster.</p>
+            {(roster.length > 5 || currentUserName) && (
+              <input
+                type="search"
+                placeholder="Filter..."
+                value={assignPersonFilter}
+                onChange={(e) => setAssignPersonFilter(e.target.value)}
+                autoFocus
+                style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid #e5e7eb', flexShrink: 0 }}
+              />
+            )}
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '1rem' }}>
               {roster.length === 0 && !currentUserName ? (
                 <p style={{ color: '#111827' }}>No people in your roster yet. Add them on the People page.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {(() => {
+                    const q = assignPersonFilter.trim().toLowerCase()
+                    const matches = (name: string) => !q || name.toLowerCase().includes(q)
+                  return (
+                    <>
                   {/* Always show current user first */}
-                  {currentUserName && (
+                  {currentUserName && matches(currentUserName) && (
                     <button
                       key="current-user"
                       type="button"
@@ -2348,7 +2482,7 @@ export default function Workflow() {
                   )}
                   {/* Show rest of roster, excluding current user if already in roster */}
                   {roster
-                    .filter((r) => r.name !== currentUserName)
+                    .filter((r) => r.name !== currentUserName && matches(r.name))
                     .map((r, i) => (
                       <button
                         key={`${r.name}-${i}`}
@@ -2359,12 +2493,15 @@ export default function Workflow() {
                         {r.name}
                       </button>
                     ))}
+                    </>
+                  )
+                  })()}
                 </div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
               <button type="button" onClick={() => assignPerson(assignPersonStep, null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6 }}>Clear</button>
-              <button type="button" onClick={() => setAssignPersonStep(null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #d1d5db', borderRadius: 6 }}>Cancel</button>
+              <button type="button" onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #d1d5db', borderRadius: 6 }}>Cancel</button>
             </div>
           </div>
         </div>

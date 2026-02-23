@@ -3655,6 +3655,14 @@ export type Database = {
         Args: { p_step_id: string; p_assigned_to_name: string | null }
         Returns: undefined
       }
+      update_step_notes: {
+        Args: { p_step_id: string; p_notes: string | null }
+        Returns: undefined
+      }
+      update_step_private_notes: {
+        Args: { p_step_id: string; p_private_notes: string | null }
+        Returns: undefined
+      }
       list_tally_parts_with_po: {
         Args: never
         Returns: {

@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.57 → v2.4"
+version_range: "v2.59 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.58)"
-    line: ~185
+  - name: "Latest Version (v2.59)"
+    line: ~162
+    description: "Workflow collapsible sections, notify defaults, line items total"
+  - name: "v2.58"
+    line: ~200
     description: "Subcontractor Job Tally Submit for Review RLS fix"
   - name: "v2.57"
     line: ~200
@@ -80,7 +83,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.57)"
+  - "Latest features at top (v2.59)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -97,65 +100,94 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-2. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-3. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-3. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-4. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-4. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-5. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-6. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-7. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-8. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-9. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-10. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-11. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-12. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-12. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-13. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-14. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-15. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-16. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-17. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-18. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-19. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-20. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-21. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-22. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-23. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-24. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-25. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-26. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-27. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-28. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-29. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-30. [Latest Updates (v2.26)](#latest-updates-v226)
-31. [Latest Updates (v2.25)](#latest-updates-v225)
-32. [Latest Updates (v2.24)](#latest-updates-v224)
-33. [Latest Updates (v2.23)](#latest-updates-v223)
-34. [Latest Updates (v2.22)](#latest-updates-v222)
-35. [Latest Updates (v2.21)](#latest-updates-v221)
-36. [Latest Updates (v2.20)](#latest-updates-v220)
-37. [Latest Updates (v2.19)](#latest-updates-v219)
-38. [Latest Updates (v2.18)](#latest-updates-v218)
-39. [Latest Updates (v2.17)](#latest-updates-v217)
-40. [Latest Updates (v2.16)](#latest-updates-v216)
-41. [Latest Updates (v2.15)](#latest-updates-v215)
-42. [Latest Updates (v2.14)](#latest-updates-v214)
-43. [Latest Updates (v2.13)](#latest-updates-v213)
-44. [Latest Updates (v2.12)](#latest-updates-v212)
-45. [Latest Updates (v2.11)](#latest-updates-v211)
-46. [Latest Updates (v2.10)](#latest-updates-v210)
-47. [Latest Updates (v2.9)](#latest-updates-v29)
-48. [Latest Updates (v2.8)](#latest-updates-v28)
-49. [Latest Updates (v2.7)](#latest-updates-v27)
-50. [Latest Updates (v2.6)](#latest-updates-v26)
-51. [Workflow Features](#workflow-features)
-52. [Calendar Updates](#calendar-updates)
-53. [Access Control](#access-control)
-54. [Email Templates](#email-templates)
-55. [Financial Tracking](#financial-tracking)
-56. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+2. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+3. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+4. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+5. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+6. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+7. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+8. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+9. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+10. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+11. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+12. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+13. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+14. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+15. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+16. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+17. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+18. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+19. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+20. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+21. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+22. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+23. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+24. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+25. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+26. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+27. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+28. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+29. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+30. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+31. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+32. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+33. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+34. [Latest Updates (v2.26)](#latest-updates-v226)
+35. [Latest Updates (v2.25)](#latest-updates-v225)
+36. [Latest Updates (v2.24)](#latest-updates-v224)
+37. [Latest Updates (v2.23)](#latest-updates-v223)
+38. [Latest Updates (v2.22)](#latest-updates-v222)
+39. [Latest Updates (v2.21)](#latest-updates-v221)
+40. [Latest Updates (v2.20)](#latest-updates-v220)
+41. [Latest Updates (v2.19)](#latest-updates-v219)
+42. [Latest Updates (v2.18)](#latest-updates-v218)
+43. [Latest Updates (v2.17)](#latest-updates-v217)
+44. [Latest Updates (v2.16)](#latest-updates-v216)
+45. [Latest Updates (v2.15)](#latest-updates-v215)
+46. [Latest Updates (v2.14)](#latest-updates-v214)
+47. [Latest Updates (v2.13)](#latest-updates-v213)
+48. [Latest Updates (v2.12)](#latest-updates-v212)
+49. [Latest Updates (v2.11)](#latest-updates-v211)
+50. [Latest Updates (v2.10)](#latest-updates-v210)
+51. [Latest Updates (v2.9)](#latest-updates-v29)
+52. [Latest Updates (v2.8)](#latest-updates-v28)
+53. [Latest Updates (v2.7)](#latest-updates-v27)
+54. [Latest Updates (v2.6)](#latest-updates-v26)
+55. [Workflow Features](#workflow-features)
+56. [Calendar Updates](#calendar-updates)
+57. [Access Control](#access-control)
+58. [Email Templates](#email-templates)
+59. [Financial Tracking](#financial-tracking)
+60. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.59)
+
+### Workflow collapsible sections, notify defaults, line items total
+
+**Date**: 2026-02-22
+
+**Overview**:
+Workflow stage card UI improvements: collapsible sections for Notify, Notes, Private Notes, and Line Items; Notify section collapsed by default; cross-step notification checkboxes default to on; consistent font sizes; removed blue boxes; Line Items shows total when collapsed.
+
+**Notify when stage**:
+- **Collapsed by default**: Section always starts collapsed (no longer expands based on in-progress or content)
+- **Cross-step checkboxes default to on**: "Notify next card assignee when complete or approved" and "Notify prior card assignee when rejected" are checked by default (null/undefined treated as true)
+- **Expansion logic**: These two checkboxes are excluded from the "has content" check that would expand the section
+
+**Notes, Private Notes, Line Items**:
+- **Collapsible**: All three sections are collapsible; expand/collapse via click on header
+- **Default expansion**: Notes, Private Notes, and Line Items expand when stage is in progress or when they have content
+- **Font size**: Private Notes and Line Items headers use same font size (1rem) as Notes
+- **Blue boxes removed**: Private Notes and Line Items no longer have light blue background/border; match Notes styling
+
+**Line Items when collapsed**:
+- **Total displayed**: When collapsed, header shows "Line Items (Master and Assistants only) | $3,000.00" (sum of all line item amounts for that stage)
+- **Format**: Uses `formatAmount()` for currency display (commas, 2 decimals)
+
+**Files**: `src/pages/Workflow.tsx`
 
 ---
 
@@ -3466,7 +3498,7 @@ Run these migrations in order:
 ## UI/UX Improvements
 
 ### Visual Hierarchy
-- Private Notes panel (including line items): Light blue background (`#f0f9ff`) to distinguish from regular notes
+- Private Notes and Line Items: No background/border (matches Notes styling; blue boxes removed in v2.59)
 - Projections & Ledger: Combined light blue financial panel (`#f0f9ff`) at top of workflow
 - Inner Ledger table rows use neutral/gray backgrounds with red for negative amounts
 - Collected projections: Green background highlight (future enhancement)
