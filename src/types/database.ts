@@ -3651,6 +3651,10 @@ export type Database = {
         Args: { p_job_id: string; p_to_status: string }
         Returns: Record<string, unknown>
       }
+      update_step_assigned_to: {
+        Args: { p_step_id: string; p_assigned_to_name: string | null }
+        Returns: undefined
+      }
       list_tally_parts_with_po: {
         Args: never
         Returns: {

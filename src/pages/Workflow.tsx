@@ -1655,7 +1655,10 @@ export default function Workflow() {
   }
 
   async function assignPerson(step: Step, name: string | null) {
-    const { error: err } = await supabase.from('project_workflow_steps').update({ assigned_to_name: name }).eq('id', step.id)
+    const { error: err } = await supabase.rpc('update_step_assigned_to', {
+      p_step_id: step.id,
+      p_assigned_to_name: name,
+    })
     if (err) {
       setError(`Failed to assign person: ${err.message}`)
       setAssignPersonStep(null)
@@ -2690,7 +2693,6 @@ function StepFormModal({
   function handleAddNewPersonClick() {
     const trimmedName = assignedSearch.trim()
     if (!trimmedName) return
-    
     setNewPerson({
       name: trimmedName,
       email: '',
@@ -3000,7 +3002,7 @@ function StepFormModal({
                   id="new-person-name"
                   type="text"
                   value={newPerson.name}
-                  onChange={(e) => setNewPerson({ ...newPerson, name: e.target.value })}
+                  onChange={(e) => setNewPerson((p) => ({ ...p, name: e.target.value }))}
                   required
                   disabled={savingPerson}
                   style={{ width: '100%', padding: '0.5rem' }}
@@ -3012,7 +3014,7 @@ function StepFormModal({
                   id="new-person-email"
                   type="email"
                   value={newPerson.email}
-                  onChange={(e) => setNewPerson({ ...newPerson, email: e.target.value })}
+                  onChange={(e) => setNewPerson((p) => ({ ...p, email: e.target.value }))}
                   disabled={savingPerson}
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
@@ -3023,7 +3025,7 @@ function StepFormModal({
                   id="new-person-phone"
                   type="tel"
                   value={newPerson.phone}
-                  onChange={(e) => setNewPerson({ ...newPerson, phone: e.target.value })}
+                  onChange={(e) => setNewPerson((p) => ({ ...p, phone: e.target.value }))}
                   disabled={savingPerson}
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
@@ -3033,7 +3035,7 @@ function StepFormModal({
                 <textarea
                   id="new-person-notes"
                   value={newPerson.notes}
-                  onChange={(e) => setNewPerson({ ...newPerson, notes: e.target.value })}
+                  onChange={(e) => setNewPerson((p) => ({ ...p, notes: e.target.value }))}
                   disabled={savingPerson}
                   rows={2}
                   style={{ width: '100%', padding: '0.5rem' }}
