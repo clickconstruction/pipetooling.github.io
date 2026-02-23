@@ -644,7 +644,7 @@ export default function Dashboard() {
       .then(({ data, error }) => {
         setAssignedJobsLoading(false)
         if (error) return
-        setAssignedJobs((data ?? []) as typeof assignedJobs)
+        setAssignedJobs((data ?? []) as unknown as typeof assignedJobs)
       })
   }, [authUser?.id])
 
@@ -702,7 +702,7 @@ export default function Dashboard() {
       if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
     }
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
-    if (assignedData) setAssignedJobs(assignedData as typeof assignedJobs)
+    if (assignedData) setAssignedJobs(assignedData as unknown as typeof assignedJobs)
   }
 
   useEffect(() => {
