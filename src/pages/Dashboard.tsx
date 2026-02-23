@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
 import ReportViewModal from '../components/ReportViewModal'
+import JobReportsModal from '../components/JobReportsModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import {
@@ -222,6 +223,7 @@ export default function Dashboard() {
   const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
+  const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -2079,9 +2081,18 @@ export default function Dashboard() {
                         </span>
                       )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
-                        <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
-                          View
-                        </Link>
+                        <>
+                          <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                            View
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            View Reports
+                          </button>
+                        </>
                       )}
                       <button
                         type="button"
@@ -2154,6 +2165,13 @@ export default function Dashboard() {
                       </Link>
                       <button
                         type="button"
+                        onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        View Reports
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => updateJobStatus(j.id, 'billed')}
                         disabled={jobStatusUpdatingId === j.id}
                         style={{
@@ -2221,6 +2239,13 @@ export default function Dashboard() {
                       <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                         View
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        View Reports
+                      </button>
                       <button
                         type="button"
                         onClick={() => updateJobStatus(j.id, 'paid')}
@@ -2487,6 +2512,17 @@ export default function Dashboard() {
           setEditReportModalOpen(true)
         }}
       />
+      {viewReportsJob && (
+        <JobReportsModal
+          open={!!viewReportsJob}
+          onClose={() => setViewReportsJob(null)}
+          jobId={viewReportsJob.id}
+          hcpNumber={viewReportsJob.hcpNumber}
+          jobName={viewReportsJob.jobName}
+          jobAddress={viewReportsJob.jobAddress}
+          authUserId={authUser?.id ?? null}
+        />
+      )}
     </div>
   )
 }

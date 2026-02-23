@@ -13,9 +13,11 @@ type Props = {
   onClose: () => void
   onSaved: () => void
   authUserId: string | null
+  initialJob?: { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string }
+  initialTemplateName?: string
 }
 
-export default function NewReportModal({ open, onClose, onSaved, authUserId }: Props) {
+export default function NewReportModal({ open, onClose, onSaved, authUserId, initialJob, initialTemplateName }: Props) {
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -31,12 +33,25 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
   useEffect(() => {
     if (!open) return
     supabase.from('report_templates').select('*').order('sequence_order').then(({ data }) => {
-      setTemplates((data as ReportTemplate[]) ?? [])
-      if ((data?.length ?? 0) > 0 && !selectedTemplateId) {
-        setSelectedTemplateId((data as ReportTemplate[])[0]!.id)
+      const list = (data as ReportTemplate[]) ?? []
+      setTemplates(list)
+      if (list.length > 0) {
+        if (initialTemplateName) {
+          const match = list.find((t) => t.name.toLowerCase() === initialTemplateName!.toLowerCase())
+          setSelectedTemplateId(match?.id ?? list[0]!.id)
+        } else if (!selectedTemplateId) {
+          setSelectedTemplateId(list[0]!.id)
+        }
       }
     })
-  }, [open, selectedTemplateId])
+  }, [open, initialTemplateName])
+
+  useEffect(() => {
+    if (open && initialJob) {
+      setSelectedJob(initialJob)
+      setSearchMode('search')
+    }
+  }, [open, initialJob])
 
   useEffect(() => {
     if (!selectedTemplateId) return
@@ -130,7 +145,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId }: P
   const canSubmit = selectedJob && selectedTemplateId && authUserId
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>New report</h2>

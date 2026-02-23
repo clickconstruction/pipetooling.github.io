@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
+import JobReportsModal from '../components/JobReportsModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Database } from '../types/database'
 
@@ -204,13 +205,19 @@ export default function Jobs() {
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
+  const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
+  const [reportTemplatesList, setReportTemplatesList] = useState<Array<{ id: string; name: string; sequence_order: number }>>([])
+  const [reportTemplatesLoading, setReportTemplatesLoading] = useState(false)
   const [templateFormOpen, setTemplateFormOpen] = useState(false)
+  const [editingReportTemplateId, setEditingReportTemplateId] = useState<string | null>(null)
   const [newTemplateName, setNewTemplateName] = useState('')
   const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
   const [templateSaving, setTemplateSaving] = useState(false)
+  const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
+  const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -341,6 +348,17 @@ export default function Jobs() {
     setReportsLoading(false)
   }
 
+  async function loadReportTemplates() {
+    setReportTemplatesLoading(true)
+    const { data, error: err } = await supabase.from('report_templates').select('id, name, sequence_order').order('sequence_order')
+    if (err) {
+      setError(`Failed to load templates: ${err.message}`)
+    } else {
+      setReportTemplatesList((data as Array<{ id: string; name: string; sequence_order: number }>) ?? [])
+    }
+    setReportTemplatesLoading(false)
+  }
+
   async function deleteReport(id: string) {
     if (!confirm('Delete this report?')) return
     setReportsDeletingId(id)
@@ -352,10 +370,36 @@ export default function Jobs() {
 
   const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
 
+  function openReportTemplatesModal() {
+    setReportTemplatesModalOpen(true)
+    setTemplateFormOpen(false)
+    setEditingReportTemplateId(null)
+    loadReportTemplates()
+  }
+
   function openAddTemplate() {
+    setEditingReportTemplateId(null)
     setNewTemplateName('')
     setNewTemplateFields([''])
     setTemplateFormOpen(true)
+  }
+
+  async function openEditReportTemplate(template: { id: string; name: string; sequence_order: number }) {
+    setEditingReportTemplateId(template.id)
+    setNewTemplateName(template.name)
+    const { data: fields } = await supabase
+      .from('report_template_fields')
+      .select('label')
+      .eq('template_id', template.id)
+      .order('sequence_order')
+    const labels = (fields as Array<{ label: string }> | null)?.map((f) => f.label) ?? []
+    setNewTemplateFields(labels.length > 0 ? labels : [''])
+    setTemplateFormOpen(true)
+  }
+
+  function closeTemplateForm() {
+    setTemplateFormOpen(false)
+    setEditingReportTemplateId(null)
   }
 
   async function saveTemplate(e: React.FormEvent) {
@@ -363,31 +407,79 @@ export default function Jobs() {
     if (!newTemplateName.trim()) return
     setTemplateSaving(true)
     setError(null)
-    const { data: t, error: tErr } = await supabase
-      .from('report_templates')
-      .insert({ name: newTemplateName.trim(), sequence_order: 999 })
-      .select('id')
-      .single()
-    if (tErr) {
-      setError(tErr.message)
-      setTemplateSaving(false)
-      return
-    }
-    const templateId = (t as { id: string }).id
     const fields = newTemplateFields.map((l) => l.trim()).filter(Boolean)
-    if (fields.length > 0) {
-      const { error: fErr } = await supabase.from('report_template_fields').insert(
-        fields.map((label, i) => ({ template_id: templateId, label, sequence_order: i }))
-      )
-      if (fErr) {
-        setError(fErr.message)
+
+    if (editingReportTemplateId) {
+      const { error: tErr } = await supabase
+        .from('report_templates')
+        .update({ name: newTemplateName.trim() })
+        .eq('id', editingReportTemplateId)
+      if (tErr) {
+        setError(tErr.message)
         setTemplateSaving(false)
         return
       }
+      const { error: delErr } = await supabase.from('report_template_fields').delete().eq('template_id', editingReportTemplateId)
+      if (delErr) {
+        setError(delErr.message)
+        setTemplateSaving(false)
+        return
+      }
+      if (fields.length > 0) {
+        const { error: fErr } = await supabase.from('report_template_fields').insert(
+          fields.map((label, i) => ({ template_id: editingReportTemplateId, label, sequence_order: i }))
+        )
+        if (fErr) {
+          setError(fErr.message)
+          setTemplateSaving(false)
+          return
+        }
+      }
+    } else {
+      const { data: t, error: tErr } = await supabase
+        .from('report_templates')
+        .insert({ name: newTemplateName.trim(), sequence_order: 999 })
+        .select('id')
+        .single()
+      if (tErr) {
+        setError(tErr.message)
+        setTemplateSaving(false)
+        return
+      }
+      const templateId = (t as { id: string }).id
+      if (fields.length > 0) {
+        const { error: fErr } = await supabase.from('report_template_fields').insert(
+          fields.map((label, i) => ({ template_id: templateId, label, sequence_order: i }))
+        )
+        if (fErr) {
+          setError(fErr.message)
+          setTemplateSaving(false)
+          return
+        }
+      }
     }
-    setTemplateFormOpen(false)
+
+    closeTemplateForm()
     setTemplateSaving(false)
+    loadReportTemplates()
     loadReports()
+  }
+
+  async function deleteReportTemplate(id: string) {
+    const { count } = await supabase.from('reports').select('*', { count: 'exact', head: true }).eq('template_id', id)
+    if ((count ?? 0) > 0) {
+      setError('Cannot delete: this template has reports.')
+      return
+    }
+    if (!confirm('Delete this template?')) return
+    setTemplateDeletingId(id)
+    const { error: err } = await supabase.from('report_templates').delete().eq('id', id)
+    setTemplateDeletingId(null)
+    if (err) setError(err.message)
+    else {
+      closeTemplateForm()
+      loadReportTemplates()
+    }
   }
 
   async function getEffectiveMasterId(): Promise<string | null> {
@@ -1381,7 +1473,10 @@ export default function Jobs() {
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if (activeTab === 'reports' && authUser?.id) loadReports()
+    if (activeTab === 'reports' && authUser?.id) {
+      loadReports()
+      loadReportTemplates()
+    }
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
@@ -1768,7 +1863,7 @@ export default function Jobs() {
             }}
             style={tabStyle(activeTab === 'teams-summary')}
           >
-            Teams Summary
+            Teams
           </button>
         )}
         <button
@@ -1982,8 +2077,8 @@ export default function Jobs() {
             {canManageTemplates && (
               <button
                 type="button"
-                onClick={openAddTemplate}
-                title="Add template"
+                onClick={openReportTemplatesModal}
+                title="Manage templates"
                 style={{ padding: '0.35rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor">
@@ -2015,30 +2110,61 @@ export default function Jobs() {
               </button>
             </div>
           </div>
-          {templateFormOpen && (
+          {reportTemplatesModalOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
-                <h3 style={{ margin: '0 0 1rem 0' }}>Add template</h3>
-                <form onSubmit={saveTemplate}>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template name *</label>
-                    <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  </div>
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field labels</label>
-                    {newTemplateFields.map((val, i) => (
-                      <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                        <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                {templateFormOpen ? (
+                  <>
+                    <h3 style={{ margin: '0 0 1rem 0' }}>{editingReportTemplateId ? 'Edit template' : 'Add template'}</h3>
+                    <form onSubmit={saveTemplate}>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template name *</label>
+                        <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                       </div>
-                    ))}
-                    <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={() => setTemplateFormOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={templateSaving || !newTemplateName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: templateSaving ? 'not-allowed' : 'pointer' }}>{templateSaving ? 'Saving…' : 'Save'}</button>
-                  </div>
-                </form>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field labels</label>
+                        {newTemplateFields.map((val, i) => (
+                          <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                            <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={closeTemplateForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                          {editingReportTemplateId && (
+                            <button type="button" onClick={() => editingReportTemplateId && deleteReportTemplate(editingReportTemplateId)} disabled={!!templateDeletingId} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: templateDeletingId ? 'not-allowed' : 'pointer' }}>{templateDeletingId ? '…' : 'Delete'}</button>
+                          )}
+                        </div>
+                        <button type="submit" disabled={templateSaving || !newTemplateName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: templateSaving ? 'not-allowed' : 'pointer' }}>{templateSaving ? 'Saving…' : 'Save'}</button>
+                      </div>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h3 style={{ margin: 0 }}>Report Templates</h3>
+                      <button type="button" onClick={() => setReportTemplatesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+                    </div>
+                    <button type="button" onClick={openAddTemplate} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add template</button>
+                    {reportTemplatesLoading ? (
+                      <p style={{ color: '#6b7280' }}>Loading templates…</p>
+                    ) : reportTemplatesList.length === 0 ? (
+                      <p style={{ color: '#6b7280' }}>No templates yet.</p>
+                    ) : (
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                        {reportTemplatesList.map((t) => (
+                          <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                            <span>{t.name}</span>
+                            <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -2271,12 +2397,13 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
                         {actionLabel && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
+                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View Reports</th>
                       </tr>
                     </thead>
                     <tbody>
                       {jobList.length === 0 ? (
                         <tr>
-                          <td colSpan={actionLabel ? 6 : 5} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={actionLabel ? 7 : 6} style={{ padding: '0.75rem', color: '#6b7280' }}>
                             No jobs in this group
                           </td>
                         </tr>
@@ -2322,6 +2449,15 @@ export default function Jobs() {
                                 </div>
                               </td>
                             )}
+                            <td style={{ padding: '0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                View Reports
+                              </button>
+                            </td>
                           </tr>
                         ))
                       )}
@@ -3747,6 +3883,17 @@ export default function Jobs() {
         onSaved={() => { setNewReportModalOpen(false); loadReports(); }}
         authUserId={authUser?.id ?? null}
       />
+      {viewReportsJob && (
+        <JobReportsModal
+          open={!!viewReportsJob}
+          onClose={() => setViewReportsJob(null)}
+          jobId={viewReportsJob.id}
+          hcpNumber={viewReportsJob.hcpNumber}
+          jobName={viewReportsJob.jobName}
+          jobAddress={viewReportsJob.jobAddress}
+          authUserId={authUser?.id ?? null}
+        />
+      )}
     </div>
   )
 }
