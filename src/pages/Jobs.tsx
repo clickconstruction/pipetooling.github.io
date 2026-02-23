@@ -1381,6 +1381,22 @@ export default function Jobs() {
         if (tab === 'labor') next.set('tab', 'sub_sheet_ledger')
         return next
       }, { replace: true })
+    } else if (newJob && tab === 'ledger') {
+      setActiveTab('ledger')
+      setEditing(null)
+      setHcpNumber('')
+      setJobName('')
+      setJobAddress('')
+      setRevenue('')
+      setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
+      setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
+      setTeamMemberIds([])
+      setFormOpen(true)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('newJob')
+        return next
+      }, { replace: true })
     }
   }, [searchParams])
 
@@ -2527,7 +2543,7 @@ export default function Jobs() {
               onClick={openNewLaborJob}
               style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
-              New Job
+              New Job Labor
             </button>
             <button
               type="button"
@@ -2549,7 +2565,7 @@ export default function Jobs() {
           {laborJobsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading sub sheet ledger…</p>
           ) : laborJobs.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No jobs yet. Click New Job to add one.</p>
+            <p style={{ color: '#6b7280' }}>No jobs yet. Click New Job Labor to add one.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
               <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -3015,7 +3031,7 @@ export default function Jobs() {
       {(laborModalOpen || editingLaborJob) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit job' : 'New Job'}</h2>
+            <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit Job Labor' : 'New Job Labor'}</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault()

@@ -1323,7 +1323,7 @@ export default function Dashboard() {
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <Link
-            to="/jobs?tab=sub_sheet_ledger&newJob=true"
+            to="/jobs?tab=ledger&newJob=true"
             style={{
               padding: '0.75rem 1.25rem',
               background: '#3b82f6',
@@ -1335,6 +1335,20 @@ export default function Dashboard() {
             }}
           >
             Job
+          </Link>
+          <Link
+            to="/jobs?tab=sub_sheet_ledger&newJob=true"
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 8,
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+            }}
+          >
+            Job Labor
           </Link>
           <Link
             to="/bids?new=true"

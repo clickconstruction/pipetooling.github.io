@@ -1,14 +1,17 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
-export async function loginAsUser(user: { email: string | null }): Promise<void> {
+export async function loginAsUser(
+  user: { email: string | null },
+  redirectTo?: string
+): Promise<void> {
   const email = user.email?.trim()
   if (!email) {
     throw new Error('User has no email')
   }
-  const redirectTo = `${window.location.origin}/dashboard`
+  const targetRedirect = redirectTo ?? `${window.location.origin}/dashboard`
   const { data, error: eFn } = await supabase.functions.invoke('login-as-user', {
-    body: { email, redirectTo },
+    body: { email, redirectTo: targetRedirect },
   })
   if (eFn) {
     let msg = eFn.message

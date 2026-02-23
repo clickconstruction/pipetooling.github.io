@@ -1102,7 +1102,7 @@ export default function People() {
                             setLoggingInAsId(item.id)
                             setError(null)
                             try {
-                              await loginAsUser(item)
+                              await loginAsUser(item, 'https://pipetooling.com/dashboard')
                             } catch (e) {
                               setError(e instanceof Error ? e.message : 'Failed to imitate')
                             } finally {

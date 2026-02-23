@@ -2821,7 +2821,7 @@ export default function Settings() {
     setLoggingInAsId(u.id)
     setError(null)
     try {
-      await doLoginAsUser(u)
+      await doLoginAsUser(u, 'http://localhost:5173/dashboard')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to imitate')
     } finally {
