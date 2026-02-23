@@ -296,12 +296,13 @@ export default function Workflow() {
         }
       }
       
-      // Load actions for these steps
+      // Load actions for these steps (limit to prevent huge result sets)
       const { data: actions } = await supabase
         .from('project_workflow_step_actions')
         .select('*')
         .in('step_id', stepIds)
         .order('performed_at', { ascending: false })
+        .limit(100)
       if (actions) {
         const actionsMap: Record<string, StepAction[]> = {}
         actions.forEach((action) => {
@@ -326,6 +327,7 @@ export default function Workflow() {
       .select('id, name')
       .eq('status', 'finalized')
       .order('created_at', { ascending: false })
+      .limit(100)
     
     if (error) {
       console.error('Error loading POs:', error)
@@ -522,29 +524,32 @@ export default function Workflow() {
     }
   }, [projectId, userRole, currentUserName, workflow?.id])
 
-  // Load line items when steps and userRole are available
+  // Load line items when steps and userRole are available (staggered to reduce concurrent DB load)
   useEffect(() => {
     if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
       const stepIds = steps.map(s => s.id)
-      loadLineItemsForSteps(stepIds)
+      const t = setTimeout(() => loadLineItemsForSteps(stepIds), 50)
+      return () => clearTimeout(t)
     } else {
       setLineItems({})
     }
   }, [steps, userRole])
 
-  // Load projections when workflow and userRole are available
+  // Load projections when workflow and userRole are available (staggered)
   useEffect(() => {
     if (workflow?.id && (userRole === 'dev' || userRole === 'master_technician')) {
-      loadProjections(workflow.id)
+      const t = setTimeout(() => loadProjections(workflow.id), 100)
+      return () => clearTimeout(t)
     } else {
       setProjections([])
     }
   }, [workflow?.id, userRole])
 
-  // Load finalized purchase orders for adding to steps
+  // Load finalized purchase orders for adding to steps (staggered to run after projections)
   useEffect(() => {
     if (userRole === 'dev' || userRole === 'master_technician') {
-      loadFinalizedPOs()
+      const t = setTimeout(() => loadFinalizedPOs(), 200)
+      return () => clearTimeout(t)
     }
   }, [userRole])
 
@@ -2306,43 +2311,51 @@ export default function Workflow() {
       )}
 
       {assignPersonStep && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', overflow: 'auto', color: '#111827' }}>
-            <h3 style={{ marginTop: 0, color: '#111827' }}>Add person to: {assignPersonStep.name}</h3>
-            <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '1rem' }}>Choose from your roster (People and signed-up users).</p>
-            {roster.length === 0 && !currentUserName ? (
-              <p style={{ color: '#111827', marginBottom: '1rem' }}>No people in your roster yet. Add them on the People page.</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: '1rem' }}>
-                {/* Always show current user first */}
-                {currentUserName && (
-                  <button
-                    key="current-user"
-                    type="button"
-                    onClick={() => assignPerson(assignPersonStep, currentUserName)}
-                    style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#eff6ff', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: '#111827', fontWeight: 500 }}
-                  >
-                    {currentUserName} (You)
-                  </button>
-                )}
-                {/* Show rest of roster, excluding current user if already in roster */}
-                {roster
-                  .filter((r) => r.name !== currentUserName)
-                  .map((r, i) => (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={() => setAssignPersonStep(null)}
+        >
+          <div
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column', color: '#111827' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, color: '#111827', flexShrink: 0 }}>Add person to: {assignPersonStep.name}</h3>
+            <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '1rem', flexShrink: 0 }}>Choose from your roster (People and signed-up users).</p>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '1rem' }}>
+              {roster.length === 0 && !currentUserName ? (
+                <p style={{ color: '#111827' }}>No people in your roster yet. Add them on the People page.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {/* Always show current user first */}
+                  {currentUserName && (
                     <button
-                      key={`${r.name}-${i}`}
+                      key="current-user"
                       type="button"
-                      onClick={() => assignPerson(assignPersonStep, r.name)}
-                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', color: '#111827' }}
+                      onClick={() => assignPerson(assignPersonStep, currentUserName)}
+                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#eff6ff', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: '#111827', fontWeight: 500 }}
                     >
-                      {r.name}
+                      {currentUserName} (You)
                     </button>
-                  ))}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => assignPerson(assignPersonStep, null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827' }}>Clear</button>
-              <button type="button" onClick={() => setAssignPersonStep(null)} style={{ padding: '0.5rem 1rem', color: '#111827' }}>Cancel</button>
+                  )}
+                  {/* Show rest of roster, excluding current user if already in roster */}
+                  {roster
+                    .filter((r) => r.name !== currentUserName)
+                    .map((r, i) => (
+                      <button
+                        key={`${r.name}-${i}`}
+                        type="button"
+                        onClick={() => assignPerson(assignPersonStep, r.name)}
+                        style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', color: '#111827' }}
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+              <button type="button" onClick={() => assignPerson(assignPersonStep, null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6 }}>Clear</button>
+              <button type="button" onClick={() => setAssignPersonStep(null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #d1d5db', borderRadius: 6 }}>Cancel</button>
             </div>
           </div>
         </div>

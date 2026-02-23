@@ -89,11 +89,12 @@ export default function Projects() {
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
 
-        // Single query: workflows with nested steps (reduces round-trips)
+        // Single query: workflows with nested steps (reduces round-trips, limit to prevent huge result sets)
         const { data: workflows, error: workflowsErr } = await supabase
           .from('project_workflows')
           .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
           .in('project_id', projectIds)
+          .limit(100)
 
         if (workflowsErr) {
           console.error('Projects: workflows+steps query failed', workflowsErr)
