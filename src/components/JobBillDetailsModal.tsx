@@ -38,7 +38,6 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
     if (!open || !jobId) return
     setLoading(true)
     const hcp = (hcpNumber ?? '').trim().toLowerCase()
-    const totalBill = revenue != null ? Number(revenue) : 0
 
     Promise.all([
       supabase.rpc('list_tally_parts_with_po'),

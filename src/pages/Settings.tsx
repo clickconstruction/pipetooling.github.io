@@ -3889,14 +3889,16 @@ export default function Settings() {
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => loginAsUser(u)}
-                          disabled={loggingInAsId === u.id}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                        >
-                          {loggingInAsId === u.id ? 'Redirecting…' : 'imitate'}
-                        </button>
+                        {u.role !== 'dev' && (
+                          <button
+                            type="button"
+                            onClick={() => loginAsUser(u)}
+                            disabled={loggingInAsId === u.id}
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                          >
+                            {loggingInAsId === u.id ? 'Redirecting…' : 'imitate'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {

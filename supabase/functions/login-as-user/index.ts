@@ -57,16 +57,17 @@ serve(async (req) => {
       )
     }
 
-    // Check if user is dev or master
+    // Check if user is dev, master, or assistant
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('role')
       .eq('id', authUser.id)
       .single()
 
-    if (userError || !userData || (userData.role !== 'dev' && userData.role !== 'master_technician')) {
+    const callerRole = userData?.role
+    if (userError || !userData || (callerRole !== 'dev' && callerRole !== 'master_technician' && callerRole !== 'assistant')) {
       return new Response(
-        JSON.stringify({ error: 'Forbidden - Only devs and masters can login as other users' }),
+        JSON.stringify({ error: 'Forbidden - Only devs, masters, and assistants can login as other users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -125,6 +126,27 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Get target user's role from users table
+    const { data: targetUserData, error: targetUserError } = await adminClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    const targetRole = targetUserData?.role ?? null
+    if (!targetUserError && targetRole === 'dev') {
+      return new Response(
+        JSON.stringify({ error: 'Cannot impersonate a dev' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    if (callerRole === 'assistant' && targetRole === 'master_technician') {
+      return new Response(
+        JSON.stringify({ error: 'Assistants cannot impersonate masters' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
