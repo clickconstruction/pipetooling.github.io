@@ -102,6 +102,27 @@ export default function Layout() {
     return () => window.removeEventListener('pipetooling-pins-changed', handler)
   }, [])
 
+  // Reload on bfcache restore during impersonation to avoid stale auth state
+  useEffect(() => {
+    const handler = (e: PageTransitionEvent) => {
+      if (e.persisted && localStorage.getItem(IMPERSONATION_KEY)) {
+        window.location.reload()
+      }
+    }
+    window.addEventListener('pageshow', handler)
+    return () => window.removeEventListener('pageshow', handler)
+  }, [])
+
+  // Intercept back during impersonation to avoid risky navigation
+  useEffect(() => {
+    if (!impersonating) return
+    const handler = () => {
+      navigate('/dashboard', { replace: true })
+    }
+    window.addEventListener('popstate', handler)
+    return () => window.removeEventListener('popstate', handler)
+  }, [impersonating, navigate])
+
   useEffect(() => {
     if (role === 'dev') {
       supabase.from('users').select('id, name, email').order('name').then(({ data }) => {

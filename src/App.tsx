@@ -62,6 +62,8 @@ function AuthHandler() {
 
       // Handle magiclink authentication (from login-as-user)
       if (accessToken && refreshToken && type === 'magiclink') {
+        // Clear hash FIRST so back button cannot return to token URL
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
         supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
@@ -70,8 +72,7 @@ function AuthHandler() {
             console.error('Failed to set session from magic link:', error)
             navigate('/sign-in', { replace: true })
           } else {
-            // Clear the hash, clear cache, and hard reload
-            window.history.replaceState(null, '', window.location.pathname + window.location.search)
+            // Clear cache and hard reload
             const reload = () => { window.location.reload() }
             if (typeof caches !== 'undefined') {
               caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
