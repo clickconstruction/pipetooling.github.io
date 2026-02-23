@@ -610,7 +610,7 @@ export default function Dashboard() {
       .then(({ data, error }) => {
         setAssignedJobsLoading(false)
         if (error) return
-        setAssignedJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>)
+        setAssignedJobs((data ?? []) as typeof assignedJobs)
       })
   }, [authUser?.id])
 
