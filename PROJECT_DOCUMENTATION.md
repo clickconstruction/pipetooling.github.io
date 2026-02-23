@@ -1678,14 +1678,23 @@ user_id = auth.uid()
 ```
 
 ### Impersonation Flow
-1. Dev/Master clicks "imitate" button in Settings
-2. Frontend calls `login-as-user` Edge Function
+1. Dev/Master/Assistant clicks "imitate" button (Settings or People → Users)
+2. Frontend calls `login-as-user` Edge Function with `redirectTo: window.location.origin + '/dashboard'`
 3. Edge Function generates magic link for target user
 4. Frontend stores original session in `localStorage` (key: `'impersonation_original'`) so it survives reloads
 5. Browser redirects to magic link URL with tokens in hash
 6. AuthHandler component processes tokens and sets session
 7. User is redirected to dashboard as the target user
 8. "Back to my account" button restores original session from `localStorage`
+
+**Restrictions**:
+- No one can impersonate a dev
+- Assistants cannot impersonate masters (assistants may impersonate assistants, subcontractors, estimators)
+
+**Production (pipetooling.com)**: For imitate to work on production, configure Supabase Auth:
+- **Authentication** → **URL Configuration**
+- **Site URL**: Set to production URL (e.g. `https://pipetooling.com`)
+- **Redirect URLs**: Add `https://pipetooling.com/**` (or your production domain). If missing, magic links redirect to Site URL (often localhost).
 
 ---
 

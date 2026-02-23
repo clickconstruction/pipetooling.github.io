@@ -58,14 +58,26 @@ cd /Users/robertdouglas/_SYNC/github/Click-Construction/pipetooling/pipetooling.
 supabase functions deploy login-as-user --no-verify-jwt
 ```
 
-## Step 3: Verify Deployment
+## Step 3: Configure Supabase Auth for Production
+
+For imitate to work on production (e.g. pipetooling.com), configure Auth URLs:
+
+1. Go to **Supabase Dashboard** → **Authentication** → **URL Configuration**
+2. **Site URL**: Set to your production URL (e.g. `https://pipetooling.com`)
+3. **Redirect URLs**: Add your production URL pattern, e.g.:
+   - `https://pipetooling.com/**`
+   - Or `https://your-domain.com/dashboard` for a specific path
+
+If the production URL is not in Redirect URLs, magic links will redirect to Site URL (often `http://localhost:3000`).
+
+## Step 4: Verify Deployment
 
 After deployment, you should see:
 - Function listed in Edge Functions
 - Status: Active/Deployed
 - Verify JWT: Disabled
 
-## Step 4: Test the Function
+## Step 5: Test the Function
 
 1. **Go to Settings page** in your app (as a dev user)
 2. **Click "Login as user"** button next to a user
@@ -77,7 +89,9 @@ After deployment, you should see:
 
 **Authentication**: 
 - Requires valid JWT token
-- Only devs can generate magic links
+- Devs, masters, and assistants can generate magic links
+- No one can impersonate a dev
+- Assistants cannot impersonate masters
 
 **Input**:
 ```typescript
@@ -96,13 +110,15 @@ After deployment, you should see:
 ```
 
 **Behavior**:
-- Validates the requesting user is a dev
+- Validates the requesting user is a dev, master, or assistant
+- Rejects if target user is a dev (no one can impersonate devs)
+- Rejects if caller is assistant and target is master
 - Finds target user by email
 - Generates a magic link using admin API
 - Returns the magic link for frontend to use
 
 **Security**:
-- Only devs can call this function
+- Only devs, masters, and assistants can call this function
 - Uses service role key for admin operations (server-side only)
 - Magic links are single-use and time-limited
 
@@ -123,12 +139,20 @@ After deployment, you should see:
   2. Add `SUPABASE_SERVICE_ROLE_KEY` with your service role key
   3. Get service role key from Settings → API
 
-### "Forbidden - Only devs and masters can login as other users"
-- **Cause**: Your user role is not 'dev' or 'master_technician'
+### "Forbidden - Only devs, masters, and assistants can login as other users"
+- **Cause**: Your user role is not 'dev', 'master_technician', or 'assistant'
 - **Solution**: 
   1. Go to Settings → Admin Code
   2. Enter code: `admin1234`
   3. Or update your role in database
+
+### Magic link redirects to localhost instead of production
+- **Cause**: Supabase Auth Site URL or Redirect URLs not configured for production
+- **Solution**: 
+  1. Go to **Authentication** → **URL Configuration**
+  2. Set **Site URL** to your production URL (e.g. `https://pipetooling.com`)
+  3. Add **Redirect URLs**: `https://pipetooling.com/**` (or your production domain)
+  4. Save and try again
 
 ### "User not found"
 - **Cause**: No user matches the provided email

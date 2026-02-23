@@ -78,6 +78,23 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
 ---
 
+## Imitate redirects to localhost instead of production
+
+**Symptoms**: Clicking "imitate" on People or Settings (on pipetooling.com) redirects to `http://localhost:3000/#access_token=...` instead of the production URL.
+
+**Cause**: Supabase Auth **Site URL** or **Redirect URLs** not configured for production. Magic links use the Site URL when the requested redirect is not in the allow list.
+
+**Solution**:
+1. Go to [Supabase Dashboard](https://supabase.com/dashboard) → your project
+2. **Authentication** → **URL Configuration**
+3. **Site URL**: Set to your production URL (e.g. `https://pipetooling.com`)
+4. **Redirect URLs**: Add your production URL pattern, e.g. `https://pipetooling.com/**`
+5. Save and try imitate again
+
+**See also**: [login-as-user DEPLOY.md](supabase/functions/login-as-user/DEPLOY.md) Step 3
+
+---
+
 ## Sign-in not working
 
 **Check**:

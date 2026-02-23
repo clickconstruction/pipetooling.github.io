@@ -401,11 +401,11 @@ const response = await supabase.functions.invoke('delete-user', {
 
 ### login-as-user
 
-**Purpose**: Generate magic link for user impersonation (dev and master access)
+**Purpose**: Generate magic link for user impersonation (dev, master, and assistant access)
 
 **Endpoint**: `POST /functions/v1/login-as-user`
 
-**Required Role**: `dev` or `master_technician`
+**Required Role**: `dev`, `master_technician`, or `assistant`
 
 **Required Secrets**:
 - `SUPABASE_URL`
@@ -481,12 +481,14 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 #### Implementation Details
 
-1. Validates caller is `dev` or `master_technician` role
-2. Validates email format
-3. Finds target user in `public.users` table
-4. Uses `supabase.auth.admin.generateLink()` to create magic link
-5. Returns magic link URL for frontend to redirect to
-6. Frontend workflow:
+1. Validates caller is `dev`, `master_technician`, or `assistant` role
+2. Rejects if target user is a dev (no one can impersonate devs)
+3. Rejects if caller is assistant and target is master (assistants cannot impersonate masters)
+4. Validates email format
+5. Finds target user in `public.users` table
+6. Uses `supabase.auth.admin.generateLink()` to create magic link
+7. Returns magic link URL for frontend to redirect to
+8. Frontend workflow:
    - Stores original session in `localStorage` (key: `impersonation_original`) so it survives reloads
    - Redirects to magic link
    - `AuthHandler` component processes tokens
@@ -496,6 +498,11 @@ const response = await supabase.functions.invoke('login-as-user', {
 - Debugging user-specific issues
 - Assisting users with their accounts
 - Testing permissions and access control
+
+**Production URL Configuration**: For imitate to work on production (e.g. pipetooling.com), configure Supabase Auth:
+- **Authentication** → **URL Configuration**
+- **Site URL**: Set to production URL (e.g. `https://pipetooling.com`)
+- **Redirect URLs**: Add `https://pipetooling.com/**` (or your production domain). If the production URL is not in Redirect URLs, magic links will redirect to Site URL (often `http://localhost:3000`).
 
 **Deployment**: See [`supabase/functions/login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
 

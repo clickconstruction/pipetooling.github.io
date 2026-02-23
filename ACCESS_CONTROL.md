@@ -98,7 +98,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Special Permissions**:
 - Create, edit, and delete users
-- Impersonate other users ("imitate" function)
+- Impersonate other users ("imitate" function; cannot impersonate devs)
 - Manage system templates
 - Set user passwords
 - Access all edge functions
@@ -178,7 +178,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - (Dev only) Pin AR, Supply Houses AP, External Team, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
 
 **Edge Functions**:
-- Can call `login-as-user` (impersonate assistants/subs)
+- Can call `login-as-user` (impersonate assistants/subs; cannot impersonate devs)
 
 ---
 
