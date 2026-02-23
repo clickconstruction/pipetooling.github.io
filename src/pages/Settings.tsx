@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { loginAsUser as doLoginAsUser } from '../lib/loginAsUser'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { useAuth } from '../hooks/useAuth'
 import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
@@ -2819,36 +2820,13 @@ export default function Settings() {
   async function loginAsUser(u: UserRow) {
     setLoggingInAsId(u.id)
     setError(null)
-    // Construct redirect URL - use the current origin to ensure it works in all environments
-    const redirectTo = `${window.location.origin}/dashboard`
-    const { data, error: eFn } = await supabase.functions.invoke('login-as-user', {
-      body: { email: u.email, redirectTo },
-    })
-    setLoggingInAsId(null)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setError(msg)
-      return
+    try {
+      await doLoginAsUser(u)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to imitate')
+    } finally {
+      setLoggingInAsId(null)
     }
-    const link = (data as { action_link?: string } | null)?.action_link
-    if (!link) {
-      setError('Could not get login link')
-      return
-    }
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token && session?.refresh_token) {
-      localStorage.setItem('impersonation_original', JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      }))
-    }
-    window.location.href = link
   }
 
   function openInvite() {

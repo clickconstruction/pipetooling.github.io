@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
 import ReportViewModal from '../components/ReportViewModal'
 import JobReportsModal from '../components/JobReportsModal'
+import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import {
@@ -224,6 +225,7 @@ export default function Dashboard() {
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -2069,10 +2071,13 @@ export default function Dashboard() {
                       <div style={{ fontWeight: 600 }}>
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
-                      {j.revenue != null && (
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      )}
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        {j.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {j.created_at && (
@@ -2149,7 +2154,13 @@ export default function Dashboard() {
                       <div style={{ fontWeight: 600 }}>
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        {j.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                       {j.revenue != null && (
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       )}
@@ -2160,9 +2171,13 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                      >
                         View
-                      </Link>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
@@ -2225,7 +2240,13 @@ export default function Dashboard() {
                       <div style={{ fontWeight: 600 }}>
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>{j.job_address || '—'}</div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        {j.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
                       {j.revenue != null && (
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       )}
@@ -2236,9 +2257,13 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                      >
                         View
-                      </Link>
+                      </button>
                       <button
                         type="button"
                         onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
@@ -2521,6 +2546,17 @@ export default function Dashboard() {
           jobName={viewReportsJob.jobName}
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
+        />
+      )}
+      {viewBillDetailsJob && (
+        <JobBillDetailsModal
+          open={!!viewBillDetailsJob}
+          onClose={() => setViewBillDetailsJob(null)}
+          jobId={viewBillDetailsJob.id}
+          hcpNumber={viewBillDetailsJob.hcpNumber}
+          jobName={viewBillDetailsJob.jobName}
+          jobAddress={viewBillDetailsJob.jobAddress}
+          revenue={viewBillDetailsJob.revenue}
         />
       )}
     </div>
