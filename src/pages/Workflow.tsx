@@ -130,10 +130,6 @@ export default function Workflow() {
 
   function isSectionDefaultExpanded(step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
     const inProgress = step.status === 'in_progress'
-    const hasNotify = !!step.notify_assigned_when_started || !!step.notify_assigned_when_complete ||
-      !!step.notify_assigned_when_reopened ||
-      !!userSubscriptions[step.id]?.notify_when_started || !!userSubscriptions[step.id]?.notify_when_complete ||
-      !!userSubscriptions[step.id]?.notify_when_reopened
     const hasNotes = !!(step.notes?.trim())
     const hasPrivateNotes = !!(step.private_notes?.trim())
     const hasLineItems = !!(lineItems[step.id]?.length)

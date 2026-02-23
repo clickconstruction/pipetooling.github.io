@@ -30,6 +30,7 @@ export default function JobTally() {
   const [saved, setSaved] = useState(false)
   const [poCreateError, setPoCreateError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [jobPickerOpen, setJobPickerOpen] = useState(false)
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -285,25 +286,93 @@ export default function JobTally() {
             No jobs assigned. Ask your supervisor to add you as a team member on a job.
           </p>
         ) : (
-          <select
-            value={selectedJobId ?? ''}
-            onChange={(e) => setSelectedJobId(e.target.value || null)}
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              fontSize: '1rem',
-              minHeight: TOUCH_MIN,
-              border: '1px solid #d1d5db',
-              borderRadius: 8,
-              background: '#fff',
-            }}
-          >
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.hcp_number || '—'}{' · '}{j.job_name || '—'}
-              </option>
-            ))}
-          </select>
+          <>
+            <button
+              type="button"
+              onClick={() => setJobPickerOpen(true)}
+              style={{
+                width: '100%',
+                padding: '0.75rem 1rem',
+                fontSize: '1rem',
+                minHeight: TOUCH_MIN,
+                border: '1px solid #d1d5db',
+                borderRadius: 8,
+                background: '#fff',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+              }}
+            >
+              <span>
+                {selectedJob
+                  ? `${selectedJob.hcp_number || '—'} · ${selectedJob.job_name || '—'}`
+                  : 'Choose job…'}
+              </span>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>▼</span>
+            </button>
+            {jobPickerOpen && (
+              <div
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  zIndex: 100,
+                  background: 'rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                  justifyContent: 'flex-end',
+                }}
+                onClick={() => setJobPickerOpen(false)}
+              >
+                <div
+                  style={{
+                    background: '#fff',
+                    borderTopLeftRadius: 16,
+                    borderTopRightRadius: 16,
+                    maxHeight: '70vh',
+                    overflow: 'auto',
+                    padding: '1rem',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Choose job</h2>
+                    <button type="button" onClick={() => setJobPickerOpen(false)} style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {jobs.map((j) => (
+                      <button
+                        key={j.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedJobId(j.id)
+                          setJobPickerOpen(false)
+                        }}
+                        style={{
+                          padding: '1rem',
+                          minHeight: TOUCH_MIN,
+                          fontSize: '1rem',
+                          lineHeight: 1.4,
+                          textAlign: 'left',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                          background: selectedJobId === j.id ? '#eff6ff' : '#fff',
+                          cursor: 'pointer',
+                          color: '#111827',
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                        {j.job_address && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{j.job_address}</div>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
