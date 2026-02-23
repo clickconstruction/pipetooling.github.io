@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
+import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -23,6 +25,10 @@ function extractContactInfo(ci: Json | null): { phone: string; email: string } {
 }
 
 export default function Customers() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const newCustomerModal = useNewCustomerModal()
+  const editCustomerModal = useEditCustomerModal()
   const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +81,21 @@ export default function Customers() {
     fetchCustomers()
   }, [])
 
+  useEffect(() => {
+    if (location.state?.openNewCustomer && newCustomerModal) {
+      newCustomerModal.openNewCustomerModal({ onCreated: fetchCustomers })
+      navigate('/customers', { replace: true, state: {} })
+    }
+  }, [location.state?.openNewCustomer, newCustomerModal, navigate])
+
+  useEffect(() => {
+    const editId = location.state?.openEditCustomer
+    if (typeof editId === 'string' && editId && editCustomerModal) {
+      editCustomerModal.openEditCustomerModal(editId, { onSaved: fetchCustomers })
+      navigate('/customers', { replace: true, state: {} })
+    }
+  }, [location.state?.openEditCustomer, editCustomerModal, navigate])
+
   if (loading) return <p>Loading customers…</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -82,12 +103,24 @@ export default function Customers() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1>Customers</h1>
-        <Link to="/customers/new" style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 6, textDecoration: 'none' }}>
+        <button
+          type="button"
+          onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
+          style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 6, border: 'none', cursor: 'pointer', fontWeight: 500 }}
+        >
           Add customer
-        </Link>
+        </button>
       </div>
       {customers.length === 0 ? (
-        <p>No customers yet. <Link to="/customers/new">Add one</Link>.</p>
+        <p>No customers yet.{' '}
+          <button
+            type="button"
+            onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
+            style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
+          >
+            Add one
+          </button>
+          .</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {customers.map((c) => (
@@ -102,7 +135,13 @@ export default function Customers() {
               }}
             >
               <div>
-                <Link to={`/customers/${c.id}/edit`} style={{ fontWeight: 500 }}>{c.name}</Link>
+                <button
+                type="button"
+                onClick={() => editCustomerModal?.openEditCustomerModal(c.id, { onSaved: fetchCustomers })}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 500, cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
+              >
+                {c.name}
+              </button>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {c.address && <span>{c.address}</span>}
                   {c.master_user && (

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-22
+last_updated: 2026-02-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.59 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.60)"
-    line: ~162
+  - name: "Latest Version (v2.61)"
+    line: ~169
+    description: "User notes on People page, Add button styling"
+  - name: "v2.60"
+    line: ~210
     description: "Dashboard button visibility, impersonation redirects, back-button fix"
   - name: "v2.59"
     line: ~200
@@ -86,7 +89,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.59)"
+  - "Latest features at top (v2.61)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -103,31 +106,32 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-2. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-3. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-4. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-5. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-6. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-7. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-8. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-9. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-10. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-11. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-12. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-13. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-14. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-15. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-16. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-17. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-18. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-19. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-20. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-21. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-22. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-23. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-24. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-25. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+1. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+2. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+3. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+4. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+5. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+6. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+7. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+8. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+9. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+10. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+11. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+12. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+13. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+14. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+15. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+16. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+17. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+18. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+19. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+20. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+21. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+22. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+23. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+24. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+25. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+26. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
 26. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
 27. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
 28. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
@@ -163,6 +167,30 @@ when_to_read:
 58. [Email Templates](#email-templates)
 59. [Financial Tracking](#financial-tracking)
 60. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.61)
+
+### User notes on People page, Add button styling
+
+**Date**: 2026-02-29
+
+**Overview**:
+Masters, Assistants, and Devs can add and edit general notes on each user in People → Users. Notes appear after the user's email. Add button in People Users tab uses modern blue styling.
+
+**User notes**:
+- **People → Users**: Each user row (Devs section and KINDS sections) shows notes after email, e.g. `email@example.com — General note text`
+- **Edit button**: Card/ID icon (replaces "Edit" text) opens modal to edit note; visible to dev, master_technician, assistant
+- **Database**: `users.notes` (text, nullable); RLS policy allows dev/master/assistant to UPDATE users
+- **Migration**: `20260229000004_add_users_notes.sql`
+
+**People Add button**:
+- **Styling**: Add button in Assistants, Master Technicians, Subcontractors, Estimators sections now uses blue background (#3b82f6), white text, rounded corners—matches other primary buttons in the app
+
+**Files**: `src/pages/People.tsx`, `src/types/database.ts`
+
+**Migrations**: `20260229000004_add_users_notes.sql`
 
 ---
 

@@ -7,7 +7,7 @@ import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-type UserRow = { id: string; email: string | null; name: string; role: string }
+type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null }
 type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
 
 const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator']
@@ -128,6 +128,9 @@ export default function People() {
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
+  const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string } | null>(null)
+  const [userNoteSaving, setUserNoteSaving] = useState(false)
+  const [authUserRole, setAuthUserRole] = useState<string | null>(null)
 
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => {
@@ -145,15 +148,16 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
+      supabase.from('users').select('id, email, name, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
     let usersList = (usersRes.data as UserRow[]) ?? []
-    const myRole = (meRes.data as { role?: string } | null)?.role
+    const myRole = (meRes.data as { role?: string } | null)?.role ?? null
+    setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, email, name, role').eq('role', 'dev')
+      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes').eq('role', 'dev')
       if (devUsers && devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
@@ -481,9 +485,9 @@ export default function People() {
     inviteAsUser(p)
   }
 
-  function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null } | ({ source: 'people' } & Person))[] {
+  function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null; notes: string | null } | ({ source: 'people' } & Person))[] {
     const userRole = KIND_TO_USER_ROLE[k]
-    const fromUsers = users.filter((u) => u.role === userRole).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
+    const fromUsers = users.filter((u) => u.role === userRole).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, notes: u.notes }))
     const fromPeople = people
       .filter((p) => p.kind === k && !isAlreadyUser(p.email))
       .map((p) => ({ source: 'people' as const, ...p }))
@@ -940,6 +944,8 @@ export default function People() {
   const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
 
+  const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
+
   if (loading) return <p>Loading...</p>
 
   return (
@@ -1046,8 +1052,23 @@ export default function People() {
                                 </a>
                               </span>
                             )}
+                            {u.notes && (
+                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
+                            )}
                           </div>
                         </div>
+                        {canEditUserNotes && (
+                          <button
+                            type="button"
+                            title="Edit note"
+                            onClick={() => setEditingUserNote({ id: u.id, name: u.name, notes: u.notes ?? '' })}
+                            style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                              <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
+                            </svg>
+                          </button>
+                        )}
                       </li>
                     ))}
                 </ul>
@@ -1058,7 +1079,7 @@ export default function People() {
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{KIND_LABELS[k]}</h2>
-            <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+            <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
               Add
             </button>
           </div>
@@ -1193,6 +1214,9 @@ export default function People() {
                           )}
                         </span>
                       )}
+                      {item.source === 'user' && 'notes' in item && item.notes && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {item.notes}</span>
+                      )}
                     </div>
                     {(() => {
                       const projects = personProjects[item.name.trim()]
@@ -1234,6 +1258,18 @@ export default function People() {
                         </span>
                       )}
                     </div>
+                  )}
+                  {item.source === 'user' && canEditUserNotes && (
+                    <button
+                      type="button"
+                      title="Edit note"
+                      onClick={() => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '' })}
+                      style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                        <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
+                      </svg>
+                    </button>
                   )}
                 </li>
               ))}
@@ -2372,6 +2408,47 @@ export default function People() {
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={confirmAndInvite} style={{ padding: '0.5rem 1rem' }}>Send invite</button>
               <button type="button" onClick={() => setInviteConfirm(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingUserNote && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+          <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Edit note for {editingUserNote.name}</h3>
+            <textarea
+              value={editingUserNote.notes}
+              onChange={(e) => setEditingUserNote((prev) => (prev ? { ...prev, notes: e.target.value } : null))}
+              rows={4}
+              placeholder="General note about this user..."
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', resize: 'vertical' }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!editingUserNote) return
+                  setUserNoteSaving(true)
+                  setError(null)
+                  const trimmed = editingUserNote.notes.trim()
+                  const { error: err } = await supabase.from('users').update({ notes: trimmed || null }).eq('id', editingUserNote.id)
+                  setUserNoteSaving(false)
+                  if (err) setError(err.message)
+                  else {
+                    await loadPeople()
+                    setEditingUserNote(null)
+                  }
+                }}
+                disabled={userNoteSaving}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                {userNoteSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button type="button" onClick={() => setEditingUserNote(null)} disabled={userNoteSaving} style={{ padding: '0.5rem 1rem' }}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>

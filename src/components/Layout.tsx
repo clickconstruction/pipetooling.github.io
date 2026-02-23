@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
+import NewCustomerModal from './NewCustomerModal'
+import EditCustomerModal from './EditCustomerModal'
 import {
   PINNABLE_PATHS,
   pathToLabel,
@@ -648,6 +650,8 @@ export default function Layout() {
         )}
       </main>
       <ChecklistAddModal />
+      <NewCustomerModal />
+      <EditCustomerModal />
     </div>
   )
 }

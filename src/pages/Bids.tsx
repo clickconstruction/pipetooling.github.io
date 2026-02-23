@@ -4,7 +4,8 @@ import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
-import NewCustomerForm from '../components/NewCustomerForm'
+import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
+import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { PartFormModal } from '../components/PartFormModal'
 import { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -509,6 +510,8 @@ function buildCoverLetterText(
 
 export default function Bids() {
   const { user: authUser } = useAuth()
+  const newCustomerModal = useNewCustomerModal()
+  const editCustomerModal = useEditCustomerModal()
   const location = useLocation()
   const navigate = useNavigate()
   const [, setSearchParams] = useSearchParams()
@@ -609,7 +612,6 @@ export default function Bids() {
   const [gcCustomerId, setGcCustomerId] = useState('')
   const [gcCustomerSearch, setGcCustomerSearch] = useState('')
   const [gcCustomerDropdownOpen, setGcCustomerDropdownOpen] = useState(false)
-  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false)
   const [evaluateModalOpen, setEvaluateModalOpen] = useState(false)
   const [evaluateChecked, setEvaluateChecked] = useState<{ [key: string]: boolean }>({})
   const [showSentBidScript, setShowSentBidScript] = useState(false)
@@ -6591,8 +6593,9 @@ export default function Bids() {
       {activeTab === 'builder-review' && (
         <div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <Link
-              to="/customers/new"
+            <button
+              type="button"
+              onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: loadCustomers })}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#3b82f6',
@@ -6600,12 +6603,12 @@ export default function Bids() {
                 border: 'none',
                 borderRadius: 4,
                 fontWeight: 500,
-                textDecoration: 'none',
                 whiteSpace: 'nowrap',
+                cursor: 'pointer',
               }}
             >
               New Customer
-            </Link>
+            </button>
             <input
               type="text"
               placeholder="Search builders..."
@@ -6949,9 +6952,12 @@ export default function Bids() {
                       </div>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1.25rem', borderTop: '1px solid #e5e7eb', background: '#fafafa' }}>
-                        <Link
-                          to={`/customers/${customer.id}/edit`}
-                          onClick={(e) => e.stopPropagation()}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            editCustomerModal?.openEditCustomerModal(customer.id, { onSaved: loadCustomers })
+                          }}
                           style={{
                             padding: '0.35rem 0.75rem',
                             fontSize: '0.875rem',
@@ -6959,12 +6965,12 @@ export default function Bids() {
                             color: '#374151',
                             border: '1px solid #d1d5db',
                             borderRadius: 4,
-                            textDecoration: 'none',
                             fontWeight: 500,
+                            cursor: 'pointer',
                           }}
                         >
                           Edit Customer
-                        </Link>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -11294,7 +11300,13 @@ export default function Bids() {
                     {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') && (
                       <div
                         onClick={() => {
-                          setAddCustomerModalOpen(true)
+                          newCustomerModal?.openNewCustomerModal({
+                            onCreated: (c) => {
+                              loadCustomers()
+                              setGcCustomerId(c.id)
+                              setGcCustomerSearch(getCustomerDisplay(c))
+                            },
+                          })
                           setGcCustomerDropdownOpen(false)
                         }}
                         onMouseDown={(e) => e.preventDefault()}
@@ -11719,25 +11731,6 @@ export default function Bids() {
                 {savingContactPerson ? 'Saving…' : 'Save'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Customer modal (from GC/Builder in Edit Bid) */}
-      {addCustomerModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-          <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-            <NewCustomerForm
-              showQuickFill={false}
-              mode="modal"
-              onCancel={() => setAddCustomerModalOpen(false)}
-              onCreated={(c) => {
-                loadCustomers()
-                setGcCustomerId(c.id)
-                setGcCustomerSearch(getCustomerDisplay(c))
-                setAddCustomerModalOpen(false)
-              }}
-            />
           </div>
         </div>
       )}

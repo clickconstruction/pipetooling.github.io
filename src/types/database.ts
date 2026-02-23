@@ -3293,6 +3293,7 @@ export type Database = {
           id: string
           last_sign_in_at: string | null
           name: string
+          notes: string | null
           primary_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
@@ -3304,6 +3305,7 @@ export type Database = {
           id: string
           last_sign_in_at?: string | null
           name: string
+          notes?: string | null
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
@@ -3315,11 +3317,45 @@ export type Database = {
           id?: string
           last_sign_in_at?: string | null
           name?: string
+          notes?: string | null
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
         Relationships: []
+      }
+      user_report_notification_preferences: {
+        Row: {
+          created_at: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_report_notification_preferences_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_report_notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workflow_projections: {
         Row: {

@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-22
+last_updated: 2026-02-29
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 26, 2026"
+date_range: "Through February 29, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -92,7 +92,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
-#### February 21–28, 2026
+#### February 21–29, 2026
+
+**`20260229000004_add_users_notes.sql`**
+- **Purpose**: Allow Masters, Assistants, and Devs to add/edit general notes on each user in People → Users
+- **Changes**: Add `notes text` column to `public.users`; RLS policy "Masters assistants devs can update user notes" for UPDATE
+- **Impact**: People page Users tab shows notes after email; Edit (card icon) button opens modal to edit note
+- **Category**: People / Users / RLS
 
 **`20260228190000_create_user_dashboard_buttons.sql`**
 - **Purpose**: Allow users to configure which Dashboard quick-action buttons are visible
@@ -925,6 +931,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **Dashboard Button Visibility**:
 - `20260228190000_create_user_dashboard_buttons.sql` (Feb 28, 2026) - User-configurable quick-action buttons (Job, Job Labor, Bid, Project, Part, Assembly); RLS for dev, master_technician, assistant
+
+**User Notes**:
+- `20260229000004_add_users_notes.sql` (Feb 29, 2026) - Add `notes` column to users; RLS for dev, master_technician, assistant to UPDATE; People page shows notes after email with edit icon
 
 ### Email and Notifications
 

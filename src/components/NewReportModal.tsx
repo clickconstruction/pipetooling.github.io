@@ -129,7 +129,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
       job_ledger_id: selectedJob.source === 'job_ledger' ? selectedJob.id : null,
       project_id: selectedJob.source === 'project' ? selectedJob.id : null,
     }
-    const { error: err } = await supabase.from('reports').insert(payload)
+    const { data: inserted, error: err } = await supabase.from('reports').insert(payload).select('id, template_id, created_by_user_id, job_ledger_id, project_id').single()
     setSaving(false)
     if (err) {
       setError(err.message)
@@ -137,6 +137,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
     }
     onSaved()
     handleClose()
+    if (inserted?.id) {
+      try {
+        await supabase.functions.invoke('send-report-notification', { body: { report_id: inserted.id } })
+      } catch {
+        // Non-blocking: report was created; notification is best-effort
+      }
+    }
   }
 
   if (!open) return null

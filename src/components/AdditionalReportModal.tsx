@@ -77,7 +77,7 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
       job_ledger_id: jobId,
       project_id: null,
     }
-    const { error: err } = await supabase.from('reports').insert(payload)
+    const { data: inserted, error: err } = await supabase.from('reports').insert(payload).select('id, template_id, created_by_user_id, job_ledger_id, project_id').single()
     setSaving(false)
     if (err) {
       setError(err.message)
@@ -85,6 +85,13 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
     }
     onSaved()
     handleClose()
+    if (inserted?.id) {
+      try {
+        await supabase.functions.invoke('send-report-notification', { body: { report_id: inserted.id } })
+      } catch {
+        // Non-blocking: report was created; notification is best-effort
+      }
+    }
   }
 
   if (!open) return null

@@ -476,6 +476,9 @@ export default function Settings() {
   const [exportMaterialsLoading, setExportMaterialsLoading] = useState(false)
   const [exportBidsLoading, setExportBidsLoading] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [reportTemplates, setReportTemplates] = useState<Array<{ id: string; name: string }>>([])
+  const [reportNotificationTemplateIds, setReportNotificationTemplateIds] = useState<Set<string>>(new Set())
+  const [reportNotificationSaving, setReportNotificationSaving] = useState(false)
 
   function downloadJson(filename: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -773,6 +776,14 @@ export default function Settings() {
         if (r.button_key in map) map[r.button_key] = r.visible
       }
       setDashboardButtons(map)
+
+      // Load report templates and report notification preferences
+      const [templatesRes, prefsRes] = await Promise.all([
+        supabase.from('report_templates').select('id, name').order('sequence_order'),
+        supabase.from('user_report_notification_preferences').select('template_id').eq('user_id', authUser.id),
+      ])
+      setReportTemplates((templatesRes.data ?? []) as Array<{ id: string; name: string }>)
+      setReportNotificationTemplateIds(new Set((prefsRes.data ?? []).map((p: { template_id: string }) => p.template_id)))
     }
     
     // Load dev-only data (users, people, etc.)
@@ -915,6 +926,39 @@ export default function Settings() {
     }
     setReportSettingsSaving(false)
     showToast('Report settings saved.', 'success')
+  }
+
+  async function saveReportNotificationPreferences(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id || (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant')) return
+    setReportNotificationSaving(true)
+    const currentIds = reportNotificationTemplateIds
+    const { data: existing } = await supabase
+      .from('user_report_notification_preferences')
+      .select('template_id')
+      .eq('user_id', authUser.id)
+    const existingIds = new Set((existing ?? []).map((p: { template_id: string }) => p.template_id))
+    for (const tid of currentIds) {
+      if (!existingIds.has(tid)) {
+        await supabase.from('user_report_notification_preferences').insert({ user_id: authUser.id, template_id: tid })
+      }
+    }
+    for (const tid of existingIds) {
+      if (!currentIds.has(tid)) {
+        await supabase.from('user_report_notification_preferences').delete().eq('user_id', authUser.id).eq('template_id', tid)
+      }
+    }
+    setReportNotificationSaving(false)
+    showToast('Report notification preferences saved.', 'success')
+  }
+
+  function toggleReportNotificationTemplate(templateId: string) {
+    setReportNotificationTemplateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(templateId)) next.delete(templateId)
+      else next.add(templateId)
+      return next
+    })
   }
 
   function toggleReportEnabledUser(userId: string) {
@@ -3548,6 +3592,39 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Report notifications</h2>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Get a push notification when someone submits these report types. Enable push notifications above first.
+          </p>
+          <form onSubmit={saveReportNotificationPreferences}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              {reportTemplates.map((t) => (
+                <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={reportNotificationTemplateIds.has(t.id)}
+                    onChange={() => toggleReportNotificationTemplate(t.id)}
+                  />
+                  Notify me when someone submits: {t.name}
+                </label>
+              ))}
+              {reportTemplates.length === 0 && (
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={reportNotificationSaving}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
+            >
+              {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {myRole === 'dev' && (
         <>

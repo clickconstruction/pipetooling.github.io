@@ -199,7 +199,8 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       return
     }
     if (onCreated) {
-      onCreated(data as CustomerRow)
+      // Defer so React flushes state before closing modal and refreshing
+      setTimeout(() => onCreated(data as CustomerRow), 0)
     } else {
       navigate('/customers', { replace: true })
     }
@@ -383,12 +384,37 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         )}
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="submit" disabled={loading} style={{ padding: '0.5rem 1rem' }}>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '0.5rem 1rem',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontWeight: 500,
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
             {loading ? 'Saving…' : 'Save'}
           </button>
           {mode === 'page' && <Link to="/customers" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>}
           {mode === 'modal' && onCancel && (
-            <button type="button" onClick={onCancel} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: 'pointer',
+                color: '#374151',
+                fontWeight: 500,
+              }}
+            >
               Cancel
             </button>
           )}

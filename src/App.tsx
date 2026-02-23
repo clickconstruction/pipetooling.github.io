@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
@@ -8,7 +8,6 @@ import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import Customers from './pages/Customers'
-import CustomerForm from './pages/CustomerForm'
 import Projects from './pages/Projects'
 import ProjectForm from './pages/ProjectForm'
 import Workflow from './pages/Workflow'
@@ -29,6 +28,8 @@ import { UpdatePrompt } from './components/UpdatePrompt'
 import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
+import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
+import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -89,6 +90,11 @@ function AuthHandler() {
   return null
 }
 
+function NavigateToEditCustomer() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to="/customers" state={{ openEditCustomer: id ?? null }} replace />
+}
+
 function AppContent() {
   const { showToast } = useToastContext()
 
@@ -120,7 +126,11 @@ function AppContent() {
             <ProtectedRoute>
               <ForceReloadProvider>
                 <ChecklistAddModalProvider>
+<NewCustomerModalProvider>
+                <EditCustomerModalProvider>
                   <Layout />
+                </EditCustomerModalProvider>
+              </NewCustomerModalProvider>
                 </ChecklistAddModalProvider>
               </ForceReloadProvider>
             </ProtectedRoute>
@@ -129,8 +139,8 @@ function AppContent() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="customers" element={<Customers />} />
-          <Route path="customers/new" element={<CustomerForm />} />
-          <Route path="customers/:id/edit" element={<CustomerForm />} />
+          <Route path="customers/new" element={<Navigate to="/customers" state={{ openNewCustomer: true }} replace />} />
+          <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/new" element={<ProjectForm />} />
           <Route path="projects/:id/edit" element={<ProjectForm />} />
