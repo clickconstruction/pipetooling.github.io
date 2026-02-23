@@ -6591,6 +6591,21 @@ export default function Bids() {
       {activeTab === 'builder-review' && (
         <div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <Link
+              to="/customers/new"
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                fontWeight: 500,
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              New Customer
+            </Link>
             <input
               type="text"
               placeholder="Search builders..."
@@ -6783,7 +6798,8 @@ export default function Bids() {
                     </div>
                   </div>
                   {isCardExpanded && (
-                    <div style={{ display: 'flex', gap: '1.5rem', padding: '0.75rem 1.25rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      <div style={{ display: 'flex', gap: '1.5rem', padding: '0.75rem 1.25rem' }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         {hasBids && (
                           <div>
@@ -6930,6 +6946,25 @@ export default function Bids() {
                         {customerContactPersons.filter((cp) => cp.customer_id === customer.id).length === 0 && (
                           <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>No contacts yet</div>
                         )}
+                      </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1.25rem', borderTop: '1px solid #e5e7eb', background: '#fafafa' }}>
+                        <Link
+                          to={`/customers/${customer.id}/edit`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.875rem',
+                            background: '#f3f4f6',
+                            color: '#374151',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                          }}
+                        >
+                          Edit Customer
+                        </Link>
                       </div>
                     </div>
                   )}
