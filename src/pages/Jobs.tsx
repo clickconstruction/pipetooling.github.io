@@ -18,6 +18,7 @@ type JobWithDetails = JobsLedgerRow & {
   materials: JobsLedgerMaterial[]
   fixtures: JobsLedgerFixture[]
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+  report_count?: number
 }
 
 type TallyPartRow = {
@@ -96,11 +97,13 @@ const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
+const JOB_FOLDERS_DRIVE_URL = 'https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing'
+
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
-  const [activeTab, setActiveTab] = useState<JobsTab>('receivables')
+  const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -112,6 +115,7 @@ export default function Jobs() {
   const [hcpNumber, setHcpNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
+  const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [revenue, setRevenue] = useState('')
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
@@ -218,6 +222,14 @@ export default function Jobs() {
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
+  const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
+  const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackChecked, setSendBackChecked] = useState(false)
+  const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
+  const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
+  const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -239,13 +251,14 @@ export default function Jobs() {
       return
     }
     const jobIds = jobList.map((j) => j.id)
-    const [matsRes, fixturesRes, teamRes] = await Promise.all([
+    const [matsRes, fixturesRes, teamRes, reportsRes] = await Promise.all([
       supabase.from('jobs_ledger_materials').select('*').in('job_id', jobIds).order('sequence_order'),
       supabase.from('jobs_ledger_fixtures').select('*').in('job_id', jobIds).order('sequence_order'),
       supabase
         .from('jobs_ledger_team_members')
         .select('*, users(name)')
         .in('job_id', jobIds),
+      supabase.from('reports').select('job_ledger_id').in('job_ledger_id', jobIds),
     ])
     const materialsList = (matsRes.data ?? []) as JobsLedgerMaterial[]
     const fixturesList = (fixturesRes.data ?? []) as JobsLedgerFixture[]
@@ -268,17 +281,25 @@ export default function Jobs() {
       arr.push(t)
       teamByJob.set(t.job_id, arr)
     }
+    const reportsList = (reportsRes.data ?? []) as Array<{ job_ledger_id: string | null }>
+    const reportCountByJob = new Map<string, number>()
+    for (const r of reportsList) {
+      if (r.job_ledger_id) {
+        reportCountByJob.set(r.job_ledger_id, (reportCountByJob.get(r.job_ledger_id) ?? 0) + 1)
+      }
+    }
     const jobsWithDetails: JobWithDetails[] = jobList.map((j) => ({
       ...j,
       materials: (materialsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       fixtures: (fixturesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       team_members: teamByJob.get(j.id) ?? [],
+      report_count: reportCountByJob.get(j.id) ?? 0,
     }))
     setJobs(jobsWithDetails)
     setLoading(false)
   }
 
-  async function updateJobStatus(jobId: string, toStatus: 'ready_to_bill' | 'billed' | 'paid') {
+  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
     setStagesStatusUpdatingId(jobId)
     setError(null)
     const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
@@ -294,6 +315,26 @@ export default function Jobs() {
     }
     await loadJobs()
   }
+
+  useEffect(() => {
+    if (!sendBackJob) {
+      setSendBackSentBy(null)
+      return
+    }
+    const toStatusForEvent = sendBackJob.toStatus === 'working' ? 'ready_to_bill' : 'billed'
+    supabase
+      .from('job_status_events')
+      .select('users(name)')
+      .eq('job_id', sendBackJob.id)
+      .eq('to_status', toStatusForEvent)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const row = data as { users: { name: string } | null } | null
+        setSendBackSentBy(row?.users?.name ?? null)
+      })
+  }, [sendBackJob])
 
   async function loadUsers() {
     if (!authUser?.id) return
@@ -1361,9 +1402,10 @@ export default function Jobs() {
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
+      setActiveTab('stages')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'receivables')
+        next.set('tab', 'stages')
         return next
       }, { replace: true })
     }
@@ -1387,6 +1429,7 @@ export default function Jobs() {
       setHcpNumber('')
       setJobName('')
       setJobAddress('')
+      setGoogleDriveLink('')
       setRevenue('')
       setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
       setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
@@ -1654,6 +1697,7 @@ export default function Jobs() {
     setHcpNumber('')
     setJobName('')
     setJobAddress('')
+    setGoogleDriveLink('')
     setRevenue('')
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
@@ -1666,6 +1710,7 @@ export default function Jobs() {
     setHcpNumber(job.hcp_number ?? '')
     setJobName(job.job_name ?? '')
     setJobAddress(job.job_address ?? '')
+    setGoogleDriveLink(job.google_drive_link ?? '')
     setRevenue(job.revenue != null ? String(job.revenue) : '')
     setMaterials(
       job.materials.length > 0
@@ -1751,7 +1796,7 @@ export default function Jobs() {
       if (editing) {
         await supabase
           .from('jobs_ledger')
-          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), revenue: revNum })
+          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), google_drive_link: googleDriveLink.trim() || null, revenue: revNum })
           .eq('id', editing.id)
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
         for (const [i, m] of validMaterials.entries()) {
@@ -1790,6 +1835,7 @@ export default function Jobs() {
             hcp_number: hcpNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
+            google_drive_link: googleDriveLink.trim() || null,
             revenue: revNum,
           })
           .select('id')
@@ -2401,25 +2447,24 @@ export default function Jobs() {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean) {
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void) {
               return (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+                  <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job Name</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
-                        {actionLabel && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
+                        {(actionLabel || onSendBack || onSendBackSimple) && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View Reports</th>
                       </tr>
                     </thead>
                     <tbody>
                       {jobList.length === 0 ? (
                         <tr>
-                          <td colSpan={actionLabel ? 7 : 6} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={(actionLabel || onSendBack || onSendBackSimple) ? 6 : 5} style={{ padding: '0.75rem', color: '#6b7280' }}>
                             No jobs in this group
                           </td>
                         </tr>
@@ -2427,8 +2472,12 @@ export default function Jobs() {
                         jobList.map((j) => (
                           <tr key={j.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                             <td style={{ padding: '0.75rem' }}>{j.hcp_number || '—'}</td>
-                            <td style={{ padding: '0.75rem' }}>{j.job_name || '—'}</td>
-                            <td style={{ padding: '0.75rem' }}>{j.job_address || '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              <div>{j.job_name || '—'}</div>
+                              {(j.job_address ?? '').trim() && (
+                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.job_address}</div>
+                              )}
+                            </td>
                             <td style={{ padding: '0.75rem' }}>
                               {(j.team_members ?? [])
                                 .map((t) => t.users?.name?.trim())
@@ -2438,7 +2487,7 @@ export default function Jobs() {
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {j.revenue != null ? formatCurrency(Number(j.revenue)) : '—'}
                             </td>
-                            {actionLabel && (
+                            {(actionLabel || onSendBack || onSendBackSimple) && (
                               <td style={{ padding: '0.75rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   {showTimeOpen && (
@@ -2446,33 +2495,76 @@ export default function Jobs() {
                                       Open {formatTimeSince(j.created_at ?? null)}
                                     </span>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => onAction(j)}
-                                    disabled={stagesStatusUpdatingId === j.id}
-                                    style={{
-                                      padding: '0.35rem 0.75rem',
-                                      fontSize: '0.8125rem',
-                                      background: '#3b82f6',
-                                      color: 'white',
-                                      border: 'none',
-                                      borderRadius: 4,
-                                      cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                    }}
-                                  >
-                                    {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
-                                  </button>
+                                  {onSendBack && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onSendBack(j)}
+                                      disabled={stagesStatusUpdatingId === j.id}
+                                      style={{
+                                        padding: '0.35rem 0.75rem',
+                                        fontSize: '0.8125rem',
+                                        background: 'none',
+                                        color: '#6b7280',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      Send back
+                                    </button>
+                                  )}
+                                  {onSendBackSimple && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onSendBackSimple(j)}
+                                      disabled={stagesStatusUpdatingId === j.id}
+                                      style={{
+                                        padding: '0.35rem 0.75rem',
+                                        fontSize: '0.8125rem',
+                                        background: 'none',
+                                        color: '#6b7280',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      Send back
+                                    </button>
+                                  )}
+                                  {actionLabel && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onAction(j)}
+                                      disabled={stagesStatusUpdatingId === j.id}
+                                      style={{
+                                        padding: '0.35rem 0.75rem',
+                                        fontSize: '0.8125rem',
+                                        background: '#3b82f6',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: 4,
+                                        cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                      }}
+                                    >
+                                      {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             )}
                             <td style={{ padding: '0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                View Reports
-                              </button>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                  {(j.report_count ?? 0)} report{(j.report_count ?? 0) !== 1 ? 's' : ''}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                >
+                                  View Reports
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -2494,7 +2586,11 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
                   Working ({working.length})
                 </button>
-                {stagesSectionOpen.working && renderStagesTable(working, 'Mark Ready for Billing', (j) => updateJobStatus(j.id, 'ready_to_bill'), true)}
+                {stagesSectionOpen.working && renderStagesTable(working, 'Ready for Billing', (j) => {
+                  setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
+                  setReadyForBillingChecked1(false)
+                  setReadyForBillingChecked2(false)
+                }, true)}
 
                 <button
                   type="button"
@@ -2505,7 +2601,10 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
                   Ready to Bill ({readyToBill.length})
                 </button>
-                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => updateJobStatus(j.id, 'billed'), true)}
+                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'billed', message: 'This will mark the job as Billed.' }), true, (j) => {
+                  setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
+                  setSendBackChecked(false)
+                })}
 
                 <button
                   type="button"
@@ -2516,7 +2615,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
                   Billed ({billed.length})
                 </button>
-                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => updateJobStatus(j.id, 'paid'), true)}
+                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'paid', message: 'This will mark the job as Paid.' }), true, undefined, (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'ready_to_bill' }))}
 
                 <button
                   type="button"
@@ -2527,7 +2626,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
                   Paid ({paid.length})
                 </button>
-                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {})}
+                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }))}
               </>
             )
           })()}
@@ -2756,18 +2855,31 @@ export default function Jobs() {
                         {job.revenue != null ? `$${formatCurrency(Number(job.revenue))}` : '—'}
                       </td>
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
-                        {authRole !== 'primary' && (
-                        <button
-                          type="button"
-                          onClick={() => openEdit(job)}
-                          title="Edit"
-                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                            <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                          </svg>
-                        </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <a
+                            href={job.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Google Drive"
+                            style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.25rem' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                              <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                            </svg>
+                          </a>
+                          {authRole !== 'primary' && (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(job)}
+                            title="Edit"
+                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                              <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                            </svg>
+                          </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -3690,6 +3802,24 @@ export default function Jobs() {
                 />
               </div>
               <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Google Drive</label>
+                <input
+                  type="url"
+                  value={googleDriveLink}
+                  onChange={(e) => setGoogleDriveLink(e.target.value)}
+                  placeholder="https://drive.google.com/..."
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+                <a
+                  href="https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                >
+                  job folders
+                </a>
+              </div>
+              <div>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
@@ -3909,6 +4039,207 @@ export default function Jobs() {
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
         />
+      )}
+      {readyForBillingJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready for billing</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                <input
+                  type="checkbox"
+                  checked={readyForBillingChecked1}
+                  onChange={(e) => setReadyForBillingChecked1(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>I have reported all the Job Parts I&apos;ve used</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={readyForBillingChecked2}
+                  onChange={(e) => setReadyForBillingChecked2(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>The customer knows the work is done and is satisfied</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setReadyForBillingJob(null)
+                  setReadyForBillingChecked1(false)
+                  setReadyForBillingChecked2(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id}
+                onClick={async () => {
+                  if (!readyForBillingJob) return
+                  await updateJobStatus(readyForBillingJob.id, 'ready_to_bill')
+                  setReadyForBillingJob(null)
+                  setReadyForBillingChecked1(false)
+                  setReadyForBillingChecked2(false)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Send for billing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sendBackJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send back</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {sendBackJob.hcpNumber} · {sendBackJob.jobName}
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+              {sendBackJob.toStatus === 'working' ? 'This will move the job back to Assigned Jobs (Working).' : 'This will move the job back to Ready to Bill.'}
+            </p>
+            {sendBackSentBy != null && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Sent by: {sendBackSentBy}
+              </p>
+            )}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={sendBackChecked}
+                  onChange={(e) => setSendBackChecked(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>I am going to call the Subcontractor and explain why</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendBackJob(null)
+                  setSendBackChecked(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!sendBackChecked || stagesStatusUpdatingId === sendBackJob.id}
+                onClick={async () => {
+                  if (!sendBackJob) return
+                  await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
+                  setSendBackJob(null)
+                  setSendBackChecked(false)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {stagesStatusUpdatingId === sendBackJob.id ? '…' : 'Send back'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmJobStatusJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {confirmJobStatusJob.message}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmJobStatusJob(null)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={stagesStatusUpdatingId === confirmJobStatusJob.id}
+                onClick={async () => {
+                  if (!confirmJobStatusJob) return
+                  await updateJobStatus(confirmJobStatusJob.id, confirmJobStatusJob.toStatus)
+                  setConfirmJobStatusJob(null)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: stagesStatusUpdatingId !== confirmJobStatusJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: stagesStatusUpdatingId !== confirmJobStatusJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {stagesStatusUpdatingId === confirmJobStatusJob.id ? '…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sendBackConfirmJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {sendBackConfirmJob.toStatus === 'ready_to_bill' ? 'This will move the job back to Ready to Bill.' : 'This will move the job back to Billed.'}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSendBackConfirmJob(null)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={stagesStatusUpdatingId === sendBackConfirmJob.id}
+                onClick={async () => {
+                  if (!sendBackConfirmJob) return
+                  await updateJobStatus(sendBackConfirmJob.id, sendBackConfirmJob.toStatus)
+                  setSendBackConfirmJob(null)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: stagesStatusUpdatingId !== sendBackConfirmJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: stagesStatusUpdatingId !== sendBackConfirmJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {stagesStatusUpdatingId === sendBackConfirmJob.id ? '…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -1095,6 +1095,7 @@ export type Database = {
       jobs_ledger: {
         Row: {
           created_at: string | null
+          google_drive_link: string | null
           hcp_number: string
           id: string
           job_address: string
@@ -1106,6 +1107,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          google_drive_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string
@@ -1117,6 +1119,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          google_drive_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string

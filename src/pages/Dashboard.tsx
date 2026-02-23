@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
 import ReportViewModal from '../components/ReportViewModal'
 import JobReportsModal from '../components/JobReportsModal'
+import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
@@ -27,6 +28,8 @@ function toDatetimeLocal(iso: string | null): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+const JOB_FOLDERS_DRIVE_URL = 'https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing'
 
 function formatTimeSince(iso: string | null): string {
   if (!iso) return '—'
@@ -217,16 +220,23 @@ export default function Dashboard() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
+  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
-  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; created_at: string | null }>>([])
+  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
+  const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
+  const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
+  const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackChecked, setSendBackChecked] = useState(false)
+  const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -643,7 +653,7 @@ export default function Dashboard() {
     setReadyToBillLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, revenue, created_at')
+      .select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at')
       .eq('status', 'ready_to_bill')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
@@ -658,7 +668,7 @@ export default function Dashboard() {
     setWaitingForPaymentLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, revenue, created_at')
+      .select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at')
       .eq('status', 'billed')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
@@ -668,7 +678,7 @@ export default function Dashboard() {
       })
   }, [authUser?.id, role])
 
-  async function updateJobStatus(jobId: string, toStatus: 'ready_to_bill' | 'billed' | 'paid') {
+  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
     setJobStatusUpdatingId(jobId)
     const { data, error } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
     setJobStatusUpdatingId(null)
@@ -686,14 +696,34 @@ export default function Dashboard() {
     setReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
     setWaitingForPaymentJobs((prev) => prev.filter((j) => j.id !== jobId))
     if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
-      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
+      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
       if (readyData) setReadyToBillJobs(readyData as typeof readyToBillJobs)
-      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
+      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
       if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
     }
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
     if (assignedData) setAssignedJobs(assignedData as typeof assignedJobs)
   }
+
+  useEffect(() => {
+    if (!sendBackJob) {
+      setSendBackSentBy(null)
+      return
+    }
+    const toStatusForEvent = sendBackJob.toStatus === 'working' ? 'ready_to_bill' : 'billed'
+    supabase
+      .from('job_status_events')
+      .select('users(name)')
+      .eq('job_id', sendBackJob.id)
+      .eq('to_status', toStatusForEvent)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const row = data as { users: { name: string } | null } | null
+        setSendBackSentBy(row?.users?.name ?? null)
+      })
+  }, [sendBackJob])
 
   useEffect(() => {
     if (!completedItemsOpen || !authUser?.id || !isDev) return
@@ -2061,6 +2091,17 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
+                      <a
+                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Google Drive"
+                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                        </svg>
+                      </a>
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
                           <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
@@ -2075,9 +2116,22 @@ export default function Dashboard() {
                           </button>
                         </>
                       )}
+                      {role === 'subcontractor' && (
+                        <button
+                          type="button"
+                          onClick={() => setLeaveReportJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Leave Report
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => updateJobStatus(j.id, 'ready_to_bill')}
+                        onClick={() => {
+                          setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
+                          setReadyForBillingChecked1(false)
+                          setReadyForBillingChecked2(false)
+                        }}
                         disabled={jobStatusUpdatingId === j.id}
                         style={{
                           padding: '0.35rem 0.75rem',
@@ -2147,6 +2201,17 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
+                      <a
+                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Google Drive"
+                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                        </svg>
+                      </a>
                       <button
                         type="button"
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
@@ -2160,6 +2225,25 @@ export default function Dashboard() {
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
                         View Reports
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
+                          setSendBackChecked(false)
+                        }}
+                        disabled={jobStatusUpdatingId === j.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: 'none',
+                          color: '#6b7280',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Send back
                       </button>
                       <button
                         type="button"
@@ -2233,6 +2317,17 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
+                      <a
+                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Google Drive"
+                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                        </svg>
+                      </a>
                       <button
                         type="button"
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
@@ -2246,6 +2341,25 @@ export default function Dashboard() {
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
                         View Reports
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })
+                          setSendBackChecked(false)
+                        }}
+                        disabled={jobStatusUpdatingId === j.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: 'none',
+                          color: '#6b7280',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Send back
                       </button>
                       <button
                         type="button"
@@ -2523,6 +2637,143 @@ export default function Dashboard() {
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
         />
+      )}
+      {leaveReportJob && (
+        <AdditionalReportModal
+          open={!!leaveReportJob}
+          onClose={() => setLeaveReportJob(null)}
+          onSaved={() => setLeaveReportJob(null)}
+          authUserId={authUser?.id ?? null}
+          jobId={leaveReportJob.id}
+          hcpNumber={leaveReportJob.hcpNumber}
+          jobName={leaveReportJob.jobName}
+          jobAddress={leaveReportJob.jobAddress}
+        />
+      )}
+      {readyForBillingJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready for billing</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
+            </p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
+                <input
+                  type="checkbox"
+                  checked={readyForBillingChecked1}
+                  onChange={(e) => setReadyForBillingChecked1(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>I have reported all the Job Parts I&apos;ve used</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={readyForBillingChecked2}
+                  onChange={(e) => setReadyForBillingChecked2(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>The customer knows the work is done and is satisfied</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setReadyForBillingJob(null)
+                  setReadyForBillingChecked1(false)
+                  setReadyForBillingChecked2(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || jobStatusUpdatingId === readyForBillingJob.id}
+                onClick={async () => {
+                  if (!readyForBillingJob) return
+                  await updateJobStatus(readyForBillingJob.id, 'ready_to_bill')
+                  setReadyForBillingJob(null)
+                  setReadyForBillingChecked1(false)
+                  setReadyForBillingChecked2(false)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {jobStatusUpdatingId === readyForBillingJob.id ? '…' : 'Send for billing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sendBackJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send back</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {sendBackJob.hcpNumber} · {sendBackJob.jobName}
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+              {sendBackJob.toStatus === 'working' ? 'This will move the job back to Assigned Jobs (Working).' : 'This will move the job back to Ready to Bill.'}
+            </p>
+            {sendBackSentBy != null && (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Sent by: {sendBackSentBy}
+              </p>
+            )}
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={sendBackChecked}
+                  onChange={(e) => setSendBackChecked(e.target.checked)}
+                  style={{ marginTop: 4 }}
+                />
+                <span>I am going to call the Subcontractor and explain why</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setSendBackJob(null)
+                  setSendBackChecked(false)
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!sendBackChecked || jobStatusUpdatingId === sendBackJob.id}
+                onClick={async () => {
+                  if (!sendBackJob) return
+                  await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
+                  setSendBackJob(null)
+                  setSendBackChecked(false)
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {jobStatusUpdatingId === sendBackJob.id ? '…' : 'Send back'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {viewBillDetailsJob && (
         <JobBillDetailsModal
