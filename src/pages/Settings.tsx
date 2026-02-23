@@ -292,6 +292,15 @@ export default function Settings() {
   const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
+  const [dashboardButtons, setDashboardButtons] = useState<Record<string, boolean>>({
+    job: true,
+    job_labor: true,
+    bid: true,
+    project: true,
+    part: true,
+    assembly: true,
+  })
+  const [dashboardButtonsSaving, setDashboardButtonsSaving] = useState(false)
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -750,6 +759,20 @@ export default function Settings() {
       await loadAssistantsAndAdoptions(authUser.id)
       await loadPrimariesAndAdoptions(authUser.id)
       await loadMastersAndShares(authUser.id)
+    }
+    
+    // Load dashboard button visibility for dev, master, assistant
+    if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
+      const { data: btnRows } = await supabase
+        .from('user_dashboard_buttons')
+        .select('button_key, visible')
+        .eq('user_id', authUser.id)
+      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true }
+      const map = { ...defaults }
+      for (const r of (btnRows ?? []) as Array<{ button_key: string; visible: boolean }>) {
+        if (r.button_key in map) map[r.button_key] = r.visible
+      }
+      setDashboardButtons(map)
     }
     
     // Load dev-only data (users, people, etc.)
@@ -3379,6 +3402,39 @@ export default function Settings() {
         )}
       </div>
 
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Dashboard buttons</h2>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+            Choose which quick-action buttons appear on your Dashboard.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
+            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly'] as const).map((key) => {
+              const label = key === 'job_labor' ? 'Job Labor' : key.charAt(0).toUpperCase() + key.slice(1)
+              return (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={dashboardButtons[key] !== false}
+                    onChange={async (e) => {
+                      const visible = e.target.checked
+                      setDashboardButtons((prev) => ({ ...prev, [key]: visible }))
+                      setDashboardButtonsSaving(true)
+                      await supabase.from('user_dashboard_buttons').upsert(
+                        { user_id: authUser!.id, button_key: key, visible },
+                        { onConflict: 'user_id,button_key' }
+                      )
+                      setDashboardButtonsSaving(false)
+                    }}
+                    disabled={dashboardButtonsSaving}
+                  />
+                  {label}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {(myRole === 'master_technician' || myRole === 'dev') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>

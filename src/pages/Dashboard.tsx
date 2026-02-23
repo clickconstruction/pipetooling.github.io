@@ -226,6 +226,7 @@ export default function Dashboard() {
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
+  const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
 
   const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
@@ -294,6 +295,25 @@ export default function Dashboard() {
   useEffect(() => {
     refreshPinned()
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) {
+      setDashboardButtonVisibility(null)
+      return
+    }
+    supabase
+      .from('user_dashboard_buttons')
+      .select('button_key, visible')
+      .eq('user_id', authUser.id)
+      .then(({ data }) => {
+        const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true }
+        const map = { ...defaults }
+        for (const r of (data ?? []) as Array<{ button_key: string; visible: boolean }>) {
+          if (r.button_key in map) map[r.button_key] = r.visible
+        }
+        setDashboardButtonVisibility(map)
+      })
+  }, [authUser?.id, role])
 
   useEffect(() => {
     const onPinsChanged = () => {
@@ -1322,90 +1342,32 @@ export default function Dashboard() {
     <div>
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <Link
-            to="/jobs?tab=ledger&newJob=true"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Job
-          </Link>
-          <Link
-            to="/jobs?tab=sub_sheet_ledger&newJob=true"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Job Labor
-          </Link>
-          <Link
-            to="/bids?new=true"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Bid
-          </Link>
-          <Link
-            to="/projects/new"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Project
-          </Link>
-          <Link
-            to="/materials?tab=price-book&addPart=true"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Part
-          </Link>
-          <Link
-            to="/materials?tab=assembly-book&addAssembly=true"
-            style={{
-              padding: '0.75rem 1.25rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
-            }}
-          >
-            Assembly
-          </Link>
+          {[
+            { key: 'job', label: 'Job', to: '/jobs?tab=ledger&newJob=true' },
+            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
+            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
+            { key: 'project', label: 'Project', to: '/projects/new' },
+            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
+            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
+          ]
+            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
+            .map((b) => (
+              <Link
+                key={b.key}
+                to={b.to}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                }}
+              >
+                {b.label}
+              </Link>
+            ))}
         </div>
       )}
       {role != null && (

@@ -29,6 +29,32 @@ export type Database = {
         }
         Relationships: []
       }
+      user_dashboard_buttons: {
+        Row: {
+          user_id: string
+          button_key: string
+          visible: boolean
+        }
+        Insert: {
+          user_id: string
+          button_key: string
+          visible?: boolean
+        }
+        Update: {
+          user_id?: string
+          button_key?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_buttons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assembly_types: {
         Row: {
           category: string | null
