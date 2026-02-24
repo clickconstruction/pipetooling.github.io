@@ -10,6 +10,12 @@ export async function loginAsUser(
     throw new Error('User has no email')
   }
   const targetRedirect = redirectTo ?? `${window.location.origin}/dashboard`
+  // Refresh session to ensure we have a valid token before invoking (avoids "Invalid or expired session")
+  try {
+    await supabase.auth.refreshSession()
+  } catch {
+    // Proceed anyway - invoke may still work if session is valid
+  }
   const { data, error: eFn } = await supabase.functions.invoke('login-as-user', {
     body: { email, redirectTo: targetRedirect },
   })

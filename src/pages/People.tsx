@@ -148,7 +148,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']),
+      supabase.from('users').select('id, email, name, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
@@ -500,6 +500,9 @@ export default function People() {
       for (const item of byKind(k)) {
         if (item.name?.trim()) names.add(item.name.trim())
       }
+    }
+    for (const u of users.filter((u) => u.role === 'primary')) {
+      if (u.name?.trim()) names.add(u.name.trim())
     }
     return Array.from(names).sort()
   }
@@ -1075,6 +1078,128 @@ export default function People() {
               )}
             </section>
           )}
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Primaries</h2>
+            {users.filter((u) => u.role === 'primary').length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {users
+                  .filter((u) => u.role === 'primary')
+                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                  .map((u) => (
+                    <li
+                      key={u.id}
+                      style={{
+                        padding: '0.5rem 0',
+                        borderBottom: '1px solid #e5e7eb',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div>
+                          {isDev && u.email && (
+                            <>
+                              {window.location.hostname === 'pipetooling.com' && (
+                                <button
+                                  type="button"
+                                  title="imitate (pipetooling.com)"
+                                  onClick={async () => {
+                                    setLoggingInAsId(u.id)
+                                    setError(null)
+                                    try {
+                                      await loginAsUser(u, 'https://pipetooling.com/dashboard')
+                                    } catch (e) {
+                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                    } finally {
+                                      setLoggingInAsId(null)
+                                    }
+                                  }}
+                                  disabled={loggingInAsId === u.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 0,
+                                    marginRight: '0.35rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
+                                    verticalAlign: 'middle',
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                    <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
+                                  </svg>
+                                </button>
+                              )}
+                              {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                <button
+                                  type="button"
+                                  title="imitate (localhost)"
+                                  onClick={async () => {
+                                    setLoggingInAsId(u.id)
+                                    setError(null)
+                                    try {
+                                      await loginAsUser(u, 'http://localhost:5173/dashboard')
+                                    } catch (e) {
+                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                    } finally {
+                                      setLoggingInAsId(null)
+                                    }
+                                  }}
+                                  disabled={loggingInAsId === u.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 0,
+                                    marginRight: '0.35rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
+                                    verticalAlign: 'middle',
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                    <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </>
+                          )}
+                        <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+                        {u.email && (
+                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                            <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                              {u.email}
+                            </a>
+                          </span>
+                        )}
+                        {u.notes && (
+                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
+                        )}
+                        </div>
+                      </div>
+                      {canEditUserNotes && (
+                        <button
+                          type="button"
+                          title="Edit note"
+                          onClick={() => setEditingUserNote({ id: u.id, name: u.name || '', notes: u.notes ?? '' })}
+                          style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                            <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
+                          </svg>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
           {KINDS.map((k) => (
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
@@ -28,8 +28,6 @@ function toDatetimeLocal(iso: string | null): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
-
-const JOB_FOLDERS_DRIVE_URL = 'https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing'
 
 function formatTimeSince(iso: string | null): string {
   if (!iso) return '—'
@@ -186,6 +184,8 @@ export default function Dashboard() {
   const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
+  const [recentNotifyIds, setRecentNotifyIds] = useState<string[]>([])
   const [sendTaskTitle, setSendTaskTitle] = useState('')
   const [sendTaskAssignedToUserId, setSendTaskAssignedToUserId] = useState('')
   const [sendTaskShowUntilCompleted, setSendTaskShowUntilCompleted] = useState(true)
@@ -221,11 +221,11 @@ export default function Dashboard() {
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
-  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
@@ -257,13 +257,85 @@ export default function Dashboard() {
   const { total: externalTeamTotal } = useExternalTeamTotal(hasExternalTeamPin, financialRefreshKey)
 
   useEffect(() => {
-    if (canSendTask) {
-      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
-        setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
-        setSendTaskAssignedToUserId((prev) => prev || (data?.[0]?.id ?? ''))
-      })
+    if (!canSendTask) return
+    const load = async () => {
+      const [usersRes, recentRes] = await Promise.all([
+        supabase.from('users').select('id, name, email').order('name'),
+        authUser?.id
+          ? supabase
+              .from('checklist_items')
+              .select('assigned_to_user_id, notify_on_complete_user_id, created_at')
+              .eq('created_by_user_id', authUser.id)
+              .order('created_at', { ascending: false })
+              .limit(50)
+          : { data: null },
+      ])
+      let users = (usersRes.data ?? []) as Array<{ id: string; name: string; email: string }>
+      // Frontend fallback for primaries: explicitly fetch adopting masters and merge
+      // (guarantees primaries see their master in Notify list even if RLS quirks)
+      if (role === 'primary' && authUser?.id) {
+        const { data: adoptions } = await supabase
+          .from('master_primaries')
+          .select('master_id')
+          .eq('primary_id', authUser.id)
+        const masterIds = (adoptions ?? []).map((a) => a.master_id).filter(Boolean)
+        if (masterIds.length > 0) {
+          const { data: mastersData } = await supabase
+            .from('users')
+            .select('id, name, email')
+            .in('id', masterIds)
+          const masters = (mastersData ?? []) as Array<{ id: string; name: string; email: string }>
+          const seen = new Set(users.map((u) => u.id))
+          const toAdd = masters.filter((m) => !seen.has(m.id))
+          if (toAdd.length > 0) {
+            users = [...users, ...toAdd].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+          }
+        }
+      }
+      setSendTaskUsers(users)
+      // Recent assignees and notify recipients (last 3 unique each)
+      const items = (recentRes.data ?? []) as Array<{ assigned_to_user_id: string; notify_on_complete_user_id: string | null }>
+      const assigneeSeen = new Set<string>()
+      const notifySeen = new Set<string>()
+      const assigneeIds: string[] = []
+      const notifyIds: string[] = []
+      for (const row of items) {
+        if (row.assigned_to_user_id && !assigneeSeen.has(row.assigned_to_user_id) && assigneeIds.length < 3) {
+          assigneeSeen.add(row.assigned_to_user_id)
+          assigneeIds.push(row.assigned_to_user_id)
+        }
+        if (row.notify_on_complete_user_id && !notifySeen.has(row.notify_on_complete_user_id) && notifyIds.length < 3) {
+          notifySeen.add(row.notify_on_complete_user_id)
+          notifyIds.push(row.notify_on_complete_user_id)
+        }
+      }
+      setRecentAssigneeIds(assigneeIds)
+      setRecentNotifyIds(notifyIds)
+      setSendTaskAssignedToUserId((prev) => prev || (assigneeIds[0] ?? users[0]?.id ?? ''))
+      setSendTaskNotifyOnCompleteUserId((prev) => prev || (notifyIds[0] ?? ''))
     }
-  }, [canSendTask, isDev])
+    load()
+  }, [canSendTask, isDev, role, authUser?.id])
+
+  const orderedUsersForAssign = useMemo(() => {
+    const recent = recentAssigneeIds
+      .map((id) => sendTaskUsers.find((u) => u.id === id))
+      .filter((u): u is { id: string; name: string; email: string } => !!u)
+    const rest = sendTaskUsers
+      .filter((u) => !recentAssigneeIds.includes(u.id))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    return [...recent, ...rest]
+  }, [sendTaskUsers, recentAssigneeIds])
+
+  const orderedUsersForNotify = useMemo(() => {
+    const recent = recentNotifyIds
+      .map((id) => sendTaskUsers.find((u) => u.id === id))
+      .filter((u): u is { id: string; name: string; email: string } => !!u)
+    const rest = sendTaskUsers
+      .filter((u) => !recentNotifyIds.includes(u.id))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    return [...recent, ...rest]
+  }, [sendTaskUsers, recentNotifyIds])
 
   useEffect(() => {
     if (isMaster && authUser?.id) {
@@ -654,7 +726,7 @@ export default function Dashboard() {
     setReadyToBillLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at')
+      .select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at')
       .eq('status', 'ready_to_bill')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
@@ -669,7 +741,7 @@ export default function Dashboard() {
     setWaitingForPaymentLoading(true)
     supabase
       .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at')
+      .select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at')
       .eq('status', 'billed')
       .order('hcp_number', { ascending: false })
       .then(({ data, error }) => {
@@ -697,9 +769,9 @@ export default function Dashboard() {
     setReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
     setWaitingForPaymentJobs((prev) => prev.filter((j) => j.id !== jobId))
     if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
-      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
+      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
       if (readyData) setReadyToBillJobs(readyData as typeof readyToBillJobs)
-      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
+      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
       if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
     }
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
@@ -935,9 +1007,9 @@ export default function Dashboard() {
       // Non-blocking: task was created; notification is best-effort
     }
     setSendTaskTitle('')
-    setSendTaskAssignedToUserId(sendTaskUsers[0]?.id ?? '')
+    setSendTaskAssignedToUserId(sendTaskAssignedToUserId)
     setSendTaskShowUntilCompleted(true)
-    setSendTaskNotifyOnCompleteUserId('')
+    setSendTaskNotifyOnCompleteUserId(sendTaskNotifyOnCompleteUserId || '')
     setSendTaskNotifyMe(false)
     if (authUser.id === sendTaskAssignedToUserId) {
       await loadTodayChecklist()
@@ -1849,7 +1921,7 @@ export default function Dashboard() {
                 onChange={(e) => setSendTaskAssignedToUserId(e.target.value)}
                 style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               >
-                {sendTaskUsers.map((u) => (
+                {orderedUsersForAssign.map((u) => (
                   <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
                 ))}
               </select>
@@ -1883,7 +1955,7 @@ export default function Dashboard() {
                 style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               >
                 <option value="">—</option>
-                {sendTaskUsers.map((u) => (
+                {orderedUsersForNotify.map((u) => (
                   <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
                 ))}
               </select>
@@ -2109,17 +2181,32 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      <a
-                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Google Drive"
-                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                        </svg>
-                      </a>
+                      {j.google_drive_link?.trim() && (
+                        <a
+                          href={j.google_drive_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Google Drive"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                          </svg>
+                        </a>
+                      )}
+                      {j.job_plans_link?.trim() && (
+                        <a
+                          href={j.job_plans_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Job Plans"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                          </svg>
+                        </a>
+                      )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
                           <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
@@ -2219,17 +2306,32 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      <a
-                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Google Drive"
-                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                        </svg>
-                      </a>
+                      {j.google_drive_link?.trim() && (
+                        <a
+                          href={j.google_drive_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Google Drive"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                          </svg>
+                        </a>
+                      )}
+                      {j.job_plans_link?.trim() && (
+                        <a
+                          href={j.job_plans_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Job Plans"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                          </svg>
+                        </a>
+                      )}
                       <button
                         type="button"
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
@@ -2335,17 +2437,32 @@ export default function Dashboard() {
                           Open {formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      <a
-                        href={j.google_drive_link?.trim() || JOB_FOLDERS_DRIVE_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Google Drive"
-                        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                        </svg>
-                      </a>
+                      {j.google_drive_link?.trim() && (
+                        <a
+                          href={j.google_drive_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Google Drive"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                          </svg>
+                        </a>
+                      )}
+                      {j.job_plans_link?.trim() && (
+                        <a
+                          href={j.job_plans_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Job Plans"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                          </svg>
+                        </a>
+                      )}
                       <button
                         type="button"
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}

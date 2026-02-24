@@ -29,7 +29,7 @@ export function ReceivablesSection() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator']).order('name'),
+      supabase.from('users').select('id, name, email, role').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
@@ -94,9 +94,10 @@ export function ReceivablesSection() {
   function accountRepOptions(): string[] {
     const masters = byKind('master_technician').map((item) => item.name?.trim()).filter((n): n is string => !!n)
     const subs = byKind('sub').map((item) => item.name?.trim()).filter((n): n is string => !!n)
+    const primaries = users.filter((u) => u.role === 'primary').map((u) => u.name?.trim()).filter((n): n is string => !!n)
     const seen = new Set<string>()
     const result: string[] = []
-    for (const n of [...masters, ...subs].sort((a, b) => a.localeCompare(b))) {
+    for (const n of [...masters, ...subs, ...primaries].sort((a, b) => a.localeCompare(b))) {
       if (!seen.has(n)) {
         seen.add(n)
         result.push(n)

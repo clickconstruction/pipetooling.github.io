@@ -2775,7 +2775,7 @@ function StepFormModal({
       supabase
         .from('users')
         .select('name, role')
-        .in('role', ['master_technician', 'subcontractor']),
+        .in('role', ['master_technician', 'subcontractor', 'primary']),
       supabase
         .from('people')
         .select('name, kind')

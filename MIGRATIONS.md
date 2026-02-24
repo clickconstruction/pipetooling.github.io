@@ -98,7 +98,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Allow primaries to see masters who have adopted them in Send task Notify dropdown
 - **Changes**: Update `master_adopted_current_user()` to also check `master_primaries` (previously only checked `master_assistants`)
 - **Impact**: Primary users (e.g. Trace) can now see their adopting master (e.g. Malachi) in Dashboard Send task Notify list
-- **Category**: Users / RLS / Primary
+
+**`20260230000016_optimize_projects_rls.sql`**
+- **Purpose**: Optimize projects RLS to avoid timeouts
+- **Changes**: Add `can_access_project_row()` helper; simplify projects RLS policy to use it
+- **Impact**: Faster project list loads, fewer RLS evaluation timeouts
+- **Category**: Projects / RLS
+
+**`20260230000017_add_job_plans_link_to_jobs_ledger.sql`**
+- **Purpose**: Add Job Plans link field below Google Drive in New/Edit Job form
+- **Changes**: Add `job_plans_link TEXT` column to `public.jobs_ledger`
+- **Impact**: Jobs Ledger New Job and Edit Job modals now include a "Job Plans" URL input
+- **Category**: Jobs
 
 **`20260230000014_add_notes_to_prospects.sql`**
 - **Purpose**: Add notes field for Prospect List notes panel

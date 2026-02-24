@@ -12,7 +12,7 @@ function toLocalDateString(d: Date): string {
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
 
 export default function ChecklistAddModal() {
   const { user: authUser } = useAuth()
@@ -174,7 +174,7 @@ export default function ChecklistAddModal() {
 
   if (!modalContext?.isOpen) return null
 
-  const canManage = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canManage = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   if (!canManage) return null
 
   return (

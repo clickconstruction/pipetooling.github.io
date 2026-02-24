@@ -6615,17 +6615,17 @@ export default function Settings() {
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and estimators selected here can see the Recent Reports section on their Dashboard. Unselected subcontractors and estimators do not see Recent Reports. All users can create reports via the Job Report button.</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors, primaries, and estimators selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
                     <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator').map((u) => (
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator' || u.role === 'primary').map((u) => (
                         <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
                           <input type="checkbox" checked={reportEnabledUserIds.has(u.id)} onChange={() => toggleReportEnabledUser(u.id)} />
                           <span>{u.name || u.email}</span>
                           <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({u.role})</span>
                         </label>
                       ))}
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator').length === 0 && (
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors or estimators.</p>
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator' || u.role === 'primary').length === 0 && (
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors, primaries, or estimators.</p>
                       )}
                     </div>
                   </div>
