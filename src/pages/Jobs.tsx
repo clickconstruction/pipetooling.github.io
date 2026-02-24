@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -230,6 +230,17 @@ export default function Jobs() {
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
   const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
+  const [stagesHamMode, setStagesHamMode] = useState(() => {
+    try {
+      return localStorage.getItem('jobs-stages-ham-mode') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
+  const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
+  const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
+  const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -299,6 +310,18 @@ export default function Jobs() {
     setLoading(false)
   }
 
+  function toggleStagesHamMode() {
+    setStagesHamMode((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('jobs-stages-ham-mode', String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
     setStagesStatusUpdatingId(jobId)
     setError(null)
@@ -336,6 +359,17 @@ export default function Jobs() {
       })
   }, [sendBackJob])
 
+  useEffect(() => {
+    if (!assignedEditJobId) return
+    function handleClickOutside(e: MouseEvent) {
+      if (assignedEditDropdownRef.current && !assignedEditDropdownRef.current.contains(e.target as Node)) {
+        setAssignedEditJobId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [assignedEditJobId])
+
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
@@ -344,6 +378,9 @@ export default function Jobs() {
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
     const role = (meRes.data as { role?: string } | null)?.role
+    // #region agent log
+    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0419eb'},body:JSON.stringify({sessionId:'0419eb',location:'Jobs.tsx:loadUsers',message:'loadUsers set role',data:{role,roleType:typeof role,rawMeRes:meRes.data},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{})
+    // #endregion
     setMyRole(role ?? null)
     if (role === 'dev') {
       const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
@@ -1887,6 +1924,30 @@ export default function Jobs() {
     return true
   }
 
+  async function updateJobTeamMembers(jobId: string, userIds: string[]) {
+    setAssignedEditSavingId(jobId)
+    try {
+      const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', jobId)
+      const existingTeamIds = new Set((existingTeam ?? []).map((t: { user_id: string }) => t.user_id))
+      const toAdd = userIds.filter((id) => !existingTeamIds.has(id))
+      const toRemove = [...existingTeamIds].filter((id) => !userIds.includes(id))
+      for (const uid of toRemove) {
+        const { error: delErr } = await supabase.from('jobs_ledger_team_members').delete().eq('job_id', jobId).eq('user_id', uid)
+        if (delErr) throw delErr
+      }
+      for (const uid of toAdd) {
+        const { error: insErr } = await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
+        if (insErr) throw insErr
+      }
+      await loadJobs()
+      setAssignedEditJobId(null)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update assigned')
+    } finally {
+      setAssignedEditSavingId(null)
+    }
+  }
+
   // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
   const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
@@ -2419,14 +2480,48 @@ export default function Jobs() {
 
       {activeTab === 'stages' && (
         <div>
+          {/* #region agent log */}
+          {(() => {
+            const showIcon = (authRole || myRole) === 'dev'
+            fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0419eb'},body:JSON.stringify({sessionId:'0419eb',location:'Jobs.tsx:stages-render',message:'Stages tab render',data:{myRole,myRoleType:typeof myRole,authRole,activeTab,showIcon,myRoleEqualsDev:myRole==='dev'},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{})
+            return null
+          })()}
+          {/* #endregion */}
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <input
-            type="text"
-            placeholder="Search by HCP, job name, or address"
-            value={stagesSearchQuery}
-            onChange={(e) => setStagesSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="Search by HCP, job name, or address"
+              value={stagesSearchQuery}
+              onChange={(e) => setStagesSearchQuery(e.target.value)}
+              style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+            {(authRole || myRole) === 'dev' && (
+              <button
+                type="button"
+                onClick={toggleStagesHamMode}
+                title={stagesHamMode ? 'Ham mode on: confirmation modals skipped' : 'Ham mode off: show confirmation modals'}
+                aria-pressed={stagesHamMode}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  padding: 0,
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: stagesHamMode ? '#eff6ff' : 'white',
+                  cursor: 'pointer',
+                  color: stagesHamMode ? '#2563eb' : '#6b7280',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
+                  <path d="M224 329.2C224 337.7 220.6 345.8 214.6 351.8L187.8 378.6C175.5 390.9 155.3 390 138.4 385.8C133.8 384.7 128.9 384 123.9 384C90.8 384 63.9 410.9 63.9 444C63.9 477.1 90.8 504 123.9 504C130.2 504 135.9 509.7 135.9 516C135.9 549.1 162.8 576 195.9 576C229 576 255.9 549.1 255.9 516C255.9 511 255.3 506.2 254.1 501.5C249.9 484.6 248.9 464.4 261.3 452.1L288.1 425.3C294.1 419.3 302.2 415.9 310.7 415.9L399.9 415.9C406.2 415.9 412.3 415.6 418.4 414.9C430.3 413.7 434.8 399.4 429.2 388.9C420.7 373.1 415.9 355.1 415.9 335.9C415.9 274 466 223.9 527.9 223.9C535.9 223.9 543.6 224.7 551.1 226.3C562.8 228.8 575.2 220.4 573.1 208.7C558.4 126.4 486.4 63.9 399.9 63.9C302.7 63.9 223.9 142.7 223.9 239.9L223.9 329.1z" />
+                </svg>
+              </button>
+            )}
+          </div>
           {(() => {
             const q = stagesSearchQuery.trim().toLowerCase()
             const filtered = q
@@ -2478,11 +2573,116 @@ export default function Jobs() {
                                 <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.job_address}</div>
                               )}
                             </td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {(j.team_members ?? [])
-                                .map((t) => t.users?.name?.trim())
-                                .filter(Boolean)
-                                .join(', ') || '—'}
+                            <td style={{ padding: '0.75rem', position: 'relative' }}>
+                              {stagesHamMode ? (
+                                <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                  <span>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (assignedEditJobId === j.id) {
+                                        setAssignedEditJobId(null)
+                                      } else {
+                                        setAssignedEditJobId(j.id)
+                                        setAssignedEditSelectedIds((j.team_members ?? []).map((t) => t.user_id))
+                                      }
+                                    }}
+                                    disabled={assignedEditSavingId === j.id}
+                                    title="Change assigned"
+                                    aria-label="Change assigned"
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      width: 24,
+                                      height: 24,
+                                      padding: 0,
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      background: 'none',
+                                      cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
+                                      color: '#6b7280',
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                      <path d="M100.4 417.2C104.5 402.6 112.2 389.3 123 378.5L304.2 197.3L338.1 163.4C354.7 180 389.4 214.7 442.1 267.4L476 301.3L442.1 335.2L260.9 516.4C250.2 527.1 236.8 534.9 222.2 539L94.4 574.6C86.1 576.9 77.1 574.6 71 568.4C64.9 562.2 62.6 553.3 64.9 545L100.4 417.2zM156 413.5C151.6 418.2 148.4 423.9 146.7 430.1L122.6 517L209.5 492.9C215.9 491.1 221.7 487.8 226.5 483.2L155.9 413.5zM510 267.4C493.4 250.8 458.7 216.1 406 163.4L372 129.5C398.5 103 413.4 88.1 416.9 84.6C430.4 71 448.8 63.4 468 63.4C487.2 63.4 505.6 71 519.1 84.6L554.8 120.3C568.4 133.9 576 152.3 576 171.4C576 190.5 568.4 209 554.8 222.5C551.3 226 536.4 240.9 509.9 267.4z" />
+                                    </svg>
+                                  </button>
+                                  {assignedEditJobId === j.id && (
+                                    <div
+                                      style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: 0,
+                                        marginTop: 4,
+                                        zIndex: 50,
+                                        background: 'white',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: 4,
+                                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                        padding: '0.5rem',
+                                        minWidth: 180,
+                                        maxHeight: 200,
+                                        overflowY: 'auto',
+                                      }}
+                                    >
+                                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Assigned</div>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        {users.map((u) => (
+                                          <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={assignedEditSelectedIds.includes(u.id)}
+                                              onChange={() => {
+                                                setAssignedEditSelectedIds((prev) =>
+                                                  prev.includes(u.id) ? prev.filter((x) => x !== u.id) : [...prev, u.id]
+                                                )
+                                              }}
+                                              style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                            />
+                                            <span>{u.name}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateJobTeamMembers(j.id, assignedEditSelectedIds)}
+                                          disabled={assignedEditSavingId === j.id}
+                                          style={{
+                                            padding: '0.35rem 0.75rem',
+                                            fontSize: '0.8125rem',
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: 4,
+                                            cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
+                                          }}
+                                        >
+                                          {assignedEditSavingId === j.id ? '…' : 'Apply'}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setAssignedEditJobId(null)}
+                                          style={{
+                                            padding: '0.35rem 0.75rem',
+                                            fontSize: '0.8125rem',
+                                            background: 'none',
+                                            color: '#6b7280',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: 4,
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                (j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'
+                              )}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {j.revenue != null ? formatCurrency(Number(j.revenue)) : '—'}
@@ -2586,11 +2786,13 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
                   Working ({working.length})
                 </button>
-                {stagesSectionOpen.working && renderStagesTable(working, 'Ready for Billing', (j) => {
-                  setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
-                  setReadyForBillingChecked1(false)
-                  setReadyForBillingChecked2(false)
-                }, true)}
+                {stagesSectionOpen.working && renderStagesTable(working, 'Ready for Billing', stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'ready_to_bill')
+                  : (j) => {
+                    setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
+                    setReadyForBillingChecked1(false)
+                    setReadyForBillingChecked2(false)
+                  }, true)}
 
                 <button
                   type="button"
@@ -2601,10 +2803,14 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
                   Ready to Bill ({readyToBill.length})
                 </button>
-                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'billed', message: 'This will mark the job as Billed.' }), true, (j) => {
-                  setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
-                  setSendBackChecked(false)
-                })}
+                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'billed')
+                  : (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'billed', message: 'This will mark the job as Billed.' }), true, stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'working')
+                  : (j) => {
+                    setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
+                    setSendBackChecked(false)
+                  })}
 
                 <button
                   type="button"
@@ -2615,7 +2821,11 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
                   Billed ({billed.length})
                 </button>
-                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'paid', message: 'This will mark the job as Paid.' }), true, undefined, (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'ready_to_bill' }))}
+                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'paid')
+                  : (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'paid', message: 'This will mark the job as Paid.' }), true, undefined, stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'ready_to_bill')
+                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'ready_to_bill' }))}
 
                 <button
                   type="button"
@@ -2626,7 +2836,9 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
                   Paid ({paid.length})
                 </button>
-                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }))}
+                {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, stagesHamMode
+                  ? (j) => updateJobStatus(j.id, 'billed')
+                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }))}
               </>
             )
           })()}

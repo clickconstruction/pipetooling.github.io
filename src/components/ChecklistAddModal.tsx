@@ -18,6 +18,7 @@ export default function ChecklistAddModal() {
   const { user: authUser } = useAuth()
   const modalContext = useChecklistAddModal()
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
   const [role, setRole] = useState<UserRole | null>(null)
   const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -45,6 +46,27 @@ export default function ChecklistAddModal() {
       supabase.from('users').select('role').eq('id', authUser.id).single().then(({ data }) => {
         setRole((data as { role: UserRole } | null)?.role ?? null)
       })
+      supabase
+        .from('checklist_items')
+        .select('assigned_to_user_id')
+        .eq('created_by_user_id', authUser.id)
+        .order('created_at', { ascending: false })
+        .limit(30)
+        .then(({ data: recentItems }) => {
+          const ids = (recentItems ?? []) as Array<{ assigned_to_user_id: string }>
+          const seen = new Set<string>()
+          const unique: string[] = []
+          for (const row of ids) {
+            const id = row.assigned_to_user_id
+            if (id && !seen.has(id) && unique.length < 3) {
+              seen.add(id)
+              unique.push(id)
+            }
+          }
+          setRecentAssigneeIds(unique)
+        })
+    } else {
+      setRecentAssigneeIds([])
     }
   }, [modalContext?.isOpen, authUser?.id])
 
@@ -189,6 +211,26 @@ export default function ChecklistAddModal() {
                 <option key={u.id} value={u.id}>{u.name || u.email}</option>
               ))}
             </select>
+            {recentAssigneeIds.length > 0 && (
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                Recent:{' '}
+                {recentAssigneeIds
+                  .map((id) => users.find((x) => x.id === id))
+                  .filter((u): u is { id: string; name: string; email: string } => !!u)
+                  .map((u, i) => (
+                    <span key={u.id}>
+                      {i > 0 && ', '}
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, assigned_to_user_id: u.id }))}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', fontSize: 'inherit' }}
+                      >
+                        {u.name || u.email}
+                      </button>
+                    </span>
+                  ))}
+              </p>
+            )}
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
