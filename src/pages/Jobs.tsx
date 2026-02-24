@@ -208,6 +208,7 @@ export default function Jobs() {
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
+  const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
   const [reportTemplatesList, setReportTemplatesList] = useState<Array<{ id: string; name: string; sequence_order: number }>>([])
   const [reportTemplatesLoading, setReportTemplatesLoading] = useState(false)
@@ -1433,7 +1434,46 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
+    const editJobId = searchParams.get('edit')
+    const editLaborHcp = searchParams.get('editLabor')
     const isPrimary = authRole === 'primary' || myRole === 'primary'
+    // When edit=jobId is present, force Stages tab so jobs load
+    if (editJobId) {
+      setActiveTab('stages')
+      if (tab !== 'stages') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'stages')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
+    // When editLabor=hcp is present, force Sub Sheet Ledger tab so labor jobs load
+    if (editLaborHcp) {
+      setActiveTab('sub_sheet_ledger')
+      if (tab !== 'sub_sheet_ledger') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'sub_sheet_ledger')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
+    // When editParts=jobId is present, force Parts tab so tally parts load
+    const editPartsJobId = searchParams.get('editParts')
+    if (editPartsJobId) {
+      setActiveTab('parts')
+      if (tab !== 'parts') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'parts')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
     // Only primaries default to Reports; everyone else defaults to Stages
     if (isPrimary) {
       const primaryTabs = ['reports', 'ledger']
@@ -1501,6 +1541,67 @@ export default function Jobs() {
       }, { replace: true })
     }
   }, [searchParams])
+
+  // When edit=jobId is in URL and jobs are loaded, open the edit modal
+  const editJobId = searchParams.get('edit')
+  useEffect(() => {
+    if (!editJobId || jobs.length === 0 || loading) return
+    const job = jobs.find((j) => j.id === editJobId)
+    if (job) {
+      openEdit(job)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.delete('edit')
+        return next
+      }, { replace: true })
+    }
+  }, [editJobId, jobs, loading])
+
+  // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
+  const editLaborHcp = searchParams.get('editLabor')
+  useEffect(() => {
+    if (!editLaborHcp || laborJobsLoading) return
+    const hcpLower = editLaborHcp.trim().toLowerCase()
+    const laborJob = laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcpLower)
+    if (laborJob) {
+      openEditLaborJob(laborJob)
+    } else {
+      openNewLaborJob()
+      setLaborJobNumber(editLaborHcp.trim())
+    }
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('editLabor')
+      return next
+    }, { replace: true })
+  }, [editLaborHcp, laborJobs, laborJobsLoading])
+
+  // When editParts=jobId is in URL and tally parts are loaded, expand job and scroll to it
+  const editPartsJobId = searchParams.get('editParts')
+  useEffect(() => {
+    if (!editPartsJobId || tallyPartsLoading) return
+    setActiveTab('parts')
+    setExpandedPartsJobIds((prev) => new Set(prev).add(editPartsJobId))
+    setTallyPartsSearch('')
+    setPendingScrollToPartsJobId(editPartsJobId)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('editParts')
+      next.set('tab', 'parts') // Keep Parts tab when clearing editParts
+      return next
+    }, { replace: true })
+  }, [editPartsJobId, tallyPartsLoading])
+
+  // Scroll to job row when it has been expanded for editParts
+  useEffect(() => {
+    if (!pendingScrollToPartsJobId || !expandedPartsJobIds.has(pendingScrollToPartsJobId)) return
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-job-id="${pendingScrollToPartsJobId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setPendingScrollToPartsJobId(null)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [pendingScrollToPartsJobId, expandedPartsJobIds])
 
   useEffect(() => {
     if (activeTab === 'sub_sheet_ledger' || activeTab === 'receivables') loadRoster()
@@ -2567,7 +2668,7 @@ export default function Jobs() {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: string | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void) {
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -2860,7 +2961,7 @@ export default function Jobs() {
                   <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
                   Billed ({billed.length})
                 </button>
-                {stagesSectionOpen.billed && renderStagesTable(billed, 'Mark as Paid', stagesHamMode
+                {stagesSectionOpen.billed && renderStagesTable(billed, <>Mark<br />Paid</>, stagesHamMode
                   ? (j) => updateJobStatus(j.id, 'paid')
                   : (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'paid', message: 'This will mark the job as Paid.' }), true, undefined, stagesHamMode
                   ? (j) => updateJobStatus(j.id, 'ready_to_bill')
@@ -3309,6 +3410,7 @@ export default function Jobs() {
                       return [
                         <tr
                           key={jobId}
+                          data-job-id={jobId}
                           style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: expanded ? '#f9fafb' : undefined }}
                           onClick={toggle}
                         >

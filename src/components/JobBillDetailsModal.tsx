@@ -23,20 +23,25 @@ type Props = {
   jobName: string
   jobAddress: string
   revenue: number | null
+  onEditJob?: (jobId: string) => void
+  onEditJobLabor?: (hcpNumber: string) => void
+  onEditParts?: (jobId: string) => void
 }
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
 }
 
-export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, revenue }: Props) {
+export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, revenue, onEditJob, onEditJobLabor, onEditParts }: Props) {
   const [loading, setLoading] = useState(false)
   const [laborCost, setLaborCost] = useState<number>(0)
   const [partsCost, setPartsCost] = useState<number>(0)
+  const [hasParts, setHasParts] = useState(false)
 
   useEffect(() => {
     if (!open || !jobId) return
     setLoading(true)
+    setHasParts(false)
     const hcp = (hcpNumber ?? '').trim().toLowerCase()
 
     Promise.all([
@@ -56,12 +61,15 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
         const timePerMile = byKey.get('drive_time_per_mile') ?? 0.02
 
         let parts = 0
+        let jobHasParts = false
         for (const r of tallyData) {
           if (r.job_id === jobId) {
             parts += Number(r.price_at_time ?? 0) * Number(r.quantity)
+            jobHasParts = true
           }
         }
         setPartsCost(parts)
+        setHasParts(jobHasParts)
 
         let labor = 0
         if (hcp) {
@@ -99,6 +107,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
       .catch(() => {
         setLaborCost(0)
         setPartsCost(0)
+        setHasParts(false)
       })
       .finally(() => setLoading(false))
   }, [open, jobId, hcpNumber, revenue])
@@ -144,7 +153,68 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
           }}
         >
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Job Bill Details</h2>
-          <button
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {onEditJob && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEditJob(jobId)
+                  onClose()
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Edit Job
+              </button>
+            )}
+            {onEditJobLabor && (hcpNumber ?? '').trim() && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEditJobLabor((hcpNumber ?? '').trim())
+                  onClose()
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Edit Job Labor
+              </button>
+            )}
+            {onEditParts && hasParts && (
+              <button
+                type="button"
+                onClick={() => {
+                  onEditParts(jobId)
+                  onClose()
+                }}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                Edit Parts
+              </button>
+            )}
+            <button
             type="button"
             onClick={onClose}
             style={{
@@ -158,6 +228,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
           >
             ×
           </button>
+          </div>
         </header>
         <div style={{ padding: '1.5rem' }}>
           {loading ? (

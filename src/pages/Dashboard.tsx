@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -170,6 +170,7 @@ function SubscribedSkeleton() {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -2315,11 +2316,6 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {j.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open<br />{formatTimeSince(j.created_at)}
-                        </span>
-                      )}
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                           {j.google_drive_link?.trim() && (
@@ -2355,7 +2351,7 @@ export default function Dashboard() {
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                       >
-                        View
+                        View<br />Details
                       </button>
                       <button
                         type="button"
@@ -2399,6 +2395,11 @@ export default function Dashboard() {
                       >
                         {jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}
                       </button>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open<br />{formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2450,11 +2451,6 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {j.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open<br />{formatTimeSince(j.created_at)}
-                        </span>
-                      )}
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                           {j.google_drive_link?.trim() && (
@@ -2490,7 +2486,7 @@ export default function Dashboard() {
                         onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                       >
-                        View
+                        View<br />Details
                       </button>
                       <button
                         type="button"
@@ -2532,8 +2528,13 @@ export default function Dashboard() {
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : 'Mark as Paid'}
+                        {jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}
                       </button>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open<br />{formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2941,6 +2942,18 @@ export default function Dashboard() {
           jobName={viewBillDetailsJob.jobName}
           jobAddress={viewBillDetailsJob.jobAddress}
           revenue={viewBillDetailsJob.revenue}
+          onEditJob={(jobId) => {
+            setViewBillDetailsJob(null)
+            navigate(`/jobs?edit=${jobId}`)
+          }}
+          onEditJobLabor={(hcpNumber) => {
+            setViewBillDetailsJob(null)
+            navigate(`/jobs?editLabor=${encodeURIComponent(hcpNumber)}`)
+          }}
+          onEditParts={(jobId) => {
+            setViewBillDetailsJob(null)
+            navigate(`/jobs?editParts=${jobId}`)
+          }}
         />
       )}
     </div>
