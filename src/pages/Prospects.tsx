@@ -79,6 +79,22 @@ function formatFitStatus(status: string | null): string {
   return status
 }
 
+function formatWebsiteDisplay(url: string | null): string {
+  if (!url || !url.trim()) return '—'
+  let s = url.trim()
+  s = s.replace(/^https?:\/\//i, '')
+  s = s.replace(/^www\./i, '')
+  s = s.replace(/\/+$/, '')
+  return s || '—'
+}
+
+function getWebsiteHref(url: string | null): string {
+  if (!url || !url.trim()) return '#'
+  const s = url.trim()
+  if (/^https?:\/\//i.test(s)) return s
+  return 'https://' + s
+}
+
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -1241,7 +1257,20 @@ export default function Prospects() {
                                           '—'
                                         )}
                                       </td>
-                                      <td style={{ padding: '0.75rem' }}>{p.links_to_website || '—'}</td>
+                                      <td style={{ padding: '0.75rem' }}>
+                                        {p.links_to_website ? (
+                                          <a
+                                            href={getWebsiteHref(p.links_to_website)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                                          >
+                                            {formatWebsiteDisplay(p.links_to_website)}
+                                          </a>
+                                        ) : (
+                                          '—'
+                                        )}
+                                      </td>
                                       <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
                                       <td style={{ padding: '0.75rem' }}>{formatFitStatus(p.prospect_fit_status)}</td>
                                     </tr>
@@ -1293,7 +1322,21 @@ export default function Prospects() {
                                   </div>
                                   <div className="prospectListMobileCardRow">
                                     <span className="prospectListMobileCardLabel">Links</span>
-                                    <span>{p.links_to_website || '—'}</span>
+                                    <span>
+                                      {p.links_to_website ? (
+                                        <a
+                                          href={getWebsiteHref(p.links_to_website)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                          style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                        >
+                                          {formatWebsiteDisplay(p.links_to_website)}
+                                        </a>
+                                      ) : (
+                                        '—'
+                                      )}
+                                    </span>
                                   </div>
                                   <div className="prospectListMobileCardRow">
                                     <span className="prospectListMobileCardLabel">Last Contact</span>

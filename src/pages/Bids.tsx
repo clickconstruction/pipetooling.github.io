@@ -1846,6 +1846,12 @@ export default function Bids() {
         .select('*')
         .single()
       if (insErr) {
+        // Duplicate key = cost estimate already exists (race or concurrent create); load and use it
+        const isUniqueViolation = (insErr as { code?: string | number }).code === '23505' || (insErr as { code?: string | number }).code === 23505
+        if (isUniqueViolation && insErr.message?.includes('cost_estimates_bid_id_key')) {
+          est = await loadCostEstimate(bidId)
+          if (est) return est
+        }
         setError(`Failed to create cost estimate: ${insErr.message}`)
         return null
       }
