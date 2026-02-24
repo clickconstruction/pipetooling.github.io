@@ -23,6 +23,9 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'prompt',
+      injectManifest: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (bundle exceeds 2 MB default)
+      },
       manifest: {
         name: 'PipeTooling',
         short_name: 'PipeTooling',
