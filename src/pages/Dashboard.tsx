@@ -220,6 +220,7 @@ export default function Dashboard() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
+  const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
   const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; revenue: number | null; created_at: string | null }>>([])
@@ -1370,6 +1371,48 @@ export default function Dashboard() {
 
   return (
     <div>
+      {pinsToShow.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            {pinsToShow.map((item) => {
+              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
+              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
+              const isAR = item.path === '/jobs' && item.tab === 'receivables'
+              const isExternalTeam = item.path === '/materials' && item.tab === 'external-team'
+              const to = item.tab
+                ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
+                : item.path
+              const displayLabel = isCostMatrix
+                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
+                : isAR
+                  ? (arTotal != null ? `AR: $${Math.round(arTotal).toLocaleString('en-US')}` : item.label)
+                  : isSupplyHouseAP
+                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
+                    : isExternalTeam
+                      ? (externalTeamTotal != null ? `External Team: $${Math.round(externalTeamTotal).toLocaleString('en-US')}` : item.label)
+                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+              return (
+                <Link
+                  key={item.path + (item.tab ?? '')}
+                  to={to}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                >
+                  {displayLabel}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           {[
@@ -1402,34 +1445,34 @@ export default function Dashboard() {
         </div>
       )}
       {role != null && (
-        <>
+        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link
             to="/tally"
+            title="Job Parts Tally"
             style={{
-              display: 'block',
-              padding: '1rem 1.5rem',
-              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 48,
+              height: 48,
+              flexShrink: 0,
               background: '#3b82f6',
               color: 'white',
               borderRadius: 8,
               textDecoration: 'none',
-              fontWeight: 600,
-              fontSize: '1.125rem',
-              textAlign: 'center',
-              minHeight: 48,
               boxSizing: 'border-box',
             }}
           >
-            Job Parts Tally
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={28} height={28} fill="currentColor" style={{ display: 'block' }}>
+              <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+            </svg>
           </Link>
           <button
             type="button"
             onClick={() => setNewReportModalOpen(true)}
             style={{
-              display: 'block',
-              width: '100%',
-              padding: '1rem 1.5rem',
-              marginBottom: '1rem',
+              flex: 1,
+              padding: '0 1.5rem',
               background: '#3b82f6',
               color: 'white',
               borderRadius: 8,
@@ -1438,13 +1481,14 @@ export default function Dashboard() {
               fontSize: '1.125rem',
               textAlign: 'center',
               minHeight: 48,
+              height: 48,
               boxSizing: 'border-box',
               cursor: 'pointer',
             }}
           >
             Job Report
           </button>
-        </>
+        </div>
       )}
       {role === 'master_technician' && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
@@ -1462,88 +1506,6 @@ export default function Dashboard() {
             Builder Review
           </Link>
       </div>
-      )}
-      {showRecent && (
-        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Recent Reports</h2>
-          {!isReportEnabledOnlyUser && (
-            <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
-          )}
-        </div>
-      )}
-      {showRecent && (
-        <div style={{ marginBottom: '1rem' }}>
-          {recentReportsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
-          ) : recentReports.length > 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
-                const isRead = readReportIds.has(r.id)
-                return (
-                  <li
-                    key={r.id}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      marginBottom: '0.5rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 8,
-                      background: isRead ? '#f9fafb' : '#fff',
-                      opacity: isRead ? 0.85 : 1,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.5rem',
-                    }}
-                    onClick={() => {
-                      setSelectedReport(r)
-                      setViewReportModalOpen(true)
-                    }}
-                  >
-                    {!isRead && (
-                      <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
-                          <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
-                        </svg>
-                      </span>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                        {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
-                      </div>
-                    </div>
-                    {isRead && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setHiddenReportIds((prev) => new Set(prev).add(r.id))
-                        }}
-                        title="Hide from dashboard"
-                        aria-label="Hide from dashboard"
-                        style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
-                          <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
-                        </svg>
-                      </button>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-              No reports yet.{' '}
-              {isReportEnabledOnlyUser ? (
-                'Create one above.'
-              ) : (
-                <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
-              )}
-            </p>
-          )}
-        </div>
       )}
       {showMyReports && (
         <div style={{ marginBottom: '1rem' }}>
@@ -1613,46 +1575,101 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {pinsToShow.length > 0 && (
+      {showRecent && (
         <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {pinsToShow.map((item) => {
-              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
-              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
-              const isAR = item.path === '/jobs' && item.tab === 'receivables'
-              const isExternalTeam = item.path === '/materials' && item.tab === 'external-team'
-              const to = item.tab
-                ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
-                : item.path
-              const displayLabel = isCostMatrix
-                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : isAR
-                  ? (arTotal != null ? `AR: $${Math.round(arTotal).toLocaleString('en-US')}` : item.label)
-                  : isSupplyHouseAP
-                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
-                    : isExternalTeam
-                      ? (externalTeamTotal != null ? `External Team: $${Math.round(externalTeamTotal).toLocaleString('en-US')}` : item.label)
-                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
-              return (
-                <Link
-                  key={item.path + (item.tab ?? '')}
-                  to={to}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 6,
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                >
-                  {displayLabel}
-                </Link>
-              )
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => setRecentReportsExpanded((prev) => !prev)}
+            aria-expanded={recentReportsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}
+          >
+            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span aria-hidden>{recentReportsExpanded ? '\u25BC' : '\u25B6'}</span>
+              Recent Reports
+            </h2>
+            {!isReportEnabledOnlyUser && !recentReportsExpanded && (
+              <Link to="/jobs?tab=reports" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+            )}
+          </button>
+          {recentReportsExpanded && (
+            <>
+              {!isReportEnabledOnlyUser && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+                </div>
+              )}
+              {recentReportsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+              ) : recentReports.length > 0 ? (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
+                const isRead = readReportIds.has(r.id)
+                    return (
+                      <li
+                    key={r.id}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          marginBottom: '0.5rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                          background: isRead ? '#f9fafb' : '#fff',
+                          opacity: isRead ? 0.85 : 1,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                        }}
+                        onClick={() => {
+                          setSelectedReport(r)
+                          setViewReportModalOpen(true)
+                        }}
+                      >
+                        {!isRead && (
+                          <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
+                              <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
+                            </svg>
+                          </span>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                          </div>
+                        </div>
+                        {isRead && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setHiddenReportIds((prev) => new Set(prev).add(r.id))
+                            }}
+                            title="Hide from dashboard"
+                            aria-label="Hide from dashboard"
+                            style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
+                              <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                            </svg>
+                          </button>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                  No reports yet.{' '}
+                  {isReportEnabledOnlyUser ? (
+                    'Create one above.'
+                  ) : (
+                    <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
+                  )}
+                </p>
+              )}
+            </>
+          )}
         </div>
       )}
       {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
@@ -2567,7 +2584,7 @@ export default function Dashboard() {
                   }}
                 >
                   <div>
-                    <Link to={`/workflows/${sub.project_id}`} style={{ fontWeight: 500 }}>
+                    <Link to={`/workflows/${sub.project_id}#step-${sub.step_id}`} style={{ fontWeight: 500 }}>
                       {sub.step_name}
                     </Link>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>

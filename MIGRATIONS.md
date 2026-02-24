@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–30, 2026
 
+**`20260230000015_primaries_see_adopted_masters.sql`**
+- **Purpose**: Allow primaries to see masters who have adopted them in Send task Notify dropdown
+- **Changes**: Update `master_adopted_current_user()` to also check `master_primaries` (previously only checked `master_assistants`)
+- **Impact**: Primary users (e.g. Trace) can now see their adopting master (e.g. Malachi) in Dashboard Send task Notify list
+- **Category**: Users / RLS / Primary
+
 **`20260230000014_add_notes_to_prospects.sql`**
 - **Purpose**: Add notes field for Prospect List notes panel
 - **Changes**: Add `notes TEXT` column to `public.prospects`
