@@ -1164,6 +1164,22 @@ export default function Jobs() {
     }
   }
 
+  const [editingLaborJobDistanceId, setEditingLaborJobDistanceId] = useState<string | null>(null)
+  const [editingLaborJobDistanceValue, setEditingLaborJobDistanceValue] = useState('')
+
+  async function updateLaborJobDistance(jobId: string, value: string) {
+    setError(null)
+    const trimmed = value.trim()
+    const num = trimmed === '' ? null : parseFloat(trimmed)
+    if (num != null && (isNaN(num) || num < 0)) return
+    const { error: err } = await supabase.from('people_labor_jobs').update({ distance_miles: num }).eq('id', jobId)
+    if (err) setError(err.message)
+    else {
+      setLaborJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, distance_miles: num } : j)))
+    }
+    setEditingLaborJobDistanceId(null)
+  }
+
   function resetLaborForm() {
     setLaborAssignedTo([])
     setLaborAddress('')
@@ -1413,9 +1429,9 @@ export default function Jobs() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    // Treat unknown role as primary to avoid flash of wrong tabs before role loads
-    const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
-    if (isPrimaryOrUnknown) {
+    const isPrimary = authRole === 'primary' || myRole === 'primary'
+    // Only primaries default to Reports; everyone else defaults to Stages
+    if (isPrimary) {
       const primaryTabs = ['reports', 'ledger']
       if (tab && primaryTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
@@ -1439,6 +1455,7 @@ export default function Jobs() {
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
+      // Default to Stages
       setActiveTab('stages')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -2885,6 +2902,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Distance</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor rate</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Drive</th>
@@ -2926,6 +2944,48 @@ export default function Jobs() {
                             </a>
                           ) : (
                             '—'
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                          {editingLaborJobDistanceId === job.id ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.1}
+                                value={editingLaborJobDistanceValue}
+                                onChange={(e) => setEditingLaborJobDistanceValue(e.target.value)}
+                                onBlur={() => {
+                                  const v = editingLaborJobDistanceValue.trim()
+                                  updateLaborJobDistance(job.id, v)
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const v = editingLaborJobDistanceValue.trim()
+                                    updateLaborJobDistance(job.id, v)
+                                  }
+                                  if (e.key === 'Escape') setEditingLaborJobDistanceId(null)
+                                }}
+                                autoFocus
+                                style={{ width: 56, padding: '0.2rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                              />
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>mi</span>
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              {job.distance_miles != null && !Number.isNaN(Number(job.distance_miles)) ? `${Number(job.distance_miles)} mi` : '—'}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingLaborJobDistanceId(job.id)
+                                  setEditingLaborJobDistanceValue(job.distance_miles != null ? String(job.distance_miles) : '')
+                                }}
+                                title="Edit distance"
+                                style={{ padding: '0.15rem 0.35rem', background: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' }}
+                              >
+                                Edit
+                              </button>
+                            </span>
                           )}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{job.labor_rate != null ? `$${formatCurrency(job.labor_rate)}/hr` : '—'}</td>
