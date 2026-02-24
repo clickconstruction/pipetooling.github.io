@@ -4041,6 +4041,7 @@ export default function Jobs() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+            <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0 0 1rem 0' }}>Required: Job Name, Job Address</p>
             {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
@@ -4054,7 +4055,7 @@ export default function Jobs() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
                 <input
                   type="text"
                   value={jobName}
@@ -4064,7 +4065,7 @@ export default function Jobs() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
                 <input
                   type="text"
                   value={jobAddress}
