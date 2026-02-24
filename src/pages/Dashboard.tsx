@@ -1379,6 +1379,7 @@ export default function Dashboard() {
             { key: 'project', label: 'Project', to: '/projects/new' },
             { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
             { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
+            { key: 'prospect', label: 'New Prospect', to: '/prospects?newProspect=true' },
           ]
             .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
             .map((b) => (

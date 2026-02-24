@@ -2724,6 +2724,153 @@ export type Database = {
           },
         ]
       }
+      prospects: {
+        Row: {
+          id: string
+          master_user_id: string
+          created_by: string
+          warmth_value: string | null
+          warmth_count: number | null
+          prospect_fit_status: string | null
+          company_name: string | null
+          contact_name: string | null
+          phone_number: string | null
+          links_to_website: string | null
+          last_contact: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          master_user_id: string
+          created_by: string
+          warmth_value?: string | null
+          warmth_count?: number | null
+          prospect_fit_status?: string | null
+          company_name?: string | null
+          contact_name?: string | null
+          phone_number?: string | null
+          links_to_website?: string | null
+          last_contact?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          master_user_id?: string
+          created_by?: string
+          warmth_value?: string | null
+          warmth_count?: number | null
+          prospect_fit_status?: string | null
+          company_name?: string | null
+          contact_name?: string | null
+          phone_number?: string | null
+          links_to_website?: string | null
+          last_contact?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_comments: {
+        Row: {
+          id: string
+          prospect_id: string
+          created_by: string
+          created_at: string | null
+          comment_text: string
+          interaction_type: string
+        }
+        Insert: {
+          id?: string
+          prospect_id: string
+          created_by: string
+          created_at?: string | null
+          comment_text: string
+          interaction_type: string
+        }
+        Update: {
+          id?: string
+          prospect_id?: string
+          created_by?: string
+          created_at?: string | null
+          comment_text?: string
+          interaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_comments_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_callbacks: {
+        Row: {
+          id: string
+          prospect_id: string
+          user_id: string
+          callback_date: string
+          title: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          prospect_id: string
+          user_id: string
+          callback_date: string
+          title?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          prospect_id?: string
+          user_id?: string
+          callback_date?: string
+          title?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_callbacks_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_callbacks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           created_at: string | null

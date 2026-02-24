@@ -23,6 +23,13 @@ type CalendarBid = {
   service_type_name: string
 }
 
+type CalendarProspectCallback = {
+  id: string
+  prospect_id: string
+  callback_date: string
+  title: string | null
+}
+
 function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not sent' {
   if (!bid.bid_date_sent || !bid.bid_date_sent.trim()) return 'not sent'
   const dueDate = bid.bid_due_date.slice(0, 10)
@@ -84,6 +91,7 @@ export default function Calendar() {
   const [userName, setUserName] = useState<string | null>(null)
   const [steps, setSteps] = useState<CalendarStep[]>([])
   const [bids, setBids] = useState<CalendarBid[]>([])
+  const [prospectCallbacks, setProspectCallbacks] = useState<CalendarProspectCallback[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<Date | null>(null)
@@ -110,6 +118,7 @@ export default function Calendar() {
       }
       await loadAssignedSteps(user?.name ?? null)
       await loadBids(user?.role ?? null, user?.estimator_service_type_ids ?? null)
+      await loadProspectCallbacks(user?.role ?? null)
       setLoading(false)
     })()
   }, [authUser?.id])
@@ -221,6 +230,23 @@ export default function Calendar() {
     setBids(calendarBids)
   }
 
+  async function loadProspectCallbacks(userRole: UserRole | null) {
+    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant') {
+      setProspectCallbacks([])
+      return
+    }
+    if (!authUser?.id) return
+    const { data, error } = await supabase
+      .from('prospect_callbacks')
+      .select('id, prospect_id, callback_date, title')
+      .eq('user_id', authUser.id)
+    if (error) {
+      setProspectCallbacks([])
+      return
+    }
+    setProspectCallbacks((data ?? []) as CalendarProspectCallback[])
+  }
+
   function getDaysInMonth(date: Date): Date[] {
     const year = date.getFullYear()
     const month = date.getMonth()
@@ -277,6 +303,14 @@ export default function Calendar() {
     })
   }
 
+  function getCallbacksForDate(date: Date): CalendarProspectCallback[] {
+    const dateKey = formatDateKey(date)
+    return prospectCallbacks.filter((cb) => {
+      const cbDate = getCentralDateFromUTC(cb.callback_date)
+      return cbDate === dateKey
+    })
+  }
+
   function getStepDateKey(step: CalendarStep): string | null {
     if (step.scheduled_start_date) {
       return step.scheduled_start_date.includes('T')
@@ -287,8 +321,8 @@ export default function Calendar() {
     return null
   }
 
-  function buildUpcomingList(): Array<{ dateKey: string; type: 'step' | 'bid'; step?: CalendarStep; bid?: CalendarBid }> {
-    const items: Array<{ dateKey: string; type: 'step' | 'bid'; step?: CalendarStep; bid?: CalendarBid }> = []
+  function buildUpcomingList(): Array<{ dateKey: string; type: 'step' | 'bid' | 'callback'; step?: CalendarStep; bid?: CalendarBid; callback?: CalendarProspectCallback }> {
+    const items: Array<{ dateKey: string; type: 'step' | 'bid' | 'callback'; step?: CalendarStep; bid?: CalendarBid; callback?: CalendarProspectCallback }> = []
     steps.forEach((s) => {
       const key = getStepDateKey(s)
       if (key && key >= todayKey) items.push({ dateKey: key, type: 'step', step: s })
@@ -296,6 +330,10 @@ export default function Calendar() {
     bids.forEach((b) => {
       const key = b.bid_due_date.slice(0, 10)
       if (key >= todayKey) items.push({ dateKey: key, type: 'bid', bid: b })
+    })
+    prospectCallbacks.forEach((cb) => {
+      const key = getCentralDateFromUTC(cb.callback_date)
+      if (key && key >= todayKey) items.push({ dateKey: key, type: 'callback', callback: cb })
     })
     items.sort((a, b) => a.dateKey.localeCompare(b.dateKey))
     return items
@@ -367,6 +405,7 @@ export default function Calendar() {
             {days.map((day, idx) => {
               const daySteps = getStepsForDate(day)
               const dayBids = getBidsForDate(day)
+              const dayCallbacks = getCallbacksForDate(day)
               const isToday = formatDateKey(day) === todayKey && isCurrentMonth
               const isCurrentMonthDay = day.getMonth() === currentMonth.getMonth()
               return (
@@ -460,6 +499,29 @@ export default function Calendar() {
                         </div>
                       </Link>
                     )})}
+                    {dayCallbacks.map((cb) => (
+                      <Link
+                        key={cb.id}
+                        to={`/prospects?tab=follow-up&prospect_id=${cb.prospect_id}`}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 4px',
+                          background: '#e0e7ff',
+                          color: '#3730a3',
+                          textDecoration: 'none',
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                        }}
+                        title={cb.title ?? 'Prospect callback'}
+                      >
+                        <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {cb.title ?? 'Call back'}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: '#4f46e5' }}>Prospect</div>
+                      </Link>
+                    ))}
                   </div>
                 </div>
               )
@@ -469,8 +531,9 @@ export default function Calendar() {
           {selectedDayForModal && (() => {
             const modalSteps = getStepsForDate(selectedDayForModal)
             const modalBids = getBidsForDate(selectedDayForModal)
+            const modalCallbacks = getCallbacksForDate(selectedDayForModal)
             const modalDateStr = formatUpcomingDate(formatDateKey(selectedDayForModal))
-            const hasItems = modalSteps.length > 0 || modalBids.length > 0
+            const hasItems = modalSteps.length > 0 || modalBids.length > 0 || modalCallbacks.length > 0
             return (
               <div
                 style={{
@@ -556,6 +619,26 @@ export default function Calendar() {
                           </Link>
                         </li>
                       )})}
+                      {modalCallbacks.map((cb) => (
+                        <li key={cb.id} style={{ marginBottom: '0.5rem' }}>
+                          <Link
+                            to={`/prospects?tab=follow-up&prospect_id=${cb.prospect_id}`}
+                            onClick={() => setSelectedDayForModal(null)}
+                            style={{
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#e0e7ff',
+                              color: '#3730a3',
+                              textDecoration: 'none',
+                              borderRadius: 4,
+                              border: '1px solid #c7d2fe',
+                            }}
+                          >
+                            <div style={{ fontWeight: 500 }}>{cb.title ?? 'Prospect callback'}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#4f46e5' }}>Prospect — Follow Up</div>
+                          </Link>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -571,8 +654,8 @@ export default function Calendar() {
                 <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No upcoming items.</p>
               ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {upcomingItems.map((item) => (
-                  <li key={item.type === 'step' ? item.step!.id : item.bid!.id} style={{ marginBottom: '0.5rem' }}>
+                {upcomingItems.map((item, i) => (
+                  <li key={item.type === 'step' ? item.step!.id : item.type === 'bid' ? item.bid!.id : item.callback!.id} style={{ marginBottom: '0.5rem' }}>
                     {item.type === 'step' && item.step ? (
                       <Link
                         to={`/workflows/${item.step.project_id}`}
@@ -619,6 +702,27 @@ export default function Calendar() {
                         <span style={{ fontSize: '0.875rem', fontStyle: 'italic', marginLeft: 'auto', color: getBidSubmissionStatusColor(getBidSubmissionStatus(item.bid)) }}>
                           [{getBidSubmissionStatus(item.bid)}]
                         </span>
+                      </Link>
+                    ) : item.type === 'callback' && item.callback ? (
+                      <Link
+                        to={`/prospects?tab=follow-up&prospect_id=${item.callback.prospect_id}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1rem',
+                          padding: '0.5rem 0.75rem',
+                          background: '#e0e7ff',
+                          color: '#3730a3',
+                          textDecoration: 'none',
+                          borderRadius: 4,
+                          border: '1px solid #c7d2fe',
+                        }}
+                      >
+                        <span style={{ fontSize: '0.875rem', color: '#4f46e5', minWidth: 120 }}>
+                          {formatUpcomingDate(item.dateKey)}
+                        </span>
+                        <span style={{ fontWeight: 500 }}>{item.callback.title ?? 'Prospect callback'}</span>
+                        <span style={{ fontSize: '0.875rem', color: '#4f46e5' }}>— Follow Up</span>
                       </Link>
                     ) : null}
                   </li>

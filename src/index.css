@@ -68,6 +68,235 @@ button {
   padding: var(--page-wrap-pad);
 }
 
+/* Prospects Convert tab: modern card layout */
+.prospectsConvert {
+  max-width: 720px;
+}
+
+/* Prospect selector */
+.prospectsConvert .convertProspectSelector {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.prospectsConvert .convertLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #374151;
+}
+
+.prospectsConvert .convertProspectSummary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.prospectsConvert .convertProspectSummaryRow {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.prospectsConvert .convertProspectSummaryLabel {
+  color: #6b7280;
+  min-width: 4.5rem;
+}
+
+/* Sections */
+.prospectsConvert .convertSection {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.prospectsConvert .convertSectionTitle {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.prospectsConvert .convertSectionDesc {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Cards grid */
+.prospectsConvert .convertCardsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 640px) {
+  .prospectsConvert .convertCardsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.prospectsConvert .convertCard {
+  padding: 1rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.prospectsConvert .convertCard:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.prospectsConvert .convertCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.prospectsConvert .convertCardTitle {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #374151;
+}
+
+.prospectsConvert .convertCardFields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.prospectsConvert .convertInput,
+.prospectsConvert .convertSelect {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.prospectsConvert .convertInput:focus,
+.prospectsConvert .convertSelect:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.prospectsConvert .convertInput::placeholder {
+  color: #9ca3af;
+}
+
+.prospectsConvert .convertAddBtn {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.prospectsConvert .convertAddBtn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.prospectsConvert .convertRemoveBtn {
+  padding: 0.25rem 0.625rem;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.prospectsConvert .convertRemoveBtn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+/* Submit row */
+.prospectsConvert .convertSubmitRow {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.prospectsConvert .convertError {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin: 0 0 1rem 0;
+}
+
+.prospectsConvert .convertSubmit {
+  padding: 0.75rem 1.75rem;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.35);
+  transition: background 0.15s, transform 0.1s;
+}
+
+.prospectsConvert .convertSubmit:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.prospectsConvert .convertSubmit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.prospectsConvert .convertSubmit:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Empty state */
+.prospectsConvert .convertEmptyState {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  border-style: dashed;
+}
+
+.prospectsConvert .convertEmptyStateText {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.prospectsConvert .convertEmptyStateHint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {
@@ -97,10 +326,48 @@ button {
     align-items: flex-end;
     line-height: 1.2;
   }
+
+  /* Prospects Convert tab: touch-friendly, full width */
+  .prospectsConvert {
+    max-width: 100%;
+  }
+  .prospectsConvert .convertProspectSelector {
+    padding: 1rem;
+  }
+  .prospectsConvert .convertSection {
+    padding: 1.25rem;
+    border-radius: 10px;
+  }
+  .prospectsConvert .convertCard {
+    padding: 1rem;
+  }
+  .prospectsConvert .convertProspectSummaryRow {
+    flex-wrap: wrap;
+  }
+  .prospectsConvert .convertInput,
+  .prospectsConvert .convertSelect {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 0.75rem;
+  }
+  .prospectsConvert .convertAddBtn,
+  .prospectsConvert .convertRemoveBtn {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+  .prospectsConvert .convertSubmit {
+    width: 100%;
+    min-height: 48px;
+  }
 }
 
 @media (min-width: 641px) {
   .fwd-btn-desktop {
     display: inline-block !important;
   }
+}
+
+/* Edit Prospect modal: trash icon hover */
+.prospectsEditModalDeleteBtn:hover:not(:disabled) {
+  color: #dc2626 !important;
 }

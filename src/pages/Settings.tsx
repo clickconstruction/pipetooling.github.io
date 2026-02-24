@@ -770,7 +770,7 @@ export default function Settings() {
         .from('user_dashboard_buttons')
         .select('button_key, visible')
         .eq('user_id', authUser.id)
-      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true }
+      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true }
       const map = { ...defaults }
       for (const r of (btnRows ?? []) as Array<{ button_key: string; visible: boolean }>) {
         if (r.button_key in map) map[r.button_key] = r.visible
@@ -3453,8 +3453,8 @@ export default function Settings() {
             Choose which quick-action buttons appear on your Dashboard.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
-            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly'] as const).map((key) => {
-              const label = key === 'job_labor' ? 'Job Labor' : key.charAt(0).toUpperCase() + key.slice(1)
+            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect'] as const).map((key) => {
+              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'New Prospect' : key.charAt(0).toUpperCase() + key.slice(1)
               return (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                   <input

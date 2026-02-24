@@ -63,21 +63,40 @@ function parseQuickFill(input: string): { name: string; address: string; email: 
   return { name, address, email, phone, date }
 }
 
+export type NewCustomerInitialValues = {
+  name?: string
+  address?: string
+  phone?: string
+  email?: string
+  dateMet?: string
+}
+
+export type NewCustomerFormPayload = {
+  name: string
+  address: string | null
+  contact_info: { phone: string | null; email: string | null } | null
+  date_met: string | null
+  master_user_id: string
+}
+
 type Props = {
   showQuickFill?: boolean
   onCreated?: (customer: CustomerRow) => void
   onCancel?: () => void
   mode: 'page' | 'modal'
+  initialValues?: NewCustomerInitialValues
+  /** When provided, form submit calls this instead of creating customer (for Convert flow) */
+  onSubmitForConvert?: (payload: NewCustomerFormPayload) => Promise<void>
 }
 
-export default function NewCustomerForm({ showQuickFill = false, onCreated, onCancel, mode }: Props) {
+export default function NewCustomerForm({ showQuickFill = false, onCreated, onCancel, mode, initialValues, onSubmitForConvert }: Props) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [name, setName] = useState('')
-  const [address, setAddress] = useState('')
-  const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
-  const [dateMet, setDateMet] = useState('')
+  const [name, setName] = useState(initialValues?.name ?? '')
+  const [address, setAddress] = useState(initialValues?.address ?? '')
+  const [phone, setPhone] = useState(initialValues?.phone ?? '')
+  const [email, setEmail] = useState(initialValues?.email ?? '')
+  const [dateMet, setDateMet] = useState(initialValues?.dateMet ?? '')
   const [quickFill, setQuickFill] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -170,6 +189,16 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
     if (myRole === 'master_technician') setMasterUserId(user.id)
   }, [user?.id, myRole])
 
+  useEffect(() => {
+    if (initialValues) {
+      if (initialValues.name !== undefined) setName(initialValues.name)
+      if (initialValues.address !== undefined) setAddress(initialValues.address)
+      if (initialValues.phone !== undefined) setPhone(initialValues.phone)
+      if (initialValues.email !== undefined) setEmail(initialValues.email)
+      if (initialValues.dateMet !== undefined) setDateMet(initialValues.dateMet)
+    }
+  }, [initialValues?.name, initialValues?.address, initialValues?.phone, initialValues?.email, initialValues?.dateMet])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -185,12 +214,22 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
     let customerMasterId = masterUserId
     if (!customerMasterId && myRole === 'master_technician') customerMasterId = user.id
     if (!customerMasterId) customerMasterId = user.id
-    const payload = {
+    const payload: NewCustomerFormPayload = {
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
       master_user_id: customerMasterId,
+    }
+    if (onSubmitForConvert) {
+      try {
+        await onSubmitForConvert(payload)
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Failed to convert')
+      } finally {
+        setLoading(false)
+      }
+      return
     }
     const { data, error: err } = await supabase.from('customers').insert(payload).select().single()
     setLoading(false)
@@ -264,7 +303,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         </div>
       )}
       {!showQuickFill && <h2 style={{ margin: '0 0 1rem 0' }}>{title}</h2>}
-      <form onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
+      <form id={onSubmitForConvert ? 'convert-customer-form' : undefined} onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="ncf-name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
           <input
@@ -383,42 +422,44 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
           </div>
         )}
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 500,
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? 'Saving…' : 'Save'}
-          </button>
-          {mode === 'page' && <Link to="/customers" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>}
-          {mode === 'modal' && onCancel && (
+        {!onSubmitForConvert && (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
-              type="button"
-              onClick={onCancel}
+              type="submit"
+              disabled={loading}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
                 borderRadius: 4,
-                cursor: 'pointer',
-                color: '#374151',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              Cancel
+              {loading ? 'Saving…' : 'Save'}
             </button>
-          )}
-        </div>
+            {mode === 'page' && <Link to="/customers" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>}
+            {mode === 'modal' && onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: '#374151',
+                  fontWeight: 500,
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </div>
   )

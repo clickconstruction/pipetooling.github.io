@@ -20,6 +20,7 @@ import Jobs from './pages/Jobs'
 import Materials from './pages/Materials'
 import Quickfill from './pages/Quickfill'
 import Bids from './pages/Bids'
+import Prospects from './pages/Prospects'
 import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
 import JobTally from './pages/JobTally'
@@ -153,6 +154,7 @@ function AppContent() {
           <Route path="materials" element={<Materials />} />
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="bids" element={<Bids />} />
+          <Route path="prospects" element={<Prospects />} />
           <Route path="checklist" element={<Checklist />} />
           <Route path="tally" element={<JobTally />} />
           <Route path="settings" element={<Settings />} />
