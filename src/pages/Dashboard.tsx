@@ -2186,24 +2186,21 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {j.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open {formatTimeSince(j.created_at)}
-                        </span>
-                      )}
-                      {j.google_drive_link?.trim() && (
-                        <a
-                          href={j.google_drive_link.trim()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Google Drive"
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                          </svg>
-                        </a>
-                      )}
+                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                          {j.google_drive_link?.trim() && (
+                            <a
+                              href={j.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Google Drive"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                              </svg>
+                            </a>
+                          )}
                       {j.job_plans_link?.trim() && (
                         <a
                           href={j.job_plans_link.trim()}
@@ -2216,6 +2213,8 @@ export default function Dashboard() {
                             <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
                           </svg>
                         </a>
+                          )}
+                        </div>
                       )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
@@ -2227,7 +2226,7 @@ export default function Dashboard() {
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                             style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                           >
-                            View Reports
+                            View<br />Reports
                           </button>
                         </>
                       )}
@@ -2237,7 +2236,7 @@ export default function Dashboard() {
                           onClick={() => setLeaveReportJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                         >
-                          Leave Report
+                          Leave<br />Report
                         </button>
                       )}
                       <button
@@ -2258,8 +2257,13 @@ export default function Dashboard() {
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : 'Ready for billing'}
+                        {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
                       </button>
+                      {j.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                          Open<br />{formatTimeSince(j.created_at)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2313,22 +2317,24 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {j.created_at && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open {formatTimeSince(j.created_at)}
+                          Open<br />{formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      {j.google_drive_link?.trim() && (
-                        <a
-                          href={j.google_drive_link.trim()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Google Drive"
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                          </svg>
-                        </a>
-                      )}
+                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                          {j.google_drive_link?.trim() && (
+                            <a
+                              href={j.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Google Drive"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                              </svg>
+                            </a>
+                          )}
                       {j.job_plans_link?.trim() && (
                         <a
                           href={j.job_plans_link.trim()}
@@ -2341,6 +2347,8 @@ export default function Dashboard() {
                             <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
                           </svg>
                         </a>
+                          )}
+                        </div>
                       )}
                       <button
                         type="button"
@@ -2354,7 +2362,7 @@ export default function Dashboard() {
                         onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
-                        View Reports
+                        View<br />Reports
                       </button>
                       <button
                         type="button"
@@ -2373,7 +2381,7 @@ export default function Dashboard() {
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        Send back
+                        Send<br />back
                       </button>
                       <button
                         type="button"
@@ -2389,7 +2397,7 @@ export default function Dashboard() {
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : 'Mark as Billed'}
+                        {jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}
                       </button>
                     </div>
                   </div>
@@ -2444,22 +2452,24 @@ export default function Dashboard() {
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {j.created_at && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open {formatTimeSince(j.created_at)}
+                          Open<br />{formatTimeSince(j.created_at)}
                         </span>
                       )}
-                      {j.google_drive_link?.trim() && (
-                        <a
-                          href={j.google_drive_link.trim()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Google Drive"
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                            <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                          </svg>
-                        </a>
-                      )}
+                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                          {j.google_drive_link?.trim() && (
+                            <a
+                              href={j.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Google Drive"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                              </svg>
+                            </a>
+                          )}
                       {j.job_plans_link?.trim() && (
                         <a
                           href={j.job_plans_link.trim()}
@@ -2472,6 +2482,8 @@ export default function Dashboard() {
                             <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
                           </svg>
                         </a>
+                          )}
+                        </div>
                       )}
                       <button
                         type="button"
@@ -2485,7 +2497,7 @@ export default function Dashboard() {
                         onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
-                        View Reports
+                        View<br />Reports
                       </button>
                       <button
                         type="button"
@@ -2504,7 +2516,7 @@ export default function Dashboard() {
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        Send back
+                        Send<br />back
                       </button>
                       <button
                         type="button"
@@ -2798,7 +2810,7 @@ export default function Dashboard() {
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready for billing</h2>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send to<br />Billing</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
             </p>
