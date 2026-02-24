@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
@@ -881,13 +881,41 @@ export default function Prospects() {
                 <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9375rem' }}>
                   <div><strong>Company Name:</strong> {currentProspect.company_name || '—'}</div>
                   <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
-                  <div><strong>Phone Number:</strong> {currentProspect.phone_number || '—'}</div>
-                  <div><strong>Links to Website:</strong> {currentProspect.links_to_website || '—'}</div>
+                  <div>
+                    <strong>Phone Number:</strong>{' '}
+                    {currentProspect.phone_number ? (
+                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                        {currentProspect.phone_number}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                  <div>
+                    <strong>Links to Website:</strong>{' '}
+                    {currentProspect.links_to_website ? (
+                      <a
+                        href={currentProspect.links_to_website.startsWith('http') ? currentProspect.links_to_website : `https://${currentProspect.links_to_website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        {currentProspect.links_to_website}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
                   {scheduledCallback && (
                     <div>
                       <strong>Call back scheduled for:</strong>{' '}
-                      {formatDateTime(scheduledCallback.callback_date)}
-                      {scheduledCallback.note && ` (${scheduledCallback.note})`}
+                      <Link
+                        to="/calendar"
+                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        {formatDateTime(scheduledCallback.callback_date)}
+                        {scheduledCallback.note && ` (${scheduledCallback.note})`}
+                      </Link>
                     </div>
                   )}
                   <div><strong>Last Contact:</strong> {formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</div>
