@@ -94,6 +94,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–30, 2026
 
+**`20260230000014_add_notes_to_prospects.sql`**
+- **Purpose**: Add notes field for Prospect List notes panel
+- **Changes**: Add `notes TEXT` column to `public.prospects`
+- **Impact**: Prospect List shows split layout with info card and notes textarea; Save/Cancel persist notes
+- **Category**: Prospects
+
+**`20260230000013_add_email_to_prospects.sql`**
+- **Purpose**: Add email field to prospects
+- **Changes**: Add `email TEXT` column to `public.prospects`
+- **Impact**: Email shown in Prospect List (table + mobile cards), Follow Up info block, Convert prospect summary; editable in Edit and New Prospect modals; pre-filled in Convert form
+- **Category**: Prospects
+
 **`20260230000012_add_note_to_prospect_callbacks.sql`**
 - **Purpose**: Add optional note to prospect callbacks for Set Call back modal
 - **Changes**: Add `note TEXT` column to `public.prospect_callbacks`

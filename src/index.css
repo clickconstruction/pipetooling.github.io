@@ -359,15 +359,154 @@ button {
     width: 100%;
     min-height: 48px;
   }
+
+  /* Prospect List: card layout on mobile */
+  .prospectListDesktop {
+    display: none !important;
+  }
+
+  .prospectListMobile {
+    display: block !important;
+  }
+
+  .prospectListMobileCard {
+    min-height: 44px;
+    padding: 1rem 1rem;
+  }
+
+  /* Follow Up: stack notes below details on mobile */
+  .followUpInfoCard {
+    flex-direction: column;
+  }
+
+  .followUpInfoCardDetails,
+  .followUpInfoCardNotes {
+    flex: none;
+    width: 100%;
+  }
 }
 
 @media (min-width: 641px) {
   .fwd-btn-desktop {
     display: inline-block !important;
   }
+
+  .prospectListMobile {
+    display: none !important;
+  }
 }
 
 /* Edit Prospect modal: trash icon hover */
 .prospectsEditModalDeleteBtn:hover:not(:disabled) {
   color: #dc2626 !important;
+}
+
+/* Prospect List: desktop table, mobile cards */
+.prospectListWrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.prospectListDesktop {
+  display: block;
+}
+
+.prospectListMobile {
+  display: none;
+}
+
+.prospectListMobileEmpty {
+  padding: 1rem;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+.prospectListMobileCard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 1rem;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  font-family: inherit;
+}
+
+.prospectListMobileCard:last-child {
+  border-bottom: none;
+}
+
+.prospectListMobileCard:hover {
+  background: #f9fafb;
+}
+
+.prospectListMobileCardSelected {
+  background: #eff6ff !important;
+}
+
+.prospectListMobileCardTitle {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.prospectListMobileCardRow {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  word-break: break-word;
+}
+
+.prospectListMobileCardLabel {
+  flex-shrink: 0;
+  min-width: 5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.prospectListMobileCardMeta {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #f3f4f6;
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+/* Follow Up: info card with notes on right */
+.followUpInfoCard {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  background: #fafafa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.followUpInfoCardDetails {
+  flex: 0 1 45%;
+  min-width: 0;
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+}
+
+.followUpInfoCardNotes {
+  flex: 1 1 55%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.followUpInfoCardNotesActions {
+  display: flex;
+  gap: 0.5rem;
 }

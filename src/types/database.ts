@@ -2735,7 +2735,9 @@ export type Database = {
           company_name: string | null
           contact_name: string | null
           phone_number: string | null
+          email: string | null
           links_to_website: string | null
+          notes: string | null
           last_contact: string | null
           created_at: string | null
           updated_at: string | null
@@ -2750,7 +2752,9 @@ export type Database = {
           company_name?: string | null
           contact_name?: string | null
           phone_number?: string | null
+          email?: string | null
           links_to_website?: string | null
+          notes?: string | null
           last_contact?: string | null
           created_at?: string | null
           updated_at?: string | null
@@ -2765,7 +2769,9 @@ export type Database = {
           company_name?: string | null
           contact_name?: string | null
           phone_number?: string | null
+          email?: string | null
           links_to_website?: string | null
+          notes?: string | null
           last_contact?: string | null
           created_at?: string | null
           updated_at?: string | null
