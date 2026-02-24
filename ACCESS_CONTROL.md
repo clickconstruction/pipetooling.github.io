@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-22
+last_updated: 2026-02-24
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -430,7 +430,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | Feature | dev | master | assistant | sub | estimator | primary |
 |---------|-----|--------|-----------|-----|-----------|---------|
 | View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 

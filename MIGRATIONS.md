@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-29
+last_updated: 2026-02-24
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -92,7 +92,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
-#### February 21–29, 2026
+#### February 21–30, 2026
+
+**`20260230000012_add_note_to_prospect_callbacks.sql`**
+- **Purpose**: Add optional note to prospect callbacks for Set Call back modal
+- **Changes**: Add `note TEXT` column to `public.prospect_callbacks`
+- **Impact**: Set Call back date and time modal has Note field; Follow Up displays note after callback date, e.g. `2/24/26, 9:26 PM (note-contents)`
+- **Category**: Prospects / Callbacks
 
 **`20260229000004_add_users_notes.sql`**
 - **Purpose**: Allow Masters, Assistants, and Devs to add/edit general notes on each user in People → Users
@@ -930,7 +936,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `add_customers_delete_rls.sql` - Masters can delete own customers
 
 **Dashboard Button Visibility**:
-- `20260228190000_create_user_dashboard_buttons.sql` (Feb 28, 2026) - User-configurable quick-action buttons (Job, Job Labor, Bid, Project, Part, Assembly); RLS for dev, master_technician, assistant
+- `20260228190000_create_user_dashboard_buttons.sql` (Feb 28, 2026) - User-configurable quick-action buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect); RLS for dev, master_technician, assistant
 
 **User Notes**:
 - `20260229000004_add_users_notes.sql` (Feb 29, 2026) - Add `notes` column to users; RLS for dev, master_technician, assistant to UPDATE; People page shows notes after email with edit icon

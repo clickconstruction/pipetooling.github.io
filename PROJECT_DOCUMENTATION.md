@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-22
+last_updated: 2026-02-24
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -1953,7 +1953,7 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
-  - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
+  - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "AR | $X,XXX", "Supply Houses: $X", "External Team: $X,XXX", "Internal Team: $X,XXX". Links navigate to Jobs Receivables, Materials Supply Houses, Materials External Team section, People Pay Cost matrix.
   - **User Role Display**: Shows current user's role
   - **How It Works** (Masters/Devs only): Explains system structure
@@ -2005,7 +2005,7 @@ user_id = auth.uid()
   - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
   - **Change Password**: Change your own password (requires current password verification)
 - **Features (Dev, Master, Assistant)**:
-  - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
+  - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
 - **Features (Masters and Devs)**:
   - **Adopt Assistants**: Checkbox list to adopt/unadopt assistants
     - Shows all assistants in the system

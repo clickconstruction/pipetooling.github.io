@@ -654,7 +654,7 @@ export default function Calendar() {
                 <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No upcoming items.</p>
               ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {upcomingItems.map((item, i) => (
+                {upcomingItems.map((item) => (
                   <li key={item.type === 'step' ? item.step!.id : item.type === 'bid' ? item.bid!.id : item.callback!.id} style={{ marginBottom: '0.5rem' }}>
                     {item.type === 'step' && item.step ? (
                       <Link

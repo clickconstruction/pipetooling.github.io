@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import NewCustomerForm, { type NewCustomerFormPayload, type NewCustomerInitialValues } from '../components/NewCustomerForm'
+import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
 
 type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert'
 
@@ -95,6 +95,7 @@ export default function Prospects() {
   const [commentInputRef, setCommentInputRef] = useState<HTMLTextAreaElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [scheduledCallback, setScheduledCallback] = useState<{ callback_date: string; note: string | null } | null>(null)
+  const [followUpTimerSeconds, setFollowUpTimerSeconds] = useState(0)
 
   // Edit form state
   const [editCompanyName, setEditCompanyName] = useState('')
@@ -253,22 +254,28 @@ export default function Prospects() {
       setConvertFirstInteractionDate('')
       return
     }
-    supabase
-      .from('prospect_comments')
-      .select('created_at')
-      .eq('prospect_id', convertProspectId)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('prospect_comments')
+          .select('created_at')
+          .eq('prospect_id', convertProspectId)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        if (cancelled) return
         if (data?.created_at) {
           const d = new Date(data.created_at)
           setConvertFirstInteractionDate(d.toISOString().slice(0, 10))
         } else {
           setConvertFirstInteractionDate('')
         }
-      })
-      .catch(() => setConvertFirstInteractionDate(''))
+      } catch {
+        if (!cancelled) setConvertFirstInteractionDate('')
+      }
+    })()
+    return () => { cancelled = true }
   }, [convertProspectId])
 
   // Load service types when Convert tab is active
@@ -278,7 +285,7 @@ export default function Prospects() {
       .from('service_types' as any)
       .select('id, name')
       .order('sequence_order', { ascending: true })
-      .then(({ data }) => setConvertServiceTypes((data as { id: string; name: string }[]) ?? []))
+      .then(({ data }) => setConvertServiceTypes((data as unknown as { id: string; name: string }[]) ?? []))
   }, [activeTab])
 
   // Pre-fill first contact person when prospect changes
@@ -333,6 +340,25 @@ export default function Prospects() {
   useEffect(() => {
     loadScheduledCallback()
   }, [loadScheduledCallback])
+
+  // Follow Up timer: counts up while on tab, resets when user leaves and comes back
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setFollowUpTimerSeconds(0)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'follow-up' || document.visibilityState !== 'visible') return
+    const interval = setInterval(() => {
+      setFollowUpTimerSeconds((s) => s + 1)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [activeTab])
 
   // Auto-resize comment textarea as text wraps
   useEffect(() => {
@@ -689,9 +715,10 @@ export default function Prospects() {
 
   return (
     <div style={{ padding: '1rem 1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Prospects</h1>
-        {canAccessFollowUp && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {canAccessFollowUp && (
           <button
             type="button"
             onClick={() => {
@@ -706,7 +733,8 @@ export default function Prospects() {
           >
             New Prospect
           </button>
-        )}
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
@@ -829,6 +857,20 @@ export default function Prospects() {
                       >
                         Next Prospect
                       </button>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0.5rem 1rem',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '0.875rem',
+                          color: '#6b7280',
+                          fontFamily: 'ui-monospace, monospace',
+                        }}
+                        title="Time on Follow Up (resets when you leave and return)"
+                      >
+                        {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
+                      </span>
                     </div>
                   </div>
                 )

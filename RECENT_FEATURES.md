@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-29
+last_updated: 2026-02-24
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.59 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.61)"
+  - name: "Latest Version (v2.62)"
     line: ~169
-    description: "User notes on People page, Add button styling"
+    description: "Prospects enhancements: New Prospect button, Convert tab, callbacks, timer, comments"
   - name: "v2.60"
     line: ~210
     description: "Dashboard button visibility, impersonation redirects, back-button fix"
@@ -89,7 +89,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.61)"
+  - "Latest features at top (v2.62)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -106,67 +106,104 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-2. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-3. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-4. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-5. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-6. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-7. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-8. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-9. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-10. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-11. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-12. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-13. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-14. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-15. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-16. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-17. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-18. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-19. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-20. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-21. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-22. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-23. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-24. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-25. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-26. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-26. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-27. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-28. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-29. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-30. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-31. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-32. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-33. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-34. [Latest Updates (v2.26)](#latest-updates-v226)
-35. [Latest Updates (v2.25)](#latest-updates-v225)
-36. [Latest Updates (v2.24)](#latest-updates-v224)
-37. [Latest Updates (v2.23)](#latest-updates-v223)
-38. [Latest Updates (v2.22)](#latest-updates-v222)
-39. [Latest Updates (v2.21)](#latest-updates-v221)
-40. [Latest Updates (v2.20)](#latest-updates-v220)
-41. [Latest Updates (v2.19)](#latest-updates-v219)
-42. [Latest Updates (v2.18)](#latest-updates-v218)
-43. [Latest Updates (v2.17)](#latest-updates-v217)
-44. [Latest Updates (v2.16)](#latest-updates-v216)
-45. [Latest Updates (v2.15)](#latest-updates-v215)
-46. [Latest Updates (v2.14)](#latest-updates-v214)
-47. [Latest Updates (v2.13)](#latest-updates-v213)
-48. [Latest Updates (v2.12)](#latest-updates-v212)
-49. [Latest Updates (v2.11)](#latest-updates-v211)
-50. [Latest Updates (v2.10)](#latest-updates-v210)
-51. [Latest Updates (v2.9)](#latest-updates-v29)
-52. [Latest Updates (v2.8)](#latest-updates-v28)
-53. [Latest Updates (v2.7)](#latest-updates-v27)
-54. [Latest Updates (v2.6)](#latest-updates-v26)
-55. [Workflow Features](#workflow-features)
-56. [Calendar Updates](#calendar-updates)
-57. [Access Control](#access-control)
-58. [Email Templates](#email-templates)
-59. [Financial Tracking](#financial-tracking)
-60. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+2. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+3. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+4. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+5. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+6. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+7. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+8. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+9. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+10. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+11. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+12. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+13. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+14. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+15. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+16. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+17. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+18. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+19. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+20. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+21. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+22. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+23. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+24. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+25. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+26. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+27. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+28. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+29. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+30. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+31. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+32. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+33. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+34. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+35. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+36. [Latest Updates (v2.26)](#latest-updates-v226)
+37. [Latest Updates (v2.25)](#latest-updates-v225)
+38. [Latest Updates (v2.24)](#latest-updates-v224)
+39. [Latest Updates (v2.23)](#latest-updates-v223)
+40. [Latest Updates (v2.22)](#latest-updates-v222)
+41. [Latest Updates (v2.21)](#latest-updates-v221)
+42. [Latest Updates (v2.20)](#latest-updates-v220)
+43. [Latest Updates (v2.19)](#latest-updates-v219)
+44. [Latest Updates (v2.18)](#latest-updates-v218)
+45. [Latest Updates (v2.17)](#latest-updates-v217)
+46. [Latest Updates (v2.16)](#latest-updates-v216)
+47. [Latest Updates (v2.15)](#latest-updates-v215)
+48. [Latest Updates (v2.14)](#latest-updates-v214)
+49. [Latest Updates (v2.13)](#latest-updates-v213)
+50. [Latest Updates (v2.12)](#latest-updates-v212)
+51. [Latest Updates (v2.11)](#latest-updates-v211)
+52. [Latest Updates (v2.10)](#latest-updates-v210)
+53. [Latest Updates (v2.9)](#latest-updates-v29)
+54. [Latest Updates (v2.8)](#latest-updates-v28)
+55. [Latest Updates (v2.7)](#latest-updates-v27)
+56. [Latest Updates (v2.6)](#latest-updates-v26)
+57. [Workflow Features](#workflow-features)
+58. [Calendar Updates](#calendar-updates)
+59. [Access Control](#access-control)
+60. [Email Templates](#email-templates)
+61. [Financial Tracking](#financial-tracking)
+62. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.62)
+
+### Prospects enhancements: New Prospect button, Convert tab, callbacks, timer, comments
+
+**Date**: 2026-02-24
+
+**Overview**:
+Prospects page improvements: New Prospect added to Dashboard buttons; modernized Convert tab; callback notes; Call back scheduled for display; Follow Up timer; comment author attribution; Edit Prospect delete; Prospect List "No longer a fit" minimized by default.
+
+**Dashboard buttons**:
+- **New Prospect**: Added to Settings → Dashboard buttons and Dashboard quick-action buttons; links to Prospects with New Prospect modal open
+- **Button list**: Job, Job Labor, Bid, Project, Part, Assembly, New Prospect
+
+**Prospects Convert tab**:
+- **Modernized UI**: Numbered sections (1. Customer details, 2. Contact persons, 3. Bids); card layout; improved empty state
+- **Address**: No longer pre-filled from prospect's Links to Website; left blank
+- **Date met**: Pre-filled from first interaction (earliest prospect_comment) when converting
+
+**Prospects Follow Up**:
+- **Call back scheduled for**: Displays above Last Contact when user has an upcoming callback; shows date/time and optional note, e.g. `2/24/26, 9:26 PM (discuss pricing)`
+- **Set Call back modal**: Added Note field for optional callback notes; stored in `prospect_callbacks.note`
+- **Timer**: Count-up timer (MM:SS) next to Next Prospect button; resets when user leaves browser tab and returns
+- **Comment authors**: Each comment shows who added it (name or email) next to the timestamp
+
+**Prospects Edit modal**:
+- **Delete**: Trash icon in header to delete prospect; confirmation required
+
+**Prospect List**:
+- **No longer a fit**: Section minimized (collapsed) by default
+
+**Files**: `src/pages/Prospects.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Settings.tsx`, `src/components/NewCustomerForm.tsx`, `src/index.css`
+
+**Migrations**: `20260230000012_add_note_to_prospect_callbacks.sql` (adds `note` column to prospect_callbacks)
 
 ---
 
