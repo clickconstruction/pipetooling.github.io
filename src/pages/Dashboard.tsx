@@ -1912,8 +1912,8 @@ export default function Dashboard() {
               detail send
             </button>
           </div>
-          <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
-            <label style={{ flex: '1 1 120px', minWidth: 120 }}>
+          <form className="sendTaskForm" onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
+            <label style={{ flex: '1 1 100%', minWidth: 0 }}>
               <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Task</span>
               <textarea
                 ref={sendTaskInputRef}
