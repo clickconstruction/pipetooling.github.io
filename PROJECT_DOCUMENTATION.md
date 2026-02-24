@@ -702,6 +702,7 @@ WHERE proname IN (
   - `job_number` (varchar(10), nullable)
   - `job_date` (date, nullable)
   - `labor_rate` (numeric(10,2), nullable)
+  - `distance_miles` (numeric(6,2), nullable) - round-trip miles for drive cost; editable inline in Sub Sheet Ledger
   - `created_at` (timestamptz)
 - **RLS**: Dev, master, assistant, estimator can read/insert/update/delete own jobs; dev can manage any; shared access via `master_shares` for SELECT
 
@@ -1932,7 +1933,7 @@ user_id = auth.uid()
 - **Features**:
   - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
   - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
-  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Labor rate, Total hrs, Total cost, Print for sub, Date); Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
+  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
   - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
 - **Data**: Receivables use `jobs_receivables`; Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.

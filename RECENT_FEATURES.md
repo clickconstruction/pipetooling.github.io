@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-24
+last_updated: 2026-02-23
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.59 → v2.4"
+version_range: "v2.63 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.62)"
+  - name: "Latest Version (v2.63)"
     line: ~169
+    description: "Jobs Labor Distance column with inline edit"
+  - name: "v2.62"
+    line: ~210
     description: "Prospects enhancements: New Prospect button, Convert tab, callbacks, timer, comments"
   - name: "v2.60"
     line: ~210
@@ -106,36 +109,37 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
-2. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-3. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-4. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-5. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-6. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-7. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-8. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-9. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-10. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-11. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-12. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-13. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-14. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-15. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-16. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-17. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-18. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-19. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-20. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-21. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-22. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-23. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-24. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-25. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-26. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-27. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-28. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-29. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-30. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+1. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+2. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+3. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+4. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+5. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+6. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+7. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+8. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+9. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+10. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+11. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+12. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+13. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+14. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+15. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+16. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+17. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+18. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+19. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+20. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+21. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+22. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+23. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+24. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+25. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+26. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+27. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+28. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+29. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+30. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+31. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
 31. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
 32. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
 33. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
@@ -168,6 +172,25 @@ when_to_read:
 60. [Email Templates](#email-templates)
 61. [Financial Tracking](#financial-tracking)
 62. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.63)
+
+### Jobs Labor Distance column with inline edit
+
+**Date**: 2026-02-23
+
+**Overview**:
+Sub Sheet Ledger table (Jobs → Labor tab) now shows a **Distance** column between Address and Labor rate. Each row displays the distance in miles (or "—" if empty) with an **Edit** button for inline editing.
+
+**Distance column**:
+- **Position**: Between Address and Labor rate
+- **Display**: Value as "X mi" or "—" when empty
+- **Inline edit**: Edit button opens number input; Enter or blur saves; Escape cancels
+- **Persistence**: Saves to `people_labor_jobs.distance_miles`; used by Drive cost calculation
+
+**Files**: `src/pages/Jobs.tsx`
 
 ---
 
