@@ -97,8 +97,6 @@ const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
-const JOB_FOLDERS_DRIVE_URL = 'https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing'
-
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()

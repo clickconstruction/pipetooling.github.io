@@ -193,6 +193,7 @@ export default function Dashboard() {
   const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
   const [sendTaskSaving, setSendTaskSaving] = useState(false)
   const [sendTaskError, setSendTaskError] = useState<string | null>(null)
+  const sendTaskInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [adoptedAssistants, setAdoptedAssistants] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -336,6 +337,14 @@ export default function Dashboard() {
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     return [...recent, ...rest]
   }, [sendTaskUsers, recentNotifyIds])
+
+  // Auto-resize Send task textarea as user types
+  useEffect(() => {
+    const el = sendTaskInputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.max(36, el.scrollHeight) + 'px'
+  }, [sendTaskTitle])
 
   useEffect(() => {
     if (isMaster && authUser?.id) {
@@ -1906,12 +1915,13 @@ export default function Dashboard() {
           <form onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
             <label style={{ flex: '1 1 120px', minWidth: 120 }}>
               <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Task</span>
-              <input
-                type="text"
+              <textarea
+                ref={sendTaskInputRef}
                 value={sendTaskTitle}
                 onChange={(e) => setSendTaskTitle(e.target.value)}
                 placeholder="Task"
-                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                rows={1}
+                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', minHeight: 36 }}
               />
             </label>
             <label style={{ flex: '0 1 140px', minWidth: 100 }}>
