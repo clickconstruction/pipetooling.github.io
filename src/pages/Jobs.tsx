@@ -2615,6 +2615,21 @@ export default function Jobs() {
           {/* #endregion */}
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={openNew}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              New Job
+            </button>
             <input
               type="text"
               placeholder="Search by HCP, job name, or address"
