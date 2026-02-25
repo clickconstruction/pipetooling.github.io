@@ -31,7 +31,7 @@ import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
-import { ErrorBoundary } from './components/errorboundary'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
