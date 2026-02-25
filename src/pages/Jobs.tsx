@@ -242,6 +242,8 @@ export default function Jobs() {
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
+  const jobNameInputRef = useRef<HTMLInputElement | null>(null)
+  const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
 
   async function loadJobs() {
     if (!authUser?.id) return
@@ -4280,6 +4282,7 @@ export default function Jobs() {
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input
+                    ref={jobNameInputRef}
                     type="text"
                     value={jobName}
                     onChange={(e) => setJobName(e.target.value)}
@@ -4289,11 +4292,14 @@ export default function Jobs() {
                   <button
                     type="button"
                     onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setJobName(text)
-                      } catch {
-                        /* clipboard not available or permission denied */
+                      jobNameInputRef.current?.focus()
+                      if (!document.execCommand('paste')) {
+                        try {
+                          const text = await navigator.clipboard.readText()
+                          setJobName(text)
+                        } catch {
+                          /* clipboard not available */
+                        }
                       }
                     }}
                     style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
@@ -4306,6 +4312,7 @@ export default function Jobs() {
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input
+                    ref={jobAddressInputRef}
                     type="text"
                     value={jobAddress}
                     onChange={(e) => setJobAddress(e.target.value)}
@@ -4315,11 +4322,14 @@ export default function Jobs() {
                   <button
                     type="button"
                     onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setJobAddress(text)
-                      } catch {
-                        /* clipboard not available or permission denied */
+                      jobAddressInputRef.current?.focus()
+                      if (!document.execCommand('paste')) {
+                        try {
+                          const text = await navigator.clipboard.readText()
+                          setJobAddress(text)
+                        } catch {
+                          /* clipboard not available */
+                        }
                       }
                     }}
                     style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
