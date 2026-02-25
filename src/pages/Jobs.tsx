@@ -2663,7 +2663,7 @@ export default function Jobs() {
               onChange={(e) => setStagesSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            {(authRole || myRole) === 'dev' && (
+            {(['dev', 'assistant'] as const).includes((authRole || myRole) as 'dev' | 'assistant') && (
               <button
                 type="button"
                 onClick={toggleStagesHamMode}

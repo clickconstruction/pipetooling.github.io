@@ -691,7 +691,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -5158,7 +5158,7 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -6640,6 +6640,20 @@ export default function Bids() {
           style={tabStyle(activeTab === 'change-order')}
         >
           Change Order
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('lien-release')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'lien-release')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'lien-release')}
+        >
+          Lien Release
         </button>
           </>
         )}
@@ -11890,6 +11904,13 @@ export default function Bids() {
               </div>
             )
           })()}
+        </div>
+      )}
+
+      {/* Lien Release Tab */}
+      {activeTab === 'lien-release' && (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+          Coming soon
         </div>
       )}
 
