@@ -108,6 +108,7 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [billingSortAsc, setBillingSortAsc] = useState(true) // true = lowest HCP first (asc)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
@@ -1636,6 +1637,18 @@ export default function Jobs() {
     if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) loadTallyParts()
   }, [activeTab, authUser?.id])
 
+  // Restore billing sort preference from localStorage (per user)
+  useEffect(() => {
+    if (authUser?.id && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(`jobs_billing_sort_asc_${authUser.id}`)
+        if (stored !== null) setBillingSortAsc(stored === 'true')
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [authUser?.id])
+
   async function loadDriveSettings() {
     if (!authUser?.id) return
     const { data: rows } = await supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile'])
@@ -1721,6 +1734,17 @@ export default function Jobs() {
       (j.job_address ?? '').toLowerCase().includes(q)
     )
   })
+
+  const sortedBillingJobs = useMemo(() => {
+    const arr = [...filteredJobs]
+    arr.sort((a, b) => {
+      const ha = (a.hcp_number ?? '').trim()
+      const hb = (b.hcp_number ?? '').trim()
+      const cmp = ha.localeCompare(hb, undefined, { numeric: true })
+      return billingSortAsc ? cmp : -cmp
+    })
+    return arr
+  }, [filteredJobs, billingSortAsc])
 
   const teamsSummaryData = useMemo(() => {
     const laborCostByName = new Map<string, number>()
@@ -3193,6 +3217,47 @@ export default function Jobs() {
                 fontSize: '0.875rem',
               }}
             />
+            <button
+              type="button"
+              onClick={() => {
+                setBillingSortAsc((prev) => {
+                  const next = !prev
+                  if (authUser?.id && typeof window !== 'undefined') {
+                    try {
+                      localStorage.setItem(`jobs_billing_sort_asc_${authUser.id}`, String(next))
+                    } catch {
+                      /* ignore */
+                    }
+                  }
+                  return next
+                })
+              }}
+              title={billingSortAsc ? 'Lowest HCP first (click to reverse)' : 'Highest HCP first (click to reverse)'}
+              aria-label={billingSortAsc ? 'Sort ascending' : 'Sort descending'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                padding: 0,
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: 'white',
+                cursor: 'pointer',
+                color: '#6b7280',
+              }}
+            >
+              {billingSortAsc ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden>
+                  <path d="M7 14l5-5 5 5H7z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={20} height={20} fill="currentColor" aria-hidden>
+                  <path d="M7 10l5 5 5-5H7z" />
+                </svg>
+              )}
+            </button>
           </div>
           <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginBottom: '1rem' }}>
             Assistants see jobs from their master and from other assistants adopted by the same master. If you don&apos;t see a colleague&apos;s jobs, the master must adopt both of you in Settings → Adopt Assistants.
@@ -3200,7 +3265,7 @@ export default function Jobs() {
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {loading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
-          ) : filteredJobs.length === 0 ? (
+          ) : sortedBillingJobs.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No HCP jobs yet. Click New Job to add one.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
@@ -3217,7 +3282,7 @@ export default function Jobs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredJobs.map((job) => (
+                  {sortedBillingJobs.map((job) => (
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {job.hcp_number || '—'}
