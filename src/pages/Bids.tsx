@@ -713,7 +713,7 @@ function buildChangeOrderText(
 
 function buildLienReleaseHtml(
   customerName: string,
-  customerAddress: string,
+  _customerAddress: string,
   projectName: string,
   projectAddress: string,
   form: LienReleaseFormData,
@@ -763,7 +763,7 @@ function buildLienReleaseHtml(
 
 function buildLienReleaseText(
   customerName: string,
-  customerAddress: string,
+  _customerAddress: string,
   projectName: string,
   projectAddress: string,
   form: LienReleaseFormData,
