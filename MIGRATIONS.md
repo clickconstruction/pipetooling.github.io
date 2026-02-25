@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-24
+last_updated: 2026-02-26
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -92,7 +92,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### February 2026
 
-#### February 21–30, 2026
+#### February 21–31, 2026
+
+**`20260231000000_add_bids_submitted_to.sql`**
+- **Purpose**: Add Submitted to (name, phone, email) field for bid submission tracking
+- **Changes**: Add `submitted_to TEXT` column to `public.bids`
+- **Impact**: Edit Bid and New Bid modals include "Submitted to (name, phone, email):" below Bid Date Sent; RFI tab pulls this value for "The bid was submitted to"
+- **Category**: Bids
 
 **`20260230000015_primaries_see_adopted_masters.sql`**
 - **Purpose**: Allow primaries to see masters who have adopted them in Send task Notify dropdown

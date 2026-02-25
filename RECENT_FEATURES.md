@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-25
+last_updated: 2026-02-26
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.64 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.65)"
+  - name: "Latest Version (v2.66)"
     line: ~179
+    description: "RFI tab, Bids submitted_to field, placeholder updates"
+  - name: "v2.65"
+    line: ~230
     description: "Job Bill Details Edit actions, Jobs/Dashboard button labels, Edit Parts, Stages default"
   - name: "v2.62"
     line: ~210
@@ -109,8 +112,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-2. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+1. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+2. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+3. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
 3. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
 4. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
 4. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
@@ -174,6 +178,33 @@ when_to_read:
 62. [Email Templates](#email-templates)
 63. [Financial Tracking](#financial-tracking)
 64. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.66)
+
+**Date**: 2026-02-26
+
+### Bids – RFI Tab
+
+- **RFI tab**: Full RFI document generation (mirrors Cover Letter workflow). Search/select bid, fill form, preview combined document. Copy to clipboard or Open in Google Docs (same templates by service type).
+- **Read-only from bid**: Bid was submitted date, The bid was submitted to, Company Information (Click Plumbing and Electrical).
+- **Editable fields**: Project Lead Contact, Project Lead Contact Phone/Email, Response request date (1 week default), Detailed Description (with checklist), Impact Statement (with checklist).
+- **Document format**: Customer/Project blocks, Bid was submitted / The bid was submitted to / Response requested by, Question/Issue, Impact, From block at end.
+- **Change Order tab**: Placeholder "Coming soon".
+
+### Bids – Submitted to field
+
+- **New field**: "Submitted to (name, phone, email):" in Edit Bid and New Bid modals, below Bid Date Sent.
+- **Database**: Migration `20260231000000_add_bids_submitted_to.sql` adds `submitted_to TEXT` to `bids` table.
+- **RFI integration**: RFI "The bid was submitted to" pulls from `bid.submitted_to` (read-only; edit bid to change).
+
+### Bids – RFI placeholders
+
+- Project Lead Contact placeholder: `e.g. yourname@clickplumbing.com`
+- Project Lead Contact Phone/Email placeholder: `e.g. 512 360 0599`
+
+**Files**: `src/pages/Bids.tsx`, `src/types/database.ts`, `supabase/migrations/20260231000000_add_bids_submitted_to.sql`, `BIDS_SYSTEM.md`, `MIGRATIONS.md`
 
 ---
 

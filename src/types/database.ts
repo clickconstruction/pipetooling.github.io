@@ -185,6 +185,7 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          submitted_to: string | null
           updated_at: string | null
         }
         Insert: {
@@ -219,6 +220,7 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          submitted_to?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -253,6 +255,7 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          submitted_to?: string | null
           updated_at?: string | null
         }
         Relationships: [

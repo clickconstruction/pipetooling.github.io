@@ -35,6 +35,47 @@ type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryIte
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
+type RfiFormData = {
+  bidSubmittedDate: string
+  submittedTo: string
+  companyName: string
+  contactPerson: string
+  phoneEmail: string
+  responseRequestDate: string
+  detailedDescription: string
+  impactStatement: string
+  checklistExactLocation?: boolean
+  checklistWhatIssue?: boolean
+  checklistReferenceDocs?: boolean
+  checklistWhyUnclear?: boolean
+  checklistProposedSolution?: boolean
+  checklistImpactStatement?: boolean
+}
+
+type ChangeOrderFormData = {
+  bidSubmittedDate: string
+  submittedTo: string
+  companyName: string
+  contactPerson: string
+  phoneEmail: string
+  responseRequestDate: string
+  detailedDescriptionOfChange: string
+  reasonForChange: string
+  impactOnCost: string
+  impactOnSchedule: string
+  checklistDetailedDesc?: boolean
+  checklistExactWork?: boolean
+  checklistReferences?: boolean
+  checklistSupportingDetails?: boolean
+  checklistReasonForChange?: boolean
+  checklistCostBreakdown?: boolean
+  checklistNetChange?: boolean
+  checklistUpdatedTotal?: boolean
+  checklistScheduleDuration?: boolean
+  checklistRevisedDate?: boolean
+  checklistScheduleJustification?: boolean
+}
+
 type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
 type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number; isSaved: boolean }
 type DraftPO = { id: string; name: string }
@@ -508,6 +549,138 @@ function buildCoverLetterText(
   return lines.join('\n')
 }
 
+function buildRfiHtml(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: RfiFormData
+): string {
+  const br = '<br/>'
+  const pStyle = 'margin: 0 0 0.5em 0'
+  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
+  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
+  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr
+  const paragraphs: string[] = [
+    customerBlock + br + br + projectBlock,
+    '',
+    'Bid was submitted: ' + escapeHtml(form.bidSubmittedDate || '—') + br + 'The bid was submitted to ' + escapeHtml(form.submittedTo || '—'),
+    '',
+    'Response requested by ' + escapeHtml(form.responseRequestDate || '—'),
+    '',
+    '<strong>Question/Issue</strong>',
+    escapeHtml(form.detailedDescription || '').replace(/\n/g, br) || '—',
+    '',
+    '<strong>Impact</strong>',
+    escapeHtml(form.impactStatement || '').replace(/\n/g, br) || '—',
+    '',
+    'From ' + escapeHtml(form.companyName || '—') + br + escapeHtml(form.contactPerson || '—') + br + escapeHtml(form.phoneEmail || '—'),
+  ]
+  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
+}
+
+function buildRfiText(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: RfiFormData
+): string {
+  const lines: string[] = [
+    customerName,
+    ...addressLines(customerAddress),
+    '',
+    projectName,
+    ...addressLines(projectAddress),
+    '',
+    'Bid was submitted: ' + (form.bidSubmittedDate || '—') + '\nThe bid was submitted to ' + (form.submittedTo || '—'),
+    '',
+    'Response requested by ' + (form.responseRequestDate || '—'),
+    '',
+    'Question/Issue',
+    form.detailedDescription || '—',
+    '',
+    'Impact',
+    form.impactStatement || '—',
+    '',
+    'From ' + (form.companyName || '—') + '\n' + (form.contactPerson || '—') + '\n' + (form.phoneEmail || '—'),
+  ]
+  return lines.join('\n')
+}
+
+function buildChangeOrderHtml(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: ChangeOrderFormData
+): string {
+  const br = '<br/>'
+  const pStyle = 'margin: 0 0 0.5em 0'
+  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
+  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
+  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr
+  const paragraphs: string[] = [
+    customerBlock + br + br + projectBlock,
+    '',
+    'Bid was submitted: ' + escapeHtml(form.bidSubmittedDate || '—') + br + 'The bid was submitted to ' + escapeHtml(form.submittedTo || '—'),
+    '',
+    'Response requested by ' + escapeHtml(form.responseRequestDate || '—'),
+    '',
+    '<strong>Detailed Description of the Change</strong>',
+    escapeHtml(form.detailedDescriptionOfChange || '').replace(/\n/g, br) || '—',
+    '',
+    '<strong>Reason for the Change</strong>',
+    escapeHtml(form.reasonForChange || '').replace(/\n/g, br) || '—',
+    '',
+    '<strong>Impact on Cost (Contract Sum Adjustment)</strong>',
+    escapeHtml(form.impactOnCost || '').replace(/\n/g, br) || '—',
+    '',
+    '<strong>Impact on Schedule (Contract Time Adjustment)</strong>',
+    escapeHtml(form.impactOnSchedule || '').replace(/\n/g, br) || '—',
+    '',
+    'From ' + escapeHtml(form.companyName || '—') + br + escapeHtml(form.contactPerson || '—') + br + escapeHtml(form.phoneEmail || '—'),
+  ]
+  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
+}
+
+function buildChangeOrderText(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: ChangeOrderFormData
+): string {
+  const lines: string[] = [
+    customerName,
+    ...addressLines(customerAddress),
+    '',
+    projectName,
+    ...addressLines(projectAddress),
+    '',
+    'Bid was submitted: ' + (form.bidSubmittedDate || '—') + '\nThe bid was submitted to ' + (form.submittedTo || '—'),
+    '',
+    'Response requested by ' + (form.responseRequestDate || '—'),
+    '',
+    'Detailed Description of the Change',
+    form.detailedDescriptionOfChange || '—',
+    '',
+    'Reason for the Change',
+    form.reasonForChange || '—',
+    '',
+    'Impact on Cost (Contract Sum Adjustment)',
+    form.impactOnCost || '—',
+    '',
+    'Impact on Schedule (Contract Time Adjustment)',
+    form.impactOnSchedule || '—',
+    '',
+    'From ' + (form.companyName || '—') + '\n' + (form.contactPerson || '—') + '\n' + (form.phoneEmail || '—'),
+  ]
+  return lines.join('\n')
+}
+
 export default function Bids() {
   const { user: authUser } = useAuth()
   const newCustomerModal = useNewCustomerModal()
@@ -518,7 +691,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -633,6 +806,7 @@ export default function Bids() {
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
+  const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
   const [lossReason, setLossReason] = useState('')
   const [bidValue, setBidValue] = useState('')
@@ -654,6 +828,18 @@ export default function Bids() {
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
+
+  // RFI tab
+  const [selectedBidForRfi, setSelectedBidForRfi] = useState<BidWithBuilder | null>(null)
+  const [rfiSearchQuery, setRfiSearchQuery] = useState('')
+  const [rfiFormByBid, setRfiFormByBid] = useState<Record<string, RfiFormData>>({})
+  const [rfiCopySuccess, setRfiCopySuccess] = useState(false)
+
+  // Change Order tab
+  const [selectedBidForChangeOrder, setSelectedBidForChangeOrder] = useState<BidWithBuilder | null>(null)
+  const [changeOrderSearchQuery, setChangeOrderSearchQuery] = useState('')
+  const [changeOrderFormByBid, setChangeOrderFormByBid] = useState<Record<string, ChangeOrderFormData>>({})
+  const [changeOrderCopySuccess, setChangeOrderCopySuccess] = useState(false)
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const contactTableRef = useRef<HTMLDivElement | null>(null)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
@@ -869,13 +1055,15 @@ export default function Bids() {
   const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
   const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
 
-  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, and Submission so selection stays in sync across tabs. */
+  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, Submission, RFI, and Change Order so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
     setSelectedBidForCounts(bid)
     setSelectedBidForTakeoff(bid)
     setSelectedBidForCostEstimate(bid)
     setSelectedBidForPricing(bid)
     setSelectedBidForSubmission(bid)
+    setSelectedBidForRfi(bid)
+    setSelectedBidForChangeOrder(bid)
   }
 
   function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
@@ -4970,7 +5158,7 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -5015,6 +5203,21 @@ export default function Bids() {
         }, 150)
       } else if (serviceTypes.length > 0) {
         // Bid not in current list - may be different service type; fetch and switch
+        supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
+          const row = data as { service_type_id: string } | null
+          if (row && row.service_type_id !== selectedServiceTypeId) {
+            setSelectedServiceTypeId(row.service_type_id)
+          }
+        })
+      }
+      return
+    }
+    if (bidId && (tab === 'rfi' || tab === 'change-order')) {
+      const bid = bids.find((b) => b.id === bidId)
+      if (bid) {
+        setSharedBid(bid)
+        setActiveTab(tab)
+      } else if (serviceTypes.length > 0) {
         supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
           const row = data as { service_type_id: string } | null
           if (row && row.service_type_id !== selectedServiceTypeId) {
@@ -5666,6 +5869,7 @@ export default function Bids() {
     setBidDueDate('')
     setEstimatedJobStartDate('')
     setBidDateSent('')
+    setSubmittedTo('')
     setOutcome('')
     setBidValue('')
     setAgreedValue('')
@@ -5704,6 +5908,7 @@ export default function Bids() {
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
+    setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
     setOutcome((bid.outcome ?? '') as OutcomeOption)
     setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
     setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
@@ -5758,6 +5963,7 @@ export default function Bids() {
       bid_due_date: bidDueDate || null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
+      submitted_to: submittedTo.trim() || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
@@ -5823,6 +6029,7 @@ export default function Bids() {
       bid_due_date: bidDueDate || null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
+      submitted_to: submittedTo.trim() || null,
       outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
       loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
       bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
@@ -6404,6 +6611,35 @@ export default function Bids() {
           style={tabStyle(activeTab === 'submission-followup')}
         >
           Submission & Followup
+        </button>
+        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('rfi')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'rfi')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'rfi')}
+        >
+          RFI
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('change-order')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'change-order')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'change-order')}
+        >
+          Change Order
         </button>
           </>
         )}
@@ -11109,6 +11345,554 @@ export default function Bids() {
         </div>
       )}
 
+      {/* RFI Tab */}
+      {activeTab === 'rfi' && (
+        <div>
+          {!selectedBidForRfi && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={rfiSearchQuery}
+              onChange={(e) => setRfiSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {!selectedBidForRfi ? (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bids
+                    .filter((b) => {
+                      const q = rfiSearchQuery.toLowerCase()
+                      if (!q) return true
+                      const name = bidDisplayName(b).toLowerCase()
+                      const cust = (b.customers?.name ?? '').toLowerCase()
+                      const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                      return name.includes(q) || cust.includes(q) || gc.includes(q)
+                    })
+                    .map((bid) => (
+                      <tr
+                        key={bid.id}
+                        onClick={() => setSharedBid(bid)}
+                        style={{
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #e5e7eb',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                      </tr>
+                    ))}
+                  {bids.filter((b) => {
+                    const q = rfiSearchQuery.toLowerCase()
+                    if (!q) return true
+                    const name = bidDisplayName(b).toLowerCase()
+                    const cust = (b.customers?.name ?? '').toLowerCase()
+                    const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                    return name.includes(q) || cust.includes(q) || gc.includes(q)
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                        {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (() => {
+            const bid = selectedBidForRfi
+            const customerName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+            const customerAddress = bid.customers?.address ?? bid.bids_gc_builders?.address ?? '—'
+            const projectNameVal = bid.project_name ?? '—'
+            const projectAddressVal = bid.address ?? '—'
+            const defaultResponseDate = (() => {
+              const d = new Date()
+              d.setDate(d.getDate() + 7)
+              return d.toISOString().slice(0, 10)
+            })()
+            const getRfiForm = (): RfiFormData => {
+              const existing = rfiFormByBid[bid.id]
+              if (existing) return existing
+              const contactName = (authUser?.user_metadata as { full_name?: string } | undefined)?.full_name ?? authUser?.email ?? ''
+              return {
+                bidSubmittedDate: '', // Always derived from bid.bid_date_sent when building
+                submittedTo: '', // Always derived from bid.submitted_to when building
+                companyName: '', // Always "Click Plumbing and Electrical" when building (not editable)
+                contactPerson: contactName,
+                phoneEmail: '',
+                responseRequestDate: defaultResponseDate,
+                detailedDescription: '',
+                impactStatement: '',
+                checklistExactLocation: false,
+                checklistWhatIssue: false,
+                checklistReferenceDocs: false,
+                checklistWhyUnclear: false,
+                checklistProposedSolution: false,
+                checklistImpactStatement: false,
+              }
+            }
+            const form = getRfiForm()
+            const updateRfiForm = (updates: Partial<RfiFormData>) => {
+              setRfiFormByBid((prev) => {
+                const current = prev[bid.id] ?? form
+                return {
+                  ...prev,
+                  [bid.id]: { ...current, ...updates },
+                }
+              })
+            }
+            const bidSubmittedDateFromBid = bid.bid_date_sent ? (bid.bid_date_sent as string).slice(0, 10) : ''
+            const submittedToFromBid = (bid as { submitted_to?: string | null }).submitted_to ?? ''
+            const formWithBidDate = { ...form, bidSubmittedDate: bidSubmittedDateFromBid, companyName: 'Click Plumbing and Electrical', submittedTo: submittedToFromBid }
+            const combinedHtml = buildRfiHtml(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidDate)
+            const combinedText = buildRfiText(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidDate)
+            const copyToClipboard = () => {
+              if (navigator.clipboard && navigator.clipboard.write) {
+                const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })
+                const textBlob = new Blob([combinedText], { type: 'text/plain' })
+                const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+                navigator.clipboard.write([item]).then(
+                  () => {
+                    setRfiCopySuccess(true)
+                    setTimeout(() => setRfiCopySuccess(false), 2000)
+                  },
+                  () => {
+                    navigator.clipboard.writeText(combinedText).then(() => {
+                      setRfiCopySuccess(true)
+                      setTimeout(() => setRfiCopySuccess(false), 2000)
+                    })
+                  }
+                )
+              } else {
+                navigator.clipboard.writeText(combinedText).then(() => {
+                  setRfiCopySuccess(true)
+                  setTimeout(() => setRfiCopySuccess(false), 2000)
+                })
+              }
+            }
+            const serviceTypeName = bid.service_type?.name ?? 'Plumbing'
+            const now = new Date()
+            const yy = String(now.getFullYear()).slice(-2)
+            const mm = String(now.getMonth() + 1).padStart(2, '0')
+            const dd = String(now.getDate()).padStart(2, '0')
+            const datePart = `${yy}${mm}${dd}`
+            const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
+            const templateCopyTarget = `ClickRFI_${datePart}_${sanitizedProjectName}`
+            let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8' // Default: Plumbing
+            if (serviceTypeName === 'Electrical') {
+              googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
+            } else if (serviceTypeName === 'HVAC') {
+              googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
+            }
+            const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
+            return (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => openEditBid(bid)}
+                      title="Edit bid"
+                      style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}
+                    >
+                      Edit bid
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBidForRfi(null)}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
+                  <div>{customerName}</div>
+                  {addressLines(customerAddress).map((line, i) => (
+                    <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                  ))}
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
+                  <div>{projectNameVal}</div>
+                  {addressLines(projectAddressVal).map((line, i) => (
+                    <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                      Bid was submitted: {formatDateYYMMDD(bid.bid_date_sent)}
+                      {bid.bid_date_sent && (
+                        <span style={{ marginLeft: '0.25rem', color: '#6b7280' }}>"{(bid.bid_date_sent as string).slice(0, 10)}"</span>
+                      )}
+                    </span>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>The bid was submitted to</label>
+                      <span style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.875rem', color: '#374151' }}>
+                        {(bid as { submitted_to?: string | null }).submitted_to || '—'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Edit bid to change</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Company Information: Click Plumbing and Electrical</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact</label>
+                      <input
+                        type="text"
+                        value={form.contactPerson}
+                        onChange={(e) => updateRfiForm({ contactPerson: e.target.value })}
+                        placeholder="e.g. yourname@clickplumbing.com"
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact Phone/Email</label>
+                      <input
+                        type="text"
+                        value={form.phoneEmail}
+                        onChange={(e) => updateRfiForm({ phoneEmail: e.target.value })}
+                        placeholder="e.g. 512 360 0599"
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Response request date (1 week by default)</label>
+                      <input
+                        type="date"
+                        value={form.responseRequestDate}
+                        onChange={(e) => updateRfiForm({ responseRequestDate: e.target.value })}
+                        style={{ flex: 1, maxWidth: 180, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Detailed Description of the Question/Issue</label>
+                    <textarea
+                      value={form.detailedDescription}
+                      onChange={(e) => updateRfiForm({ detailedDescription: e.target.value })}
+                      placeholder="Be specific and concise. Include: Exact location (e.g. 2nd floor mechanical room, grid line B-4 to C-5); What the issue is; Reference contract documents; Why it's unclear/conflicting/missing; Your proposed solution or options (optional)."
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistExactLocation ?? false} onChange={(e) => updateRfiForm({ checklistExactLocation: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>Exact location (e.g., &quot;2nd floor mechanical room, grid line B-4 to C-5&quot;)</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistWhatIssue ?? false} onChange={(e) => updateRfiForm({ checklistWhatIssue: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>What the issue is (e.g., &quot;The plumbing drawings show a 4&quot; sanitary drain routing through structural beam at elevation 12&apos;-6&quot;, but beam depth conflicts with required slope and clearance.&quot;)</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistReferenceDocs ?? false} onChange={(e) => updateRfiForm({ checklistReferenceDocs: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>Reference contract documents (e.g., &quot;See Sheet P-102, detail 5/ plumbing riser diagram; Spec Section 22 05 16 – Expansion Fittings; Structural drawing S-301&quot;)</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistWhyUnclear ?? false} onChange={(e) => updateRfiForm({ checklistWhyUnclear: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>Why it&apos;s unclear/conflicting/missing (e.g., &quot;Drawing shows 1/4&quot; per foot slope, but vertical clearance is insufficient per IPC code requirements for cleanouts.&quot;)</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistProposedSolution ?? false} onChange={(e) => updateRfiForm({ checklistProposedSolution: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>Your proposed solution or options (optional but helpful—e.g., &quot;Can we reroute via alternative path shown in red markup?&quot;)</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Impact Statement</label>
+                    <textarea
+                      value={form.impactStatement}
+                      onChange={(e) => updateRfiForm({ impactStatement: e.target.value })}
+                      placeholder="Note any potential delay, cost implication, or safety concern if not resolved quickly. Keep factual."
+                      rows={3}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={form.checklistImpactStatement ?? false} onChange={(e) => updateRfiForm({ checklistImpactStatement: e.target.checked })} style={{ marginTop: 2 }} />
+                        <span>Note any potential delay, cost implication, or safety concern if not resolved quickly (e.g., &quot;This issue is holding rough-in on floors 2–4; potential 5-day delay if not clarified by [date]&quot;). Avoid sounding like you&apos;re demanding a change—keep it factual.</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
+                  <div
+                    key={`combined-preview-rfi-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescription}-${form.impactStatement}`}
+                    style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                    dangerouslySetInnerHTML={{ __html: combinedHtml }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={copyToClipboard}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      {rfiCopySuccess ? 'Copied!' : 'Copy to clipboard'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        copyToClipboard()
+                        window.open(googleDocsCopyUrl, templateCopyTarget)
+                      }}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
+                    >
+                      Open in Google Docs
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
+      {/* Change Order Tab */}
+      {activeTab === 'change-order' && (
+        <div>
+          {!selectedBidForChangeOrder && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={changeOrderSearchQuery}
+              onChange={(e) => setChangeOrderSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {!selectedBidForChangeOrder ? (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bids
+                    .filter((b) => {
+                      const q = changeOrderSearchQuery.toLowerCase()
+                      if (!q) return true
+                      const name = bidDisplayName(b).toLowerCase()
+                      const cust = (b.customers?.name ?? '').toLowerCase()
+                      const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                      return name.includes(q) || cust.includes(q) || gc.includes(q)
+                    })
+                    .map((bid) => (
+                      <tr
+                        key={bid.id}
+                        onClick={() => setSharedBid(bid)}
+                        style={{ cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                      </tr>
+                    ))}
+                  {bids.filter((b) => {
+                    const q = changeOrderSearchQuery.toLowerCase()
+                    if (!q) return true
+                    const name = bidDisplayName(b).toLowerCase()
+                    const cust = (b.customers?.name ?? '').toLowerCase()
+                    const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                    return name.includes(q) || cust.includes(q) || gc.includes(q)
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                        {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (() => {
+            const bid = selectedBidForChangeOrder
+            const customerName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+            const customerAddress = bid.customers?.address ?? bid.bids_gc_builders?.address ?? '—'
+            const projectNameVal = bid.project_name ?? '—'
+            const projectAddressVal = bid.address ?? '—'
+            const defaultResponseDate = (() => {
+              const d = new Date()
+              d.setDate(d.getDate() + 7)
+              return d.toISOString().slice(0, 10)
+            })()
+            const getChangeOrderForm = (): ChangeOrderFormData => {
+              const existing = changeOrderFormByBid[bid.id]
+              if (existing) return existing
+              const contactName = (authUser?.user_metadata as { full_name?: string } | undefined)?.full_name ?? authUser?.email ?? ''
+              return {
+                bidSubmittedDate: '',
+                submittedTo: '',
+                companyName: '',
+                contactPerson: contactName,
+                phoneEmail: '',
+                responseRequestDate: defaultResponseDate,
+                detailedDescriptionOfChange: '',
+                reasonForChange: '',
+                impactOnCost: '',
+                impactOnSchedule: '',
+                checklistDetailedDesc: false,
+                checklistExactWork: false,
+                checklistReferences: false,
+                checklistSupportingDetails: false,
+                checklistReasonForChange: false,
+                checklistCostBreakdown: false,
+                checklistNetChange: false,
+                checklistUpdatedTotal: false,
+                checklistScheduleDuration: false,
+                checklistRevisedDate: false,
+                checklistScheduleJustification: false,
+              }
+            }
+            const form = getChangeOrderForm()
+            const updateChangeOrderForm = (updates: Partial<ChangeOrderFormData>) => {
+              setChangeOrderFormByBid((prev) => {
+                const current = prev[bid.id] ?? form
+                return { ...prev, [bid.id]: { ...current, ...updates } }
+              })
+            }
+            const bidSubmittedDateFromBid = bid.bid_date_sent ? (bid.bid_date_sent as string).slice(0, 10) : ''
+            const submittedToFromBid = (bid as { submitted_to?: string | null }).submitted_to ?? ''
+            const formWithBidData = { ...form, bidSubmittedDate: bidSubmittedDateFromBid, companyName: 'Click Plumbing and Electrical', submittedTo: submittedToFromBid }
+            const combinedHtml = buildChangeOrderHtml(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidData)
+            const combinedText = buildChangeOrderText(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidData)
+            const copyToClipboard = () => {
+              if (navigator.clipboard?.write) {
+                const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })
+                const textBlob = new Blob([combinedText], { type: 'text/plain' })
+                const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+                navigator.clipboard.write([item]).then(
+                  () => { setChangeOrderCopySuccess(true); setTimeout(() => setChangeOrderCopySuccess(false), 2000) },
+                  () => { navigator.clipboard.writeText(combinedText).then(() => { setChangeOrderCopySuccess(true); setTimeout(() => setChangeOrderCopySuccess(false), 2000) }) }
+                )
+              } else {
+                navigator.clipboard.writeText(combinedText).then(() => { setChangeOrderCopySuccess(true); setTimeout(() => setChangeOrderCopySuccess(false), 2000) })
+              }
+            }
+            const serviceTypeName = bid.service_type?.name ?? 'Plumbing'
+            const now = new Date()
+            const yy = String(now.getFullYear()).slice(-2)
+            const mm = String(now.getMonth() + 1).padStart(2, '0')
+            const dd = String(now.getDate()).padStart(2, '0')
+            const datePart = `${yy}${mm}${dd}`
+            const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
+            const templateCopyTarget = `ClickChangeOrder_${datePart}_${sanitizedProjectName}`
+            let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
+            if (serviceTypeName === 'Electrical') googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
+            else if (serviceTypeName === 'HVAC') googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
+            const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
+            return (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" onClick={() => openEditBid(bid)} title="Edit bid" style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}>Edit bid</button>
+                    <button type="button" onClick={() => setSharedBid(null)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
+                  <div>{customerName}</div>
+                  {addressLines(customerAddress).map((line, i) => <div key={i} style={{ color: '#6b7280' }}>{line}</div>)}
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
+                  <div>{projectNameVal}</div>
+                  {addressLines(projectAddressVal).map((line, i) => <div key={i} style={{ color: '#6b7280' }}>{line}</div>)}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', color: '#374151' }}>Bid was submitted: {formatDateYYMMDD(bid.bid_date_sent)}{bid.bid_date_sent && <span style={{ marginLeft: '0.25rem', color: '#6b7280' }}>{'"' + ((bid.bid_date_sent as string).slice(0, 10)) + '"'}</span>}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>The bid was submitted to</label>
+                    <span style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.875rem', color: '#374151' }}>{(bid as { submitted_to?: string | null }).submitted_to || '—'}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Edit bid to change</span>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Company Information: Click Plumbing and Electrical</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact</label>
+                      <input type="text" value={form.contactPerson} onChange={(e) => updateChangeOrderForm({ contactPerson: e.target.value })} placeholder="e.g. yourname@clickplumbing.com" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact Phone/Email</label>
+                      <input type="text" value={form.phoneEmail} onChange={(e) => updateChangeOrderForm({ phoneEmail: e.target.value })} placeholder="e.g. 512 360 0599" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Response request date (1 week by default)</label>
+                    <input type="date" value={form.responseRequestDate} onChange={(e) => updateChangeOrderForm({ responseRequestDate: e.target.value })} style={{ flex: 1, maxWidth: 180, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Detailed Description of the Change</label>
+                    <textarea value={form.detailedDescriptionOfChange} onChange={(e) => updateChangeOrderForm({ detailedDescriptionOfChange: e.target.value })} rows={6} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistDetailedDesc ?? false} onChange={(e) => updateChangeOrderForm({ checklistDetailedDesc: e.target.checked })} style={{ marginTop: 2 }} /><span>A clear, specific explanation of what is being added, deleted, or modified</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistExactWork ?? false} onChange={(e) => updateChangeOrderForm({ checklistExactWork: e.target.checked })} style={{ marginTop: 2 }} /><span>The exact work involved (e.g., &quot;Replace standard drywall with fire-rated drywall in corridor walls&quot;)</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistReferences ?? false} onChange={(e) => updateChangeOrderForm({ checklistReferences: e.target.checked })} style={{ marginTop: 2 }} /><span>References to relevant drawings, specifications, or sections of the original contract</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistSupportingDetails ?? false} onChange={(e) => updateChangeOrderForm({ checklistSupportingDetails: e.target.checked })} style={{ marginTop: 2 }} /><span>Any supporting details like photos, sketches, or revised plans</span></label>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Reason for the Change</label>
+                    <textarea value={form.reasonForChange} onChange={(e) => updateChangeOrderForm({ reasonForChange: e.target.value })} rows={3} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistReasonForChange ?? false} onChange={(e) => updateChangeOrderForm({ checklistReasonForChange: e.target.checked })} style={{ marginTop: 2 }} /><span>Why the change is needed (e.g., unforeseen site conditions, owner-requested upgrade, design error correction, code compliance update, material substitution, or weather delay impact)</span></label>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Impact on Cost (Contract Sum Adjustment)</label>
+                    <textarea value={form.impactOnCost} onChange={(e) => updateChangeOrderForm({ impactOnCost: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistCostBreakdown ?? false} onChange={(e) => updateChangeOrderForm({ checklistCostBreakdown: e.target.checked })} style={{ marginTop: 2 }} /><span>Breakdown of costs (labor, materials, equipment, subcontractors, overhead, profit, taxes, insurance, bonds, etc.)</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistNetChange ?? false} onChange={(e) => updateChangeOrderForm({ checklistNetChange: e.target.checked })} style={{ marginTop: 2 }} /><span>Net change amount (increase, decrease, or no change)</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistUpdatedTotal ?? false} onChange={(e) => updateChangeOrderForm({ checklistUpdatedTotal: e.target.checked })} style={{ marginTop: 2 }} /><span>Updated total contract price after the change</span></label>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Impact on Schedule (Contract Time Adjustment)</label>
+                    <textarea value={form.impactOnSchedule} onChange={(e) => updateChangeOrderForm({ impactOnSchedule: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                    <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistScheduleDuration ?? false} onChange={(e) => updateChangeOrderForm({ checklistScheduleDuration: e.target.checked })} style={{ marginTop: 2 }} /><span>Number of additional (or reduced) days</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistRevisedDate ?? false} onChange={(e) => updateChangeOrderForm({ checklistRevisedDate: e.target.checked })} style={{ marginTop: 2 }} /><span>Revised substantial completion date or milestones</span></label>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistScheduleJustification ?? false} onChange={(e) => updateChangeOrderForm({ checklistScheduleJustification: e.target.checked })} style={{ marginTop: 2 }} /><span>Justification for the time impact (often supported by schedule analysis)</span></label>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
+                  <div key={`combined-preview-co-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescriptionOfChange}-${form.reasonForChange}-${form.impactOnCost}-${form.impactOnSchedule}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{changeOrderCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
+                    <button type="button" onClick={() => { copyToClipboard(); window.open(googleDocsCopyUrl, templateCopyTarget) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+        </div>
+      )}
+
       {/* New/Edit Bid Modal */}
       {bidFormOpen && (
         <div className="bid-form-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
@@ -11455,6 +12239,10 @@ export default function Bids() {
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
                   <input type="date" value={bidDateSent} onChange={(e) => setBidDateSent(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submitted to (name, phone, email):</label>
+                <input type="text" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} placeholder="e.g. Architect name, 555-123-4567, architect@example.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>

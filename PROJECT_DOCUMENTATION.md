@@ -1073,6 +1073,7 @@ uuid3           | Supply House C    | 0
   - `gc_contact_email` (text, nullable) - Project contact email for this bid
   - `bid_due_date` (date, nullable)
   - `bid_date_sent` (date, nullable)
+  - `submitted_to` (text, nullable) - Submitted to: name, phone, email (architect/engineer or via GC); used in RFI
   - `outcome` (text, nullable) - `'won' | 'lost' | 'started_or_complete'`
   - `loss_reason` (text, nullable) - Why bid was lost (when outcome is 'lost')
   - `bid_value` (numeric(14, 2), nullable)
@@ -1096,7 +1097,7 @@ uuid3           | Supply House C    | 0
   - Legacy `gc_builder_id` retained for backward compatibility
   - Clicking GC/Builder name opens modal with customer details and all bid statuses
   - "Save and start Counts" button in New Bid modal
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)

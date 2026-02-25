@@ -5,12 +5,12 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-13
+last_updated: 2026-02-26
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
 system_components:
-  - "6 Tabs: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission"
+  - "9 Tabs: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order"
   - "3 Book Systems: Takeoff Book, Labor Book, Price Book"
   - "Integration with Materials (PO creation)"
 
@@ -47,6 +47,10 @@ key_sections:
     line: ~732
     anchor: "#submission--followup-tab"
     description: "Track bid outcomes and follow-ups"
+  - name: "RFI Tab"
+    line: ~1350
+    anchor: "#rfi-tab"
+    description: "Generate RFI documents"
   - name: "Database Schema"
     line: ~897
     anchor: "#database-schema"
@@ -84,8 +88,9 @@ when_to_read:
 6. [Pricing Tab](#pricing-tab)
 7. [Cover Letter Tab](#cover-letter-tab)
 8. [Submission & Followup Tab](#submission--followup-tab)
-9. [Database Schema](#database-schema)
-10. [Integration with Materials](#integration-with-materials)
+9. [RFI Tab](#rfi-tab)
+10. [Database Schema](#database-schema)
+11. [Integration with Materials](#integration-with-materials)
 
 ---
 
@@ -94,7 +99,7 @@ when_to_read:
 The Bids system is a comprehensive bidding and estimation tool for plumbing contractors. It provides a complete workflow from initial fixture counts through pricing, cost estimation, and bid submission tracking.
 
 ### Key Features
-- **Six integrated tabs** covering the complete bid lifecycle
+- **Nine integrated tabs** covering the complete bid lifecycle (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order)
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Automatic cost calculations** including driving costs
 - **Margin analysis** comparing costs to revenue
@@ -108,6 +113,8 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 5. **Pricing** - Compare costs to price book and analyze margins
 6. **Cover Letter** - Generate proposal documents with inclusions/exclusions
 7. **Submission & Followup** - Track bid submissions and outcomes
+8. **RFI** - Generate Request for Information documents
+9. **Change Order** - Coming soon
 
 ---
 
@@ -178,10 +185,12 @@ Column order (left to right):
   8. Project Contact Email
   9. Estimator
   10. Bid Due Date
-  11. Distance to Office
-  12. Outcome (Won, Lost, Started or Complete, etc.)
-  13. Loss Reason (when outcome is "Lost")
-  14. Estimated Job Start Date (when outcome is "Won")
+  11. Bid Date Sent
+  12. Submitted to (name, phone, email)
+  13. Distance to Office
+  14. Outcome (Won, Lost, Started or Complete, etc.)
+  15. Loss Reason (when outcome is "Lost")
+  16. Estimated Job Start Date (when outcome is "Won")
 
 **Delete Bid Confirmation**:
 - **"Delete bid" button** in Edit Bid modal opens separate confirmation modal
@@ -1347,6 +1356,46 @@ Account managers can print or download their assigned projects for field referen
 
 ---
 
+## RFI Tab
+
+### Purpose
+Generate Request for Information (RFI) documents for bids. RFIs formalize questions or clarifications needed from architects, engineers, or GCs before or during construction.
+
+### Workflow
+1. Search and select a bid (same bid list pattern as Cover Letter)
+2. Form auto-populates from bid: Bid was submitted date, The bid was submitted to, Company Information
+3. User fills: Project Lead Contact, Project Lead Contact Phone/Email, Response request date, Detailed Description, Impact Statement
+4. Combined document preview updates live
+5. Copy to clipboard or Open in Google Docs (uses same templates as Cover Letter by service type)
+
+### Read-Only Fields (from bid; edit bid to change)
+- **Bid was submitted**: From `bid.bid_date_sent`
+- **The bid was submitted to**: From `bid.submitted_to` (set in Edit/New Bid modal)
+- **Company Information**: Click Plumbing and Electrical (fixed)
+
+### Editable Fields
+- **Project Lead Contact**: Contact person (default: current user)
+- **Project Lead Contact Phone/Email**: e.g. 512 360 0599
+- **Response request date (1 week by default)**: Date picker, default today + 7 days
+- **Detailed Description of the Question/Issue**: Textarea with checklist (Exact location, What the issue is, Reference contract documents, Why unclear/conflicting/missing, Proposed solution)
+- **Impact Statement**: Textarea with checklist (delay, cost, safety concerns)
+
+### Document Output Format
+- Customer and Project blocks (name + address)
+- Bid was submitted / The bid was submitted to / Response requested by (grouped with soft/hard returns)
+- Question/Issue section
+- Impact section
+- From block (company, contact, phone/email) at end
+
+### Actions
+- **Copy to clipboard**: HTML + plain text
+- **Open in Google Docs**: Copies content, opens template copy URL (Plumbing/Electrical/HVAC by service type), title format `ClickRFI_YYMMDD_ProjectName`
+
+### Change Order Tab
+- Placeholder: "Coming soon"
+
+---
+
 ## Database Schema
 
 ### Core Bids Table
@@ -1370,6 +1419,9 @@ bids:
   gc_contact_name (text, nullable)
   gc_contact_phone (text, nullable)
   gc_contact_email (text, nullable)
+  
+  -- Submission tracking
+  submitted_to (text, nullable) -- Name, phone, email of architect/engineer or via GC
   
   -- Book version selections
   selected_takeoff_book_version_id (uuid, FK → takeoff_book_versions, nullable)
