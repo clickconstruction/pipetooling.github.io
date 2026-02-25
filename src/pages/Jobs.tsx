@@ -101,7 +101,7 @@ export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
-  const [activeTab, setActiveTab] = useState<JobsTab>('stages')
+  const [activeTab, setActiveTab] = useState<JobsTab>('ledger')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -1475,7 +1475,7 @@ export default function Jobs() {
       }
       return
     }
-    // Only primaries default to Reports; everyone else defaults to Stages
+    // Only primaries default to Reports; everyone else defaults to Billing
     if (isPrimary) {
       const primaryTabs = ['reports', 'ledger']
       if (tab && primaryTabs.includes(tab)) {
@@ -1500,11 +1500,11 @@ export default function Jobs() {
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
-      // Default to Stages
-      setActiveTab('stages')
+      // Default to Billing
+      setActiveTab('ledger')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'stages')
+        next.set('tab', 'ledger')
         return next
       }, { replace: true })
     }
@@ -4278,23 +4278,55 @@ export default function Jobs() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
-                <input
-                  type="text"
-                  value={jobName}
-                  onChange={(e) => setJobName(e.target.value)}
-                  placeholder="Job name"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={jobName}
+                    onChange={(e) => setJobName(e.target.value)}
+                    placeholder="Job name"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setJobName(text)
+                      } catch {
+                        /* clipboard not available or permission denied */
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                  >
+                    Paste from Clipboard
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
-                <input
-                  type="text"
-                  value={jobAddress}
-                  onChange={(e) => setJobAddress(e.target.value)}
-                  placeholder="Address"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={jobAddress}
+                    onChange={(e) => setJobAddress(e.target.value)}
+                    placeholder="Address"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setJobAddress(text)
+                      } catch {
+                        /* clipboard not available or permission denied */
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                  >
+                    Paste from Clipboard
+                  </button>
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Google Drive</label>
