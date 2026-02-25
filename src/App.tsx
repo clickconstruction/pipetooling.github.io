@@ -31,6 +31,7 @@ import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
+import { ErrorBoundary } from './components/errorboundary'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -147,7 +148,7 @@ function AppContent() {
           <Route path="projects/:id/edit" element={<ProjectForm />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
-          <Route path="quickfill" element={<Quickfill />} />
+          <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="templates" element={<Templates />} />

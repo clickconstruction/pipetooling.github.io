@@ -491,7 +491,7 @@ export function SupplyHousesSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>Materials Supply Houses & External Subs</h2>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Materials Supply Houses & External Subs</h2>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
       <div style={{ marginBottom: '2rem' }}>

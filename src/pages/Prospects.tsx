@@ -73,12 +73,6 @@ function formatInteractionType(type: string): string {
   }
 }
 
-function formatFitStatus(status: string | null): string {
-  if (!status) return '—'
-  if (status === 'not_a_fit') return 'Not a fit'
-  return status
-}
-
 function formatWebsiteDisplay(url: string | null): string {
   if (!url || !url.trim()) return '—'
   let s = url.trim()
@@ -108,6 +102,7 @@ export default function Prospects() {
   const [comments, setComments] = useState<ProspectComment[]>([])
   const [followUpLoading, setFollowUpLoading] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingProspect, setEditingProspect] = useState<Prospect | null>(null)
   const [callbackModalOpen, setCallbackModalOpen] = useState(false)
   const [commentInputValue, setCommentInputValue] = useState('')
   const [commentInputRef, setCommentInputRef] = useState<HTMLTextAreaElement | null>(null)
@@ -207,7 +202,8 @@ export default function Prospects() {
       setFollowUpLoading(false)
       return
     }
-    const prospects = (data ?? []) as Prospect[]
+    const raw = (data ?? []) as Prospect[]
+    const prospects = raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach')
     setFollowUpProspects(prospects)
 
     const prospectId = searchParams.get('prospect_id')
@@ -260,6 +256,27 @@ export default function Prospects() {
       loadProspectListProspects()
     }
   }, [activeTab, authUser?.id])
+
+  // When on Prospect List with prospect_id in URL (e.g. from Quickfill Edit), select that prospect
+  useEffect(() => {
+    if (activeTab !== 'prospect-list') return
+    const prospectId = searchParams.get('prospect_id')
+    if (!prospectId || prospectListProspects.length === 0) return
+    const p = prospectListProspects.find((x) => x.id === prospectId)
+    if (p) {
+      setSelectedProspectForList(p)
+      if (p.prospect_fit_status === 'cant_reach') {
+        setProspectListSectionOpen((prev) => ({ ...prev, [-2]: true }))
+      } else if (p.prospect_fit_status === 'not_a_fit') {
+        setProspectListSectionOpen((prev) => ({ ...prev, [-1]: true }))
+      }
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('prospect_id')
+        return next
+      }, { replace: true })
+    }
+  }, [activeTab, searchParams, prospectListProspects])
 
   const currentProspect = followUpProspects[currentProspectIndex] ?? null
 
@@ -461,6 +478,7 @@ export default function Prospects() {
 
   function openEditModal() {
     if (!currentProspect) return
+    setEditingProspect(null)
     setEditCompanyName(currentProspect.company_name ?? '')
     setEditContactName(currentProspect.contact_name ?? '')
     setEditPhoneNumber(currentProspect.phone_number ?? '')
@@ -469,25 +487,40 @@ export default function Prospects() {
     setEditModalOpen(true)
   }
 
+  function openEditModalForProspect(p: Prospect) {
+    setEditingProspect(p)
+    setEditCompanyName(p.company_name ?? '')
+    setEditContactName(p.contact_name ?? '')
+    setEditPhoneNumber(p.phone_number ?? '')
+    setEditEmail(p.email ?? '')
+    setEditLinksToWebsite(p.links_to_website ?? '')
+    setEditModalOpen(true)
+  }
+
   async function handleDeleteProspect() {
-    if (!currentProspect || saving) return
-    if (!confirm(`Delete prospect "${currentProspect.company_name || 'Unknown'}"? This cannot be undone.`)) return
+    const prospectToEdit = editingProspect ?? currentProspect
+    if (!prospectToEdit || saving) return
+    if (!confirm(`Delete prospect "${prospectToEdit.company_name || 'Unknown'}"? This cannot be undone.`)) return
     setSaving(true)
-    const { error } = await supabase.from('prospects').delete().eq('id', currentProspect.id)
+    const { error } = await supabase.from('prospects').delete().eq('id', prospectToEdit.id)
     if (!error) {
-      const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
-      setFollowUpProspects(nextList)
-      setProspectListProspects((prev) => prev.filter((p) => p.id !== currentProspect.id))
-      const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-      setCurrentProspectIndex(nextIdx)
-      updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      setFollowUpProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
+      setProspectListProspects((prev) => prev.filter((p) => p.id !== prospectToEdit.id))
+      if (currentProspect?.id === prospectToEdit.id) {
+        const nextList = followUpProspects.filter((p) => p.id !== prospectToEdit.id)
+        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+        setCurrentProspectIndex(nextIdx)
+        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+      }
       setEditModalOpen(false)
+      setEditingProspect(null)
     }
     setSaving(false)
   }
 
   async function saveEdit() {
-    if (!currentProspect || saving) return
+    const prospectToEdit = editingProspect ?? currentProspect
+    if (!prospectToEdit || saving) return
     setSaving(true)
     const { error } = await supabase
       .from('prospects')
@@ -498,7 +531,7 @@ export default function Prospects() {
         email: editEmail.trim() || null,
         links_to_website: editLinksToWebsite.trim() || null,
       })
-      .eq('id', currentProspect.id)
+      .eq('id', prospectToEdit.id)
     if (!error) {
       const updated = {
         company_name: editCompanyName.trim() || null,
@@ -508,12 +541,13 @@ export default function Prospects() {
         links_to_website: editLinksToWebsite.trim() || null,
       }
       setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, ...updated } : p))
+        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
       )
       setProspectListProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, ...updated } : p))
+        prev.map((p) => (p.id === prospectToEdit.id ? { ...p, ...updated } : p))
       )
       setEditModalOpen(false)
+      setEditingProspect(null)
     }
     setSaving(false)
   }
@@ -567,6 +601,76 @@ export default function Prospects() {
     const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
     setCurrentProspectIndex(nextIdx)
     updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    setSaving(false)
+  }
+
+  async function handleCantReach() {
+    if (!currentProspect || saving) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('prospects')
+      .update({ prospect_fit_status: 'cant_reach' })
+      .eq('id', currentProspect.id)
+    if (error) {
+      setSaving(false)
+      return
+    }
+    const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
+    setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
+    const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
+    setFollowUpProspects(nextList)
+    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+    setCurrentProspectIndex(nextIdx)
+    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    setSaving(false)
+  }
+
+  async function handleSendBack(p: Prospect) {
+    if (saving) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('prospects')
+      .update({ prospect_fit_status: null })
+      .eq('id', p.id)
+    if (!error) {
+      setProspectListProspects((prev) => prev.map((x) => (x.id === p.id ? { ...x, prospect_fit_status: null } : x)))
+      setFollowUpProspects((prev) => {
+        const exists = prev.some((x) => x.id === p.id)
+        if (exists) return prev
+        const added = { ...p, prospect_fit_status: null }
+        return [...prev, added].sort((a, b) => {
+          const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
+          const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
+          if (bLc !== aLc) return bLc - aLc
+          return (a.company_name ?? '').localeCompare(b.company_name ?? '')
+        })
+      })
+    }
+    setSaving(false)
+  }
+
+  async function handleNotAFitFromList(p: Prospect) {
+    if (saving) return
+    setSaving(true)
+    const { error } = await supabase
+      .from('prospects')
+      .update({ prospect_fit_status: 'not_a_fit' })
+      .eq('id', p.id)
+    if (!error) {
+      setProspectListProspects((prev) => prev.map((x) => (x.id === p.id ? { ...x, prospect_fit_status: 'not_a_fit' } : x)))
+    }
+    setSaving(false)
+  }
+
+  async function handleDeleteFromList(p: Prospect) {
+    if (saving) return
+    if (!confirm(`Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`)) return
+    setSaving(true)
+    const { error } = await supabase.from('prospects').delete().eq('id', p.id)
+    if (!error) {
+      setFollowUpProspects((prev) => prev.filter((x) => x.id !== p.id))
+      setProspectListProspects((prev) => prev.filter((x) => x.id !== p.id))
+    }
     setSaving(false)
   }
 
@@ -924,6 +1028,14 @@ export default function Prospects() {
                       >
                         {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
                       </span>
+                      <button
+                        type="button"
+                        onClick={handleCantReach}
+                        disabled={saving}
+                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
+                      >
+                        Can't reach
+                      </button>
                     </div>
                   </div>
                 )
@@ -1146,11 +1258,15 @@ export default function Prospects() {
             <p style={{ color: '#6b7280' }}>Loading...</p>
           ) : (() => {
             const NO_LONGER_FIT_KEY = -1
+            const CANT_REACH_KEY = -2
             const byWarmth = new Map<number, Prospect[]>()
             const active: Prospect[] = []
             const noLongerFit: Prospect[] = []
+            const cantReach: Prospect[] = []
             for (const p of prospectListProspects) {
-              if (p.prospect_fit_status === 'not_a_fit') {
+              if (p.prospect_fit_status === 'cant_reach') {
+                cantReach.push(p)
+              } else if (p.prospect_fit_status === 'not_a_fit') {
                 noLongerFit.push(p)
               } else {
                 active.push(p)
@@ -1164,6 +1280,9 @@ export default function Prospects() {
             }
             if (noLongerFit.length > 0) {
               byWarmth.set(NO_LONGER_FIT_KEY, noLongerFit)
+            }
+            if (cantReach.length > 0) {
+              byWarmth.set(CANT_REACH_KEY, cantReach)
             }
             const sortProspects = (list: Prospect[]) => {
               list.sort((a, b) => {
@@ -1183,7 +1302,7 @@ export default function Prospects() {
               <div>
                 {warmthKeys.map((warmth) => {
                   const prospects = byWarmth.get(warmth) ?? []
-                  const isOpen = prospectListSectionOpen[warmth] ?? (warmth !== NO_LONGER_FIT_KEY)
+                  const isOpen = prospectListSectionOpen[warmth] ?? (warmth !== NO_LONGER_FIT_KEY && warmth !== CANT_REACH_KEY)
                   return (
                     <div key={warmth}>
                       <button
@@ -1193,7 +1312,7 @@ export default function Prospects() {
                         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                       >
                         <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {warmth === NO_LONGER_FIT_KEY ? `No longer a fit (${prospects.length})` : `Warmth ${warmth} (${prospects.length})`}
+                        {warmth === NO_LONGER_FIT_KEY ? `No longer a fit (${prospects.length})` : warmth === CANT_REACH_KEY ? `Can't reach (${prospects.length})` : `Warmth ${warmth} (${prospects.length})`}
                       </button>
                       {isOpen && (
                         <div className="prospectListWrapper">
@@ -1201,30 +1320,26 @@ export default function Prospects() {
                           <div className="prospectListDesktop">
                             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                               <colgroup>
-                                <col style={{ width: '4%' }} />
                                 <col style={{ width: '18%' }} />
                                 <col style={{ width: '14%' }} />
                                 <col style={{ width: '12%' }} />
                                 <col style={{ width: '14%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '6%' }} />
+                                <col style={{ width: '28%' }} />
+                                {warmth === CANT_REACH_KEY && <col style={{ width: '6%' }} />}
                               </colgroup>
                               <thead style={{ background: '#f9fafb' }}>
                                 <tr>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Warmth</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Company Name</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Links</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fit Status</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
+                                  {warmth === CANT_REACH_KEY && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={8} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 6 : 5} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -1236,7 +1351,6 @@ export default function Prospects() {
                                         background: selectedProspectForList?.id === p.id ? '#eff6ff' : undefined,
                                       }}
                                     >
-                                      <td style={{ padding: '0.75rem' }}>{p.warmth_count ?? 0}</td>
                                       <td style={{ padding: '0.75rem' }}>{p.company_name || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>
@@ -1248,31 +1362,44 @@ export default function Prospects() {
                                           '—'
                                         )}
                                       </td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        {p.email ? (
-                                          <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
-                                            {p.email}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </td>
-                                      <td style={{ padding: '0.75rem' }}>
-                                        {p.links_to_website ? (
-                                          <a
-                                            href={getWebsiteHref(p.links_to_website)}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
-                                          >
-                                            {formatWebsiteDisplay(p.links_to_website)}
-                                          </a>
-                                        ) : (
-                                          '—'
-                                        )}
-                                      </td>
                                       <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
-                                      <td style={{ padding: '0.75rem' }}>{formatFitStatus(p.prospect_fit_status)}</td>
+                                      <td style={{ padding: '0.75rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                          <div>
+                                            {p.email ? (
+                                              <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                                                {p.email}
+                                              </a>
+                                            ) : (
+                                              '—'
+                                            )}
+                                          </div>
+                                          <div>
+                                            {p.links_to_website ? (
+                                              <a
+                                                href={getWebsiteHref(p.links_to_website)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                                              >
+                                                {formatWebsiteDisplay(p.links_to_website)}
+                                              </a>
+                                            ) : (
+                                              '—'
+                                            )}
+                                          </div>
+                                        </div>
+                                      </td>
+                                      {warmth === CANT_REACH_KEY && (
+                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                            <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                                            <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                                            <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                                            <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                                          </div>
+                                        </td>
+                                      )}
                                     </tr>
                                   ))
                                 )}
@@ -1285,68 +1412,76 @@ export default function Prospects() {
                               <div className="prospectListMobileEmpty">No prospects in this group</div>
                             ) : (
                               prospects.map((p) => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onClick={() => selectProspectForList(p)}
-                                  className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                >
-                                  <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
-                                  <div className="prospectListMobileCardRow">
-                                    <span className="prospectListMobileCardLabel">Contact</span>
-                                    <span>{p.contact_name || '—'}</span>
-                                  </div>
-                                  <div className="prospectListMobileCardRow">
-                                    <span className="prospectListMobileCardLabel">Phone</span>
-                                    <span>
-                                      {p.phone_number ? (
-                                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                          {p.phone_number}
-                                        </a>
-                                      ) : (
-                                        '—'
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div className="prospectListMobileCardRow">
-                                    <span className="prospectListMobileCardLabel">Email</span>
-                                    <span>
-                                      {p.email ? (
-                                        <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                          {p.email}
-                                        </a>
-                                      ) : (
-                                        '—'
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div className="prospectListMobileCardRow">
-                                    <span className="prospectListMobileCardLabel">Links</span>
-                                    <span>
-                                      {p.links_to_website ? (
-                                        <a
-                                          href={getWebsiteHref(p.links_to_website)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          onClick={(e) => e.stopPropagation()}
-                                          style={{ color: '#2563eb', textDecoration: 'underline' }}
-                                        >
-                                          {formatWebsiteDisplay(p.links_to_website)}
-                                        </a>
-                                      ) : (
-                                        '—'
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div className="prospectListMobileCardRow">
-                                    <span className="prospectListMobileCardLabel">Last Contact</span>
-                                    <span>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</span>
-                                  </div>
-                                  <div className="prospectListMobileCardMeta">
-                                    <span>Warmth {p.warmth_count ?? 0}</span>
-                                    <span>{formatFitStatus(p.prospect_fit_status)}</span>
-                                  </div>
-                                </button>
+                                <div key={p.id} style={{ position: 'relative' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => selectProspectForList(p)}
+                                    className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
+                                    style={warmth === CANT_REACH_KEY ? { paddingBottom: '3rem' } : undefined}
+                                  >
+                                    <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Contact</span>
+                                      <span>{p.contact_name || '—'}</span>
+                                    </div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Phone</span>
+                                      <span>
+                                        {p.phone_number ? (
+                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                            {p.phone_number}
+                                          </a>
+                                        ) : (
+                                          '—'
+                                        )}
+                                      </span>
+                                    </div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Last Contact</span>
+                                      <span>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</span>
+                                    </div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Email / Links</span>
+                                      <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span>
+                                          {p.email ? (
+                                            <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                              {p.email}
+                                            </a>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </span>
+                                        <span>
+                                          {p.links_to_website ? (
+                                            <a
+                                              href={getWebsiteHref(p.links_to_website)}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                            >
+                                              {formatWebsiteDisplay(p.links_to_website)}
+                                            </a>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </span>
+                                      </span>
+                                    </div>
+                                    <div className="prospectListMobileCardMeta">
+                                      <span>Warmth {p.warmth_count ?? 0}</span>
+                                    </div>
+                                  </button>
+                                  {warmth === CANT_REACH_KEY && (
+                                    <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
+                                      <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                                      <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                                      <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                                      <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                                    </div>
+                                  )}
+                                </div>
                               ))
                             )}
                           </div>
@@ -1565,7 +1700,7 @@ export default function Prospects() {
       )}
 
       {/* Edit modal */}
-      {editModalOpen && currentProspect && (
+      {editModalOpen && (currentProspect || editingProspect) && (
         <div
           style={{
             position: 'fixed',
@@ -1576,7 +1711,7 @@ export default function Prospects() {
             justifyContent: 'center',
             zIndex: 50,
           }}
-          onClick={() => !saving && setEditModalOpen(false)}
+          onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
         >
           <div
             style={{
@@ -1673,7 +1808,7 @@ export default function Prospects() {
               </button>
               <button
                 type="button"
-                onClick={() => !saving && setEditModalOpen(false)}
+                onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel

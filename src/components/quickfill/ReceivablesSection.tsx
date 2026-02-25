@@ -191,7 +191,7 @@ export function ReceivablesSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>Jobs Receivables</h2>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Jobs Receivables</h2>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
         AR: ${formatCurrency(receivables.reduce((sum, r) => sum + Number(r.amount || 0), 0))}

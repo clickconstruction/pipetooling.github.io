@@ -230,7 +230,7 @@ export function HoursSection() {
   if (!canAccessHours) {
     return (
       <section style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>People Hours</h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>People Hours</h2>
         <p style={{ color: '#6b7280' }}>You do not have access to the Hours tab.</p>
       </section>
     )
@@ -238,7 +238,7 @@ export function HoursSection() {
 
   return (
     <section style={{ marginBottom: '2rem' }}>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>People Hours</h2>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>People Hours</h2>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
         <p style={{ color: '#6b7280' }}>Loading…</p>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-24
+last_updated: 2026-02-25
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.64 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.64)"
+  - name: "Latest Version (v2.65)"
     line: ~179
-    description: "Dashboard layout, Jobs/Prospects/Bids/People updates, RLS optimizations"
+    description: "Job Bill Details Edit actions, Jobs/Dashboard button labels, Edit Parts, Stages default"
   - name: "v2.62"
     line: ~210
     description: "Prospects enhancements: New Prospect button, Convert tab, callbacks, timer, comments"
@@ -109,9 +109,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
-2. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
-3. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+1. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+2. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+3. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+4. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
 4. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
 5. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
 6. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
@@ -173,6 +174,39 @@ when_to_read:
 62. [Email Templates](#email-templates)
 63. [Financial Tracking](#financial-tracking)
 64. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.65)
+
+**Date**: 2026-02-24
+
+### Job Bill Details modal – Edit actions
+
+- **Edit Job**: Button opens the Edit Job modal on the Jobs page (navigates to `/jobs?edit=jobId`).
+- **Edit Job Labor**: Button navigates to Jobs → Sub Sheet Ledger and opens the Edit Job Labor modal for the job’s HCP (or New Job Labor if none exists).
+- **Edit Parts**: Button shown only when the job has tally parts; navigates to Jobs → Parts tab, expands the job row, and scrolls it into view. Fixed tab navigation so it stays on Parts instead of defaulting to Stages.
+
+### Jobs – Dashboard, Ready to Bill, Waiting for Payment – Button labels
+
+- Two-line labels: `Mark as Billed` → `Mark as` / `Billed`; `Mark as Paid` → `Mark` / `Paid`; `Send back` → `Send` / `back`; `View Reports` → `View` / `Reports`; `View Details` → `View` / `Details`; `Ready for billing` → `Send to` / `Billing`; `Leave Report` → `Leave` / `Report`.
+- **Open X days/hours**: Moved to the right of the main action buttons (Send to Billing, Mark as Billed, Mark as Paid).
+
+### Jobs – Dashboard – Icons and layout
+
+- **Google Drive and Job Plans icons**: Stacked vertically; each icon only shown when the corresponding link field has content.
+- **Job Plans**: Link field below Google Drive in New/Edit Job; shown in Dashboard and Jobs when filled.
+
+### Jobs – Edit button icons
+
+- **Billing**: Edit pencil icon visible for all roles (removed primary-only restriction).
+- **Stages**: Edit column added to Working, Ready to Bill, Billed, and Paid tables; pencil icon opens Edit Job modal.
+
+### Jobs – Stages default tab
+
+- Stages tab opens by default instead of Reports for non-primary users.
+
+**Files**: `src/components/JobBillDetailsModal.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Jobs.tsx`
 
 ---
 
