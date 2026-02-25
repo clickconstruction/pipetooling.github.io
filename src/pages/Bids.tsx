@@ -76,6 +76,23 @@ type ChangeOrderFormData = {
   checklistScheduleJustification?: boolean
 }
 
+type LienReleaseFormData = {
+  invoiceAmount: string
+  bidAmount: string
+  invoicesToDate: string
+  cc: string
+  companyName: string
+  companyAddress: string
+  companyPhone: string
+  companyEmail: string
+  invoiceDate: string
+  invoiceNumber: string
+  descriptionOfWork: string
+  conditionalWaiver: string
+  paymentTerms: string
+  lienStatusPhone: string
+}
+
 type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
 type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number; isSaved: boolean }
 type DraftPO = { id: string; name: string }
@@ -338,6 +355,19 @@ This proposal excludes any work not specifically described within.
 This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
 
 const DEFAULT_INCLUSIONS = 'Permits'
+
+const LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS = '5501 Balcones Dr, Ste A141\nAustin, Texas 78731'
+const LIEN_RELEASE_DEFAULT_LIEN_PHONE = '+1 512 360 0599'
+const LIEN_RELEASE_DEFAULT_COMPANY_PHONE = '+1 512 360 0599'
+const LIEN_RELEASE_DEFAULT_COMPANY_EMAIL = 'office@clickplumbing.com'
+const LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER = 'CONDITIONAL WAIVER AND RELEASE ONLY upon receipt and collection of good funds in the amount of ${{finalInvoice}} payable to Click Plumbing and Electrical, the undersigned hereby waives and releases any and all mechanic\'s lien rights, payment bond claims, or claims against the project or property described above that have arisen or may arise through the date of this invoice.\nThis waiver and release is expressly conditional and shall be void and of no effect if the ${{invoicesToDate}} payment is not actually received and collected in full. Click Plumbing and Electrical expressly reserves all lien, bond, and contract rights until payment is received and clears.'
+const LIEN_RELEASE_DEFAULT_PAYMENT_TERMS = 'Payment of ${{finalInvoice}} is due immediately upon receipt of this invoice. Pursuant to Texas Property Code Chapter 28 (Prompt Payment Act), if payment in full is not received within 45 days of the invoice date, interest shall accrue at the rate of one and one-half percent (1.5%) per month (18% per annum) on the unpaid balance beginning on day 46, and {{ownerName}} shall also be liable for all reasonable attorney\'s fees, collection costs, and court costs incurred by Click Plumbing and Electrical to collect the overdue amount.'
+
+/** Parse amount string and return formatted currency (e.g. "17242.50" -> "17,242.50") */
+function formatAmountFromString(s: string): string {
+  const n = parseFloat(String(s).replace(/,/g, ''))
+  return isNaN(n) ? '' : formatCurrency(n)
+}
 
 /** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
 function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
@@ -681,6 +711,98 @@ function buildChangeOrderText(
   return lines.join('\n')
 }
 
+function buildLienReleaseHtml(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: LienReleaseFormData,
+  ownerName: string
+): string {
+  const br = '<br/>'
+
+  const invoiceAmtFmt = formatAmountFromString(form.invoiceAmount)
+  const invToDateFmt = formatAmountFromString(form.invoicesToDate)
+
+  const conditionalWaiver = (form.conditionalWaiver || '')
+    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
+    .replace(/\{\{invoicesToDate\}\}/g, invToDateFmt || '—')
+  const paymentTerms = (form.paymentTerms || '')
+    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
+    .replace(/\{\{ownerName\}\}/g, ownerName || '—')
+
+  const summaryLines: string[] = []
+  if (invoiceAmtFmt) summaryLines.push(invoiceAmtFmt + ' - FINAL INVOICE')
+  if (invToDateFmt) summaryLines.push(invToDateFmt + ' - Invoices to date')
+
+  const sections: string[] = []
+  if (summaryLines.length > 0) sections.push(summaryLines.join('\n'))
+  sections.push('Project:\n' + (projectName || '—') + '\n' + addressLines(projectAddress).join('\n'))
+  sections.push('Owner / Contracting Party:\n' + (customerName || '—'))
+  if ((form.cc || '').trim()) sections.push('CC: ' + (form.cc || '').trim())
+  const claimantLines: string[] = [form.companyName || '—', ...addressLines(form.companyAddress)]
+  if (form.companyPhone) claimantLines.push('Phone: ' + form.companyPhone)
+  if (form.companyEmail) claimantLines.push('Email: ' + form.companyEmail)
+  sections.push('Claimant (Releasing Party):\n' + claimantLines.join('\n'))
+  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+  sections.push('Invoice / Application for Payment:\nInvoice Date: ' + invoiceDateStr + '\nInvoice Number: ' + (form.invoiceNumber || '—') + '\nAmount of this Application: $' + (invoiceAmtFmt || '—'))
+  if ((form.descriptionOfWork || '').trim()) sections.push('Description of Work / Period Covered:\n' + form.descriptionOfWork.trim())
+  sections.push(conditionalWaiver)
+  sections.push('Payment Terms & Late Payment Consequences:\n' + paymentTerms)
+  sections.push('Lien Status Verification\nCurrent status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE))
+  const headerText = 'CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT\n(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)\nEffective ONLY Upon Actual Receipt and Collection of Payment'
+  const headerHtml = '<div style="text-align: center; font-family: inherit; font-size: 0.875rem; margin-bottom: 1rem; white-space: pre-wrap;">' + escapeHtml(headerText).replace(/\n/g, br) + '</div>'
+  const content = sections.join('\n\n')
+  let htmlContent = escapeHtml(content).replace(/\n/g, br)
+  htmlContent = htmlContent.replace(
+    /(Payment Terms &amp; Late Payment Consequences:)(<br\/>)/,
+    '<div style="text-align: center;">$1</div>$2'
+  )
+  return headerHtml + '<div style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">' + htmlContent + '</div>'
+}
+
+function buildLienReleaseText(
+  customerName: string,
+  customerAddress: string,
+  projectName: string,
+  projectAddress: string,
+  form: LienReleaseFormData,
+  ownerName: string
+): string {
+  const invoiceAmtFmt = formatAmountFromString(form.invoiceAmount)
+  const invToDateFmt = formatAmountFromString(form.invoicesToDate)
+
+  const conditionalWaiver = (form.conditionalWaiver || '')
+    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
+    .replace(/\{\{invoicesToDate\}\}/g, invToDateFmt || '—')
+  const paymentTerms = (form.paymentTerms || '')
+    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
+    .replace(/\{\{ownerName\}\}/g, ownerName || '—')
+
+  const headerLines = [
+    'CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT',
+    '(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)',
+    'Effective ONLY Upon Actual Receipt and Collection of Payment',
+    '',
+    ''
+  ]
+  const lines: string[] = [...headerLines]
+  if (invoiceAmtFmt) lines.push(invoiceAmtFmt + ' - FINAL INVOICE')
+  if (invToDateFmt) lines.push(invToDateFmt + ' - Invoices to date')
+  if (lines.length > 0) lines.push('')
+  lines.push('Project:', projectName || '—', ...addressLines(projectAddress), '')
+  lines.push('Owner / Contracting Party:', customerName || '—', '')
+  if ((form.cc || '').trim()) lines.push('CC: ' + (form.cc || '').trim(), '')
+  lines.push('Claimant (Releasing Party):', form.companyName || '—', ...addressLines(form.companyAddress), ...(form.companyPhone ? ['Phone: ' + form.companyPhone] : []), ...(form.companyEmail ? ['Email: ' + form.companyEmail] : []), '')
+  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+  lines.push('Invoice / Application for Payment:', 'Invoice Date: ' + invoiceDateStr, 'Invoice Number: ' + (form.invoiceNumber || '—'), 'Amount of this Application: $' + (invoiceAmtFmt || '—'), '')
+  if ((form.descriptionOfWork || '').trim()) lines.push('Description of Work / Period Covered:', form.descriptionOfWork.trim(), '')
+  lines.push(conditionalWaiver, '')
+  lines.push('Payment Terms & Late Payment Consequences:', paymentTerms, '')
+  lines.push('Lien Status Verification', 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE))
+  return lines.join('\n')
+}
+
 export default function Bids() {
   const { user: authUser } = useAuth()
   const newCustomerModal = useNewCustomerModal()
@@ -840,6 +962,17 @@ export default function Bids() {
   const [changeOrderSearchQuery, setChangeOrderSearchQuery] = useState('')
   const [changeOrderFormByBid, setChangeOrderFormByBid] = useState<Record<string, ChangeOrderFormData>>({})
   const [changeOrderCopySuccess, setChangeOrderCopySuccess] = useState(false)
+
+  // Lien Release tab
+  const [selectedBidForLienRelease, setSelectedBidForLienRelease] = useState<BidWithBuilder | null>(null)
+  const [lienReleaseSearchQuery, setLienReleaseSearchQuery] = useState('')
+  const [lienReleaseFormByBid, setLienReleaseFormByBid] = useState<Record<string, LienReleaseFormData>>({})
+  const [lienReleaseCopySuccess, setLienReleaseCopySuccess] = useState(false)
+  const [lienReleaseCompanyInfoCollapsed, setLienReleaseCompanyInfoCollapsed] = useState(true)
+  const [lienReleaseConditionalWaiverCollapsed, setLienReleaseConditionalWaiverCollapsed] = useState(true)
+  const [lienReleasePaymentTermsCollapsed, setLienReleasePaymentTermsCollapsed] = useState(true)
+  const [lienReleaseLienStatusCollapsed, setLienReleaseLienStatusCollapsed] = useState(true)
+
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const contactTableRef = useRef<HTMLDivElement | null>(null)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
@@ -1055,7 +1188,7 @@ export default function Bids() {
   const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
   const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
 
-  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, Submission, RFI, and Change Order so selection stays in sync across tabs. */
+  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, Submission, RFI, Change Order, and Lien Release so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
     setSelectedBidForCounts(bid)
     setSelectedBidForTakeoff(bid)
@@ -1064,6 +1197,7 @@ export default function Bids() {
     setSelectedBidForSubmission(bid)
     setSelectedBidForRfi(bid)
     setSelectedBidForChangeOrder(bid)
+    setSelectedBidForLienRelease(bid)
   }
 
   function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
@@ -5212,7 +5346,7 @@ export default function Bids() {
       }
       return
     }
-    if (bidId && (tab === 'rfi' || tab === 'change-order')) {
+    if (bidId && (tab === 'rfi' || tab === 'change-order' || tab === 'lien-release')) {
       const bid = bids.find((b) => b.id === bidId)
       if (bid) {
         setSharedBid(bid)
@@ -11909,8 +12043,256 @@ export default function Bids() {
 
       {/* Lien Release Tab */}
       {activeTab === 'lien-release' && (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-          Coming soon
+        <div>
+          {!selectedBidForLienRelease && (
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={lienReleaseSearchQuery}
+              onChange={(e) => setLienReleaseSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+            />
+          )}
+          {!selectedBidForLienRelease ? (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bids
+                    .filter((b) => {
+                      const q = lienReleaseSearchQuery.toLowerCase()
+                      if (!q) return true
+                      const name = bidDisplayName(b).toLowerCase()
+                      const cust = (b.customers?.name ?? '').toLowerCase()
+                      const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                      return name.includes(q) || cust.includes(q) || gc.includes(q)
+                    })
+                    .map((bid) => (
+                      <tr
+                        key={bid.id}
+                        onClick={() => setSharedBid(bid)}
+                        style={{ cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                      </tr>
+                    ))}
+                  {bids.filter((b) => {
+                    const q = lienReleaseSearchQuery.toLowerCase()
+                    if (!q) return true
+                    const name = bidDisplayName(b).toLowerCase()
+                    const cust = (b.customers?.name ?? '').toLowerCase()
+                    const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+                    return name.includes(q) || cust.includes(q) || gc.includes(q)
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                        {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (() => {
+            const bid = selectedBidForLienRelease
+            const customerName = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
+            const customerAddress = bid.customers?.address ?? bid.bids_gc_builders?.address ?? '—'
+            const projectNameVal = bid.project_name ?? '—'
+            const projectAddressVal = bid.address ?? '—'
+            const defaultBidAmount = bid.agreed_value != null ? String(bid.agreed_value) : bid.bid_value != null ? String(bid.bid_value) : ''
+            const todayStr = new Date().toISOString().slice(0, 10)
+            const getLienReleaseForm = (): LienReleaseFormData => {
+              const existing = lienReleaseFormByBid[bid.id]
+              if (existing) {
+                const legacy = existing as { finalInvoice?: string; amountOfApplication?: string }
+                const invoiceAmount = existing.invoiceAmount ?? legacy.amountOfApplication ?? legacy.finalInvoice ?? ''
+                return { ...existing, invoiceAmount }
+              }
+              return {
+                invoiceAmount: '',
+                bidAmount: defaultBidAmount,
+                invoicesToDate: '',
+                cc: '',
+                companyName: 'Click Plumbing and Electrical',
+                companyAddress: LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS,
+                companyPhone: LIEN_RELEASE_DEFAULT_COMPANY_PHONE,
+                companyEmail: LIEN_RELEASE_DEFAULT_COMPANY_EMAIL,
+                invoiceDate: todayStr,
+                invoiceNumber: '',
+                descriptionOfWork: '',
+                conditionalWaiver: LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER,
+                paymentTerms: LIEN_RELEASE_DEFAULT_PAYMENT_TERMS,
+                lienStatusPhone: LIEN_RELEASE_DEFAULT_LIEN_PHONE,
+              }
+            }
+            const form = getLienReleaseForm()
+            const updateLienReleaseForm = (updates: Partial<LienReleaseFormData>) => {
+              setLienReleaseFormByBid((prev) => {
+                const current = prev[bid.id] ?? form
+                return { ...prev, [bid.id]: { ...current, ...updates } }
+              })
+            }
+            const formWithBidDefaults = { ...form, bidAmount: form.bidAmount || defaultBidAmount }
+            const combinedHtml = buildLienReleaseHtml(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidDefaults, customerName)
+            const combinedText = buildLienReleaseText(customerName, customerAddress, projectNameVal, projectAddressVal, formWithBidDefaults, customerName)
+            const copyToClipboard = () => {
+              if (navigator.clipboard?.write) {
+                const htmlBlob = new Blob([combinedHtml], { type: 'text/html' })
+                const textBlob = new Blob([combinedText], { type: 'text/plain' })
+                const item = new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })
+                navigator.clipboard.write([item]).then(() => {
+                  setLienReleaseCopySuccess(true)
+                  setTimeout(() => setLienReleaseCopySuccess(false), 2000)
+                }).catch(() => {
+                  navigator.clipboard?.writeText(combinedText).then(() => {
+                    setLienReleaseCopySuccess(true)
+                    setTimeout(() => setLienReleaseCopySuccess(false), 2000)
+                  })
+                })
+              } else {
+                navigator.clipboard?.writeText(combinedText).then(() => {
+                  setLienReleaseCopySuccess(true)
+                  setTimeout(() => setLienReleaseCopySuccess(false), 2000)
+                })
+              }
+            }
+            const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '')
+            const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
+            const templateCopyTarget = `ClickLienRelease_${datePart}_${sanitizedProjectName}`
+            const serviceTypeName = bid.service_type?.name ?? 'Plumbing'
+            let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
+            if (serviceTypeName === 'Electrical') googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
+            else if (serviceTypeName === 'HVAC') googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
+            const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
+            return (
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" onClick={() => { setBidFormOpen(true); setEditingBid(bid) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
+                    <button type="button" onClick={() => setSharedBid(null)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Amount</label>
+                    <input type="text" value={form.invoiceAmount} onChange={(e) => updateLienReleaseForm({ invoiceAmount: e.target.value })} placeholder="e.g. 17242.50" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid amount</label>
+                    <input type="text" value={form.bidAmount} onChange={(e) => updateLienReleaseForm({ bidAmount: e.target.value })} placeholder="e.g. 121000" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoices to date</label>
+                    <input type="text" value={form.invoicesToDate} onChange={(e) => updateLienReleaseForm({ invoicesToDate: e.target.value })} placeholder="e.g. 93300" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Date</label>
+                    <input type="date" value={form.invoiceDate} onChange={(e) => updateLienReleaseForm({ invoiceDate: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Number</label>
+                    <input type="text" value={form.invoiceNumber} onChange={(e) => updateLienReleaseForm({ invoiceNumber: e.target.value })} placeholder="e.g. 250 (Billed Dec 22nd 2025)" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Project:</div>
+                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>{projectNameVal}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', whiteSpace: 'pre-wrap' }}>{projectAddressVal || '—'}</div>
+                </div>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Owner / Contracting Party:</div>
+                  <div style={{ fontSize: '0.875rem', color: '#374151' }}>{customerName}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', whiteSpace: 'pre-wrap' }}>{customerAddress || '—'}</div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>CC</label>
+                  <input type="text" value={form.cc} onChange={(e) => updateLienReleaseForm({ cc: e.target.value })} placeholder="Person, phone, email (optional)" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setLienReleaseCompanyInfoCollapsed((c) => !c)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}
+                  >
+                    {lienReleaseCompanyInfoCollapsed ? '\u25B6' : '\u25BC'} Company Information: Click Plumbing and Electrical
+                  </button>
+                  {!lienReleaseCompanyInfoCollapsed && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Company Address</label>
+                        <textarea value={form.companyAddress} onChange={(e) => updateLienReleaseForm({ companyAddress: e.target.value })} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Phone</label>
+                          <input type="text" value={form.companyPhone} onChange={(e) => updateLienReleaseForm({ companyPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_PHONE} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Email</label>
+                          <input type="text" value={form.companyEmail} onChange={(e) => updateLienReleaseForm({ companyEmail: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_EMAIL} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Description of Work / Period Covered</label>
+                  <textarea value={form.descriptionOfWork} onChange={(e) => updateLienReleaseForm({ descriptionOfWork: e.target.value })} rows={4} placeholder="e.g. Plumbing services performed through approximately 95% completion of the original base contract amount of $121,000.00." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button type="button" onClick={() => setLienReleaseConditionalWaiverCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                    {lienReleaseConditionalWaiverCollapsed ? '\u25B6' : '\u25BC'} Conditional Waiver and Release
+                  </button>
+                  {!lienReleaseConditionalWaiverCollapsed && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <textarea value={form.conditionalWaiver} onChange={(e) => updateLienReleaseForm({ conditionalWaiver: e.target.value })} rows={5} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{invoicesToDate}}`} as placeholders for amounts.</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button type="button" onClick={() => setLienReleasePaymentTermsCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                    {lienReleasePaymentTermsCollapsed ? '\u25B6' : '\u25BC'} Payment Terms & Late Payment Consequences
+                  </button>
+                  {!lienReleasePaymentTermsCollapsed && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <textarea value={form.paymentTerms} onChange={(e) => updateLienReleaseForm({ paymentTerms: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{ownerName}}`} as placeholders.</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <button type="button" onClick={() => setLienReleaseLienStatusCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
+                    {lienReleaseLienStatusCollapsed ? '\u25B6' : '\u25BC'} Lien Status Verification phone
+                  </button>
+                  {!lienReleaseLienStatusCollapsed && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <input type="text" value={form.lienStatusPhone} onChange={(e) => updateLienReleaseForm({ lienStatusPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_LIEN_PHONE} style={{ width: '100%', maxWidth: 220, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    </div>
+                  )}
+                </div>
+                <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
+                  <div key={`combined-preview-lr-${bid.id}-${form.invoiceAmount}-${form.bidAmount}-${form.invoicesToDate}-${form.cc}-${form.companyAddress}-${form.companyPhone}-${form.companyEmail}-${form.invoiceDate}-${form.invoiceNumber}-${form.descriptionOfWork}-${form.conditionalWaiver}-${form.paymentTerms}-${form.lienStatusPhone}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{lienReleaseCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
+                    <button type="button" onClick={() => { copyToClipboard(); window.open(googleDocsCopyUrl, templateCopyTarget) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
