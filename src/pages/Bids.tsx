@@ -1334,10 +1334,12 @@ export default function Bids() {
       : (primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
         ? types.filter((st) => primaryServiceTypeIds.includes(st.id))
         : types
-    const firstId = visibleTypes[0]?.id
+    // Fallback: if filter yields no types (e.g. stale primary_service_type_ids), use all
+    const typesToUse = visibleTypes.length > 0 ? visibleTypes : types
+    const firstId = typesToUse[0]?.id
     if (firstId) {
       setSelectedServiceTypeId((prev) => {
-        if (!prev || !visibleTypes.some((st) => st.id === prev)) return firstId
+        if (!prev || !typesToUse.some((st) => st.id === prev)) return firstId
         return prev
       })
     }
@@ -5336,7 +5338,8 @@ export default function Bids() {
     }
     const bidId = params.get('bidId')
     const tab = params.get('tab')
-    if (myRole === 'primary' && tab && tab !== 'bid-board') {
+    const primaryAllowedTabs = ['bid-board', 'rfi', 'change-order', 'lien-release']
+    if (myRole === 'primary' && tab && !primaryAllowedTabs.includes(tab)) {
       setActiveTab('bid-board')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -5424,22 +5427,19 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
       const loadForServiceType = async () => {
-        await Promise.all([loadCustomers(), loadBids(), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
+        // Primary on bid-board, RFI, Change Order, Lien Release: load all bids (no service type filter) so they see bids from adopted masters
+        const primaryBidsTabs = ['bid-board', 'rfi', 'change-order', 'lien-release']
+        const sid = myRole === 'primary' && primaryBidsTabs.includes(activeTab) ? null : selectedServiceTypeId
+        await Promise.all([loadCustomers(), loadBids(sid), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }
       loadForServiceType()
     }
-  }, [selectedServiceTypeId, activeTab])
+  }, [selectedServiceTypeId, activeTab, myRole])
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:BuilderReviewEffect',message:'Builder Review effect run',data:{activeTab,myRole,conditionMet:activeTab==='builder-review'&&(myRole==='dev'||myRole==='master_technician'||myRole==='assistant'||myRole==='estimator')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
       const loadForBuilderReview = async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:loadForBuilderReview',message:'loadForBuilderReview invoked',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         await Promise.all([
           loadCustomers(),
           loadBids(null), // load all bids (no service type filter)
@@ -6779,6 +6779,8 @@ export default function Bids() {
         >
           Submission & Followup
         </button>
+          </>
+        )}
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -6822,8 +6824,6 @@ export default function Bids() {
         >
           Lien Release
         </button>
-          </>
-        )}
       </div>
 
       {/* Bid Board Tab */}

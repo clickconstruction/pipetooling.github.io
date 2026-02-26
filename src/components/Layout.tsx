@@ -34,7 +34,7 @@ const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally']
 const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/prospects', '/calendar', '/checklist', '/settings', '/tally']
-const PRIMARY_PATHS = ['/dashboard', '/projects', '/materials', '/jobs', '/bids', '/prospects', '/calendar', '/checklist', '/settings', '/tally']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/jobs', '/bids', '/prospects', '/calendar', '/checklist', '/settings', '/tally']
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -167,7 +167,6 @@ export default function Layout() {
       return (
         <>
           <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
-          <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>

@@ -20,6 +20,7 @@ COMMENT ON COLUMN public.people_crew_jobs.job_assignments IS 'JSON array of { jo
 ALTER TABLE public.people_crew_jobs ENABLE ROW LEVEL SECURITY;
 
 -- SELECT: pay access users + cost matrix shared (read-only)
+DROP POLICY IF EXISTS "Pay access and shared users can read people crew jobs" ON public.people_crew_jobs;
 CREATE POLICY "Pay access and shared users can read people crew jobs"
 ON public.people_crew_jobs
 FOR SELECT
@@ -31,6 +32,7 @@ USING (
 );
 
 -- INSERT/UPDATE/DELETE: pay access only (shared users are read-only)
+DROP POLICY IF EXISTS "Pay access users can insert people crew jobs" ON public.people_crew_jobs;
 CREATE POLICY "Pay access users can insert people crew jobs"
 ON public.people_crew_jobs
 FOR INSERT
@@ -40,6 +42,7 @@ WITH CHECK (
   OR public.is_assistant()
 );
 
+DROP POLICY IF EXISTS "Pay access users can update people crew jobs" ON public.people_crew_jobs;
 CREATE POLICY "Pay access users can update people crew jobs"
 ON public.people_crew_jobs
 FOR UPDATE
@@ -54,6 +57,7 @@ WITH CHECK (
   OR public.is_assistant()
 );
 
+DROP POLICY IF EXISTS "Pay access users can delete people crew jobs" ON public.people_crew_jobs;
 CREATE POLICY "Pay access users can delete people crew jobs"
 ON public.people_crew_jobs
 FOR DELETE
