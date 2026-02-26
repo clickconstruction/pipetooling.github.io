@@ -7,7 +7,15 @@ import type { Database } from '../types/database'
 type JobForTally = { id: string; hcp_number: string; job_name: string; job_address: string }
 type ServiceType = { id: string; name: string }
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
-type TallyEntry = { id: string; fixtureName: string; partId: string; partName: string; manufacturer: string | null; quantity: number }
+type TallyEntry = {
+  id: string
+  fixtureName: string
+  partId: string
+  partName: string
+  manufacturer: string | null
+  quantity: number
+  isFixtureSent?: boolean
+}
 
 const TOUCH_MIN = 48
 
@@ -28,9 +36,12 @@ export default function JobTally() {
   const [entries, setEntries] = useState<TallyEntry[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [lastSaveHadPartEntries, setLastSaveHadPartEntries] = useState(false)
   const [poCreateError, setPoCreateError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [jobPickerOpen, setJobPickerOpen] = useState(false)
+  const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
+  const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -73,6 +84,15 @@ export default function JobTally() {
         })
     }
   }, [role])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    supabase
+      .from('jobs_ledger_team_members')
+      .select('job_id')
+      .eq('user_id', authUser.id)
+      .then(({ data }) => setMyJobIds(new Set((data ?? []).map((r) => r.job_id))))
+  }, [authUser?.id])
 
   useEffect(() => {
     supabase
@@ -142,6 +162,7 @@ export default function JobTally() {
         partName: selectedPart.name,
         manufacturer: selectedPart.manufacturer,
         quantity: qty,
+        isFixtureSent: false,
       },
     ])
     setSelectedPart(null)
@@ -157,9 +178,28 @@ export default function JobTally() {
   function adjustEntryQuantity(id: string, delta: number) {
     setEntries((prev) =>
       prev.map((e) =>
-        e.id === id ? { ...e, quantity: Math.max(1, Math.round(e.quantity) + delta) } : e
+        e.id === id && !e.isFixtureSent ? { ...e, quantity: Math.max(1, Math.round(e.quantity) + delta) } : e
       )
     )
+  }
+
+  function sendFixtureToOffice() {
+    if (!fixtureName.trim()) return
+    setSaved(false)
+    setPoCreateError(null)
+    setEntries((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        fixtureName: fixtureName.trim(),
+        partId: '',
+        partName: '',
+        manufacturer: null,
+        quantity: 1,
+        isFixtureSent: true,
+      },
+    ])
+    setFixtureName('')
   }
 
   async function handleSave() {
@@ -167,41 +207,51 @@ export default function JobTally() {
     setSaving(true)
     setError(null)
     setPoCreateError(null)
-    const rows = entries.map((e, i) => ({
+    const partEntries = entries.filter((e) => !e.isFixtureSent && e.partId)
+    const allRows = entries.map((e, i) => ({
       job_id: selectedJobId,
       fixture_name: e.fixtureName,
-      part_id: e.partId,
+      part_id: e.isFixtureSent ? null : e.partId,
       quantity: e.quantity,
       sequence_order: i,
       created_by_user_id: authUser.id,
     }))
     const { data: inserted, error: insertErr } = await supabase
       .from('jobs_tally_parts')
-      .insert(rows)
+      .insert(allRows)
       .select('id')
     if (insertErr) {
       setError(insertErr.message)
       setSaving(false)
       return
     }
-    const pEntries = entries.map((e) => ({ part_id: e.partId, quantity: e.quantity }))
-    const { data: poResult, error: poErr } = await supabase.rpc('create_po_from_job_tally', {
-      p_job_id: selectedJobId,
-      p_entries: pEntries,
-    })
-    const poId = poResult && typeof poResult === 'object' && 'po_id' in poResult ? (poResult as { po_id: string }).po_id : null
-    if (poId && inserted?.length) {
-      await supabase
-        .from('jobs_tally_parts')
-        .update({ purchase_order_id: poId })
-        .in('id', inserted.map((r) => r.id))
-    }
-    if (poErr || (poResult && typeof poResult === 'object' && 'error' in poResult)) {
-      const msg = poErr?.message ?? (poResult as { error?: string })?.error ?? 'Unknown error'
-      setPoCreateError(msg)
+    let poId: string | null = null
+    if (partEntries.length > 0) {
+      const pEntries = partEntries.map((e) => ({ part_id: e.partId, quantity: e.quantity }))
+      const { data: poResult, error: poErr } = await supabase.rpc('create_po_from_job_tally', {
+        p_job_id: selectedJobId,
+        p_entries: pEntries,
+      })
+      poId = poResult && typeof poResult === 'object' && 'po_id' in poResult ? (poResult as { po_id: string }).po_id : null
+      if (poId && inserted?.length) {
+        const partInsertedIds = entries
+          .map((e, i) => (!e.isFixtureSent ? inserted[i]?.id : null))
+          .filter((id): id is string => !!id)
+        if (partInsertedIds.length > 0) {
+          await supabase
+            .from('jobs_tally_parts')
+            .update({ purchase_order_id: poId })
+            .in('id', partInsertedIds)
+        }
+      }
+      if (poErr || (poResult && typeof poResult === 'object' && 'error' in poResult)) {
+        const msg = poErr?.message ?? (poResult as { error?: string })?.error ?? 'Unknown error'
+        setPoCreateError(msg)
+      }
     }
     setSaving(false)
     setSaved(true)
+    setLastSaveHadPartEntries(partEntries.length > 0)
     setEntries([])
     setFixtureName('')
     setSelectedPart(null)
@@ -264,9 +314,9 @@ export default function JobTally() {
               <span style={{ color: '#b91c1c', display: 'block', marginTop: '0.25rem' }}>
                 Purchase order could not be created: {poCreateError}. You can create one manually in Materials.
               </span>
-            ) : (
+            ) : lastSaveHadPartEntries ? (
               ' Purchase order created.'
-            )}
+            ) : null}
           </p>
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.25rem', marginBottom: 0 }}>
             You can tally another job or go back to Dashboard.
@@ -343,7 +393,7 @@ export default function JobTally() {
                     <button type="button" onClick={() => setJobPickerOpen(false)} style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {jobs.map((j) => (
+                    {(showMyJobsOnly && myJobIds ? jobs.filter((j) => myJobIds.has(j.id)) : jobs).map((j) => (
                       <button
                         key={j.id}
                         type="button"
@@ -372,6 +422,16 @@ export default function JobTally() {
                 </div>
               </div>
             )}
+            {role !== 'subcontractor' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showMyJobsOnly}
+                  onChange={(e) => setShowMyJobsOnly(e.target.checked)}
+                />
+                Show my jobs only
+              </label>
+            )}
           </>
         )}
       </div>
@@ -398,6 +458,26 @@ export default function JobTally() {
                 borderRadius: 8,
               }}
             />
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+              Fill in parts or{' '}
+              <button
+                type="button"
+                onClick={sendFixtureToOffice}
+                disabled={!fixtureName.trim()}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  color: '#2563eb',
+                  textDecoration: 'underline',
+                  cursor: fixtureName.trim() ? 'pointer' : 'not-allowed',
+                  fontSize: 'inherit',
+                }}
+              >
+                send
+              </button>
+              {' '}this item to the office for them to price.
+            </p>
           </div>
 
           {/* Step 3: Search part (hidden when part selected; re-shown after Add or Cancel) */}
@@ -568,26 +648,34 @@ export default function JobTally() {
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
                       marginBottom: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: e.isFixtureSent ? '1px solid #86efac' : '1px solid #e5e7eb',
                       borderRadius: 8,
-                      background: '#fff',
+                      background: e.isFixtureSent ? '#dcfce7' : '#fff',
                     }}
                   >
                     <div>
                       <span style={{ fontWeight: 500 }}>{e.fixtureName}</span>
-                      <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{' · '}{e.partName}</span>
-                      {e.manufacturer && (
-                        <span style={{ color: '#9ca3af', fontSize: '0.875rem', marginLeft: '0.25rem' }}>
-                          ({e.manufacturer})
-                        </span>
+                      {e.isFixtureSent ? (
+                        <div style={{ fontSize: '0.875rem', color: '#15803d', marginTop: '0.25rem' }}>
+                          Sent to office for pricing
+                        </div>
+                      ) : (
+                        <>
+                          <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{' · '}{e.partName}</span>
+                          {e.manufacturer && (
+                            <span style={{ color: '#9ca3af', fontSize: '0.875rem', marginLeft: '0.25rem' }}>
+                              ({e.manufacturer})
+                            </span>
+                          )}
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            Qty: {e.quantity}
+                          </div>
+                        </>
                       )}
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                        Qty: {e.quantity}
-                      </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {e.quantity > 1 && (
+                        {!e.isFixtureSent && e.quantity > 1 && (
                           <button
                             type="button"
                             onClick={() => adjustEntryQuantity(e.id, -1)}
@@ -606,23 +694,25 @@ export default function JobTally() {
                             ↓
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => adjustEntryQuantity(e.id, 1)}
-                          style={{
-                            width: TOUCH_MIN,
-                            height: TOUCH_MIN,
-                            padding: 0,
-                            fontSize: '1rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 8,
-                            background: '#fff',
-                            cursor: 'pointer',
-                          }}
-                          title="Increase by 1"
-                        >
-                          ↑
-                        </button>
+                        {!e.isFixtureSent && (
+                          <button
+                            type="button"
+                            onClick={() => adjustEntryQuantity(e.id, 1)}
+                            style={{
+                              width: TOUCH_MIN,
+                              height: TOUCH_MIN,
+                              padding: 0,
+                              fontSize: '1rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 8,
+                              background: '#fff',
+                              cursor: 'pointer',
+                            }}
+                            title="Increase by 1"
+                          >
+                            ↑
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => removeEntry(e.id)}

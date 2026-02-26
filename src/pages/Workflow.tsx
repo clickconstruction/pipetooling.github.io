@@ -1492,7 +1492,7 @@ export default function Workflow() {
 
   async function updateNotes(step: Step, notes: string) {
     const trimmed = notes.trim() || null
-    let err = (await supabase.rpc('update_step_notes', { p_step_id: step.id, p_notes: trimmed })).error
+    let err = (await supabase.rpc('update_step_notes', { p_step_id: step.id, p_notes: trimmed ?? '' })).error
     if (err?.message?.includes('Could not find the function')) {
       err = (await supabase.from('project_workflow_steps').update({ notes: trimmed }).eq('id', step.id)).error
     }
@@ -1505,7 +1505,7 @@ export default function Workflow() {
 
   async function updatePrivateNotes(step: Step, privateNotes: string) {
     const trimmed = privateNotes.trim() || null
-    let err = (await supabase.rpc('update_step_private_notes', { p_step_id: step.id, p_private_notes: trimmed })).error
+    let err = (await supabase.rpc('update_step_private_notes', { p_step_id: step.id, p_private_notes: trimmed ?? '' })).error
     if (err?.message?.includes('Could not find the function')) {
       err = (await supabase.from('project_workflow_steps').update({ private_notes: trimmed }).eq('id', step.id)).error
     }
@@ -1685,11 +1685,11 @@ export default function Workflow() {
     let err: { message: string } | null = null
     const rpcRes = await supabase.rpc('update_step_assigned_to', {
       p_step_id: step.id,
-      p_assigned_to_name: name,
+      p_assigned_to_name: name ?? '',
     })
     err = rpcRes.error
     if (err?.message?.includes('Could not find the function')) {
-      const directRes = await supabase.from('project_workflow_steps').update({ assigned_to_name: name }).eq('id', step.id)
+      const directRes = await supabase.from('project_workflow_steps').update({ assigned_to_name: name ?? '' }).eq('id', step.id)
       err = directRes.error
     }
     if (err) {

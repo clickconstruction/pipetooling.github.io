@@ -29,32 +29,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_dashboard_buttons: {
-        Row: {
-          user_id: string
-          button_key: string
-          visible: boolean
-        }
-        Insert: {
-          user_id: string
-          button_key: string
-          visible?: boolean
-        }
-        Update: {
-          user_id?: string
-          button_key?: string
-          visible?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_dashboard_buttons_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       assembly_types: {
         Row: {
           category: string | null
@@ -754,6 +728,21 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
+      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -773,21 +762,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       counts_fixture_group_items: {
         Row: {
@@ -985,18 +959,18 @@ export type Database = {
       }
       dev_read_completed_items: {
         Row: {
-          dev_user_id: string
           checklist_instance_id: string
+          dev_user_id: string
           read_at: string
         }
         Insert: {
-          dev_user_id: string
           checklist_instance_id: string
+          dev_user_id: string
           read_at?: string
         }
         Update: {
-          dev_user_id?: string
           checklist_instance_id?: string
+          dev_user_id?: string
           read_at?: string
         }
         Relationships: [
@@ -1035,6 +1009,80 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      external_team_job_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          is_paid: boolean
+          note: string
+          person_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          is_paid?: boolean
+          note: string
+          person_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          is_paid?: boolean
+          note?: string
+          person_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_team_job_payments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_team_sub_managers: {
+        Row: {
+          created_at: string | null
+          person_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          person_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          person_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_team_sub_managers_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_team_sub_managers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fixture_labor_defaults: {
         Row: {
@@ -1095,15 +1143,57 @@ export type Database = {
           },
         ]
       }
+      job_status_events: {
+        Row: {
+          changed_at: string
+          changed_by_user_id: string | null
+          from_status: string | null
+          id: string
+          job_id: string
+          to_status: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          from_status?: string | null
+          id?: string
+          job_id: string
+          to_status: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by_user_id?: string | null
+          from_status?: string | null
+          id?: string
+          job_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_status_events_changed_by_user_id_fkey"
+            columns: ["changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_status_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger: {
         Row: {
           created_at: string | null
           google_drive_link: string | null
-          job_plans_link: string | null
           hcp_number: string
           id: string
           job_address: string
           job_name: string
+          job_plans_link: string | null
           master_user_id: string
           revenue: number | null
           status: string
@@ -1112,11 +1202,11 @@ export type Database = {
         Insert: {
           created_at?: string | null
           google_drive_link?: string | null
-          job_plans_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string
           job_name?: string
+          job_plans_link?: string | null
           master_user_id: string
           revenue?: number | null
           status?: string
@@ -1125,11 +1215,11 @@ export type Database = {
         Update: {
           created_at?: string | null
           google_drive_link?: string | null
-          job_plans_link?: string | null
           hcp_number?: string
           id?: string
           job_address?: string
           job_name?: string
+          job_plans_link?: string | null
           master_user_id?: string
           revenue?: number | null
           status?: string
@@ -1141,6 +1231,41 @@ export type Database = {
             columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs_ledger_fixtures: {
+        Row: {
+          count: number
+          created_at: string | null
+          id: string
+          job_id: string
+          name: string
+          sequence_order: number
+        }
+        Insert: {
+          count?: number
+          created_at?: string | null
+          id?: string
+          job_id: string
+          name?: string
+          sequence_order?: number
+        }
+        Update: {
+          count?: number
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          name?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_fixtures_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -1216,141 +1341,6 @@ export type Database = {
           },
         ]
       }
-      jobs_ledger_fixtures: {
-        Row: {
-          id: string
-          job_id: string
-          name: string
-          count: number
-          sequence_order: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          name?: string
-          count?: number
-          sequence_order?: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          name?: string
-          count?: number
-          sequence_order?: number
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jobs_ledger_fixtures_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_status_events: {
-        Row: {
-          id: string
-          job_id: string
-          from_status: string | null
-          to_status: string
-          changed_at: string
-          changed_by_user_id: string | null
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          from_status?: string | null
-          to_status: string
-          changed_at?: string
-          changed_by_user_id?: string | null
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          from_status?: string | null
-          to_status?: string
-          changed_at?: string
-          changed_by_user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_status_events_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_status_events_changed_by_user_id_fkey"
-            columns: ["changed_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      jobs_tally_parts: {
-        Row: {
-          id: string
-          job_id: string
-          fixture_name: string
-          part_id: string
-          quantity: number
-          sequence_order: number
-          created_by_user_id: string
-          created_at: string | null
-          purchase_order_id: string | null
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          fixture_name?: string
-          part_id: string
-          quantity?: number
-          sequence_order?: number
-          created_by_user_id: string
-          created_at?: string | null
-          purchase_order_id?: string | null
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          fixture_name?: string
-          part_id?: string
-          quantity?: number
-          sequence_order?: number
-          created_by_user_id?: string
-          created_at?: string | null
-          purchase_order_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "jobs_tally_parts_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_tally_parts_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "material_parts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_tally_parts_created_by_user_id_fkey"
-            columns: ["created_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       jobs_receivables: {
         Row: {
           account_rep_name: string | null
@@ -1392,143 +1382,70 @@ export type Database = {
           },
         ]
       }
-      report_enabled_users: {
-        Row: {
-          created_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_enabled_users_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      report_template_fields: {
-        Row: {
-          created_at: string | null
-          id: string
-          label: string
-          sequence_order: number
-          template_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          label: string
-          sequence_order?: number
-          template_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          label?: string
-          sequence_order?: number
-          template_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "report_template_fields_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "report_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      report_templates: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          sequence_order: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          sequence_order?: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          sequence_order?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      reports: {
+      jobs_tally_parts: {
         Row: {
           created_at: string | null
           created_by_user_id: string
-          field_values: Json
+          fixture_cost: number | null
+          fixture_name: string
           id: string
-          job_ledger_id: string | null
-          project_id: string | null
-          template_id: string
-          updated_at: string | null
+          job_id: string
+          part_id: string | null
+          purchase_order_id: string | null
+          quantity: number
+          sequence_order: number
         }
         Insert: {
           created_at?: string | null
           created_by_user_id: string
-          field_values?: Json
+          fixture_cost?: number | null
+          fixture_name?: string
           id?: string
-          job_ledger_id?: string | null
-          project_id?: string | null
-          template_id: string
-          updated_at?: string | null
+          job_id: string
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
         }
         Update: {
           created_at?: string | null
           created_by_user_id?: string
-          field_values?: Json
+          fixture_cost?: number | null
+          fixture_name?: string
           id?: string
-          job_ledger_id?: string | null
-          project_id?: string | null
-          template_id?: string
-          updated_at?: string | null
+          job_id?: string
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
         }
         Relationships: [
           {
-            foreignKeyName: "reports_job_ledger_id_fkey"
-            columns: ["job_ledger_id"]
+            foreignKeyName: "jobs_tally_parts_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_tally_parts_job_id_fkey"
+            columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reports_project_id_fkey"
-            columns: ["project_id"]
+            foreignKeyName: "jobs_tally_parts_part_id_fkey"
+            columns: ["part_id"]
             isOneToOne: false
-            referencedRelation: "projects"
+            referencedRelation: "material_parts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reports_template_id_fkey"
-            columns: ["template_id"]
+            foreignKeyName: "jobs_tally_parts_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
             isOneToOne: false
-            referencedRelation: "report_templates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reports_created_by_user_id_fkey"
-            columns: ["created_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -2175,6 +2092,21 @@ export type Database = {
           },
         ]
       }
+      people_cost_matrix_tags: {
+        Row: {
+          person_name: string
+          tags: string
+        }
+        Insert: {
+          person_name: string
+          tags?: string
+        }
+        Update: {
+          person_name?: string
+          tags?: string
+        }
+        Relationships: []
+      }
       people_hours: {
         Row: {
           created_at: string | null
@@ -2222,21 +2154,6 @@ export type Database = {
         Update: {
           person_name?: string
           sequence_order?: number
-        }
-        Relationships: []
-      }
-      people_cost_matrix_tags: {
-        Row: {
-          person_name: string
-          tags: string
-        }
-        Insert: {
-          person_name: string
-          tags?: string
-        }
-        Update: {
-          person_name?: string
-          tags?: string
         }
         Relationships: []
       }
@@ -2730,141 +2647,33 @@ export type Database = {
           },
         ]
       }
-      prospects: {
-        Row: {
-          id: string
-          master_user_id: string
-          created_by: string
-          warmth_value: string | null
-          warmth_count: number | null
-          prospect_fit_status: string | null
-          company_name: string | null
-          contact_name: string | null
-          phone_number: string | null
-          email: string | null
-          links_to_website: string | null
-          notes: string | null
-          last_contact: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id?: string
-          master_user_id: string
-          created_by: string
-          warmth_value?: string | null
-          warmth_count?: number | null
-          prospect_fit_status?: string | null
-          company_name?: string | null
-          contact_name?: string | null
-          phone_number?: string | null
-          email?: string | null
-          links_to_website?: string | null
-          notes?: string | null
-          last_contact?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          master_user_id?: string
-          created_by?: string
-          warmth_value?: string | null
-          warmth_count?: number | null
-          prospect_fit_status?: string | null
-          company_name?: string | null
-          contact_name?: string | null
-          phone_number?: string | null
-          email?: string | null
-          links_to_website?: string | null
-          notes?: string | null
-          last_contact?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prospects_master_user_id_fkey"
-            columns: ["master_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prospects_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prospect_comments: {
-        Row: {
-          id: string
-          prospect_id: string
-          created_by: string
-          created_at: string | null
-          comment_text: string
-          interaction_type: string
-        }
-        Insert: {
-          id?: string
-          prospect_id: string
-          created_by: string
-          created_at?: string | null
-          comment_text: string
-          interaction_type: string
-        }
-        Update: {
-          id?: string
-          prospect_id?: string
-          created_by?: string
-          created_at?: string | null
-          comment_text?: string
-          interaction_type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prospect_comments_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prospect_comments_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       prospect_callbacks: {
         Row: {
-          id: string
-          prospect_id: string
-          user_id: string
           callback_date: string
-          title: string | null
           created_at: string | null
+          id: string
+          note: string | null
+          prospect_id: string
+          title: string | null
+          user_id: string
         }
         Insert: {
-          id?: string
-          prospect_id: string
-          user_id: string
           callback_date: string
-          title?: string | null
           created_at?: string | null
+          id?: string
+          note?: string | null
+          prospect_id: string
+          title?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          prospect_id?: string
-          user_id?: string
           callback_date?: string
-          title?: string | null
           created_at?: string | null
+          id?: string
+          note?: string | null
+          prospect_id?: string
+          title?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -2877,6 +2686,117 @@ export type Database = {
           {
             foreignKeyName: "prospect_callbacks_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_comments: {
+        Row: {
+          comment_text: string
+          created_at: string | null
+          created_by: string
+          id: string
+          interaction_type: string
+          prospect_id: string
+        }
+        Insert: {
+          comment_text: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          interaction_type: string
+          prospect_id: string
+        }
+        Update: {
+          comment_text?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          interaction_type?: string
+          prospect_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_comments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_comments_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospects: {
+        Row: {
+          company_name: string | null
+          contact_name: string | null
+          created_at: string | null
+          created_by: string
+          email: string | null
+          id: string
+          last_contact: string | null
+          links_to_website: string | null
+          master_user_id: string
+          notes: string | null
+          phone_number: string | null
+          prospect_fit_status: string | null
+          updated_at: string | null
+          warmth_count: number | null
+          warmth_value: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          created_by: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          links_to_website?: string | null
+          master_user_id: string
+          notes?: string | null
+          phone_number?: string | null
+          prospect_fit_status?: string | null
+          updated_at?: string | null
+          warmth_count?: number | null
+          warmth_value?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          created_by?: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          links_to_website?: string | null
+          master_user_id?: string
+          notes?: string | null
+          phone_number?: string | null
+          prospect_fit_status?: string | null
+          updated_at?: string | null
+          warmth_count?: number | null
+          warmth_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospects_master_user_id_fkey"
+            columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -3074,6 +2994,147 @@ export type Database = {
         }
         Relationships: []
       }
+      report_enabled_users: {
+        Row: {
+          created_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_enabled_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_template_fields: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          sequence_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          sequence_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          sequence_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          sequence_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string | null
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_ledger_id: string | null
+          project_id: string | null
+          template_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_user_id: string
+          field_values?: Json
+          id?: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          template_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_user_id?: string
+          field_values?: Json
+          id?: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          template_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string | null
@@ -3232,80 +3293,6 @@ export type Database = {
         }
         Relationships: []
       }
-      external_team_job_payments: {
-        Row: {
-          amount: number
-          created_at: string | null
-          id: string
-          is_paid: boolean
-          note: string
-          person_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          id?: string
-          is_paid?: boolean
-          note: string
-          person_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          id?: string
-          is_paid?: boolean
-          note?: string
-          person_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "external_team_job_payments_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      external_team_sub_managers: {
-        Row: {
-          created_at: string | null
-          person_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          person_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          person_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "external_team_sub_managers_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: true
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "external_team_sub_managers_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       takeoff_book_entries: {
         Row: {
           alias_names: string[] | null
@@ -3412,6 +3399,32 @@ export type Database = {
           },
         ]
       }
+      user_dashboard_buttons: {
+        Row: {
+          button_key: string
+          user_id: string
+          visible: boolean
+        }
+        Insert: {
+          button_key: string
+          user_id: string
+          visible?: boolean
+        }
+        Update: {
+          button_key?: string
+          user_id?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_buttons_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_pinned_tabs: {
         Row: {
           id: string
@@ -3437,6 +3450,39 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_pinned_tabs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_report_notification_preferences: {
+        Row: {
+          created_at: string | null
+          template_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          template_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          template_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_report_notification_preferences_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "report_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_report_notification_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -3482,39 +3528,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
-      }
-      user_report_notification_preferences: {
-        Row: {
-          created_at: string | null
-          template_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          template_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          template_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_report_notification_preferences_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "report_templates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_report_notification_preferences_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       workflow_projections: {
         Row: {
@@ -3728,7 +3741,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assistants_share_master: {
+        Args: { assistant_a: string; assistant_b: string }
+        Returns: boolean
+      }
       can_access_project: {
+        Args: { project_id_param: string }
+        Returns: boolean
+      }
+      can_access_project_row: {
         Args: { project_id_param: string }
         Returns: boolean
       }
@@ -3751,6 +3772,10 @@ export type Database = {
       claim_dev_with_code: { Args: { code_input: string }; Returns: boolean }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
+        Returns: Json
+      }
+      create_po_from_job_tally: {
+        Args: { p_entries: Json; p_job_id: string }
         Returns: Json
       }
       create_project_with_template: {
@@ -3780,6 +3805,15 @@ export type Database = {
       estimator_can_access_service_type: {
         Args: { p_service_type_id: string }
         Returns: boolean
+      }
+      get_job_display_for_report: {
+        Args: { p_id: string; p_source: string }
+        Returns: {
+          display_name: string
+          hcp_number: string
+          id: string
+          source: string
+        }[]
       }
       get_parts_ordered_by_price_count:
         | {
@@ -3817,105 +3851,6 @@ export type Database = {
           total_parts: number
         }[]
       }
-      get_job_display_for_report: {
-        Args: { p_source: string; p_id: string }
-        Returns: { id: string; source: string; display_name: string; hcp_number: string }[]
-      }
-      list_reports_with_job_info: {
-        Args: never
-        Returns: {
-          id: string
-          template_id: string
-          template_name: string
-          created_by_user_id: string
-          created_by_name: string
-          created_at: string
-          updated_at: string
-          field_values: Record<string, string>
-          job_ledger_id: string | null
-          project_id: string | null
-          job_display_name: string
-          job_hcp_number: string
-        }[]
-      }
-      list_my_reports: {
-        Args: never
-        Returns: {
-          id: string
-          template_id: string
-          template_name: string
-          created_by_user_id: string
-          created_by_name: string
-          created_at: string
-          updated_at: string
-          field_values: Record<string, string>
-          job_ledger_id: string | null
-          project_id: string | null
-          job_display_name: string
-          job_hcp_number: string
-        }[]
-      }
-      list_jobs_for_tally: {
-        Args: never
-        Returns: { id: string; hcp_number: string; job_name: string; job_address: string }[]
-      }
-      list_assigned_jobs_for_dashboard: {
-        Args: never
-        Returns: {
-          id: string
-          hcp_number: string
-          job_name: string
-          job_address: string
-          revenue: number | null
-          master_user_id: string
-          created_at: string | null
-        }[]
-      }
-      update_job_status: {
-        Args: { p_job_id: string; p_to_status: string }
-        Returns: Record<string, unknown>
-      }
-      update_step_assigned_to: {
-        Args: { p_step_id: string; p_assigned_to_name: string | null }
-        Returns: undefined
-      }
-      update_step_notes: {
-        Args: { p_step_id: string; p_notes: string | null }
-        Returns: undefined
-      }
-      update_step_private_notes: {
-        Args: { p_step_id: string; p_private_notes: string | null }
-        Returns: undefined
-      }
-      list_tally_parts_with_po: {
-        Args: never
-        Returns: {
-          id: string
-          job_id: string
-          fixture_name: string
-          part_id: string
-          quantity: number
-          created_by_user_id: string
-          created_at: string
-          price_at_time: number | null
-          purchase_order_id: string | null
-          purchase_order_name: string | null
-          hcp_number: string | null
-          job_name: string | null
-          job_address: string | null
-          part_name: string | null
-          part_manufacturer: string | null
-          created_by_name: string | null
-        }[]
-      }
-      create_po_from_job_tally: {
-        Args: { p_job_id: string; p_entries: { part_id: string; quantity: number }[] }
-        Returns: { po_id?: string; error?: string }
-      }
-      search_jobs_for_reports: {
-        Args: { search_text?: string }
-        Returns: { id: string; source: string; display_name: string; hcp_number: string }[]
-      }
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
       is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
@@ -3924,6 +3859,86 @@ export type Database = {
       is_estimator: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      list_assigned_jobs_for_dashboard: {
+        Args: never
+        Returns: {
+          created_at: string
+          google_drive_link: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          job_plans_link: string
+          master_user_id: string
+          revenue: number
+        }[]
+      }
+      list_jobs_for_tally: {
+        Args: never
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+        }[]
+      }
+      list_my_reports: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by_name: string
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_display_name: string
+          job_hcp_number: string
+          job_ledger_id: string
+          project_id: string
+          template_id: string
+          template_name: string
+          updated_at: string
+        }[]
+      }
+      list_reports_with_job_info: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by_name: string
+          created_by_user_id: string
+          field_values: Json
+          id: string
+          job_display_name: string
+          job_hcp_number: string
+          job_ledger_id: string
+          project_id: string
+          template_id: string
+          template_name: string
+          updated_at: string
+        }[]
+      }
+      list_tally_parts_with_po: {
+        Args: never
+        Returns: {
+          created_at: string
+          created_by_name: string
+          created_by_user_id: string
+          fixture_cost: number
+          fixture_name: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_id: string
+          job_name: string
+          part_id: string
+          part_manufacturer: string
+          part_name: string
+          price_at_time: number
+          purchase_order_id: string
+          purchase_order_name: string
+          purchase_order_status: string
+          quantity: number
+        }[]
+      }
       master_adopted_current_user: {
         Args: { master_user_id: string }
         Returns: boolean
@@ -3932,7 +3947,34 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      report_edit_window_days: { Args: never; Returns: number }
+      report_sub_visibility_months: { Args: never; Returns: number }
+      search_jobs_for_reports: {
+        Args: { search_text?: string }
+        Returns: {
+          display_name: string
+          hcp_number: string
+          id: string
+          source: string
+        }[]
+      }
       touch_last_sign_in: { Args: never; Returns: undefined }
+      update_job_status: {
+        Args: { p_job_id: string; p_to_status: string }
+        Returns: Json
+      }
+      update_step_assigned_to: {
+        Args: { p_assigned_to_name: string; p_step_id: string }
+        Returns: undefined
+      }
+      update_step_notes: {
+        Args: { p_notes: string; p_step_id: string }
+        Returns: undefined
+      }
+      update_step_private_notes: {
+        Args: { p_private_notes: string; p_step_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       project_status: "active" | "completed" | "on_hold" | "awaiting_start"

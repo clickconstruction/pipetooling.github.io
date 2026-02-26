@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
@@ -186,17 +185,6 @@ export default function Dashboard() {
   const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
-  const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
-  const [recentNotifyIds, setRecentNotifyIds] = useState<string[]>([])
-  const [sendTaskTitle, setSendTaskTitle] = useState('')
-  const [sendTaskAssignedToUserId, setSendTaskAssignedToUserId] = useState('')
-  const [sendTaskShowUntilCompleted, setSendTaskShowUntilCompleted] = useState(true)
-  const [sendTaskNotifyOnCompleteUserId, setSendTaskNotifyOnCompleteUserId] = useState('')
-  const [sendTaskNotifyMe, setSendTaskNotifyMe] = useState(false)
-  const [sendTaskSaving, setSendTaskSaving] = useState(false)
-  const [sendTaskError, setSendTaskError] = useState<string | null>(null)
-  const sendTaskInputRef = useRef<HTMLTextAreaElement | null>(null)
-  const [adoptedAssistants, setAdoptedAssistants] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
@@ -242,11 +230,8 @@ export default function Dashboard() {
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
 
-  const canSendTask = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
   const isDev = role === 'dev'
-  const isMaster = role === 'master_technician'
   const { showToast } = useToastContext()
-  const checklistAddModal = useChecklistAddModal()
   const visiblePins = filterPinnedByRole(pinnedRoutes, role)
   const pinsToShow = visiblePins.filter((p) => p.path !== '/dashboard' && p.path !== '/')
   const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
@@ -259,114 +244,13 @@ export default function Dashboard() {
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: externalTeamTotal } = useExternalTeamTotal(hasExternalTeamPin, financialRefreshKey)
 
+  // Load users for Forward modal (dev-only)
   useEffect(() => {
-    if (!canSendTask) return
-    const load = async () => {
-      const [usersRes, recentRes] = await Promise.all([
-        supabase.from('users').select('id, name, email').order('name'),
-        authUser?.id
-          ? supabase
-              .from('checklist_items')
-              .select('assigned_to_user_id, notify_on_complete_user_id, created_at')
-              .eq('created_by_user_id', authUser.id)
-              .order('created_at', { ascending: false })
-              .limit(50)
-          : { data: null },
-      ])
-      let users = (usersRes.data ?? []) as Array<{ id: string; name: string; email: string }>
-      // Frontend fallback for primaries: explicitly fetch adopting masters and merge
-      // (guarantees primaries see their master in Notify list even if RLS quirks)
-      if (role === 'primary' && authUser?.id) {
-        const { data: adoptions } = await supabase
-          .from('master_primaries')
-          .select('master_id')
-          .eq('primary_id', authUser.id)
-        const masterIds = (adoptions ?? []).map((a) => a.master_id).filter(Boolean)
-        if (masterIds.length > 0) {
-          const { data: mastersData } = await supabase
-            .from('users')
-            .select('id, name, email')
-            .in('id', masterIds)
-          const masters = (mastersData ?? []) as Array<{ id: string; name: string; email: string }>
-          const seen = new Set(users.map((u) => u.id))
-          const toAdd = masters.filter((m) => !seen.has(m.id))
-          if (toAdd.length > 0) {
-            users = [...users, ...toAdd].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-          }
-        }
-      }
-      setSendTaskUsers(users)
-      // Recent assignees and notify recipients (last 3 unique each)
-      const items = (recentRes.data ?? []) as Array<{ assigned_to_user_id: string; notify_on_complete_user_id: string | null }>
-      const assigneeSeen = new Set<string>()
-      const notifySeen = new Set<string>()
-      const assigneeIds: string[] = []
-      const notifyIds: string[] = []
-      for (const row of items) {
-        if (row.assigned_to_user_id && !assigneeSeen.has(row.assigned_to_user_id) && assigneeIds.length < 3) {
-          assigneeSeen.add(row.assigned_to_user_id)
-          assigneeIds.push(row.assigned_to_user_id)
-        }
-        if (row.notify_on_complete_user_id && !notifySeen.has(row.notify_on_complete_user_id) && notifyIds.length < 3) {
-          notifySeen.add(row.notify_on_complete_user_id)
-          notifyIds.push(row.notify_on_complete_user_id)
-        }
-      }
-      setRecentAssigneeIds(assigneeIds)
-      setRecentNotifyIds(notifyIds)
-      setSendTaskAssignedToUserId((prev) => prev || (assigneeIds[0] ?? users[0]?.id ?? ''))
-      setSendTaskNotifyOnCompleteUserId((prev) => prev || (notifyIds[0] ?? ''))
-    }
-    load()
-  }, [canSendTask, isDev, role, authUser?.id])
-
-  const orderedUsersForAssign = useMemo(() => {
-    const recent = recentAssigneeIds
-      .map((id) => sendTaskUsers.find((u) => u.id === id))
-      .filter((u): u is { id: string; name: string; email: string } => !!u)
-    const rest = sendTaskUsers
-      .filter((u) => !recentAssigneeIds.includes(u.id))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    return [...recent, ...rest]
-  }, [sendTaskUsers, recentAssigneeIds])
-
-  const orderedUsersForNotify = useMemo(() => {
-    const recent = recentNotifyIds
-      .map((id) => sendTaskUsers.find((u) => u.id === id))
-      .filter((u): u is { id: string; name: string; email: string } => !!u)
-    const rest = sendTaskUsers
-      .filter((u) => !recentNotifyIds.includes(u.id))
-      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    return [...recent, ...rest]
-  }, [sendTaskUsers, recentNotifyIds])
-
-  // Auto-resize Send task textarea as user types
-  useEffect(() => {
-    const el = sendTaskInputRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = Math.max(36, el.scrollHeight) + 'px'
-  }, [sendTaskTitle])
-
-  useEffect(() => {
-    if (isMaster && authUser?.id) {
-      supabase
-        .from('master_assistants')
-        .select('assistant_id')
-        .eq('master_id', authUser.id)
-        .then(async ({ data: adoptions }) => {
-          if (!adoptions?.length) {
-            setAdoptedAssistants([])
-            return
-          }
-          const ids = (adoptions as { assistant_id: string }[]).map((a) => a.assistant_id)
-          const { data: users } = await supabase.from('users').select('id, name, email').in('id', ids).order('name')
-          setAdoptedAssistants((users ?? []) as Array<{ id: string; name: string; email: string }>)
-        })
-    } else {
-      setAdoptedAssistants([])
-    }
-  }, [isMaster, authUser?.id])
+    if (!isDev) return
+    supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+      setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
+    })
+  }, [isDev])
 
   async function refreshPinned() {
     if (!authUser?.id) {
@@ -477,7 +361,7 @@ export default function Dashboard() {
       try {
         const { data } = await supabase.rpc('list_reports_with_job_info')
         const arr = Array.isArray(data) ? data : []
-        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> }) => ({
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown }) => ({
           id: r.id,
           template_name: r.template_name,
           job_display_name: r.job_display_name,
@@ -506,7 +390,7 @@ export default function Dashboard() {
         const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
         setReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
         const arr = Array.isArray(data) ? data : []
-        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string> }) => ({
+        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown }) => ({
           id: r.id,
           template_id: r.template_id,
           template_name: r.template_name,
@@ -953,141 +837,6 @@ export default function Dashboard() {
     const merged = [...overdueData, ...(todayData ?? [])]
     merged.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
     setTodayChecklist(merged as ChecklistInstance[])
-  }
-
-  async function submitSendTask(e: React.FormEvent) {
-    e.preventDefault()
-    if (!authUser?.id || sendTaskSaving) return
-    const title = sendTaskTitle.trim()
-    if (!title) {
-      setSendTaskError('Title is required.')
-      return
-    }
-    if (!sendTaskAssignedToUserId) {
-      setSendTaskError('Select someone to assign to.')
-      return
-    }
-    setSendTaskError(null)
-    setSendTaskSaving(true)
-    const today = toLocalDateString(new Date())
-    const { data: itemData, error: itemErr } = await supabase
-      .from('checklist_items')
-      .insert({
-        title,
-        assigned_to_user_id: sendTaskAssignedToUserId,
-        created_by_user_id: authUser.id,
-        repeat_type: 'once',
-        repeat_days_of_week: null,
-        repeat_days_after: null,
-        repeat_end_date: null,
-        start_date: today,
-        show_until_completed: sendTaskShowUntilCompleted,
-        notify_on_complete_user_id: sendTaskNotifyOnCompleteUserId || null,
-        notify_creator_on_complete: sendTaskNotifyMe,
-      })
-      .select('id')
-      .single()
-    setSendTaskSaving(false)
-    if (itemErr) {
-      setSendTaskError(itemErr.message)
-      return
-    }
-    const itemId = (itemData as { id: string })?.id
-    if (!itemId) return
-    const { error: instErr } = await supabase.from('checklist_instances').insert({
-      checklist_item_id: itemId,
-      scheduled_date: today,
-      assigned_to_user_id: sendTaskAssignedToUserId,
-    })
-    if (instErr) {
-      setSendTaskError(instErr.message)
-      return
-    }
-    // Notify assignee of new task (push notification)
-    try {
-      await supabase.functions.invoke('send-checklist-notification', {
-        body: {
-          recipient_user_id: sendTaskAssignedToUserId,
-          push_title: 'New task assigned',
-          push_body: `You have a new task: ${title}`,
-          push_url: '/checklist',
-          tag: 'task-assigned',
-        },
-      })
-    } catch {
-      // Non-blocking: task was created; notification is best-effort
-    }
-    setSendTaskTitle('')
-    setSendTaskAssignedToUserId(sendTaskAssignedToUserId)
-    setSendTaskShowUntilCompleted(true)
-    setSendTaskNotifyOnCompleteUserId(sendTaskNotifyOnCompleteUserId || '')
-    setSendTaskNotifyMe(false)
-    if (authUser.id === sendTaskAssignedToUserId) {
-      await loadTodayChecklist()
-    }
-  }
-
-  async function sendTaskToAssistant(assistantId: string, assistantName: string) {
-    if (!authUser?.id || sendTaskSaving) return
-    const title = sendTaskTitle.trim()
-    if (!title) {
-      setSendTaskError('Enter a task first.')
-      return
-    }
-    setSendTaskError(null)
-    setSendTaskSaving(true)
-    const today = toLocalDateString(new Date())
-    const { data: itemData, error: itemErr } = await supabase
-      .from('checklist_items')
-      .insert({
-        title,
-        assigned_to_user_id: assistantId,
-        created_by_user_id: authUser.id,
-        repeat_type: 'once',
-        repeat_days_of_week: null,
-        repeat_days_after: null,
-        repeat_end_date: null,
-        start_date: today,
-        show_until_completed: sendTaskShowUntilCompleted,
-        notify_on_complete_user_id: sendTaskNotifyOnCompleteUserId || null,
-        notify_creator_on_complete: sendTaskNotifyMe,
-      })
-      .select('id')
-      .single()
-    setSendTaskSaving(false)
-    if (itemErr) {
-      setSendTaskError(itemErr.message)
-      return
-    }
-    const itemId = (itemData as { id: string })?.id
-    if (!itemId) return
-    const { error: instErr } = await supabase.from('checklist_instances').insert({
-      checklist_item_id: itemId,
-      scheduled_date: today,
-      assigned_to_user_id: assistantId,
-    })
-    if (instErr) {
-      setSendTaskError(instErr.message)
-      return
-    }
-    try {
-      await supabase.functions.invoke('send-checklist-notification', {
-        body: {
-          recipient_user_id: assistantId,
-          push_title: 'New task assigned',
-          push_body: `You have a new task: ${title}`,
-          push_url: '/checklist',
-          tag: 'task-assigned',
-        },
-      })
-    } catch {
-      // Non-blocking
-    }
-    setSendTaskTitle('')
-    showToast(`Task sent to ${assistantName}.`, 'success')
-    if (authUser.id === assistantId) {
-      await loadTodayChecklist()
-    }
   }
 
   async function toggleChecklistComplete(inst: ChecklistInstance) {
@@ -1902,115 +1651,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {canSendTask && (
-        <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <h2 style={{ fontSize: '1.125rem', marginBottom: 0, marginTop: 0 }}>Send task</h2>
-            <button
-              type="button"
-              onClick={() => checklistAddModal?.openAddModal()}
-              style={{ fontSize: '0.875rem', color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'none' }}
-            >
-              detail send
-            </button>
-          </div>
-          <form className="sendTaskForm" onSubmit={submitSendTask} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem 1rem' }}>
-            <label style={{ flex: '1 1 100%', minWidth: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Task</span>
-              <textarea
-                ref={sendTaskInputRef}
-                value={sendTaskTitle}
-                onChange={(e) => setSendTaskTitle(e.target.value)}
-                placeholder="Task"
-                rows={1}
-                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', resize: 'none', overflow: 'hidden', minHeight: 36 }}
-              />
-            </label>
-            <label style={{ flex: '0 1 140px', minWidth: 100 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Assigned To</span>
-              <select
-                value={sendTaskAssignedToUserId}
-                onChange={(e) => setSendTaskAssignedToUserId(e.target.value)}
-                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              >
-                {orderedUsersForAssign.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
-                ))}
-              </select>
-            </label>
-            <div style={{ flexShrink: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Remind</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={sendTaskShowUntilCompleted}
-                    onChange={(e) => setSendTaskShowUntilCompleted(e.target.checked)}
-                  />
-                  <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Until complete</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={sendTaskNotifyMe}
-                    onChange={(e) => setSendTaskNotifyMe(e.target.checked)}
-                  />
-                  <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>Notify me</span>
-                </label>
-              </div>
-            </div>
-            <label style={{ flex: '0 1 120px', minWidth: 90 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280' }}>Notify</span>
-              <select
-                value={sendTaskNotifyOnCompleteUserId}
-                onChange={(e) => setSendTaskNotifyOnCompleteUserId(e.target.value)}
-                style={{ width: '100%', padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-              >
-                <option value="">—</option>
-                {orderedUsersForNotify.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
-                ))}
-              </select>
-            </label>
-            <div style={{ flexShrink: 0 }}>
-              <span style={{ display: 'block', marginBottom: '0.15rem', fontSize: '0.75rem', color: '#6b7280', visibility: 'hidden' }}>Send</span>
-              <button
-                type="submit"
-                disabled={sendTaskSaving || !sendTaskTitle.trim() || !sendTaskAssignedToUserId}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: sendTaskSaving ? 'not-allowed' : 'pointer' }}
-              >
-                {sendTaskSaving ? 'Sending…' : 'Send'}
-              </button>
-            </div>
-            {sendTaskError && <div style={{ width: '100%', color: '#b91c1c', fontSize: '0.8125rem' }}>{sendTaskError}</div>}
-          </form>
-          {isMaster && adoptedAssistants.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginRight: '0.25rem' }}>Send to:</span>
-              {adoptedAssistants.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => sendTaskToAssistant(a.id, a.name || a.email || 'Assistant')}
-                  disabled={sendTaskSaving || !sendTaskTitle.trim()}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    background: sendTaskSaving || !sendTaskTitle.trim() ? '#e5e7eb' : '#3b82f6',
-                    color: sendTaskSaving || !sendTaskTitle.trim() ? '#9ca3af' : 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: sendTaskSaving || !sendTaskTitle.trim() ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {a.name || a.email || a.id.slice(0, 8)}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {isDev && (
         <div style={{ marginTop: '2rem' }}>
           <h2

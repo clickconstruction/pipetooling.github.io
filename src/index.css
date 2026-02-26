@@ -385,16 +385,6 @@ button {
     width: 100%;
   }
 
-  /* Send task: Task field full width, rest stacked below */
-  .sendTaskForm {
-    flex-direction: column;
-  }
-  .sendTaskForm > label,
-  .sendTaskForm > div {
-    flex: 1 1 100% !important;
-    min-width: 100% !important;
-    width: 100%;
-  }
 }
 
 @media (min-width: 641px) {

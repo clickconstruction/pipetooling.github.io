@@ -26,11 +26,12 @@ type TallyPartRow = {
   id: string
   job_id: string
   fixture_name: string
-  part_id: string
+  part_id: string | null
   quantity: number
   created_by_user_id: string
   created_at: string
   price_at_time: number | null
+  fixture_cost: number | null
   purchase_order_id: string | null
   purchase_order_name: string | null
   purchase_order_status: string | null
@@ -208,7 +209,10 @@ export default function Jobs() {
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
+  const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
+  const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
+  const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
@@ -818,6 +822,20 @@ export default function Jobs() {
       setTallyParts((prev) => prev.filter((r) => r.id !== id))
     }
     setDeletingTallyPartId(null)
+  }
+
+  async function updateFixtureCost(id: string, cost: number) {
+    setUpdatingFixtureCostId(id)
+    setError(null)
+    const { error: err } = await supabase.from('jobs_tally_parts').update({ fixture_cost: cost }).eq('id', id)
+    if (err) {
+      setError(err.message)
+    } else {
+      setTallyParts((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, fixture_cost: cost } : r))
+      )
+    }
+    setUpdatingFixtureCostId(null)
   }
 
   function getFixtureTypeIdByName(name: string): string | null {
@@ -1638,6 +1656,17 @@ export default function Jobs() {
 
   useEffect(() => {
     if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) loadTallyParts()
+  }, [activeTab, authUser?.id])
+
+  // Fetch job IDs where current user is a team member (for "show my jobs only" filter)
+  useEffect(() => {
+    if (activeTab === 'parts' && authUser?.id) {
+      supabase
+        .from('jobs_ledger_team_members')
+        .select('job_id')
+        .eq('user_id', authUser.id)
+        .then(({ data }) => setMyJobIds(new Set((data ?? []).map((r) => r.job_id))))
+    }
   }, [activeTab, authUser?.id])
 
   // Restore billing sort preference from localStorage (per user)
@@ -3425,14 +3454,24 @@ export default function Jobs() {
       {activeTab === 'parts' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <input
               type="search"
               placeholder="Search HCP, job name, fixture, part name…"
               value={tallyPartsSearch}
               onChange={(e) => setTallyPartsSearch(e.target.value)}
-              style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
             />
+            {authRole !== 'subcontractor' && myRole !== 'subcontractor' && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer', flexShrink: 0 }}>
+                <input
+                  type="checkbox"
+                  checked={showMyJobsOnly}
+                  onChange={(e) => setShowMyJobsOnly(e.target.checked)}
+                />
+                Show my jobs only
+              </label>
+            )}
           </div>
           {tallyPartsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
@@ -3450,17 +3489,21 @@ export default function Jobs() {
                 </thead>
                 <tbody>
                   {(() => {
+                    let filtered = tallyParts
+                    if (showMyJobsOnly && myJobIds) {
+                      filtered = filtered.filter((r) => myJobIds.has(r.job_id))
+                    }
                     const q = tallyPartsSearch.trim().toLowerCase()
-                    const filtered = q
-                      ? tallyParts.filter((r) => {
-                          const hcp = (r.hcp_number ?? '').toLowerCase()
-                          const job = (r.job_name ?? '').toLowerCase()
-                          const fixture = (r.fixture_name ?? '').toLowerCase()
-                          const part = (r.part_name ?? '').toLowerCase()
-                          const mfr = (r.part_manufacturer ?? '').toLowerCase()
-                          return hcp.includes(q) || job.includes(q) || fixture.includes(q) || part.includes(q) || mfr.includes(q)
-                        })
-                      : tallyParts
+                    if (q) {
+                      filtered = filtered.filter((r) => {
+                        const hcp = (r.hcp_number ?? '').toLowerCase()
+                        const job = (r.job_name ?? '').toLowerCase()
+                        const fixture = (r.fixture_name ?? '').toLowerCase()
+                        const part = (r.part_name ?? '').toLowerCase()
+                        const mfr = (r.part_manufacturer ?? '').toLowerCase()
+                        return hcp.includes(q) || job.includes(q) || fixture.includes(q) || part.includes(q) || mfr.includes(q)
+                      })
+                    }
                     const byJob = new Map<string, TallyPartRow[]>()
                     for (const r of filtered) {
                       const list = byJob.get(r.job_id) ?? []
@@ -3483,7 +3526,15 @@ export default function Jobs() {
                     }
                     return jobRows.flatMap(({ jobId, hcpNumber, jobName, parts }) => {
                       const expanded = expandedPartsJobIds.has(jobId)
-                      const partsTotal = parts.reduce((sum, r) => sum + (Number(r.price_at_time ?? 0) * Number(r.quantity)), 0)
+                      const partsTotal = parts.reduce((sum, r) => {
+                        if (r.part_id == null) {
+                          return sum + (Number(r.fixture_cost ?? 0) * Number(r.quantity))
+                        }
+                        return sum + (Number(r.price_at_time ?? 0) * Number(r.quantity))
+                      }, 0)
+                      const hasUnpricedFixture = parts.some(
+                        (r) => r.part_id == null && (r.fixture_cost == null || Number(r.fixture_cost) === 0)
+                      )
                       const toggle = () => {
                         setExpandedPartsJobIds((prev) => {
                           const next = new Set(prev)
@@ -3496,7 +3547,11 @@ export default function Jobs() {
                         <tr
                           key={jobId}
                           data-job-id={jobId}
-                          style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: expanded ? '#f9fafb' : undefined }}
+                          style={{
+                            borderBottom: '1px solid #f3f4f6',
+                            cursor: 'pointer',
+                            background: hasUnpricedFixture ? '#fef2f2' : expanded ? '#f9fafb' : undefined,
+                          }}
                           onClick={toggle}
                         >
                           <td style={{ padding: '0.75rem', width: 32 }}>
@@ -3529,12 +3584,41 @@ export default function Jobs() {
                                         <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }} onClick={(e) => e.stopPropagation()}>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{r.fixture_name || '—'}</td>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>
-                                            {r.part_name ?? '—'}
-                                            {r.part_manufacturer ? ` (${r.part_manufacturer})` : ''}
+                                            {r.part_id == null ? (
+                                              <span style={{ color: '#15803d', fontWeight: 500 }}>Fixture (sent for pricing)</span>
+                                            ) : (
+                                              <>
+                                                {r.part_name ?? '—'}
+                                                {r.part_manufacturer ? ` (${r.part_manufacturer})` : ''}
+                                              </>
+                                            )}
                                           </td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{Number(r.quantity)}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                                            {r.purchase_order_id && r.price_at_time != null ? (
+                                            {r.part_id == null ? (
+                                              <input
+                                                key={`${r.id}-${r.fixture_cost ?? ''}`}
+                                                type="number"
+                                                min={0}
+                                                step={0.01}
+                                                defaultValue={r.fixture_cost ?? ''}
+                                                onBlur={(e) => {
+                                                  const v = parseFloat((e.target as HTMLInputElement).value)
+                                                  if (!Number.isNaN(v) && v >= 0) {
+                                                    updateFixtureCost(r.id, v)
+                                                  }
+                                                }}
+                                                disabled={updatingFixtureCostId === r.id}
+                                                placeholder="Enter cost"
+                                                style={{
+                                                  width: 80,
+                                                  padding: '0.25rem 0.5rem',
+                                                  fontSize: '0.8125rem',
+                                                  border: '1px solid #d1d5db',
+                                                  borderRadius: 4,
+                                                }}
+                                              />
+                                            ) : r.purchase_order_id && r.price_at_time != null ? (
                                               <button
                                                 type="button"
                                                 onClick={() => navigate(`/materials?tab=purchase-orders&po=${r.purchase_order_id}`)}
