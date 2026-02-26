@@ -172,6 +172,10 @@ export default function Jobs() {
   const [defaultLaborRateModalOpen, setDefaultLaborRateModalOpen] = useState(false)
   const [defaultLaborRateValue, setDefaultLaborRateValue] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
+  const [showAddSubcontractorModal, setShowAddSubcontractorModal] = useState(false)
+  const [newSubcontractor, setNewSubcontractor] = useState({ name: '', email: '', phone: '', notes: '' })
+  const [addSubcontractorError, setAddSubcontractorError] = useState<string | null>(null)
+  const [savingAddSubcontractor, setSavingAddSubcontractor] = useState(false)
   const [myRole, setMyRole] = useState<string | null>(null)
 
   // Combined Labor tab (Team Job Labor) state
@@ -413,6 +417,59 @@ export default function Jobs() {
     const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name')
     setPeople((peopleData as Person[]) ?? [])
     await loadUsers()
+  }
+
+  async function checkDuplicateName(nameToCheck: string): Promise<boolean> {
+    const trimmedName = nameToCheck.trim().toLowerCase()
+    if (!trimmedName) return false
+    const [peopleRes, usersRes] = await Promise.all([
+      supabase.from('people').select('id, name'),
+      supabase.from('users').select('id, name'),
+    ])
+    const hasDuplicateInPeople = peopleRes.data?.some((p) => p.name?.toLowerCase() === trimmedName) ?? false
+    const hasDuplicateInUsers = usersRes.data?.some((u) => u.name?.toLowerCase() === trimmedName) ?? false
+    return hasDuplicateInPeople || hasDuplicateInUsers
+  }
+
+  async function handleSaveAddSubcontractor(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id) return
+    setSavingAddSubcontractor(true)
+    setAddSubcontractorError(null)
+    const trimmedName = newSubcontractor.name.trim()
+    if (!trimmedName) {
+      setAddSubcontractorError('Name is required')
+      setSavingAddSubcontractor(false)
+      return
+    }
+    const isDuplicate = await checkDuplicateName(trimmedName)
+    if (isDuplicate) {
+      setAddSubcontractorError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+      setSavingAddSubcontractor(false)
+      return
+    }
+    const { error: err } = await supabase
+      .from('people')
+      .insert({
+        master_user_id: authUser.id,
+        kind: 'sub',
+        name: trimmedName,
+        email: newSubcontractor.email.trim() || null,
+        phone: newSubcontractor.phone.trim() || null,
+        notes: newSubcontractor.notes.trim() || null,
+      })
+      .select('name')
+      .single()
+    if (err) {
+      setAddSubcontractorError(err.message)
+      setSavingAddSubcontractor(false)
+      return
+    }
+    await loadRoster()
+    setLaborAssignedTo((prev) => (prev.includes(trimmedName) ? prev : [...prev, trimmedName]))
+    setShowAddSubcontractorModal(false)
+    setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
+    setSavingAddSubcontractor(false)
   }
 
   async function loadReceivables() {
@@ -1295,6 +1352,9 @@ export default function Jobs() {
   function closeLaborModal() {
     setEditingLaborJob(null)
     setLaborModalOpen(false)
+    setShowAddSubcontractorModal(false)
+    setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
+    setAddSubcontractorError(null)
     resetLaborForm()
   }
 
@@ -1582,9 +1642,9 @@ export default function Jobs() {
       }, { replace: true })
       return
     }
-    // Only primaries default to Reports; everyone else defaults to Billing
+    // Only primaries default to Reports; primaries only see Reports tab (Billing hidden)
     if (isPrimary) {
-      const primaryTabs = ['reports', 'ledger']
+      const primaryTabs = ['reports']
       if (tab && primaryTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
       } else if (!tab || !primaryTabs.includes(tab)) {
@@ -1741,7 +1801,7 @@ export default function Jobs() {
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if ((activeTab === 'combined-labor' || activeTab === 'ledger') && authUser?.id) loadTeamLaborData()
+    if ((activeTab === 'combined-labor' || activeTab === 'ledger' || activeTab === 'teams-summary') && authUser?.id) loadTeamLaborData()
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
@@ -1911,6 +1971,12 @@ export default function Jobs() {
       }
     }
 
+    for (const row of teamLaborData) {
+      for (const p of row.breakdown) {
+        laborCostByName.set(p.personName, (laborCostByName.get(p.personName) ?? 0) + p.cost)
+      }
+    }
+
     const allNames = new Set<string>()
     for (const [name] of billingByName) allNames.add(name)
     for (const [name] of laborCostByName) allNames.add(name)
@@ -1936,6 +2002,12 @@ export default function Jobs() {
     )
     const matchedHcps = new Set([...billingHcps].filter((h) => h && laborHcps.has(h)))
 
+    const hcpByJobId = new Map<string, string>()
+    for (const j of jobs) {
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      if (hcp) hcpByJobId.set(j.id, hcp)
+    }
+
     let matchedLaborTotal = 0
     let matchedBillingTotal = 0
     const mileageCost = driveMileageCost ?? 0.70
@@ -1954,6 +2026,10 @@ export default function Jobs() {
         : miles > 0 ? miles * mileageCost : 0
       matchedLaborTotal += totalHrs * rate + driveCost
     }
+    for (const row of teamLaborData) {
+      const hcp = hcpByJobId.get(row.jobId)
+      if (hcp && matchedHcps.has(hcp)) matchedLaborTotal += row.jobCost
+    }
     for (const job of jobs) {
       const hcp = (job.hcp_number ?? '').trim().toLowerCase()
       if (!hcp || !matchedHcps.has(hcp) || job.revenue == null) continue
@@ -1961,7 +2037,7 @@ export default function Jobs() {
     }
 
     return { rows, matchedLaborTotal, matchedBillingTotal }
-  }, [jobs, laborJobs, driveMileageCost, driveTimePerMile])
+  }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
 
   const jobSummaryData = useMemo(() => {
     const partsCostByJobId = new Map<string, number>()
@@ -1987,9 +2063,15 @@ export default function Jobs() {
       const laborCost = totalHrs * rate + driveCost
       laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
     }
+    const teamLaborCostByJobId = new Map<string, number>()
+    for (const r of teamLaborData) {
+      teamLaborCostByJobId.set(r.jobId, r.jobCost)
+    }
     return jobs.map((job) => {
       const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-      const laborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+      const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+      const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
+      const laborCost = subLaborCost + teamLaborCost
       const partsCost = partsCostByJobId.get(job.id) ?? 0
       const totalBill = job.revenue != null ? Number(job.revenue) : 0
       const profit = totalBill - partsCost - laborCost
@@ -2001,7 +2083,7 @@ export default function Jobs() {
         profit,
       }
     })
-  }, [jobs, laborJobs, tallyParts, driveMileageCost, driveTimePerMile])
+  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile])
 
   const combinedLaborRows = useMemo(() => {
     const laborCostByHcp = new Map<string, number>()
@@ -2363,6 +2445,20 @@ export default function Jobs() {
           <button
             type="button"
             onClick={() => {
+              setActiveTab('ledger')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'ledger')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'ledger')}
+          >
+            Billing
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               setActiveTab('sub_sheet_ledger')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
@@ -2404,20 +2500,6 @@ export default function Jobs() {
           </button>
           </>
         )}
-        <button
-            type="button"
-            onClick={() => {
-              setActiveTab('ledger')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'ledger')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'ledger')}
-          >
-            Billing
-          </button>
         {showPrimaryRestrictedTabs && (
           <button
             type="button"
@@ -4032,6 +4114,13 @@ export default function Jobs() {
                       ))}
                       {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddSubcontractorModal(true)}
+                      style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Add Subcontractor
+                    </button>
                   </div>
                   <div>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
@@ -4362,6 +4451,81 @@ export default function Jobs() {
                   Print
                 </button>
                 <button type="button" onClick={closeLaborModal} disabled={laborSaving} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddSubcontractorModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Add Subcontractor</h3>
+            {addSubcontractorError && (
+              <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{addSubcontractorError}</p>
+            )}
+            <form onSubmit={handleSaveAddSubcontractor}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-sub-name" style={{ display: 'block', marginBottom: 4 }}>Name <span style={{ color: '#b91c1c' }}>*</span></label>
+                <input
+                  id="new-sub-name"
+                  type="text"
+                  value={newSubcontractor.name}
+                  onChange={(e) => setNewSubcontractor((p) => ({ ...p, name: e.target.value }))}
+                  required
+                  disabled={savingAddSubcontractor}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-sub-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
+                <input
+                  id="new-sub-email"
+                  type="email"
+                  value={newSubcontractor.email}
+                  onChange={(e) => setNewSubcontractor((p) => ({ ...p, email: e.target.value }))}
+                  disabled={savingAddSubcontractor}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-sub-phone" style={{ display: 'block', marginBottom: 4 }}>Phone</label>
+                <input
+                  id="new-sub-phone"
+                  type="tel"
+                  value={newSubcontractor.phone}
+                  onChange={(e) => setNewSubcontractor((p) => ({ ...p, phone: e.target.value }))}
+                  disabled={savingAddSubcontractor}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="new-sub-notes" style={{ display: 'block', marginBottom: 4 }}>Notes</label>
+                <textarea
+                  id="new-sub-notes"
+                  value={newSubcontractor.notes}
+                  onChange={(e) => setNewSubcontractor((p) => ({ ...p, notes: e.target.value }))}
+                  disabled={savingAddSubcontractor}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" disabled={savingAddSubcontractor} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingAddSubcontractor ? 'not-allowed' : 'pointer' }}>
+                  {savingAddSubcontractor ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddSubcontractorModal(false)
+                    setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
+                    setAddSubcontractorError(null)
+                  }}
+                  disabled={savingAddSubcontractor}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
                   Cancel
                 </button>
               </div>

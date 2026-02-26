@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-24
+last_updated: 2026-02-26
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -78,7 +78,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
-6. **primary** - Materials and job reports specialist (Reports and Ledger tabs on Jobs; Dashboard with Recent Reports and Send task)
+6. **primary** - Materials and job reports specialist (Reports and Ledger tabs on Jobs; Bids Bid Board, RFI, Change Order, Lien Release; Dashboard with Recent Reports and Send task)
 
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
@@ -344,11 +344,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ### primary (Primary)
 
-**Purpose**: Materials and job reports specialist with access to Reports and Ledger (Billing) tabs on Jobs, plus Dashboard with Recent Reports and Send task.
+**Purpose**: Materials and job reports specialist with access to Reports and Ledger (Billing) tabs on Jobs, Bids (Bid Board, RFI, Change Order, Lien Release), plus Dashboard with Recent Reports and Send task.
 
 **Access**:
-- Dashboard, Materials, Jobs (Reports and Ledger tabs), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Bids, Quickfill, other Jobs tabs (Receivables, Sub Sheet Ledger, Teams Summary)
+- Dashboard, Materials, Jobs (Reports and Ledger tabs), Bids (Bid Board, RFI, Change Order, Lien Release), Calendar, Checklist, Settings
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Receivables, Sub Sheet Ledger, Teams Summary), other Bids tabs (Builder Review, Counts, Takeoffs, Cost Estimate, Pricing, Cover Letter, Submission)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -380,8 +380,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - ChecklistAddModal ("detail send") available when canSendTask is true
 
 **What They Cannot Do**:
-- Cannot access Customers, Projects, People, Bids
+- Cannot access Customers, Projects, People
 - Cannot access Jobs tabs other than Reports and Ledger (no Edit/Delete on Ledger)
+- Cannot access Bids tabs other than Bid Board, RFI, Change Order, Lien Release (no create/edit bids, Counts, Takeoff, etc.)
 - No Quickfill
 - No user management (can change own password via Settings)
 
@@ -390,8 +391,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Users who need to send tasks without full project visibility
 
 **Layout Behavior**:
-- Navigation shows: Dashboard, Materials, Jobs, Calendar, Checklist
-- Attempts to access blocked pages redirect to `/dashboard`
+- Navigation shows: Dashboard, Materials, Jobs, Bids, Prospects, Calendar, Checklist
+- Attempts to access blocked pages (e.g. Projects) redirect to `/dashboard`
 
 ---
 
@@ -406,7 +407,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Ledger |
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ Bid Board, RFI, Change Order, Lien Release |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited | ✅ limited |
@@ -417,7 +418,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Jobs/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Ledger tabs only
+**Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Ledger tabs only; Bids shows Bid Board, RFI, Change Order, Lien Release only; Projects hidden
 
 **Assistants**: Can access most pages but see filtered data
 
@@ -487,9 +488,13 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 | Feature | dev | master | assistant | sub | estimator | primary |
 |---------|-----|--------|-----------|-----|-----------|---------|
-| View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ Bid Board only |
 | Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| Bid Board tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| RFI tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Change Order tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Lien Release tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |

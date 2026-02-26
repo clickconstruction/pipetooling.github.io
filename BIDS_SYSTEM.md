@@ -68,7 +68,7 @@ quick_navigation:
 
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Database schema details"
-  - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Estimator role access"
+  - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Estimator and Primary role access"
   - "[GLOSSARY.md](./GLOSSARY.md) - Bids terminology"
 
 prerequisites:
@@ -109,6 +109,10 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 - **Automatic cost calculations** including driving costs
 - **Margin analysis** comparing costs to revenue
 - **Submission tracking** with follow-up management
+
+### Role Access
+- **dev, master_technician, assistant, estimator**: Full access to all Bids tabs
+- **primary**: Bid Board, RFI, Change Order, Lien Release only (view bids, generate documents; no create/edit bids, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
 
 ### Workflow
 1. **Bid Board** - Create and manage bids

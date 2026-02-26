@@ -1603,18 +1603,19 @@ counts_fixture_groups (id)
 
 #### `primary`
 
-**Purpose**: Role for users who need Materials, Jobs (Reports tab only), and Dashboard with Recent Reports—without access to Customers, Projects, People, Bids, or other Jobs tabs.
+**Purpose**: Role for users who need Materials, Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release), and Dashboard with Recent Reports—without access to Customers, Projects, People, or other Jobs/Bids tabs.
 
 ##### Pages Allowed
 - **Dashboard** - Recent Reports section, Checklist items due today; Send task via header
 - **Materials** - Full access (same as estimator/master)
 - **Jobs** - Reports tab only (view and create reports)
+- **Bids** - Bid Board, RFI, Change Order, Lien Release tabs only (view bids, generate documents)
 - **Calendar** - View calendar
 - **Checklist** - Today, History, Manage tabs
 - **Settings** - Change password, push notifications
 
 ##### Pages Blocked
-- Customers, Projects, People, Bids, Templates
+- Customers, Projects, People, Templates
 - **Jobs tabs other than Reports**: Receivables, Ledger, Sub Sheet Ledger, Teams Summary
 - **Layout redirects**: Attempts to access blocked pages redirect to `/dashboard`
 
@@ -1638,7 +1639,7 @@ counts_fixture_groups (id)
 - **Recent Reports**: Same section as masters (list of recent reports)
 - **Send task**: Via header; can create and assign checklist tasks to other users (ChecklistAddModal "detail send")
 
-**Use Case**: Primary users handle materials, job reports, and task assignment without access to customer/project management or bids.
+**Use Case**: Primary users handle materials, job reports, task assignment, and bid documents (RFI, Change Order, Lien Release) without access to customer/project management or full bid creation/editing.
 
 ### Row Level Security (RLS) Patterns
 

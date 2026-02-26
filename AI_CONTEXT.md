@@ -14,7 +14,7 @@
 - **Users**: 5 roles with complex access control (dev, master, assistant, subcontractor, estimator)
 - **4 Major Systems**: 
   1. Projects/Workflows (ongoing work tracking)
-  2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
+  2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
   3. Materials (price book, templates, purchase orders, Supply Houses & External Subs with invoices and job payments)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
 

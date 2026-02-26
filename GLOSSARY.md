@@ -117,11 +117,11 @@ Bid estimation specialist with access only to Bids and Materials systems. Cannot
 **Key Restriction**: No access to Projects, Workflows, Dashboard, Calendar, or Settings pages
 
 ### primary (Primary)
-Materials and job reports specialist with access to Materials (full), Jobs (Reports tab only), and Dashboard with Recent Reports and Send task. Cannot access Customers, Projects, People, Bids, or other Jobs tabs.
+Materials and job reports specialist with access to Materials (full), Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release), and Dashboard with Recent Reports and Send task. Cannot access Customers, Projects, People, or other Jobs/Bids tabs.
 
-**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send")
+**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports), Bids Bid Board + RFI/Change Order/Lien Release (view bids, generate documents), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send")
 
-**Key Restriction**: No access to Customers, Projects, People, Bids, or Jobs tabs other than Reports
+**Key Restriction**: No access to Customers, Projects, People, or Jobs/Bids tabs other than Reports and Bid Board/RFI/Change Order/Lien Release
 
 ---
 

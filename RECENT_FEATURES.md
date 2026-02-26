@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.67 → v2.4"
+version_range: "v2.68 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.67)"
-    line: ~179
+  - name: "Latest Version (v2.68)"
+    line: ~186
+    description: "Primary Bids RFI/Change Order/Lien Release, Projects hidden"
+  - name: "v2.67"
+    line: ~200
     description: "Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only, Quick task removal"
   - name: "v2.65"
     line: ~230
@@ -112,73 +115,87 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
-2. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
-3. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-4. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
-5. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
-6. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
-7. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-8. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-9. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-10. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-11. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-12. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-13. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-14. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-15. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-16. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-17. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-18. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-19. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-20. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-21. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-22. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-23. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-24. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-25. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-26. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-27. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-28. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-29. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-30. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-31. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-32. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-33. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-34. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-35. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-36. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-37. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-38. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-39. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-40. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-41. [Latest Updates (v2.26)](#latest-updates-v226)
-42. [Latest Updates (v2.25)](#latest-updates-v225)
-43. [Latest Updates (v2.24)](#latest-updates-v224)
-44. [Latest Updates (v2.23)](#latest-updates-v223)
-45. [Latest Updates (v2.22)](#latest-updates-v222)
-46. [Latest Updates (v2.21)](#latest-updates-v221)
-47. [Latest Updates (v2.20)](#latest-updates-v220)
-48. [Latest Updates (v2.19)](#latest-updates-v219)
-49. [Latest Updates (v2.18)](#latest-updates-v218)
-50. [Latest Updates (v2.17)](#latest-updates-v217)
-51. [Latest Updates (v2.16)](#latest-updates-v216)
-52. [Latest Updates (v2.15)](#latest-updates-v215)
-53. [Latest Updates (v2.14)](#latest-updates-v214)
-54. [Latest Updates (v2.13)](#latest-updates-v213)
-55. [Latest Updates (v2.12)](#latest-updates-v212)
-56. [Latest Updates (v2.11)](#latest-updates-v211)
-57. [Latest Updates (v2.10)](#latest-updates-v210)
-58. [Latest Updates (v2.9)](#latest-updates-v29)
-59. [Latest Updates (v2.8)](#latest-updates-v28)
-60. [Latest Updates (v2.7)](#latest-updates-v27)
-61. [Latest Updates (v2.6)](#latest-updates-v26)
-62. [Workflow Features](#workflow-features)
-63. [Calendar Updates](#calendar-updates)
-64. [Access Control](#access-control)
-65. [Email Templates](#email-templates)
-66. [Financial Tracking](#financial-tracking)
-67. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
+2. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
+3. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+4. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+5. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+6. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+7. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+8. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+9. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+10. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+11. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+12. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+13. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+14. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+15. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+16. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+17. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+18. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+19. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+20. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+21. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+22. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+23. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+24. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+25. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+26. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+27. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+28. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+29. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+30. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+31. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+32. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+33. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+34. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+35. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+36. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+37. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+38. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+39. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+40. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+41. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+42. [Latest Updates (v2.26)](#latest-updates-v226)
+43. [Latest Updates (v2.25)](#latest-updates-v225)
+44. [Latest Updates (v2.24)](#latest-updates-v224)
+45. [Latest Updates (v2.23)](#latest-updates-v223)
+46. [Latest Updates (v2.22)](#latest-updates-v222)
+47. [Latest Updates (v2.21)](#latest-updates-v221)
+48. [Latest Updates (v2.20)](#latest-updates-v220)
+49. [Latest Updates (v2.19)](#latest-updates-v219)
+50. [Latest Updates (v2.18)](#latest-updates-v218)
+51. [Latest Updates (v2.17)](#latest-updates-v217)
+52. [Latest Updates (v2.16)](#latest-updates-v216)
+53. [Latest Updates (v2.15)](#latest-updates-v215)
+54. [Latest Updates (v2.14)](#latest-updates-v214)
+55. [Latest Updates (v2.13)](#latest-updates-v213)
+56. [Latest Updates (v2.12)](#latest-updates-v212)
+57. [Latest Updates (v2.11)](#latest-updates-v211)
+58. [Latest Updates (v2.10)](#latest-updates-v210)
+59. [Latest Updates (v2.9)](#latest-updates-v29)
+60. [Latest Updates (v2.8)](#latest-updates-v28)
+61. [Latest Updates (v2.7)](#latest-updates-v27)
+62. [Latest Updates (v2.6)](#latest-updates-v26)
+63. [Workflow Features](#workflow-features)
+64. [Calendar Updates](#calendar-updates)
+65. [Access Control](#access-control)
+66. [Email Templates](#email-templates)
+67. [Financial Tracking](#financial-tracking)
+68. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.68)
+
+**Date**: 2026-02-26
+
+### Primary role – Bids and Projects access
+
+- **Bids**: Primaries can now access RFI, Change Order, and Lien Release tabs in addition to Bid Board. They can view bids (from adopted masters) and generate RFI, Change Order, and Lien Release documents. Other Bids tabs (Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission) remain restricted.
+- **Projects**: Projects tab and navigation link hidden from primaries. Primaries are redirected to `/dashboard` if they navigate to `/projects`.
+
+**Files**: `src/pages/Bids.tsx`, `src/components/Layout.tsx`, `src/pages/Dashboard.tsx`, `src/lib/pinnedTabs.ts`
 
 ---
 
