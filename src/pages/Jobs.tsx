@@ -43,7 +43,7 @@ type TallyPartRow = {
   created_by_name: string | null
 }
 
-type JobsTab = 'receivables' | 'reports' | 'stages' | 'ledger' | 'sub_sheet_ledger' | 'teams-summary' | 'parts' | 'job-summary'
+type JobsTab = 'receivables' | 'reports' | 'stages' | 'ledger' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -57,6 +57,9 @@ type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type LaborBookEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
 type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean }
 type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
+type CrewJobAssignment = { job_id: string; pct: number }
+type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+type TeamLaborRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }
 
 const tabStyle = (active: boolean) => ({
   padding: '0.75rem 1.5rem',
@@ -95,7 +98,7 @@ function formatTimeSince(iso: string | null): string {
 type MaterialRow = { id: string; description: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub_sheet_ledger', 'teams-summary', 'parts', 'job-summary']
+const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
@@ -170,6 +173,10 @@ export default function Jobs() {
   const [defaultLaborRateValue, setDefaultLaborRateValue] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
   const [myRole, setMyRole] = useState<string | null>(null)
+
+  // Combined Labor tab (Team Job Labor) state
+  const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
+  const [teamLaborLoading, setTeamLaborLoading] = useState(false)
 
   // Receivables tab state
   const [receivables, setReceivables] = useState<JobsReceivableRow[]>([])
@@ -795,6 +802,74 @@ export default function Jobs() {
       setLaborJobs([])
     }
     setLaborJobsLoading(false)
+  }
+
+  async function loadTeamLaborData() {
+    setTeamLaborLoading(true)
+    const twoYearsAgo = new Date()
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+    const startDate = twoYearsAgo.toISOString().slice(0, 10)
+    const [crewRes, hoursRes, configRes] = await Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
+      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
+      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
+    ])
+    setTeamLaborLoading(false)
+    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
+    const configRows = (configRes.data ?? []) as Array<{ person_name: string; hourly_wage: number | null; is_salary: boolean }>
+    const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
+    for (const c of configRows) configMap[c.person_name] = { hourly_wage: c.hourly_wage ?? 0, is_salary: c.is_salary ?? false }
+    const hoursMap: Record<string, number> = {}
+    for (const h of hoursRows) hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
+    const crewByDatePerson: Record<string, CrewJobRow> = {}
+    for (const r of crewRows) {
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
+    }
+    function getEffectiveAssignments(personName: string, workDate: string): CrewJobAssignment[] {
+      const key = `${workDate}:${personName}`
+      const row = crewByDatePerson[key]
+      if (!row) return []
+      if (row.crew_lead_person_name) {
+        const leadRow = crewByDatePerson[`${workDate}:${row.crew_lead_person_name}`]
+        return leadRow?.job_assignments ?? []
+      }
+      return row.job_assignments
+    }
+    const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
+    for (const r of crewRows) {
+      const assignments = getEffectiveAssignments(r.person_name, r.work_date)
+      const hours = hoursMap[`${r.person_name}:${r.work_date}`] ?? (configMap[r.person_name]?.is_salary ? 8 : 0)
+      const rate = configMap[r.person_name]?.hourly_wage ?? 0
+      for (const a of assignments) {
+        if (!jobAgg[a.job_id]) jobAgg[a.job_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
+        const agg = jobAgg[a.job_id]!
+        agg.people.add(r.person_name)
+        const pctHrs = hours * (a.pct / 100)
+        agg.hoursByPerson[r.person_name] = (agg.hoursByPerson[r.person_name] ?? 0) + pctHrs
+        agg.costByPerson[r.person_name] = (agg.costByPerson[r.person_name] ?? 0) + pctHrs * rate
+      }
+    }
+    const jobIds = Object.keys(jobAgg)
+    if (jobIds.length === 0) {
+      setTeamLaborData([])
+      return
+    }
+    const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', jobIds)
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+    }
+    const rows: TeamLaborRow[] = jobIds.map((jobId) => {
+      const agg = jobAgg[jobId]!
+      const info = jobsMap[jobId] ?? { hcp_number: '', job_name: '', job_address: '' }
+      const people = [...agg.people]
+      const manHours = Object.values(agg.hoursByPerson).reduce((s, h) => s + h, 0)
+      const jobCost = Object.values(agg.costByPerson).reduce((s, c) => s + c, 0)
+      const breakdown = people.map((p) => ({ personName: p, hours: agg.hoursByPerson[p] ?? 0, cost: agg.costByPerson[p] ?? 0 }))
+      return { jobId, hcpNumber: info.hcp_number, jobName: info.job_name, jobAddress: info.job_address, people, manHours, jobCost, breakdown }
+    })
+    setTeamLaborData(rows)
   }
 
   async function loadTallyParts() {
@@ -1496,6 +1571,17 @@ export default function Jobs() {
       }
       return
     }
+    // Redirect masters/assistants away from AR and Teams tabs
+    const isMasterOrAssistant = authRole === 'master_technician' || authRole === 'assistant' || myRole === 'master_technician' || myRole === 'assistant'
+    if (isMasterOrAssistant && (tab === 'receivables' || tab === 'teams-summary')) {
+      setActiveTab('reports')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'reports')
+        return next
+      }, { replace: true })
+      return
+    }
     // Only primaries default to Reports; everyone else defaults to Billing
     if (isPrimary) {
       const primaryTabs = ['reports', 'ledger']
@@ -1651,7 +1737,11 @@ export default function Jobs() {
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
+    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
+  }, [activeTab, authUser?.id])
+
+  useEffect(() => {
+    if ((activeTab === 'combined-labor' || activeTab === 'ledger') && authUser?.id) loadTeamLaborData()
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
@@ -1755,6 +1845,11 @@ export default function Jobs() {
   const laborJobHcps = useMemo(
     () => new Set(laborJobs.map((j) => (j.job_number ?? '').trim().toLowerCase()).filter(Boolean)),
     [laborJobs]
+  )
+
+  const teamLaborJobIds = useMemo(
+    () => new Set(teamLaborData.map((r) => r.jobId)),
+    [teamLaborData]
   )
 
   const filteredJobs = jobs.filter((j) => {
@@ -1907,6 +2002,64 @@ export default function Jobs() {
       }
     })
   }, [jobs, laborJobs, tallyParts, driveMileageCost, driveTimePerMile])
+
+  const combinedLaborRows = useMemo(() => {
+    const laborCostByHcp = new Map<string, number>()
+    const mileageCost = driveMileageCost ?? 0.70
+    const timePerMile = driveTimePerMile ?? 0.02
+    for (const job of laborJobs) {
+      const hcp = (job.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const totalHrs = (job.items ?? []).reduce((s, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+      }, 0)
+      const rate = job.labor_rate ?? 0
+      const miles = Number(job.distance_miles) ?? 0
+      const driveCost = miles > 0 && rate > 0
+        ? miles * mileageCost + miles * timePerMile * rate
+        : miles > 0 ? miles * mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
+      laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
+    }
+    const teamLaborCostByJobId = new Map<string, number>()
+    for (const r of teamLaborData) {
+      teamLaborCostByJobId.set(r.jobId, r.jobCost)
+    }
+    const jobsHcpSet = new Set(jobs.map((j) => (j.hcp_number ?? '').trim().toLowerCase()).filter(Boolean))
+    type CombinedRow = { hcpNumber: string; jobName: string; jobAddress: string; subLaborCost: number; teamLaborCost: number; totalLabor: number }
+    const rows: CombinedRow[] = []
+    for (const job of jobs) {
+      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
+      const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+      const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
+      const totalLabor = subLaborCost + teamLaborCost
+      if (totalLabor > 0) {
+        rows.push({
+          hcpNumber: job.hcp_number ?? '—',
+          jobName: job.job_name ?? '—',
+          jobAddress: job.job_address ?? '—',
+          subLaborCost,
+          teamLaborCost,
+          totalLabor,
+        })
+      }
+    }
+    for (const hcp of laborCostByHcp.keys()) {
+      if (!hcp || jobsHcpSet.has(hcp)) continue
+      const subLaborCost = laborCostByHcp.get(hcp) ?? 0
+      const firstJob = laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcp)
+      rows.push({
+        hcpNumber: firstJob?.job_number ?? hcp,
+        jobName: firstJob?.job_number ?? '—',
+        jobAddress: firstJob?.address ?? '—',
+        subLaborCost,
+        teamLaborCost: 0,
+        totalLabor: subLaborCost,
+      })
+    }
+    return rows.sort((a, b) => (a.hcpNumber ?? '').localeCompare(b.hcpNumber ?? ''))
+  }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
 
   function openNew() {
     setEditing(null)
@@ -2133,13 +2286,16 @@ export default function Jobs() {
   // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
   const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
+  const showARTabs = showPrimaryRestrictedTabs &&
+    authRole !== 'master_technician' && authRole !== 'assistant' &&
+    myRole !== 'master_technician' && myRole !== 'assistant'
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
-        {showPrimaryRestrictedTabs && (
+        {showARTabs && (
           <button
             type="button"
             onClick={() => {
@@ -2155,7 +2311,7 @@ export default function Jobs() {
             AR
           </button>
         )}
-        {showPrimaryRestrictedTabs && (
+        {showARTabs && (
           <button
             type="button"
             onClick={() => {
@@ -2217,6 +2373,20 @@ export default function Jobs() {
             style={tabStyle(activeTab === 'sub_sheet_ledger')}
           >
             SubLabor
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('combined-labor')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'combined-labor')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'combined-labor')}
+          >
+            Labor
           </button>
           <button
             type="button"
@@ -3217,6 +3387,48 @@ export default function Jobs() {
         </div>
       )}
 
+      {activeTab === 'combined-labor' && (
+        <div>
+          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <h2 style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 600 }}>Combined Job Labor</h2>
+          {(laborJobsLoading || teamLaborLoading) ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : combinedLaborRows.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No labor data yet. Add jobs in SubLabor or People → Team Costs.</p>
+          ) : (
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job name and Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>SubLabor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Job Labor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Job Labor Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {combinedLaborRows.map((row, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.75rem' }}>{row.hcpNumber}</td>
+                      <td style={{ padding: '0.75rem' }}>
+                        <div>{row.jobName}</div>
+                        {(row.jobAddress ?? '').trim() && (
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{row.jobAddress}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{row.subLaborCost > 0 ? `$${formatCurrency(row.subLaborCost)}` : '—'}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{row.teamLaborCost > 0 ? `$${formatCurrency(row.teamLaborCost)}` : '—'}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(row.totalLabor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {activeTab === 'ledger' && (
         <div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
@@ -3329,6 +3541,16 @@ export default function Jobs() {
                               <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
                             </svg>
                           </button>
+                        )}
+                        {job.hcp_number && authRole !== 'primary' && !teamLaborLoading && !teamLaborJobIds.has(job.id) && (
+                          <span
+                            title="No Team Job Labor for this job"
+                            style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="#b91c1c" aria-hidden="true">
+                              <path d="M240 104C240 73.1 265.1 48 296 48C326.9 48 352 73.1 352 104C352 134.9 326.9 160 296 160C265.1 160 240 134.9 240 104zM42.5 245.3C48.4 233.4 62.8 228.6 74.7 234.6L99.3 246.9L111.5 226.5C130.4 195 164.7 176 201.1 176C247.3 176 288.8 206.5 301.6 251.4L333.8 364.1L426.7 410.5L452.5 367.5C458.3 357.9 468.7 352 479.9 352C491.1 352 501.6 357.9 507.3 367.5L603.3 527.5C609.2 537.4 609.4 549.7 603.7 559.7C598 569.7 587.5 576 576 576L384 576C372.5 576 361.8 569.8 356.2 559.8C350.6 549.8 350.7 537.5 356.6 527.6L402 451.8L53.3 277.5C41.4 271.6 36.6 257.2 42.6 245.3zM126.3 371.4L238.3 427.4C249.1 432.8 256 443.9 256 456L256 544C256 561.7 241.7 576 224 576C206.3 576 192 561.7 192 544L192 475.8L130.7 445.1L94.4 554.1C88.8 570.9 70.7 579.9 53.9 574.3C37.1 568.7 28.1 550.6 33.7 533.9L81.7 389.9C84.6 381.1 91.2 374 99.8 370.5C108.4 367 118.1 367.3 126.4 371.4z" />
+                            </svg>
+                          </span>
                         )}
                       </td>
                       <td style={{ padding: '0.75rem' }}>
@@ -3699,7 +3921,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Profit</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue before Overhead</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -44,7 +44,7 @@ export const PATH_TO_LABEL: Record<string, string> = {
 /** Tab param values per path (for validation and storing tab when pinning). */
 export const PATH_TABS: Record<string, readonly string[]> = {
   '/people': ['users', 'pay', 'hours'],
-  '/jobs': ['labor', 'ledger', 'sub_sheet_ledger', 'upcoming', 'teams-summary', 'receivables'],
+  '/jobs': ['labor', 'ledger', 'sub_sheet_ledger', 'combined-labor', 'upcoming', 'teams-summary', 'receivables'],
   '/bids': [
     'bid-board',
     'builder-review',

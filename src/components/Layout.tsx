@@ -259,7 +259,7 @@ export default function Layout() {
           renderNavLinks()
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+          {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
             <button
               type="button"
               onClick={() => checklistAddModal?.openAddModal()}
