@@ -5349,9 +5349,6 @@ export default function Bids() {
       return
     }
     if (tab === 'builder-review') {
-      // #region agent log
-      fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'481abb'},body:JSON.stringify({sessionId:'481abb',location:'Bids.tsx:urlParams',message:'URL set activeTab to builder-review',data:{tab},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setActiveTab('builder-review')
       return
     }

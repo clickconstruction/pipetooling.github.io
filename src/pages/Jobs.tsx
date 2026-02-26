@@ -397,9 +397,6 @@ export default function Jobs() {
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
     const role = (meRes.data as { role?: string } | null)?.role
-    // #region agent log
-    fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0419eb'},body:JSON.stringify({sessionId:'0419eb',location:'Jobs.tsx:loadUsers',message:'loadUsers set role',data:{role,roleType:typeof role,rawMeRes:meRes.data},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{})
-    // #endregion
     setMyRole(role ?? null)
     if (role === 'dev') {
       const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
@@ -2914,13 +2911,6 @@ export default function Jobs() {
 
       {activeTab === 'stages' && (
         <div>
-          {/* #region agent log */}
-          {(() => {
-            const showIcon = (authRole || myRole) === 'dev'
-            fetch('http://127.0.0.1:7507/ingest/676b7b9a-6887-4048-ac57-4002ec253a57',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0419eb'},body:JSON.stringify({sessionId:'0419eb',location:'Jobs.tsx:stages-render',message:'Stages tab render',data:{myRole,myRoleType:typeof myRole,authRole,activeTab,showIcon,myRoleEqualsDev:myRole==='dev'},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{})
-            return null
-          })()}
-          {/* #endregion */}
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <button

@@ -155,6 +155,7 @@ export default function Prospects() {
   const [myTimeModalOpen, setMyTimeModalOpen] = useState(false)
   const [myTimeStats, setMyTimeStats] = useState<{ today: number; yesterday: number; last7Days: number; lifetime: number } | null>(null)
   const [myTimeStatsLoading, setMyTimeStatsLoading] = useState(false)
+  const [myTimeTodaySeconds, setMyTimeTodaySeconds] = useState(0)
 
   // Total time spent on current prospect (sum of past timer events for this prospect)
   const [prospectLedgerSeconds, setProspectLedgerSeconds] = useState(0)
@@ -312,6 +313,21 @@ export default function Prospects() {
     setMyTimeStatsLoading(false)
   }
 
+  async function loadMyTimeToday() {
+    if (!authUser?.id) return
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    const { data } = await (supabase as any)
+      .from('prospect_timer_events')
+      .select('timer_seconds')
+      .eq('user_id', authUser.id)
+      .gte('created_at', startOfToday.toISOString())
+      .lte('created_at', endOfToday.toISOString())
+    const sum = ((data ?? []) as { timer_seconds: number }[]).reduce((a, r) => a + r.timer_seconds, 0)
+    setMyTimeTodaySeconds(sum)
+  }
+
   async function loadProspectListProspects() {
     if (!authUser?.id) return
     setProspectListLoading(true)
@@ -330,6 +346,7 @@ export default function Prospects() {
   useEffect(() => {
     if (activeTab === 'follow-up' && authUser?.id) {
       loadFollowUpProspects()
+      loadMyTimeToday()
     }
   }, [activeTab, authUser?.id, searchParams])
 
@@ -636,6 +653,7 @@ export default function Prospects() {
         const nextList = followUpProspects.filter((p) => p.id !== prospectToEdit.id)
         const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
         setCurrentProspectIndex(nextIdx)
+        setFollowUpTimerSeconds(0)
         updateUrlProspectId(nextList[nextIdx]?.id ?? null)
       }
       setEditModalOpen(false)
@@ -727,6 +745,7 @@ export default function Prospects() {
       return
     }
     await saveTimerEvent('no_longer_fit')
+    loadMyTimeToday()
     await supabase.from('prospect_comments').insert({
       prospect_id: currentProspect.id,
       created_by: authUser.id,
@@ -737,6 +756,7 @@ export default function Prospects() {
     setFollowUpProspects(nextList)
     const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
     setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
     updateUrlProspectId(nextList[nextIdx]?.id ?? null)
     setSaving(false)
   }
@@ -753,12 +773,14 @@ export default function Prospects() {
       return
     }
     await saveTimerEvent('cant_reach')
+    loadMyTimeToday()
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
     const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
     setFollowUpProspects(nextList)
     const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
     setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
     updateUrlProspectId(nextList[nextIdx]?.id ?? null)
     setSaving(false)
   }
@@ -884,9 +906,13 @@ export default function Prospects() {
 
   async function handleNextProspect(skipTimerEvent?: boolean) {
     if (followUpProspects.length <= 1) return
-    if (!skipTimerEvent) await saveTimerEvent('next_prospect')
+    if (!skipTimerEvent) {
+      await saveTimerEvent('next_prospect')
+      loadMyTimeToday()
+    }
     const nextIdx = (currentProspectIndex + 1) % followUpProspects.length
     setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
     updateUrlProspectId(followUpProspects[nextIdx]?.id ?? null)
   }
 
@@ -1084,6 +1110,7 @@ export default function Prospects() {
                 } as const
                 const btnSecondary = { ...btnBase, background: 'white', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }
                 const btnPrimary = { ...btnBase, background: '#3b82f6', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
+                const btnGreen = { ...btnBase, background: '#059669', color: 'white', boxShadow: '0 1px 2px rgba(5,150,105,0.3)' }
                 const btnDestructive = { ...btnBase, background: '#dc2626', color: 'white', boxShadow: '0 1px 2px rgba(220,38,38,0.3)' }
                 const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
                 return (
@@ -1131,7 +1158,7 @@ export default function Prospects() {
                         type="button"
                         onClick={openCallbackModal}
                         disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
+                        style={saving ? btnDisabled(btnGreen) : btnGreen}
                       >
                         Set Callback Date & Time
                       </button>
@@ -1161,44 +1188,68 @@ export default function Prospects() {
                       >
                         Next Prospect
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTimerHistoryModalOpen(true)
-                          loadTimerEvents()
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '0.5rem 1rem',
-                          fontVariantNumeric: 'tabular-nums',
-                          fontSize: '0.875rem',
-                          color: '#6b7280',
-                          fontFamily: 'ui-monospace, monospace',
-                          background: 'none',
-                          border: '1px solid transparent',
-                          borderRadius: 4,
-                          cursor: 'pointer',
-                        }}
-                        title="Time on Follow Up (resets when you leave and return). Click to view history."
-                      >
-                        {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
-                      </button>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          padding: '0.5rem 1rem',
-                          fontVariantNumeric: 'tabular-nums',
-                          fontSize: '0.875rem',
-                          color: '#059669',
-                          fontFamily: 'ui-monospace, monospace',
-                          fontWeight: 500,
-                        }}
-                        title="Total time spent on this prospect (ledger + current session)"
-                      >
-                        {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
-                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>this time</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTimerHistoryModalOpen(true)
+                            loadTimerEvents()
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.5rem 1rem',
+                            fontVariantNumeric: 'tabular-nums',
+                            fontSize: '0.875rem',
+                            color: '#6b7280',
+                            fontFamily: 'ui-monospace, monospace',
+                            background: 'none',
+                            border: '1px solid transparent',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                          }}
+                          title="Time on Follow Up (resets when you leave and return). Click to view history."
+                        >
+                          {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>all time</span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.5rem 1rem',
+                            fontVariantNumeric: 'tabular-nums',
+                            fontSize: '0.875rem',
+                            color: '#059669',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontWeight: 500,
+                          }}
+                          title="Total time spent on this prospect (ledger + current session)"
+                        >
+                          {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>my day</span>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.5rem 1rem',
+                            fontVariantNumeric: 'tabular-nums',
+                            fontSize: '0.875rem',
+                            color: '#059669',
+                            fontFamily: 'ui-monospace, monospace',
+                            fontWeight: 500,
+                          }}
+                          title="My time prospecting today"
+                        >
+                          {(myTimeTodaySeconds + followUpTimerSeconds) === 0 ? '—' : formatTimerSeconds(myTimeTodaySeconds + followUpTimerSeconds)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )
