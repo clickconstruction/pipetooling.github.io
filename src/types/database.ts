@@ -2107,6 +2107,27 @@ export type Database = {
         }
         Relationships: []
       }
+      people_crew_jobs: {
+        Row: {
+          crew_lead_person_name: string | null
+          job_assignments: Json
+          person_name: string
+          work_date: string
+        }
+        Insert: {
+          crew_lead_person_name?: string | null
+          job_assignments?: Json
+          person_name: string
+          work_date: string
+        }
+        Update: {
+          crew_lead_person_name?: string | null
+          job_assignments?: Json
+          person_name?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       people_hours: {
         Row: {
           created_at: string | null
@@ -3956,6 +3977,15 @@ export type Database = {
           hcp_number: string
           id: string
           source: string
+        }[]
+      }
+      search_jobs_ledger: {
+        Args: { search_text?: string }
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
         }[]
       }
       touch_last_sign_in: { Args: never; Returns: undefined }

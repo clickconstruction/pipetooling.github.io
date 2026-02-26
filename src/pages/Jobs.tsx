@@ -2216,7 +2216,7 @@ export default function Jobs() {
             }}
             style={tabStyle(activeTab === 'sub_sheet_ledger')}
           >
-            Labor
+            SubLabor
           </button>
           <button
             type="button"

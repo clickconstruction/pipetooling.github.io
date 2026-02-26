@@ -1517,7 +1517,7 @@ counts_fixture_groups (id)
 **Purpose**: Dedicated role for bid estimation and material management without access to ongoing project operations.
 
 ##### Pages Allowed
-- **Dashboard** - Checklist items due today, Builder Review link; Send task (if dev/master/assistant)
+- **Dashboard** - Checklist items due today, Builder Review link; Send task via header (if dev/master/assistant)
 - **Materials** - Full access to price book, parts, templates, purchase orders
 - **Bids** - Full access to all Bids tabs and features
 - **Calendar** - View calendar
@@ -1603,10 +1603,10 @@ counts_fixture_groups (id)
 
 #### `primary`
 
-**Purpose**: Role for users who need Materials, Jobs (Reports tab only), and Dashboard with Recent Reports and Send task—without access to Customers, Projects, People, Bids, or other Jobs tabs.
+**Purpose**: Role for users who need Materials, Jobs (Reports tab only), and Dashboard with Recent Reports—without access to Customers, Projects, People, Bids, or other Jobs tabs.
 
 ##### Pages Allowed
-- **Dashboard** - Recent Reports section, Send task form, Checklist items due today
+- **Dashboard** - Recent Reports section, Checklist items due today; Send task via header
 - **Materials** - Full access (same as estimator/master)
 - **Jobs** - Reports tab only (view and create reports)
 - **Calendar** - View calendar
@@ -1636,7 +1636,7 @@ counts_fixture_groups (id)
 ##### Dashboard Capabilities
 
 - **Recent Reports**: Same section as masters (list of recent reports)
-- **Send task**: Can create and assign checklist tasks to other users (ChecklistAddModal "detail send" also available)
+- **Send task**: Via header; can create and assign checklist tasks to other users (ChecklistAddModal "detail send")
 
 **Use Case**: Primary users handle materials, job reports, and task assignment without access to customer/project management or bids.
 
@@ -1923,22 +1923,34 @@ user_id = auth.uid()
   - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
   - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
+  - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
+- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
 
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
 - **Header**: "Jobs" title on the right of the tab bar (matches People page pattern)
-- **Tabs** (in order): **Receivables** | **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | Upcoming | Teams Summary
+- **Tabs** (in order): **Receivables** | **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | **Parts** | Upcoming | Teams Summary
 - **Features**:
   - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
   - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
   - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
   - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically.
   - **Stages Tab**: Working, Ready to Bill, Billed, Paid tables; Edit pencil icon per row opens Edit Job modal. Stages opens by default (not Reports) for non-primary users.
+  - **Parts Tab**: Tally parts from Job Parts Tally; search and "Show my jobs only" (hidden for subcontractors). Fixture-only entries (sent to office) have editable cost; jobs with unpriced fixtures highlighted in red. Parts total includes fixture cost.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
 - **Data**: Receivables use `jobs_receivables`; Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
+
+### 6a. Job Parts Tally
+- **Page**: `JobTally.tsx`
+- **Route**: `/tally`
+- **Features**: Select Job/HCP; add parts or send fixture-only entries to office (Send button below fixture input). Fixture-only entries (green background) are sent for office to price; office enters cost in Jobs Parts tab. "Show my jobs only" checkbox (hidden for subcontractors) filters job picker to jobs where user is team member.
+
+### 6b. Quickfill
+- **Page**: `Quickfill.tsx`
+- **Route**: `/quickfill`
+- **Features**: Sections (in order): Jobs Billing Reminder, Unpriced Fixtures (count + link to Jobs Parts), Cant Reach, Hours, **Crew Jobs**, Receivables, Supply Houses. Unpriced fixtures visible to dev, master_technician, assistant. **Crew Jobs** (below Hours, above Receivables): mirrors People → Team Costs; date picker, Crew Jobs table (Name, Crew, Jobs), Team Job Labor table (HCP, Job, People, Man hours with breakdown modal; Job Cost column hidden in Quickfill). Link to full Team Costs in People. Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
 
 ### 7. Calendar View
 - **Page**: `Calendar.tsx`

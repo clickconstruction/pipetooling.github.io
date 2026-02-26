@@ -12,12 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.64 → v2.4"
+version_range: "v2.67 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.66)"
+  - name: "Latest Version (v2.67)"
     line: ~179
-    description: "RFI tab, Bids submitted_to field, placeholder updates"
+    description: "Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only, Quick task removal"
   - name: "v2.65"
     line: ~230
     description: "Job Bill Details Edit actions, Jobs/Dashboard button labels, Edit Parts, Stages default"
@@ -112,72 +112,128 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
-2. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-3. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
-3. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
-4. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
-4. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-5. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-6. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-7. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-8. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-9. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-10. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-11. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-12. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-13. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-14. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-15. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-16. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-17. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-18. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-19. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-20. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-21. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-22. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-23. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-24. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-25. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-26. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-27. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-28. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-29. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-30. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-31. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-32. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-33. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-34. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-35. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-36. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-37. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-38. [Latest Updates (v2.26)](#latest-updates-v226)
-39. [Latest Updates (v2.25)](#latest-updates-v225)
-40. [Latest Updates (v2.24)](#latest-updates-v224)
-41. [Latest Updates (v2.23)](#latest-updates-v223)
-42. [Latest Updates (v2.22)](#latest-updates-v222)
-43. [Latest Updates (v2.21)](#latest-updates-v221)
-44. [Latest Updates (v2.20)](#latest-updates-v220)
-45. [Latest Updates (v2.19)](#latest-updates-v219)
-46. [Latest Updates (v2.18)](#latest-updates-v218)
-47. [Latest Updates (v2.17)](#latest-updates-v217)
-48. [Latest Updates (v2.16)](#latest-updates-v216)
-49. [Latest Updates (v2.15)](#latest-updates-v215)
-50. [Latest Updates (v2.14)](#latest-updates-v214)
-51. [Latest Updates (v2.13)](#latest-updates-v213)
-52. [Latest Updates (v2.12)](#latest-updates-v212)
-53. [Latest Updates (v2.11)](#latest-updates-v211)
-54. [Latest Updates (v2.10)](#latest-updates-v210)
-55. [Latest Updates (v2.9)](#latest-updates-v29)
-56. [Latest Updates (v2.8)](#latest-updates-v28)
-57. [Latest Updates (v2.7)](#latest-updates-v27)
-58. [Latest Updates (v2.6)](#latest-updates-v26)
-59. [Workflow Features](#workflow-features)
-60. [Calendar Updates](#calendar-updates)
-61. [Access Control](#access-control)
-62. [Email Templates](#email-templates)
-63. [Financial Tracking](#financial-tracking)
-64. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
+2. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+3. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+4. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+5. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+6. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+7. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+8. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+9. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+10. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+11. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+12. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+13. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+14. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+15. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+16. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+17. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+18. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+19. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+20. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+21. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+22. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+23. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+24. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+25. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+26. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+27. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+28. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+29. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+30. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+31. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+32. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+33. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+34. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+35. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+36. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+37. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+38. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+39. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+40. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+41. [Latest Updates (v2.26)](#latest-updates-v226)
+42. [Latest Updates (v2.25)](#latest-updates-v225)
+43. [Latest Updates (v2.24)](#latest-updates-v224)
+44. [Latest Updates (v2.23)](#latest-updates-v223)
+45. [Latest Updates (v2.22)](#latest-updates-v222)
+46. [Latest Updates (v2.21)](#latest-updates-v221)
+47. [Latest Updates (v2.20)](#latest-updates-v220)
+48. [Latest Updates (v2.19)](#latest-updates-v219)
+49. [Latest Updates (v2.18)](#latest-updates-v218)
+50. [Latest Updates (v2.17)](#latest-updates-v217)
+51. [Latest Updates (v2.16)](#latest-updates-v216)
+52. [Latest Updates (v2.15)](#latest-updates-v215)
+53. [Latest Updates (v2.14)](#latest-updates-v214)
+54. [Latest Updates (v2.13)](#latest-updates-v213)
+55. [Latest Updates (v2.12)](#latest-updates-v212)
+56. [Latest Updates (v2.11)](#latest-updates-v211)
+57. [Latest Updates (v2.10)](#latest-updates-v210)
+58. [Latest Updates (v2.9)](#latest-updates-v29)
+59. [Latest Updates (v2.8)](#latest-updates-v28)
+60. [Latest Updates (v2.7)](#latest-updates-v27)
+61. [Latest Updates (v2.6)](#latest-updates-v26)
+62. [Workflow Features](#workflow-features)
+63. [Calendar Updates](#calendar-updates)
+64. [Access Control](#access-control)
+65. [Email Templates](#email-templates)
+66. [Financial Tracking](#financial-tracking)
+67. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.67)
+
+**Date**: 2026-02-26
+
+### People – Team Costs tab
+
+- **New tab**: Team Costs (same visibility as Pay: canAccessPay or canViewCostMatrixShared)
+- **Crew Jobs table**: Per-day assignment of crew leads and job percentages. Date picker (calendar input) + prev/next day buttons. Columns: Name (from cost matrix), Crew (dropdown to set crew lead; crew members inherit lead's job breakdown), Jobs (add multiple jobs with %; auto-split 100%; editable percentages).
+- **Team Job Labor table**: All-time aggregate of jobs from Crew Jobs. Columns: HCP, Job name + address, People on job, Man hours (clickable → breakdown modal), Job cost (clickable → breakdown modal). Searchable by HCP, job name, address.
+- **Database**: `people_crew_jobs` table; `search_jobs_ledger(search_text)` RPC. Cascade person name updates to people_crew_jobs.
+
+**Files**: `src/pages/People.tsx`, `src/lib/cascadePersonName.ts`, `supabase/migrations/20260231000020_create_people_crew_jobs.sql`, `supabase/migrations/20260231000021_search_jobs_ledger.sql`
+
+### Job Parts Tally – Fixture Send to Office
+
+- **Send button**: Below "Fixture or tie-in" input: "Fill in parts or send this item to the office for them to price." Clicking send adds fixture-only entry to Parts to save list (green background).
+- **Fixture entries**: Stored with part_id NULL; office enters fixture_cost in Jobs Parts tab.
+- **Database**: `jobs_tally_parts.part_id` nullable; `fixture_cost` column; `list_tally_parts_with_po` returns fixture_cost, part_id; `create_po_from_job_tally` skips fixture-only entries.
+
+**Files**: `src/pages/JobTally.tsx`, `supabase/migrations/20260231000010_add_fixture_sent_for_pricing.sql`, `supabase/migrations/20260231000011_fixture_cost_list_and_po.sql`
+
+### Jobs – Parts tab: Fixture cost, unpriced highlight
+
+- **Fixture rows**: part_id null rows show "Fixture (sent for pricing)" with editable cost input. Fixture cost included in parts total.
+- **Red highlight**: Jobs with unpriced fixtures (part_id null and fixture_cost null/0) have red background (#fef2f2).
+- **Show my jobs only**: Checkbox to right of search box (hidden for subcontractors); filters to jobs where user is in jobs_ledger_team_members.
+
+**Files**: `src/pages/Jobs.tsx`
+
+### Quick Fill – Crew Jobs section
+
+- **CrewJobsSection**: Mirrors People → Team Costs. Placed below Hours, above Receivables. Crew Jobs table (date picker, prev/next, Same team as yesterday, Name, Crew, Jobs with % and remove). Team Job Labor table (HCP, Job, People, Man hours with clickable breakdown; Job Cost column hidden). Link to full Team Costs in People. Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
+
+**Files**: `src/components/quickfill/CrewJobsSection.tsx`, `src/pages/Quickfill.tsx`
+
+### Quick Fill – Unpriced fixtures notice
+
+- **UnpricedFixturesSection**: Shows "X jobs with unpriced fixtures" with link to `/jobs?tab=parts`. Visible to dev, master_technician, assistant only.
+
+**Files**: `src/components/quickfill/UnpricedFixturesSection.tsx`, `src/pages/Quickfill.tsx`
+
+### Job Parts Tally (/tally) – Show my jobs only
+
+- **Checkbox**: Below Job/HCP selector: "Show my jobs only" (hidden for subcontractors). Filters job picker to jobs where user is team member.
+
+**Files**: `src/pages/JobTally.tsx`
+
+### Dashboard – Quick task removed
+
+- **Removed**: Send task quick-action block (Task, Assigned To, Remind, Notify, Send) from Dashboard; already available in header for relevant roles.
+
+**Files**: `src/pages/Dashboard.tsx`
 
 ---
 

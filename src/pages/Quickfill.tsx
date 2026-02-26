@@ -1,4 +1,5 @@
 import { CantReachSection } from '../components/quickfill/CantReachSection'
+import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { ReceivablesSection } from '../components/quickfill/ReceivablesSection'
@@ -13,6 +14,7 @@ export default function Quickfill() {
       <UnpricedFixturesSection />
       <CantReachSection />
       <HoursSection />
+      <CrewJobsSection />
       <ReceivablesSection />
       <SupplyHousesSection />
     </div>
