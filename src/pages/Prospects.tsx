@@ -151,6 +151,11 @@ export default function Prospects() {
   const [timerEvents, setTimerEvents] = useState<Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | null }>>([])
   const [timerEventsLoading, setTimerEventsLoading] = useState(false)
 
+  // My time modal
+  const [myTimeModalOpen, setMyTimeModalOpen] = useState(false)
+  const [myTimeStats, setMyTimeStats] = useState<{ today: number; yesterday: number; last7Days: number; lifetime: number } | null>(null)
+  const [myTimeStatsLoading, setMyTimeStatsLoading] = useState(false)
+
   // Total time spent on current prospect (sum of past timer events for this prospect)
   const [prospectLedgerSeconds, setProspectLedgerSeconds] = useState(0)
 
@@ -277,6 +282,34 @@ export default function Prospects() {
       setTimerEvents(rows)
     }
     setTimerEventsLoading(false)
+  }
+
+  async function loadMyTimeStats() {
+    if (!authUser?.id) return
+    setMyTimeStatsLoading(true)
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+    const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0, 0)
+    const sevenDaysAgo = new Date(now)
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const sum = (rows: { timer_seconds: number }[]) => rows.reduce((a, r) => a + r.timer_seconds, 0)
+
+    const [todayRes, yesterdayRes, last7Res, lifetimeRes] = await Promise.all([
+      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfToday.toISOString()).lte('created_at', endOfToday.toISOString()),
+      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', startOfYesterday.toISOString()).lt('created_at', startOfToday.toISOString()),
+      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id).gte('created_at', sevenDaysAgo.toISOString()),
+      (supabase as any).from('prospect_timer_events').select('timer_seconds').eq('user_id', authUser.id),
+    ])
+
+    setMyTimeStats({
+      today: sum((todayRes.data ?? []) as { timer_seconds: number }[]),
+      yesterday: sum((yesterdayRes.data ?? []) as { timer_seconds: number }[]),
+      last7Days: sum((last7Res.data ?? []) as { timer_seconds: number }[]),
+      lifetime: sum((lifetimeRes.data ?? []) as { timer_seconds: number }[]),
+    })
+    setMyTimeStatsLoading(false)
   }
 
   async function loadProspectListProspects() {
@@ -1114,6 +1147,14 @@ export default function Prospects() {
                       </button>
                       <button
                         type="button"
+                        onClick={handleCantReach}
+                        disabled={saving}
+                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
+                      >
+                        Can't reach
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleNextProspect()}
                         disabled={followUpProspects.length <= 1}
                         style={followUpProspects.length <= 1 ? btnDisabled(btnPrimary) : btnPrimary}
@@ -1142,14 +1183,6 @@ export default function Prospects() {
                         title="Time on Follow Up (resets when you leave and return). Click to view history."
                       >
                         {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCantReach}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
-                      >
-                        Can't reach
                       </button>
                       <span
                         style={{
@@ -1359,7 +1392,7 @@ export default function Prospects() {
             </div>
           ) : null}
           {canAccessFollowUp && (
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#374151' }}>
                 <input
                   type="checkbox"
@@ -1375,6 +1408,24 @@ export default function Prospects() {
                 />
                 Mark and Move to next prospect when Didn&apos;t Answer is clicked
               </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setMyTimeModalOpen(true)
+                  loadMyTimeStats()
+                }}
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  color: '#3b82f6',
+                  textDecoration: 'underline',
+                }}
+              >
+                my time
+              </button>
             </div>
           )}
         </>
@@ -2101,6 +2152,85 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => setTimerHistoryModalOpen(false)}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My time modal */}
+      {myTimeModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => setMyTimeModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: 360,
+              width: '90%',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0' }}>My time prospecting</h3>
+            {myTimeStatsLoading ? (
+              <p style={{ color: '#6b7280' }}>Loading…</p>
+            ) : myTimeStats ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9375rem' }}>
+                {(() => {
+                  const sessionBonus = activeTab === 'follow-up' ? followUpTimerSeconds : 0
+                  const today = myTimeStats.today + sessionBonus
+                  const last7 = myTimeStats.last7Days + sessionBonus
+                  const lifetime = myTimeStats.lifetime + sessionBonus
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#6b7280' }}>Today</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                          {today === 0 ? '—' : formatTimerSeconds(today)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#6b7280' }}>Yesterday</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>
+                          {myTimeStats.yesterday === 0 ? '—' : formatTimerSeconds(myTimeStats.yesterday)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#6b7280' }}>Last 7 days</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                          {last7 === 0 ? '—' : formatTimerSeconds(last7)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#6b7280' }}>Lifetime</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                          {lifetime === 0 ? '—' : formatTimerSeconds(lifetime)}
+                        </span>
+                      </div>
+                    </>
+                  )
+                })()}
+              </div>
+            ) : null}
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setMyTimeModalOpen(false)}
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
