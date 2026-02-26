@@ -5427,10 +5427,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
       const loadForServiceType = async () => {
-        // Primary on bid-board, RFI, Change Order, Lien Release: load all bids (no service type filter) so they see bids from adopted masters
-        const primaryBidsTabs = ['bid-board', 'rfi', 'change-order', 'lien-release']
-        const sid = myRole === 'primary' && primaryBidsTabs.includes(activeTab) ? null : selectedServiceTypeId
-        await Promise.all([loadCustomers(), loadBids(sid), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
+        await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }
       loadForServiceType()
     }

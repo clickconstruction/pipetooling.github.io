@@ -73,6 +73,19 @@ function formatInteractionType(type: string): string {
   }
 }
 
+function formatTimerButtonName(buttonName: string): string {
+  switch (buttonName) {
+    case 'no_longer_fit': return 'No Longer a Fit'
+    case 'next_prospect': return 'Next Prospect'
+    case 'cant_reach': return "Can't reach"
+    default: return buttonName
+  }
+}
+
+function formatTimerSeconds(seconds: number): string {
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
+
 function formatWebsiteDisplay(url: string | null): string {
   if (!url || !url.trim()) return '—'
   let s = url.trim()
@@ -132,6 +145,17 @@ export default function Prospects() {
 
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
+
+  // Timer history modal
+  const [timerHistoryModalOpen, setTimerHistoryModalOpen] = useState(false)
+  const [timerEvents, setTimerEvents] = useState<Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | null }>>([])
+  const [timerEventsLoading, setTimerEventsLoading] = useState(false)
+
+  // Total time spent on current prospect (sum of past timer events for this prospect)
+  const [prospectLedgerSeconds, setProspectLedgerSeconds] = useState(0)
+
+  // Total time spent per prospect for Prospect List (prospect_id -> seconds)
+  const [prospectLedgerSecondsMap, setProspectLedgerSecondsMap] = useState<Record<string, number>>({})
 
   // Convert tab state
   const [convertProspectId, setConvertProspectId] = useState<string | null>(null)
@@ -228,6 +252,31 @@ export default function Prospects() {
       return
     }
     setComments((data ?? []) as ProspectComment[])
+  }
+
+  async function loadTimerEvents() {
+    if (!authUser?.id) return
+    setTimerEventsLoading(true)
+    const { data, error } = await (supabase as any)
+      .from('prospect_timer_events')
+      .select('id, created_at, timer_seconds, button_name, prospect:prospects(company_name)')
+      .eq('user_id', authUser.id)
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) {
+      setTimerEvents([])
+    } else {
+      const raw = (data ?? []) as Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | { company_name: string | null }[] | null }>
+      const rows = raw.map((r) => ({
+        id: r.id,
+        created_at: r.created_at,
+        timer_seconds: r.timer_seconds,
+        button_name: r.button_name,
+        prospect: Array.isArray(r.prospect) ? r.prospect[0] ?? null : r.prospect,
+      }))
+      setTimerEvents(rows)
+    }
+    setTimerEventsLoading(false)
   }
 
   async function loadProspectListProspects() {
@@ -379,6 +428,50 @@ export default function Prospects() {
       setComments([])
     }
   }, [currentProspect?.id])
+
+  async function loadProspectLedgerSeconds(prospectId: string) {
+    if (!authUser?.id) return
+    const { data } = await (supabase as any)
+      .from('prospect_timer_events')
+      .select('timer_seconds')
+      .eq('user_id', authUser.id)
+      .eq('prospect_id', prospectId)
+    const rows = (data ?? []) as Array<{ timer_seconds: number }>
+    const sum = rows.reduce((acc, r) => acc + (r.timer_seconds ?? 0), 0)
+    setProspectLedgerSeconds(sum)
+  }
+
+  useEffect(() => {
+    if (currentProspect?.id && authUser?.id) {
+      loadProspectLedgerSeconds(currentProspect.id)
+    } else {
+      setProspectLedgerSeconds(0)
+    }
+  }, [currentProspect?.id, authUser?.id])
+
+  async function loadProspectLedgerSecondsMap() {
+    if (!authUser?.id) return
+    const { data } = await (supabase as any)
+      .from('prospect_timer_events')
+      .select('prospect_id, timer_seconds')
+      .eq('user_id', authUser.id)
+    const rows = (data ?? []) as Array<{ prospect_id: string | null; timer_seconds: number }>
+    const map: Record<string, number> = {}
+    for (const r of rows) {
+      if (r.prospect_id) {
+        map[r.prospect_id] = (map[r.prospect_id] ?? 0) + (r.timer_seconds ?? 0)
+      }
+    }
+    setProspectLedgerSecondsMap(map)
+  }
+
+  useEffect(() => {
+    if (activeTab === 'prospect-list' && authUser?.id) {
+      loadProspectLedgerSecondsMap()
+    } else {
+      setProspectLedgerSecondsMap({})
+    }
+  }, [activeTab, authUser?.id])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -579,6 +672,16 @@ export default function Prospects() {
     setSaving(false)
   }
 
+  async function saveTimerEvent(buttonName: 'no_longer_fit' | 'next_prospect' | 'cant_reach') {
+    if (!authUser?.id || !currentProspect) return
+    await (supabase as any).from('prospect_timer_events').insert({
+      user_id: authUser.id,
+      prospect_id: currentProspect.id,
+      timer_seconds: followUpTimerSeconds,
+      button_name: buttonName,
+    })
+  }
+
   async function handleNoLongerFit() {
     if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
@@ -590,6 +693,7 @@ export default function Prospects() {
       setSaving(false)
       return
     }
+    await saveTimerEvent('no_longer_fit')
     await supabase.from('prospect_comments').insert({
       prospect_id: currentProspect.id,
       created_by: authUser.id,
@@ -605,7 +709,7 @@ export default function Prospects() {
   }
 
   async function handleCantReach() {
-    if (!currentProspect || saving) return
+    if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
     const { error } = await supabase
       .from('prospects')
@@ -615,6 +719,7 @@ export default function Prospects() {
       setSaving(false)
       return
     }
+    await saveTimerEvent('cant_reach')
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
     const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
@@ -693,7 +798,7 @@ export default function Prospects() {
       await loadComments(currentProspect.id)
       setCommentInputValue('')
       if (didntAnswerMoveNext && followUpProspects.length > 1) {
-        handleNextProspect()
+        handleNextProspect(true)
       }
     }
     setSaving(false)
@@ -744,8 +849,9 @@ export default function Prospects() {
     setSaving(false)
   }
 
-  function handleNextProspect() {
+  async function handleNextProspect(skipTimerEvent?: boolean) {
     if (followUpProspects.length <= 1) return
+    if (!skipTimerEvent) await saveTimerEvent('next_prospect')
     const nextIdx = (currentProspectIndex + 1) % followUpProspects.length
     setCurrentProspectIndex(nextIdx)
     updateUrlProspectId(followUpProspects[nextIdx]?.id ?? null)
@@ -1008,13 +1114,18 @@ export default function Prospects() {
                       </button>
                       <button
                         type="button"
-                        onClick={handleNextProspect}
+                        onClick={() => handleNextProspect()}
                         disabled={followUpProspects.length <= 1}
                         style={followUpProspects.length <= 1 ? btnDisabled(btnPrimary) : btnPrimary}
                       >
                         Next Prospect
                       </button>
-                      <span
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTimerHistoryModalOpen(true)
+                          loadTimerEvents()
+                        }}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1023,11 +1134,15 @@ export default function Prospects() {
                           fontSize: '0.875rem',
                           color: '#6b7280',
                           fontFamily: 'ui-monospace, monospace',
+                          background: 'none',
+                          border: '1px solid transparent',
+                          borderRadius: 4,
+                          cursor: 'pointer',
                         }}
-                        title="Time on Follow Up (resets when you leave and return)"
+                        title="Time on Follow Up (resets when you leave and return). Click to view history."
                       >
                         {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
-                      </span>
+                      </button>
                       <button
                         type="button"
                         onClick={handleCantReach}
@@ -1036,6 +1151,21 @@ export default function Prospects() {
                       >
                         Can't reach
                       </button>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0.5rem 1rem',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '0.875rem',
+                          color: '#059669',
+                          fontFamily: 'ui-monospace, monospace',
+                          fontWeight: 500,
+                        }}
+                        title="Total time spent on this prospect (ledger + current session)"
+                      >
+                        {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
+                      </span>
                     </div>
                   </div>
                 )
@@ -1320,11 +1450,12 @@ export default function Prospects() {
                           <div className="prospectListDesktop">
                             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                               <colgroup>
-                                <col style={{ width: '18%' }} />
-                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '16%' }} />
                                 <col style={{ width: '12%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '28%' }} />
+                                <col style={{ width: '11%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '8%' }} />
+                                <col style={{ width: '25%' }} />
                                 {warmth === CANT_REACH_KEY && <col style={{ width: '6%' }} />}
                               </colgroup>
                               <thead style={{ background: '#f9fafb' }}>
@@ -1333,13 +1464,14 @@ export default function Prospects() {
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
                                   {warmth === CANT_REACH_KEY && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 6 : 5} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 7 : 6} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -1363,6 +1495,9 @@ export default function Prospects() {
                                         )}
                                       </td>
                                       <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
+                                      <td style={{ padding: '0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: '#059669' }}>
+                                        {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                      </td>
                                       <td style={{ padding: '0.75rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                           <div>
@@ -1439,6 +1574,12 @@ export default function Prospects() {
                                     <div className="prospectListMobileCardRow">
                                       <span className="prospectListMobileCardLabel">Last Contact</span>
                                       <span>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</span>
+                                    </div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Time</span>
+                                      <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: '#059669' }}>
+                                        {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                      </span>
                                     </div>
                                     <div className="prospectListMobileCardRow">
                                       <span className="prospectListMobileCardLabel">Email / Links</span>
@@ -1889,6 +2030,80 @@ export default function Prospects() {
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timer history modal */}
+      {timerHistoryModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => setTimerHistoryModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: 480,
+              maxHeight: '80vh',
+              width: '90%',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0' }}>Timer history</h3>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              Past instances when you clicked No Longer a Fit, Next Prospect, or Can&apos;t reach.
+            </p>
+            {timerEventsLoading ? (
+              <p style={{ color: '#6b7280' }}>Loading…</p>
+            ) : timerEvents.length === 0 ? (
+              <p style={{ color: '#6b7280' }}>No events yet.</p>
+            ) : (
+              <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date & time</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Timer</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Button</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Prospect</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timerEvents.map((e) => (
+                      <tr key={e.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{formatDateTime(e.created_at)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace' }}>{formatTimerSeconds(e.timer_seconds)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{formatTimerButtonName(e.button_name)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: '#6b7280' }}>{e.prospect?.company_name ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setTimerHistoryModalOpen(false)}
+                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
               </button>
             </div>
           </div>
