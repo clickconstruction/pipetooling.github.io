@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { supabase } from '../lib/supabase'
+import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
 import ReportViewModal from '../components/ReportViewModal'
@@ -2194,6 +2195,7 @@ export default function Dashboard() {
                               href={j.google_drive_link.trim()}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
                               title="Google Drive"
                               style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                             >
@@ -2207,6 +2209,7 @@ export default function Dashboard() {
                           href={j.job_plans_link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
                           title="Job Plans"
                           style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                         >
@@ -2323,6 +2326,7 @@ export default function Dashboard() {
                               href={j.google_drive_link.trim()}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
                               title="Google Drive"
                               style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                             >
@@ -2336,6 +2340,7 @@ export default function Dashboard() {
                           href={j.job_plans_link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
                           title="Job Plans"
                           style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                         >
@@ -2458,6 +2463,7 @@ export default function Dashboard() {
                               href={j.google_drive_link.trim()}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
                               title="Google Drive"
                               style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                             >
@@ -2471,6 +2477,7 @@ export default function Dashboard() {
                           href={j.job_plans_link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
                           title="Job Plans"
                           style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                         >

@@ -5,12 +5,12 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-26
+last_updated: 2026-02-25
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
 system_components:
-  - "9 Tabs: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order"
+  - "10 Tabs: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release"
   - "3 Book Systems: Takeoff Book, Labor Book, Price Book"
   - "Integration with Materials (PO creation)"
 
@@ -51,6 +51,10 @@ key_sections:
     line: ~1350
     anchor: "#rfi-tab"
     description: "Generate RFI documents"
+  - name: "Lien Release Tab"
+    line: ~1370
+    anchor: "#lien-release-tab"
+    description: "Generate conditional waiver and lien release documents"
   - name: "Database Schema"
     line: ~897
     anchor: "#database-schema"
@@ -89,8 +93,9 @@ when_to_read:
 7. [Cover Letter Tab](#cover-letter-tab)
 8. [Submission & Followup Tab](#submission--followup-tab)
 9. [RFI Tab](#rfi-tab)
-10. [Database Schema](#database-schema)
-11. [Integration with Materials](#integration-with-materials)
+10. [Lien Release Tab](#lien-release-tab)
+11. [Database Schema](#database-schema)
+12. [Integration with Materials](#integration-with-materials)
 
 ---
 
@@ -99,7 +104,7 @@ when_to_read:
 The Bids system is a comprehensive bidding and estimation tool for plumbing contractors. It provides a complete workflow from initial fixture counts through pricing, cost estimation, and bid submission tracking.
 
 ### Key Features
-- **Nine integrated tabs** covering the complete bid lifecycle (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order)
+- **Ten integrated tabs** covering the complete bid lifecycle (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release)
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Automatic cost calculations** including driving costs
 - **Margin analysis** comparing costs to revenue
@@ -115,6 +120,7 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 7. **Submission & Followup** - Track bid submissions and outcomes
 8. **RFI** - Generate Request for Information documents
 9. **Change Order** - Coming soon
+10. **Lien Release** - Generate conditional waiver and lien release documents
 
 ---
 
@@ -1393,6 +1399,59 @@ Generate Request for Information (RFI) documents for bids. RFIs formalize questi
 
 ### Change Order Tab
 - Placeholder: "Coming soon"
+
+---
+
+## Lien Release Tab
+
+### Purpose
+Generate conditional waiver and lien release documents for progress payments. Based on Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment.
+
+### Workflow
+1. Search and select a bid (same bid list pattern as RFI and Cover Letter)
+2. Form auto-populates from bid: Project name/address, Owner (customer name)
+3. User fills: Invoice Amount, Bid amount, Invoices to date, Invoice Date, Invoice Number, CC, Company Information, Description of Work, Conditional Waiver, Payment Terms, Lien Status Verification
+4. Combined document preview updates live
+5. Copy to clipboard or Open in Google Docs (template by service type)
+
+### Form Fields
+
+**Numeric fields** (top row): Invoice Amount, Bid amount, Invoices to date
+
+**Invoice fields**: Invoice Date, Invoice Number
+
+**CC**: Person, phone, email (optional); placeholder "Person, phone, email (optional)". Omitted from document when empty.
+
+**Company Information** (collapsible, collapsed by default): Company Name, Company Address, Phone, Email. Defaults: Click Plumbing and Electrical, 5501 Balcones Dr Ste A141 Austin TX 78731, +1 512 360 0599, office@clickplumbing.com
+
+**Description of Work / Period Covered**: Textarea with **Pre-fill** button. Pre-fill inserts: `Plumbing services performed through approximately __% completion of the original base contract amount of $X.` (X = formatted bid amount or —). Omitted from document when empty.
+
+**Conditional Waiver** (collapsible): Placeholders `{{finalInvoice}}`, `{{invoicesToDate}}`
+
+**Payment Terms** (collapsible): Placeholders `{{finalInvoice}}`, `{{ownerName}}`
+
+**Lien Status Verification** (collapsible): Phone number for lien status verification
+
+### Combined Document Format
+
+**Spacing**: Sections flow with single newlines between them (no blank lines). Within each section, content uses soft returns (single newlines).
+
+**Structure**:
+- Centered header: CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT, (Texas Property Code § 53.284(c)...), Effective ONLY Upon Actual Receipt...
+- Summary: X - FINAL INVOICE, X - Invoices to date (one blank line after)
+- Project: (name, address lines)
+- Owner / Contracting Party: (customer name)
+- CC: (when provided)
+- Claimant (Releasing Party): (company name, address, phone, email)
+- Invoice / Application for Payment: Invoice Date, Invoice Number, Amount of this Application
+- Description of Work / Period Covered: (when provided)
+- Conditional Waiver text
+- Payment Terms & Late Payment Consequences: (heading centered)
+- Lien Status Verification
+
+### Actions
+- **Copy to clipboard**: HTML + plain text
+- **Open in Google Docs**: Copies content, opens template copy URL, title format `ClickLienRelease_YYMMDD_ProjectName`
 
 ---
 

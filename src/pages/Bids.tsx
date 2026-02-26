@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
+import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
@@ -720,45 +721,87 @@ function buildLienReleaseHtml(
   ownerName: string
 ): string {
   const br = '<br/>'
+  const pStyle = 'margin: 0 0 0.5em 0'
 
   const invoiceAmtFmt = formatAmountFromString(form.invoiceAmount)
   const invToDateFmt = formatAmountFromString(form.invoicesToDate)
+  const amountDisplay = invoiceAmtFmt || '—'
+  const invToDateDisplay = invToDateFmt || '—'
 
-  const conditionalWaiver = (form.conditionalWaiver || '')
-    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
-    .replace(/\{\{invoicesToDate\}\}/g, invToDateFmt || '—')
-  const paymentTerms = (form.paymentTerms || '')
-    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
+  const boldAmount = '<strong>$' + amountDisplay + '</strong>'
+  const boldInvToDate = '<strong>$' + invToDateDisplay + '</strong>'
+  let conditionalWaiver = escapeHtml(form.conditionalWaiver || '')
+    .replace(/\$\{\{finalInvoice\}\}/g, boldAmount)
+    .replace(/\$\{\{invoicesToDate\}\}/g, boldInvToDate)
+    .replace(/\{\{finalInvoice\}\}/g, boldAmount)
+    .replace(/\{\{invoicesToDate\}\}/g, boldInvToDate)
+  conditionalWaiver = conditionalWaiver.replace(/\n/g, br)
+  conditionalWaiver = conditionalWaiver
+    .replace(/(CONDITIONAL WAIVER AND RELEASE ONLY)( upon)/g, '<strong>$1</strong>$2')
+    .replace(/(expressly )(conditional)( and shall be )/g, '$1<strong>$2</strong>$3')
+    .replace(/(shall be )(void and of no effect)( if)/g, '$1<strong>$2</strong>$3')
+    .replace(/(within )(45 days)( of)/g, '$1<strong>$2</strong>$3')
+    .replace(/(at the rate of )(one and one-half percent \(1\.5\%\) per month)( \(18% per annum\))/g, '$1<strong>$2</strong>$3')
+
+  let paymentTerms = escapeHtml(form.paymentTerms || '')
+    .replace(/\$\{\{finalInvoice\}\}/g, boldAmount)
+    .replace(/\{\{finalInvoice\}\}/g, boldAmount)
     .replace(/\{\{ownerName\}\}/g, ownerName || '—')
+  paymentTerms = paymentTerms.replace(/\n/g, br)
 
+  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
+  const claimantAddr = addressLines(form.companyAddress).map((l) => escapeHtml(l)).join(br)
+
+  const projectBlock = '<strong>Project:</strong>' + br + escapeHtml(projectName || '—') + br + projectAddr
+  const ownerBlock = '<strong>Owner / Contracting Party:</strong>' + br + escapeHtml(customerName || '—')
+
+  const claimantLines: string[] = [escapeHtml(form.companyName || '—'), claimantAddr]
+  if (form.companyPhone) claimantLines.push('Phone: ' + escapeHtml(form.companyPhone))
+  if (form.companyEmail) claimantLines.push('Email: ' + escapeHtml(form.companyEmail))
+  const claimantBlock = '<strong>Claimant (Releasing Party):</strong>' + br + claimantLines.join(br)
+
+  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+  const invoiceBlock = '<strong>Invoice / Application for Payment:</strong>' + br + 'Invoice Date: ' + escapeHtml(invoiceDateStr) + br + 'Invoice Number: ' + escapeHtml(form.invoiceNumber || '—') + br + 'Amount of this Application: ' + boldAmount
+
+  const lienPhone = form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE
+  const lienBlock = '<strong>Lien Status Verification</strong>' + br + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: <strong>' + escapeHtml(lienPhone) + '</strong>'
+
+  const paragraphs: string[] = []
   const summaryLines: string[] = []
   if (invoiceAmtFmt) summaryLines.push(invoiceAmtFmt + ' - FINAL INVOICE')
   if (invToDateFmt) summaryLines.push(invToDateFmt + ' - Invoices to date')
+  if (summaryLines.length > 0) {
+    paragraphs.push(summaryLines.join(br))
+    paragraphs.push('')
+  }
+  paragraphs.push(projectBlock + br + br + ownerBlock)
+  paragraphs.push('')
+  if ((form.cc || '').trim()) {
+    paragraphs.push('CC: ' + escapeHtml(form.cc.trim()))
+    paragraphs.push('')
+  }
+  paragraphs.push(claimantBlock)
+  paragraphs.push('')
+  paragraphs.push(invoiceBlock)
+  paragraphs.push('')
+  if ((form.descriptionOfWork || '').trim()) {
+    paragraphs.push('Description of Work / Period Covered:' + br + escapeHtml(form.descriptionOfWork.trim()).replace(/\n/g, br))
+    paragraphs.push('')
+  }
+  paragraphs.push(conditionalWaiver)
+  paragraphs.push('')
+  paragraphs.push('<div style="text-align: center;"><strong>Payment Terms & Late Payment Consequences:</strong></div>' + br + paymentTerms)
+  paragraphs.push('')
+  paragraphs.push(lienBlock)
 
-  const sections: string[] = []
-  if (summaryLines.length > 0) sections.push(summaryLines.join('\n'))
-  sections.push('Project:\n' + (projectName || '—') + '\n' + addressLines(projectAddress).join('\n'))
-  sections.push('Owner / Contracting Party:\n' + (customerName || '—'))
-  if ((form.cc || '').trim()) sections.push('CC: ' + (form.cc || '').trim())
-  const claimantLines: string[] = [form.companyName || '—', ...addressLines(form.companyAddress)]
-  if (form.companyPhone) claimantLines.push('Phone: ' + form.companyPhone)
-  if (form.companyEmail) claimantLines.push('Email: ' + form.companyEmail)
-  sections.push('Claimant (Releasing Party):\n' + claimantLines.join('\n'))
-  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
-  sections.push('Invoice / Application for Payment:\nInvoice Date: ' + invoiceDateStr + '\nInvoice Number: ' + (form.invoiceNumber || '—') + '\nAmount of this Application: $' + (invoiceAmtFmt || '—'))
-  if ((form.descriptionOfWork || '').trim()) sections.push('Description of Work / Period Covered:\n' + form.descriptionOfWork.trim())
-  sections.push(conditionalWaiver)
-  sections.push('Payment Terms & Late Payment Consequences:\n' + paymentTerms)
-  sections.push('Lien Status Verification\nCurrent status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE))
-  const headerText = 'CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT\n(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)\nEffective ONLY Upon Actual Receipt and Collection of Payment'
-  const headerHtml = '<div style="text-align: center; font-family: inherit; font-size: 0.875rem; margin-bottom: 1rem; white-space: pre-wrap;">' + escapeHtml(headerText).replace(/\n/g, br) + '</div>'
-  const content = sections.join('\n\n')
-  let htmlContent = escapeHtml(content).replace(/\n/g, br)
-  htmlContent = htmlContent.replace(
-    /(Payment Terms &amp; Late Payment Consequences:)(<br\/>)/,
-    '<div style="text-align: center;">$1</div>$2'
-  )
-  return headerHtml + '<div style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">' + htmlContent + '</div>'
+  const headerLines = [
+    '<strong>' + escapeHtml('CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT') + '</strong>',
+    escapeHtml('(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)'),
+    '<strong>' + escapeHtml('Effective ONLY Upon Actual Receipt and Collection of Payment') + '</strong>',
+  ]
+  const headerHtml = '<div style="text-align: center; font-family: inherit; font-size: 0.875rem; margin-bottom: 1rem; white-space: pre-wrap;">' + headerLines.join(br) + '</div>'
+  const contentHtml = paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('')
+  return headerHtml + '<div style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">' + contentHtml + '</div>'
 }
 
 function buildLienReleaseText(
@@ -6854,7 +6897,7 @@ export default function Bids() {
                     <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: 0, textAlign: 'center' }}>
                         {bid.drive_link ? (
-                          <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.drive_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
                               <path d="M128 464L512 464C520.8 464 528 456.8 528 448L528 208C528 199.2 520.8 192 512 192L362.7 192C345.4 192 328.5 186.4 314.7 176L276.3 147.2C273.5 145.1 270.2 144 266.7 144L128 144C119.2 144 112 151.2 112 160L112 448C112 456.8 119.2 464 128 464zM512 512L128 512C92.7 512 64 483.3 64 448L64 160C64 124.7 92.7 96 128 96L266.7 96C280.5 96 294 100.5 305.1 108.8L343.5 137.6C349 141.8 355.8 144 362.7 144L512 144C547.3 144 576 172.7 576 208L576 448C576 483.3 547.3 512 512 512z"/>
                             </svg>
@@ -6865,7 +6908,7 @@ export default function Bids() {
                       </td>
                       <td style={{ padding: 0, textAlign: 'center' }}>
                         {bid.plans_link ? (
-                          <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.plans_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
                               <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128z"/>
                             </svg>
@@ -10715,7 +10758,7 @@ export default function Bids() {
                       type="button"
                       onClick={() => {
                         copyToClipboard()
-                        window.open(googleDocsCopyUrl, templateCopyTarget)
+                        openInExternalBrowser(googleDocsCopyUrl)
                         setCoverLetterBidSubmissionQuickAddBidId(bid.id)
                         setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
                       }}
@@ -10894,21 +10937,21 @@ export default function Bids() {
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Bid Submission</strong>{' '}
                   {selectedBidForSubmission.bid_submission_link?.trim() ? (
-                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
+                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.bid_submission_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
                   ) : '—'}
                 </p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Project Folder</strong>{' '}
                   {selectedBidForSubmission.drive_link?.trim() ? (
-                    <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
+                    <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.drive_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
                   ) : '—'}
                 </p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Job Plans</strong>{' '}
                   {selectedBidForSubmission.plans_link?.trim() ? (
-                    <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
+                    <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.plans_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
                   ) : '—'}
                 </p>
               </div>
@@ -11798,7 +11841,7 @@ export default function Bids() {
                       type="button"
                       onClick={() => {
                         copyToClipboard()
-                        window.open(googleDocsCopyUrl, templateCopyTarget)
+                        openInExternalBrowser(googleDocsCopyUrl)
                       }}
                       style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
                     >
@@ -12032,7 +12075,7 @@ export default function Bids() {
                   <div key={`combined-preview-co-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescriptionOfChange}-${form.reasonForChange}-${form.impactOnCost}-${form.impactOnSchedule}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                     <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{changeOrderCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
-                    <button type="button" onClick={() => { copyToClipboard(); window.open(googleDocsCopyUrl, templateCopyTarget) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                    <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
                   </div>
                 </div>
               </div>
@@ -12247,7 +12290,21 @@ export default function Bids() {
                   )}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Description of Work / Period Covered</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
+                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Description of Work / Period Covered</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bidAmtFmt = formatAmountFromString(form.bidAmount || defaultBidAmount) || '—'
+                        updateLienReleaseForm({
+                          descriptionOfWork: `Plumbing services performed through approximately __% completion of the original base contract amount of $${bidAmtFmt}.`
+                        })
+                      }}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Pre-fill
+                    </button>
+                  </div>
                   <textarea value={form.descriptionOfWork} onChange={(e) => updateLienReleaseForm({ descriptionOfWork: e.target.value })} rows={4} placeholder="e.g. Plumbing services performed through approximately 95% completion of the original base contract amount of $121,000.00." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
@@ -12287,7 +12344,7 @@ export default function Bids() {
                   <div key={`combined-preview-lr-${bid.id}-${form.invoiceAmount}-${form.bidAmount}-${form.invoicesToDate}-${form.cc}-${form.companyAddress}-${form.companyPhone}-${form.companyEmail}-${form.invoiceDate}-${form.invoiceNumber}-${form.descriptionOfWork}-${form.conditionalWaiver}-${form.paymentTerms}-${form.lienStatusPhone}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                     <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{lienReleaseCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
-                    <button type="button" onClick={() => { copyToClipboard(); window.open(googleDocsCopyUrl, templateCopyTarget) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                    <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
                   </div>
                 </div>
               </div>
@@ -12378,15 +12435,15 @@ export default function Bids() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                   Project Folder{'\u00A0'.repeat(10)}
                   bid folders:{' '}
-                  <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing') }} style={{ color: '#3b82f6' }}>
                     [plumbing]
                   </a>
                   {' '}
-                  <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing') }} style={{ color: '#3b82f6' }}>
                     [electrical]
                   </a>
                   {' '}
-                  <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link') }} style={{ color: '#3b82f6' }}>
                     [HVAC]
                   </a>
                 </label>

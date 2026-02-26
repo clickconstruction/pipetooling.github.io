@@ -204,7 +204,13 @@ when_to_read:
 - Project Lead Contact placeholder: `e.g. yourname@clickplumbing.com`
 - Project Lead Contact Phone/Email placeholder: `e.g. 512 360 0599`
 
-**Files**: `src/pages/Bids.tsx`, `src/types/database.ts`, `supabase/migrations/20260231000000_add_bids_submitted_to.sql`, `BIDS_SYSTEM.md`, `MIGRATIONS.md`
+### Bids – Lien Release Combined Document spacing
+
+- **Reduced spacing**: Sections (Project, Owner, Claimant, Invoice, etc.) now flow with single newlines between them instead of blank lines.
+- **Header**: One blank line after centered header (was two).
+- **Result**: Tighter, more compact document layout.
+
+**Files**: `src/pages/Bids.tsx`, `BIDS_SYSTEM.md`
 
 ---
 
