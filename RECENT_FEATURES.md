@@ -185,6 +185,12 @@ when_to_read:
 
 **Date**: 2026-02-26
 
+### Bids – iOS PWA: Open in Safari
+
+- **Open in Google Docs / Drive / Job Plans**: When the app runs as an installed PWA on iOS, these links open in Safari (external browser) instead of the in-app browser. Uses `x-safari-https://` URL scheme. Applies to Cover Letter, RFI, Change Order, Lien Release, Submission links, Dashboard and Jobs Drive/Plans icons.
+
+**Files**: `src/lib/openInExternalBrowser.ts`, `src/pages/Bids.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Jobs.tsx`
+
 ### Bids – RFI Tab
 
 - **RFI tab**: Full RFI document generation (mirrors Cover Letter workflow). Search/select bid, fill form, preview combined document. Copy to clipboard or Open in Google Docs (same templates by service type).
@@ -204,11 +210,13 @@ when_to_read:
 - Project Lead Contact placeholder: `e.g. yourname@clickplumbing.com`
 - Project Lead Contact Phone/Email placeholder: `e.g. 512 360 0599`
 
-### Bids – Lien Release Combined Document spacing
+### Bids – Lien Release Combined Document
 
-- **Reduced spacing**: Sections (Project, Owner, Claimant, Invoice, etc.) now flow with single newlines between them instead of blank lines.
-- **Header**: One blank line after centered header (was two).
-- **Result**: Tighter, more compact document layout.
+- **Paragraph layout**: Matches Change Order: `margin: 0 0 0.5em 0`, double `<br/>` between Project and Owner, spacer paragraphs between sections.
+- **Claimant address**: Street + suite on one line, city/state/zip on next (e.g. `5501 Balcones Dr Ste A141` / `Austin, Texas 78731`). Same line spacing as Invoice block.
+- **Pre-fill button**: Next to "Description of Work / Period Covered"; inserts template with formatted bid amount.
+- **Bold formatting**: Section labels (Project, Owner, Claimant, Invoice, Lien Status Verification), header lines 1 and 3, conditional waiver phrases, amounts, 45 days, 1.5% per month, lien phone. Texas Property Code line not bolded.
+- **Header spacing**: Three header lines use same spacing as Phone/Email.
 
 **Files**: `src/pages/Bids.tsx`, `BIDS_SYSTEM.md`
 

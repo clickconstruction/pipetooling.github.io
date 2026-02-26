@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-25
+last_updated: 2026-02-26
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -1422,7 +1422,7 @@ Generate conditional waiver and lien release documents for progress payments. Ba
 
 **CC**: Person, phone, email (optional); placeholder "Person, phone, email (optional)". Omitted from document when empty.
 
-**Company Information** (collapsible, collapsed by default): Company Name, Company Address, Phone, Email. Defaults: Click Plumbing and Electrical, 5501 Balcones Dr Ste A141 Austin TX 78731, +1 512 360 0599, office@clickplumbing.com
+**Company Information** (collapsible, collapsed by default): Company Name, Company Address, Phone, Email. Defaults: Click Plumbing and Electrical, 5501 Balcones Dr, Ste A141, Austin, Texas 78731, +1 512 360 0599, office@clickplumbing.com. Address displays as two lines: street + suite, then city/state/zip.
 
 **Description of Work / Period Covered**: Textarea with **Pre-fill** button. Pre-fill inserts: `Plumbing services performed through approximately __% completion of the original base contract amount of $X.` (X = formatted bid amount or —). Omitted from document when empty.
 
@@ -1434,13 +1434,16 @@ Generate conditional waiver and lien release documents for progress payments. Ba
 
 ### Combined Document Format
 
-**Spacing**: Sections flow with single newlines between them (no blank lines). Within each section, content uses soft returns (single newlines).
+**Layout**: Paragraph-based structure matching Change Order: `margin: 0 0 0.5em 0`, double `<br/>` between Project and Owner blocks, spacer paragraphs between major sections.
+
+**Bold formatting**: Section labels (Project, Owner / Contracting Party, Claimant, Invoice / Application for Payment, Lien Status Verification), header lines 1 and 3, conditional waiver phrases, amounts, 45 days, 1.5% per month, lien phone. Texas Property Code line (line 2 of header) is not bolded.
+
+**Claimant address**: Street + suite on one line, city/state/zip on next (e.g. `5501 Balcones Dr Ste A141` / `Austin, Texas 78731`). Same line spacing as Invoice block (Invoice Date, Invoice Number, Amount).
 
 **Structure**:
-- Centered header: CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT, (Texas Property Code § 53.284(c)...), Effective ONLY Upon Actual Receipt...
-- Summary: X - FINAL INVOICE, X - Invoices to date (one blank line after)
-- Project: (name, address lines)
-- Owner / Contracting Party: (customer name)
+- Centered header: CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT, (Texas Property Code § 53.284(c)...), Effective ONLY Upon Actual Receipt... (spacing matches Phone/Email)
+- Summary: X - FINAL INVOICE, X - Invoices to date (spacer after)
+- Project: (name, address lines) + double break + Owner / Contracting Party: (customer name)
 - CC: (when provided)
 - Claimant (Releasing Party): (company name, address, phone, email)
 - Invoice / Application for Payment: Invoice Date, Invoice Number, Amount of this Application
