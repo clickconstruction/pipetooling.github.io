@@ -357,11 +357,11 @@ This proposal excludes any electrical, fire protection, fire alarm, drywall, fra
 
 const DEFAULT_INCLUSIONS = 'Permits'
 
-const LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS = '5501 Balcones Dr, Ste A141\nAustin, Texas 78731'
+const LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS = '5501 Balcones Dr Ste A141, Austin, Texas 78731'
 const LIEN_RELEASE_DEFAULT_LIEN_PHONE = '+1 512 360 0599'
 const LIEN_RELEASE_DEFAULT_COMPANY_PHONE = '+1 512 360 0599'
 const LIEN_RELEASE_DEFAULT_COMPANY_EMAIL = 'office@clickplumbing.com'
-const LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER = 'CONDITIONAL WAIVER AND RELEASE ONLY upon receipt and collection of good funds in the amount of ${{finalInvoice}} payable to Click Plumbing and Electrical, the undersigned hereby waives and releases any and all mechanic\'s lien rights, payment bond claims, or claims against the project or property described above that have arisen or may arise through the date of this invoice.\nThis waiver and release is expressly conditional and shall be void and of no effect if the ${{invoicesToDate}} payment is not actually received and collected in full. Click Plumbing and Electrical expressly reserves all lien, bond, and contract rights until payment is received and clears.'
+const LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER = 'CONDITIONAL WAIVER AND RELEASE ONLY upon receipt and collection of good funds in the amount of ${{finalInvoice}} payable to Click Plumbing and Electrical, the undersigned hereby waives and releases any and all mechanic\'s lien rights, payment bond claims, or claims against the project or property described above that have arisen or may arise through the date of this invoice.\n\nThis waiver and release is expressly conditional and shall be void and of no effect if the ${{invoicesToDate}} payment is not actually received and collected in full. Click Plumbing and Electrical expressly reserves all lien, bond, and contract rights until payment is received and clears.'
 const LIEN_RELEASE_DEFAULT_PAYMENT_TERMS = 'Payment of ${{finalInvoice}} is due immediately upon receipt of this invoice. Pursuant to Texas Property Code Chapter 28 (Prompt Payment Act), if payment in full is not received within 45 days of the invoice date, interest shall accrue at the rate of one and one-half percent (1.5%) per month (18% per annum) on the unpaid balance beginning on day 46, and {{ownerName}} shall also be liable for all reasonable attorney\'s fees, collection costs, and court costs incurred by Click Plumbing and Electrical to collect the overdue amount.'
 
 /** Parse amount string and return formatted currency (e.g. "17242.50" -> "17,242.50") */
@@ -766,6 +766,13 @@ function buildLienReleaseHtml(
   const lienPhone = form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE
   const lienBlock = '<strong>Lien Status Verification</strong>' + br + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: <strong>' + escapeHtml(lienPhone) + '</strong>'
 
+  const sep = br + br
+  let mainContent = projectBlock + sep + ownerBlock
+  if ((form.cc || '').trim()) mainContent += sep + 'CC: ' + escapeHtml(form.cc.trim())
+  mainContent += sep + claimantBlock + sep + invoiceBlock
+  if ((form.descriptionOfWork || '').trim()) mainContent += sep + 'Description of Work / Period Covered:' + br + escapeHtml(form.descriptionOfWork.trim()).replace(/\n/g, br)
+  mainContent += sep + conditionalWaiver + br + '<div style="text-align: center;"><strong>Payment Terms & Late Payment Consequences:</strong></div>' + paymentTerms + br + lienBlock
+
   const paragraphs: string[] = []
   const summaryLines: string[] = []
   if (invoiceAmtFmt) summaryLines.push(invoiceAmtFmt + ' - FINAL INVOICE')
@@ -774,32 +781,14 @@ function buildLienReleaseHtml(
     paragraphs.push(summaryLines.join(br))
     paragraphs.push('')
   }
-  paragraphs.push(projectBlock + br + br + ownerBlock)
-  paragraphs.push('')
-  if ((form.cc || '').trim()) {
-    paragraphs.push('CC: ' + escapeHtml(form.cc.trim()))
-    paragraphs.push('')
-  }
-  paragraphs.push(claimantBlock)
-  paragraphs.push('')
-  paragraphs.push(invoiceBlock)
-  paragraphs.push('')
-  if ((form.descriptionOfWork || '').trim()) {
-    paragraphs.push('Description of Work / Period Covered:' + br + escapeHtml(form.descriptionOfWork.trim()).replace(/\n/g, br))
-    paragraphs.push('')
-  }
-  paragraphs.push(conditionalWaiver)
-  paragraphs.push('')
-  paragraphs.push('<div style="text-align: center;"><strong>Payment Terms & Late Payment Consequences:</strong></div>' + br + paymentTerms)
-  paragraphs.push('')
-  paragraphs.push(lienBlock)
+  paragraphs.push(mainContent)
 
   const headerLines = [
     '<strong>' + escapeHtml('CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT') + '</strong>',
     escapeHtml('(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)'),
     '<strong>' + escapeHtml('Effective ONLY Upon Actual Receipt and Collection of Payment') + '</strong>',
   ]
-  const headerHtml = '<div style="text-align: center; font-family: inherit; font-size: 0.875rem; margin-bottom: 1rem; white-space: pre-wrap;">' + headerLines.join(br) + '</div>'
+  const headerHtml = '<p style="text-align: center; font-family: inherit; font-size: 0.875rem; margin: 0 0 0.5em 0; padding: 0; line-height: 1.15;">' + headerLines.join(br) + '</p>'
   const contentHtml = paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('')
   return headerHtml + '<div style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">' + contentHtml + '</div>'
 }
@@ -826,24 +815,25 @@ function buildLienReleaseText(
     'CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT',
     '(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)',
     'Effective ONLY Upon Actual Receipt and Collection of Payment',
-    '',
-    ''
   ]
-  const lines: string[] = [...headerLines]
+  const headerText = headerLines.join('\n')
+  const sep = '\n\n'
+  const lines: string[] = [headerText]
   if (invoiceAmtFmt) lines.push(invoiceAmtFmt + ' - FINAL INVOICE')
   if (invToDateFmt) lines.push(invToDateFmt + ' - Invoices to date')
   if (lines.length > 0) lines.push('')
-  lines.push('Project:', projectName || '—', ...addressLines(projectAddress), '')
-  lines.push('Owner / Contracting Party:', customerName || '—', '')
-  if ((form.cc || '').trim()) lines.push('CC: ' + (form.cc || '').trim(), '')
-  lines.push('Claimant (Releasing Party):', form.companyName || '—', ...addressLines(form.companyAddress), ...(form.companyPhone ? ['Phone: ' + form.companyPhone] : []), ...(form.companyEmail ? ['Email: ' + form.companyEmail] : []), '')
+  const projectSection = ['Project:', projectName || '—', ...addressLines(projectAddress)].join('\n')
+  const ownerSection = ['Owner / Contracting Party:', customerName || '—'].join('\n')
+  const claimantSection = ['Claimant (Releasing Party):', form.companyName || '—', ...addressLines(form.companyAddress), ...(form.companyPhone ? ['Phone: ' + form.companyPhone] : []), ...(form.companyEmail ? ['Email: ' + form.companyEmail] : [])].join('\n')
   const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
-  lines.push('Invoice / Application for Payment:', 'Invoice Date: ' + invoiceDateStr, 'Invoice Number: ' + (form.invoiceNumber || '—'), 'Amount of this Application: $' + (invoiceAmtFmt || '—'), '')
-  if ((form.descriptionOfWork || '').trim()) lines.push('Description of Work / Period Covered:', form.descriptionOfWork.trim(), '')
-  lines.push(conditionalWaiver, '')
-  lines.push('Payment Terms & Late Payment Consequences:', paymentTerms, '')
-  lines.push('Lien Status Verification', 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE))
-  return lines.join('\n')
+  const invoiceSection = ['Invoice / Application for Payment:', 'Invoice Date: ' + invoiceDateStr, 'Invoice Number: ' + (form.invoiceNumber || '—'), 'Amount of this Application: $' + (invoiceAmtFmt || '—')].join('\n')
+  let body = projectSection + sep + ownerSection
+  if ((form.cc || '').trim()) body += sep + 'CC: ' + (form.cc || '').trim()
+  body += sep + claimantSection + sep + invoiceSection
+  if ((form.descriptionOfWork || '').trim()) body += sep + 'Description of Work / Period Covered:' + '\n' + form.descriptionOfWork.trim()
+  const lienStatusText = 'Lien Status Verification' + '\n' + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE)
+  body += sep + conditionalWaiver + '\n' + 'Payment Terms & Late Payment Consequences:' + '\n' + paymentTerms + '\n' + lienStatusText
+  return lines.join('\n') + (lines.length > 0 ? '\n\n' : '') + body
 }
 
 export default function Bids() {
@@ -12227,15 +12217,15 @@ export default function Bids() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Amount</label>
-                    <input type="text" value={form.invoiceAmount} onChange={(e) => updateLienReleaseForm({ invoiceAmount: e.target.value })} placeholder="e.g. 17242.50" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    <input type="text" value={form.invoiceAmount} onChange={(e) => updateLienReleaseForm({ invoiceAmount: e.target.value })} placeholder="e.g. 10,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid amount</label>
-                    <input type="text" value={form.bidAmount} onChange={(e) => updateLienReleaseForm({ bidAmount: e.target.value })} placeholder="e.g. 121000" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    <input type="text" value={form.bidAmount} onChange={(e) => updateLienReleaseForm({ bidAmount: e.target.value })} placeholder="e.g. 100,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoices to date</label>
-                    <input type="text" value={form.invoicesToDate} onChange={(e) => updateLienReleaseForm({ invoicesToDate: e.target.value })} placeholder="e.g. 93300" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                    <input type="text" value={form.invoicesToDate} onChange={(e) => updateLienReleaseForm({ invoicesToDate: e.target.value })} placeholder="e.g. 90,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -12291,7 +12281,7 @@ export default function Bids() {
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Description of Work / Period Covered</label>
+                    <label style={{ fontWeight: 500, fontSize: '0.875rem' }}>Description of Work / Period Covered (Optional)</label>
                     <button
                       type="button"
                       onClick={() => {
