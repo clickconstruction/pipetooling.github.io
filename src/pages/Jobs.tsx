@@ -117,7 +117,7 @@ export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole } = useAuth()
-  const [activeTab, setActiveTab] = useState<JobsTab>('ledger')
+  const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -1768,11 +1768,11 @@ export default function Jobs() {
     } else if (tab && JOBS_TABS.includes(tab as JobsTab)) {
       setActiveTab(tab as JobsTab)
     } else if (!tab) {
-      // Default to Billing
-      setActiveTab('ledger')
+      // Default to Stages
+      setActiveTab('stages')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'ledger')
+        next.set('tab', 'stages')
         return next
       }, { replace: true })
     }
@@ -2674,7 +2674,7 @@ export default function Jobs() {
             }}
             style={tabStyle(activeTab === 'sub_sheet_ledger')}
           >
-            SubLabor
+            Sub Labor
           </button>
           <button
             type="button"
@@ -2688,7 +2688,7 @@ export default function Jobs() {
             }}
             style={tabStyle(activeTab === 'combined-labor')}
           >
-            Labor
+            Team Labor
           </button>
           <button
             type="button"
@@ -4129,7 +4129,7 @@ export default function Jobs() {
           {(laborJobsLoading || teamLaborLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : combinedLaborRows.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No labor data yet. Add jobs in SubLabor or People → Team Costs.</p>
+            <p style={{ color: '#6b7280' }}>No labor data yet. Add jobs in Sub Labor or People → Team Costs.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4137,7 +4137,7 @@ export default function Jobs() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job name and Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>SubLabor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Sub Labor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Job Labor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Job Labor Cost</th>
                   </tr>
