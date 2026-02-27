@@ -266,6 +266,9 @@ export default function Prospects() {
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
 
+  // Ref to ignore stale loadComments responses when prospect changes quickly
+  const loadCommentsForProspectRef = useRef<string | null>(null)
+
   // Timer history modal
   const [timerHistoryModalOpen, setTimerHistoryModalOpen] = useState(false)
   const [timerEvents, setTimerEvents] = useState<Array<{ id: string; created_at: string | null; timer_seconds: number; button_name: string; prospect: { company_name: string | null } | null }>>([])
@@ -415,9 +418,11 @@ export default function Prospects() {
       .eq('prospect_id', prospectId)
       .order('created_at', { ascending: false })
     if (error) {
+      console.error('[Prospects] loadComments failed:', error)
       setComments([])
       return
     }
+    if (loadCommentsForProspectRef.current !== prospectId) return
     setComments((data ?? []) as ProspectComment[])
   }
 
@@ -816,8 +821,10 @@ export default function Prospects() {
 
   useEffect(() => {
     if (currentProspect?.id) {
+      loadCommentsForProspectRef.current = currentProspect.id
       loadComments(currentProspect.id)
     } else {
+      loadCommentsForProspectRef.current = null
       setComments([])
     }
   }, [currentProspect?.id])
@@ -1635,163 +1642,8 @@ export default function Prospects() {
                 )
               })()}
 
-              {/* Info block with notes */}
-              <div className="followUpInfoCard">
-                <div className="followUpInfoCardDetails">
-                  <div><strong>Company Name:</strong> {currentProspect.company_name || '—'}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    Last Contact:
-                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
-                    {formatDueBadge(currentProspect.last_contact) && (
-                      <span
-                        style={{
-                          padding: '0.125rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: 4,
-                          background: '#fef3c7',
-                          color: '#92400e',
-                        }}
-                      >
-                        {formatDueBadge(currentProspect.last_contact)}
-                      </span>
-                    )}
-                  </div>
-                  <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
-                  <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
-                  <div>
-                    <strong>Phone Number:</strong>{' '}
-                    {currentProspect.phone_number ? (
-                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
-                        {currentProspect.phone_number}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  <div>
-                    <strong>Email:</strong>{' '}
-                    {currentProspect.email ? (
-                      <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
-                        {currentProspect.email}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  <div>
-                    <strong>Links to Website:</strong>{' '}
-                    {currentProspect.links_to_website ? (
-                      <a
-                        href={currentProspect.links_to_website.startsWith('http') ? currentProspect.links_to_website : `https://${currentProspect.links_to_website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        {currentProspect.links_to_website}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  {scheduledCallback && (
-                    <div>
-                      <strong>Call back scheduled for:</strong>{' '}
-                      <Link
-                        to="/calendar"
-                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        {formatDateTime(scheduledCallback.callback_date)}
-                        {scheduledCallback.note && ` (${scheduledCallback.note})`}
-                      </Link>
-                    </div>
-                  )}
-                </div>
-                <div className="followUpInfoCardNotes">
-                  <textarea
-                    value={followUpNotes}
-                    onChange={(e) => setFollowUpNotes(e.target.value)}
-                    placeholder="Add notes..."
-                    style={{ width: '100%', minHeight: 120, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.9375rem', resize: 'vertical', fontFamily: 'inherit' }}
-                  />
-                  <div className="followUpInfoCardNotesActions">
-                    <button
-                      type="button"
-                      onClick={saveFollowUpNotes}
-                      disabled={followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', opacity: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 0.6 : 1 }}
-                    >
-                      {followUpNotesSaving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelFollowUpNotes}
-                      disabled={followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                  {/* Copy templates */}
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                      {COPY_TEMPLATE_KEYS.map((key) => (
-                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTemplate(key)}
-                            style={{
-                              padding: '0.35rem 0.6rem',
-                              fontSize: '0.8125rem',
-                              background: '#f3f4f6',
-                              border: '1px solid #d1d5db',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {COPY_TEMPLATE_LABELS[key]}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenMail(key)}
-                            title={emailSentTemplateKeys.has(key) ? 'Email sent' : 'Open in email'}
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: emailSentTemplateKeys.has(key) ? '#059669' : '#6b7280',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            {emailSentTemplateKeys.has(key) ? <EnvelopeCheckIcon /> : <EnvelopeIcon />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditCopyModal(key)}
-                            title="Edit template"
-                            style={{
-                              padding: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: '#6b7280',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <EditIcon />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments */}
-              <div>
+              {/* Comments first on mobile so visible without scrolling */}
+              <div className="followUpCommentsSection">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>Comments</h3>
                   <button
@@ -1891,6 +1743,161 @@ export default function Prospects() {
                     ))}
                   </ul>
                 )}
+              </div>
+
+              {/* Info block with notes */}
+              <div className="followUpInfoCard">
+                <div className="followUpInfoCardDetails">
+                  <div><strong>Company Name:</strong> {currentProspect.company_name || '—'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    Last Contact:
+                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
+                    {formatDueBadge(currentProspect.last_contact) && (
+                      <span
+                        style={{
+                          padding: '0.125rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          background: '#fef3c7',
+                          color: '#92400e',
+                        }}
+                      >
+                        {formatDueBadge(currentProspect.last_contact)}
+                      </span>
+                    )}
+                  </div>
+                  <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
+                  <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
+                  <div>
+                    <strong>Phone Number:</strong>{' '}
+                    {currentProspect.phone_number ? (
+                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                        {currentProspect.phone_number}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                  <div>
+                    <strong>Email:</strong>{' '}
+                    {currentProspect.email ? (
+                      <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                        {currentProspect.email}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                  <div>
+                    <strong>Links to Website:</strong>{' '}
+                    {currentProspect.links_to_website ? (
+                      <a
+                        href={currentProspect.links_to_website.startsWith('http') ? currentProspect.links_to_website : `https://${currentProspect.links_to_website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        {currentProspect.links_to_website}
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </div>
+                  {scheduledCallback && (
+                    <div>
+                      <strong>Call back scheduled for:</strong>{' '}
+                      <Link
+                        to="/calendar"
+                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        {formatDateTime(scheduledCallback.callback_date)}
+                        {scheduledCallback.note && ` (${scheduledCallback.note})`}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+                <div className="followUpInfoCardNotes">
+                  <textarea
+                      value={followUpNotes}
+                      onChange={(e) => setFollowUpNotes(e.target.value)}
+                      placeholder="Add notes..."
+                      style={{ width: '100%', minHeight: 120, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.9375rem', resize: 'vertical', fontFamily: 'inherit' }}
+                    />
+                    <div className="followUpInfoCardNotesActions">
+                    <button
+                      type="button"
+                      onClick={saveFollowUpNotes}
+                      disabled={followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '')}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', opacity: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 0.6 : 1 }}
+                    >
+                      {followUpNotesSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelFollowUpNotes}
+                      disabled={followUpNotes === (currentProspect.notes ?? '')}
+                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {/* Copy templates */}
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                      {COPY_TEMPLATE_KEYS.map((key) => (
+                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyTemplate(key)}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              fontSize: '0.8125rem',
+                              background: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {COPY_TEMPLATE_LABELS[key]}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMail(key)}
+                            title={emailSentTemplateKeys.has(key) ? 'Email sent' : 'Open in email'}
+                            style={{
+                              padding: '0.35rem',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: emailSentTemplateKeys.has(key) ? '#059669' : '#6b7280',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            {emailSentTemplateKeys.has(key) ? <EnvelopeCheckIcon /> : <EnvelopeIcon />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditCopyModal(key)}
+                            title="Edit template"
+                            style={{
+                              padding: '0.35rem',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <EditIcon />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           ) : null}
