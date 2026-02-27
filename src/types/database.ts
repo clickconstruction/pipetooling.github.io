@@ -731,6 +731,21 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
+      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
