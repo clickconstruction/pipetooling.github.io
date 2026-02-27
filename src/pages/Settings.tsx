@@ -301,6 +301,9 @@ export default function Settings() {
   const [prospectCopyNoResponse, setProspectCopyNoResponse] = useState('')
   const [prospectCopyPhoneFollowup, setProspectCopyPhoneFollowup] = useState('')
   const [prospectCopyJustCheckingIn, setProspectCopyJustCheckingIn] = useState('')
+  const [prospectCopyNoResponseSubject, setProspectCopyNoResponseSubject] = useState('')
+  const [prospectCopyPhoneFollowupSubject, setProspectCopyPhoneFollowupSubject] = useState('')
+  const [prospectCopyJustCheckingInSubject, setProspectCopyJustCheckingInSubject] = useState('')
   const [prospectCopySaving, setProspectCopySaving] = useState(false)
   const [prospectCopySectionOpen, setProspectCopySectionOpen] = useState(false)
   const [dashboardButtons, setDashboardButtons] = useState<Record<string, boolean>>({
@@ -1315,11 +1318,17 @@ export default function Settings() {
       const { data: appSettings } = await supabase.from('app_settings').select('key, value_num').eq('key', 'default_labor_rate').maybeSingle()
       const val = (appSettings as { value_num: number | null } | null)?.value_num
       setDefaultLaborRate(val != null ? String(val) : '')
-      const { data: prospectCopyRows } = await supabase.from('app_settings').select('key, value_text').in('key', ['prospect_copy_no_response_email', 'prospect_copy_phone_followup_email', 'prospect_copy_just_checking_in_email'])
+      const { data: prospectCopyRows } = await supabase.from('app_settings').select('key, value_text').in('key', [
+        'prospect_copy_no_response_email', 'prospect_copy_phone_followup_email', 'prospect_copy_just_checking_in_email',
+        'prospect_copy_no_response_email_subject', 'prospect_copy_phone_followup_email_subject', 'prospect_copy_just_checking_in_email_subject',
+      ])
       const prospectCopyByKey = new Map((prospectCopyRows ?? []).map((r: { key: string; value_text: string | null }) => [r.key, r.value_text ?? '']))
       setProspectCopyNoResponse(prospectCopyByKey.get('prospect_copy_no_response_email') ?? '')
       setProspectCopyPhoneFollowup(prospectCopyByKey.get('prospect_copy_phone_followup_email') ?? '')
       setProspectCopyJustCheckingIn(prospectCopyByKey.get('prospect_copy_just_checking_in_email') ?? '')
+      setProspectCopyNoResponseSubject(prospectCopyByKey.get('prospect_copy_no_response_email_subject') ?? '')
+      setProspectCopyPhoneFollowupSubject(prospectCopyByKey.get('prospect_copy_phone_followup_email_subject') ?? '')
+      setProspectCopyJustCheckingInSubject(prospectCopyByKey.get('prospect_copy_just_checking_in_email_subject') ?? '')
       const { data: reportSettings } = await supabase.from('app_settings').select('key, value_num').in('key', ['report_edit_window_days', 'report_sub_visibility_months'])
       const byKey = new Map((reportSettings ?? []).map((r: { key: string; value_num: number | null }) => [r.key, r.value_num ?? 0]))
       setReportEditWindowDays(String(byKey.get('report_edit_window_days') ?? 2))
@@ -1350,6 +1359,9 @@ export default function Settings() {
         { key: 'prospect_copy_no_response_email', value_text: prospectCopyNoResponse },
         { key: 'prospect_copy_phone_followup_email', value_text: prospectCopyPhoneFollowup },
         { key: 'prospect_copy_just_checking_in_email', value_text: prospectCopyJustCheckingIn },
+        { key: 'prospect_copy_no_response_email_subject', value_text: prospectCopyNoResponseSubject },
+        { key: 'prospect_copy_phone_followup_email_subject', value_text: prospectCopyPhoneFollowupSubject },
+        { key: 'prospect_copy_just_checking_in_email_subject', value_text: prospectCopyJustCheckingInSubject },
       ],
       { onConflict: 'key' }
     )
@@ -4318,6 +4330,13 @@ export default function Settings() {
                 <form onSubmit={saveProspectCopyDefaults}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyNoResponseSubject}
+                      onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
+                      placeholder="Subject (e.g. Follow up - [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
                     <textarea
                       value={prospectCopyNoResponse}
                       onChange={(e) => setProspectCopyNoResponse(e.target.value)}
@@ -4327,6 +4346,13 @@ export default function Settings() {
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyPhoneFollowupSubject}
+                      onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
                     <textarea
                       value={prospectCopyPhoneFollowup}
                       onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
@@ -4336,6 +4362,13 @@ export default function Settings() {
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
+                    <input
+                      type="text"
+                      value={prospectCopyJustCheckingInSubject}
+                      onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
+                      placeholder="Subject (e.g. Re: [company name])"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                    />
                     <textarea
                       value={prospectCopyJustCheckingIn}
                       onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}

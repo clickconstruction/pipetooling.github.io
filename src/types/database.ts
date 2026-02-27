@@ -2786,6 +2786,42 @@ export type Database = {
           },
         ]
       }
+      prospect_email_sent: {
+        Row: {
+          created_at: string | null
+          prospect_id: string
+          template_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          prospect_id: string
+          template_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          prospect_id?: string
+          template_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_email_sent_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_email_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospect_calling_locks: {
         Row: {
           locked_at: string | null
@@ -3628,18 +3664,21 @@ export type Database = {
       }
       user_prospect_copy_templates: {
         Row: {
+          subject_text: string | null
           template_key: string
           updated_at: string | null
           user_id: string
           value_text: string
         }
         Insert: {
+          subject_text?: string | null
           template_key: string
           updated_at?: string | null
           user_id: string
           value_text: string
         }
         Update: {
+          subject_text?: string | null
           template_key?: string
           updated_at?: string | null
           user_id?: string
