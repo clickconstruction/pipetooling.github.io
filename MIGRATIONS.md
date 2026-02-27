@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–31, 2026
 
+**`20260303000001_prospect_calling_locks.sql`**
+- **Purpose**: Prevent multiple users from calling the same prospect; support Option D (Hybrid) for Prospects
+- **Changes**: Create `prospect_calling_locks` (prospect_id PK, user_id, locked_at); RLS: SELECT (all), INSERT/UPDATE/DELETE (own)
+- **Impact**: Follow Up acquires lock when viewing a prospect; others exclude it from their list; lock released on Next/Cant reach/No longer fit or when switching away
+- **Category**: Prospects
+
 **`20260303000000_add_mark_job_paid.sql`**
 - **Purpose**: Support marking whole jobs (status=billed) as paid; adds remaining amount to payments
 - **Changes**: New RPC `mark_job_paid(p_job_id)`: inserts (revenue - payments_made) into jobs_ledger_payments, updates payments_made, sets status to paid

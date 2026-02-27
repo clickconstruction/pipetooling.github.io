@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-27
+last_updated: 2026-03-26
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -1932,11 +1932,11 @@ user_id = auth.uid()
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
 - **Header**: "Jobs" title on the right of the tab bar (matches People page pattern)
-- **Tabs** (in order): **Receivables** | **Labor** | **HCP Jobs** | **Sub Sheet Ledger** | **Parts** | Upcoming | Teams Summary
+- **Tabs** (in order): Receivables | Reports | **Stages** (default) | Billing | **Sub Labor** | **Team Labor** | Parts | Job Summary | Teams Summary
 - **Features**:
   - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
-  - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
-  - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
+  - **Sub Labor Tab** (Sub Sheet Ledger): Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal; Delete removes job; date editable inline. Uses same roster (people + users) as People.
+  - **Team Labor Tab**: Team Job Labor table—all-time aggregate of jobs from Crew Jobs (People → Team Costs). Columns: HCP, Job name + address, People on job, Man hours (clickable → breakdown modal), Job cost (clickable → breakdown modal). Searchable by HCP, job name, address. Add jobs via Sub Labor or People → Team Costs.
   - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically. New/Edit Job modals include Total Bill ($), Payments Made ($) as multiple payment rows, Remaining ($) = Total Bill - sum of payments, and **Create partial invoice** section (amount input, Create invoice button; lists open invoices with View in Stages).
   - **Stages Tab**: **Working** shows jobs with "Ready to Bill" button and green Create Partial Invoice icon (to left of Edit); **Ready to Bill** and **Billed** show both **jobs** (status-based) and **invoices** in a **unified table** (jobs use blue buttons, invoices use green). **Paid in Full** shows jobs where payments_made ≥ revenue; stage title shows count only (no total). Job actions: Ready to Bill, Mark as Billed, Mark Paid, Send back. Invoice actions: Mark as Billed, Mark Paid, Send back. Create Partial Invoice icon (Working, Ready to Bill) opens modal to create partial invoice. Edit pencil opens Edit Job modal. "Open X hours" centered in Actions column. Stages opens by default (not Reports) for non-primary users. **Checkbox confirmation modals** (when Ham mode OFF): Ready to Bill, Mark as Billed, Mark Paid, and Send back each require checkbox confirmation before proceeding.
   - **Parts Tab**: Tally parts from Job Parts Tally; search and "Show my jobs only" (hidden for subcontractors). Fixture-only entries (sent to office) have editable cost; jobs with unpriced fixtures highlighted in red. Parts total includes fixture cost.

@@ -7,17 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-27
+last_updated: 2026-03-26
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.74 → v2.4"
+version_range: "v2.75 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.74)"
+  - name: "Latest Version (v2.75)"
     line: ~186
-    description: "Create Partial Invoice modal, Ready to Bill label, Paid in Full total hidden"
+    description: "Jobs Stages default, Team Labor/Sub Labor labels, Prospects Option D calling locks"
   - name: "v2.73"
     line: ~200
     description: "Checkbox modals restored, unified stages table, invoice buttons green"
@@ -124,17 +124,18 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
-2. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
-3. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
-4. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
-4. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
-4. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
-5. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
-6. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
-6. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
-7. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-8. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+1. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
+2. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
+3. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
+4. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
+5. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
+6. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
+7. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
+8. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
+9. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
+10. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+11. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+12. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
 9. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
 10. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
 11. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
@@ -198,6 +199,32 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.75)
+
+**Date**: 2026-03-26
+
+### Jobs – Default Tab and Tab Labels
+
+- **Stages default**: When a user clicks Jobs, the Stages tab now opens by default (previously Billing).
+- **Team Labor**: The "Labor" tab (combined-labor) is renamed to "Team Labor".
+- **Sub Labor**: The "SubLabor" tab is renamed to "Sub Labor" (with space); same label in empty-state message and Team Labor table header.
+
+**Files**: `src/pages/Jobs.tsx`
+
+### Prospects – Option D (Hybrid): Calling Locks and Due-for-Follow-up
+
+- **Calling lock**: When a user views a prospect in Follow Up, a row is inserted into `prospect_calling_locks` so others cannot work it. Lock is released when user clicks Next Prospect, Cant reach, or No longer fit (or when switching away).
+- **Exclude locked**: `loadFollowUpProspects` excludes prospects locked by other users.
+- **Sort**: Prospects sorted by `last_contact ASC NULLS FIRST` (oldest first) so overdue prospects appear first.
+- **"Due X days" badge**: Amber pill badge shown near Last Contact when `last_contact` is null or more than 7 days ago.
+- **handleSendBack**: Sort updated to oldest-first to match new order.
+
+**Database**: New table `prospect_calling_locks` (prospect_id, user_id, locked_at); RLS for SELECT (all), INSERT/UPDATE/DELETE (own).
+
+**Files**: `src/pages/Prospects.tsx`, `supabase/migrations/20260303000001_prospect_calling_locks.sql`
 
 ---
 
