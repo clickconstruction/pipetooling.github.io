@@ -4313,7 +4313,7 @@ export default function Settings() {
             {prospectCopySectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name] (and _______ for Phone call / Just checking in).
+                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
                 </p>
                 <form onSubmit={saveProspectCopyDefaults}>
                   <div style={{ marginBottom: '1rem' }}>

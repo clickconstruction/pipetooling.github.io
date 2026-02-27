@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -127,18 +127,50 @@ function getWebsiteHref(url: string | null): string {
   return 'https://' + s
 }
 
+function getBlankPlaceholderFields(
+  template: string,
+  authUserName: string,
+  authUserEmail: string,
+  prospect: Prospect,
+  personPhone: string | null,
+  templateKey: CopyTemplateKey,
+  comments: ProspectComment[]
+): string[] {
+  const blank: string[] = []
+  const userName = (authUserName || authUserEmail || '').trim()
+  if (template.includes('[User name]') && !userName) blank.push('User name')
+  if (template.includes('[user email]') && !authUserEmail?.trim()) blank.push('User email')
+  if (template.includes('[user phone number]') && !personPhone?.trim()) blank.push('User phone number')
+  if (template.includes('[company name]') && !prospect.company_name?.trim()) blank.push('Company name')
+  if (template.includes('[prospect phone number]') && !prospect.phone_number?.trim()) blank.push('Prospect phone number')
+  if (template.includes('[prospect contact name]') && !prospect.contact_name?.trim()) blank.push('Prospect contact name')
+  if (template.includes('[prospect last contact]') && !prospect.last_contact) blank.push('Prospect last contact')
+  if (template.includes('[prospect last successful contact]') && !comments.find((c) => c.interaction_type === 'answered')) blank.push('Prospect last successful contact')
+  if (template.includes('_______')) {
+    if (templateKey === 'phone_followup_email' && !prospect.contact_name?.trim()) blank.push('Contact name')
+    else if (templateKey === 'just_checking_in_email' && !prospect.phone_number?.trim() && !prospect.email?.trim()) blank.push('Contact info')
+  }
+  return blank
+}
+
 function substituteCopyPlaceholders(
   template: string,
   authUser: { name: string; email: string },
   prospect: Prospect,
   personPhone: string | null,
-  templateKey: CopyTemplateKey
+  templateKey: CopyTemplateKey,
+  comments: ProspectComment[]
 ): string {
+  const lastSuccessfulContact = comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null
   let text = template
     .replace(/\[User name\]/g, authUser.name ?? '')
     .replace(/\[user email\]/g, authUser.email ?? '')
     .replace(/\[user phone number\]/g, personPhone ?? '')
     .replace(/\[company name\]/g, prospect.company_name ?? '')
+    .replace(/\[prospect phone number\]/g, prospect.phone_number ?? '')
+    .replace(/\[prospect contact name\]/g, prospect.contact_name ?? '')
+    .replace(/\[prospect last contact\]/g, formatDateTime(prospect.last_contact))
+    .replace(/\[prospect last successful contact\]/g, formatDateTime(lastSuccessfulContact))
   if (templateKey === 'phone_followup_email') {
     text = text.replace(/_______/, prospect.contact_name ?? '_______')
   } else if (templateKey === 'just_checking_in_email') {
@@ -244,6 +276,9 @@ export default function Prospects() {
   const [editingCopyTemplateKey, setEditingCopyTemplateKey] = useState<CopyTemplateKey | null>(null)
   const [editingCopyText, setEditingCopyText] = useState('')
   const [copyTemplateSaving, setCopyTemplateSaving] = useState(false)
+  const [copyBlankFieldsModalOpen, setCopyBlankFieldsModalOpen] = useState(false)
+  const [copyBlankFieldsList, setCopyBlankFieldsList] = useState<string[]>([])
+  const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -556,8 +591,22 @@ export default function Prospects() {
       showToast('No text to copy. Edit the template first.', 'warning')
       return
     }
+    const blankFields = getBlankPlaceholderFields(
+      text,
+      authUserName ?? '',
+      authUser.email ?? '',
+      currentProspect,
+      personPhone,
+      key,
+      comments
+    )
+    if (blankFields.length > 0) {
+      setCopyBlankFieldsList(blankFields)
+      setCopyBlankFieldsModalOpen(true)
+      return
+    }
     const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
-    const substituted = substituteCopyPlaceholders(text, userInfo, currentProspect, personPhone, key)
+    const substituted = substituteCopyPlaceholders(text, userInfo, currentProspect, personPhone, key, comments)
     try {
       await navigator.clipboard.writeText(substituted)
       showToast('Copied to clipboard', 'success')
@@ -1460,6 +1509,25 @@ export default function Prospects() {
               <div className="followUpInfoCard">
                 <div className="followUpInfoCardDetails">
                   <div><strong>Company Name:</strong> {currentProspect.company_name || '—'}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    Last Contact:
+                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
+                    {formatDueBadge(currentProspect.last_contact) && (
+                      <span
+                        style={{
+                          padding: '0.125rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          background: '#fef3c7',
+                          color: '#92400e',
+                        }}
+                      >
+                        {formatDueBadge(currentProspect.last_contact)}
+                      </span>
+                    )}
+                  </div>
+                  <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
                   <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
                   <div>
                     <strong>Phone Number:</strong>{' '}
@@ -1508,25 +1576,6 @@ export default function Prospects() {
                       </Link>
                     </div>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <strong>Last Contact:</strong>
-                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
-                    {formatDueBadge(currentProspect.last_contact) && (
-                      <span
-                        style={{
-                          padding: '0.125rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: 4,
-                          background: '#fef3c7',
-                          color: '#92400e',
-                        }}
-                      >
-                        {formatDueBadge(currentProspect.last_contact)}
-                      </span>
-                    )}
-                  </div>
-                  <div><strong>Last Successful Contact:</strong> {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
                 </div>
                 <div className="followUpInfoCardNotes">
                   <textarea
@@ -1553,46 +1602,45 @@ export default function Prospects() {
                       Cancel
                     </button>
                   </div>
-                </div>
-
-                {/* Copy templates */}
-                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                    {COPY_TEMPLATE_KEYS.map((key) => (
-                      <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyTemplate(key)}
-                          style={{
-                            padding: '0.35rem 0.6rem',
-                            fontSize: '0.8125rem',
-                            background: '#f3f4f6',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {COPY_TEMPLATE_LABELS[key]}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEditCopyModal(key)}
-                          title="Edit template"
-                          style={{
-                            padding: '0.35rem',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#6b7280',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          ✎
-                        </button>
-                      </span>
-                    ))}
+                  {/* Copy templates */}
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                      {COPY_TEMPLATE_KEYS.map((key) => (
+                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyTemplate(key)}
+                            style={{
+                              padding: '0.35rem 0.6rem',
+                              fontSize: '0.8125rem',
+                              background: '#f3f4f6',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {COPY_TEMPLATE_LABELS[key]}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditCopyModal(key)}
+                            title="Edit template"
+                            style={{
+                              padding: '0.35rem',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            ✎
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2429,9 +2477,10 @@ export default function Prospects() {
             <h3 style={{ margin: '0 0 1rem 0' }}>Edit {COPY_TEMPLATE_LABELS[editingCopyTemplateKey]}</h3>
             <form onSubmit={saveCopyTemplate} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
               <textarea
+                ref={copyTemplateTextareaRef}
                 value={editingCopyText}
                 onChange={(e) => setEditingCopyText(e.target.value)}
-                placeholder="Template text. Use [User name], [user email], [user phone number], [company name] as placeholders."
+                placeholder="Template text. Use [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] as placeholders."
                 style={{
                   width: '100%',
                   minHeight: 200,
@@ -2445,6 +2494,54 @@ export default function Prospects() {
                   boxSizing: 'border-box',
                 }}
               />
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.375rem' }}>Placeholders:</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+                  {[
+                    { text: '[User name]' },
+                    { text: '[user email]' },
+                    { text: '[user phone number]' },
+                    { text: '[company name]' },
+                    { text: '[prospect phone number]' },
+                    { text: '[prospect contact name]' },
+                    { text: '[prospect last contact]' },
+                    { text: '[prospect last successful contact]' },
+                    ...(editingCopyTemplateKey === 'phone_followup_email' || editingCopyTemplateKey === 'just_checking_in_email'
+                      ? [{ text: '_______', tooltip: editingCopyTemplateKey === 'phone_followup_email' ? '(contact name)' : '(contact info)' }]
+                      : []),
+                  ].map(({ text, tooltip }) => (
+                    <button
+                      key={text}
+                      type="button"
+                      title={tooltip}
+                      onClick={() => {
+                        const ta = copyTemplateTextareaRef.current
+                        const start = ta ? ta.selectionStart : editingCopyText.length
+                        const end = ta ? ta.selectionEnd : editingCopyText.length
+                        const before = editingCopyText.slice(0, start)
+                        const after = editingCopyText.slice(end)
+                        setEditingCopyText(before + text + after)
+                        if (ta) {
+                          ta.focus()
+                          const newPos = start + text.length
+                          setTimeout(() => ta.setSelectionRange(newPos, newPos), 0)
+                        }
+                      }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 9999,
+                        fontSize: '0.8125rem',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                 <button
                   type="submit"
@@ -2462,6 +2559,51 @@ export default function Prospects() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Copy blank fields modal */}
+      {copyBlankFieldsModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => setCopyBlankFieldsModalOpen(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: 400,
+              width: '90%',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0' }}>Missing information</h3>
+            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.9375rem' }}>
+              The following fields are blank but used in your template. Please fill them in before copying:
+            </p>
+            <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.25rem' }}>
+              {copyBlankFieldsList.map((field) => (
+                <li key={field} style={{ marginBottom: '0.25rem' }}>{field}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => setCopyBlankFieldsModalOpen(false)}
+              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
