@@ -3359,7 +3359,7 @@ export default function Jobs() {
                             </td>
                             {(actionLabel || onSendBack || onSendBackSimple) && (
                               <td style={{ padding: '0.75rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   {showTimeOpen && (
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
                                       Open {formatTimeSince(j.created_at ?? null)}
@@ -3669,7 +3669,7 @@ export default function Jobs() {
                                   </div>
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     {actionLabel && (
                                       <button
                                         type="button"
@@ -3800,7 +3800,7 @@ export default function Jobs() {
                                   </div>
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                     {actionLabel && (
                                       <button
                                         type="button"
@@ -3884,8 +3884,6 @@ export default function Jobs() {
             const billedTotal =
               billedJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
               billedInvoices.reduce((s, i) => s + Number(i.amount), 0)
-            const paidTotal = paid.reduce((s, j) => s + (Number(j.revenue ?? 0)), 0)
-
             return (
               <>
                 <button
@@ -3952,7 +3950,7 @@ export default function Jobs() {
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
-                  Paid in Full ({paid.length}) - ${formatCurrency(paidTotal)}
+                  Paid in Full ({paid.length})
                 </button>
                 {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, stagesHamMode
                   ? (j) => updateJobStatus(j.id, 'billed')
