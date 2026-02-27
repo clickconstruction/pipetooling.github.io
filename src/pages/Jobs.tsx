@@ -11,6 +11,8 @@ import type { Database } from '../types/database'
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
 type JobsLedgerFixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
+type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
+type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
 type JobsReceivableRow = Database['public']['Tables']['jobs_receivables']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
@@ -18,9 +20,17 @@ type UserRow = { id: string; name: string; email: string | null; role: string }
 type JobWithDetails = JobsLedgerRow & {
   materials: JobsLedgerMaterial[]
   fixtures: JobsLedgerFixture[]
+  payments: JobsLedgerPayment[]
+  invoices: JobsLedgerInvoice[]
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
   report_count?: number
 }
+
+type InvoiceWithJob = JobsLedgerInvoice & { job: JobWithDetails }
+
+type StageRow =
+  | { kind: 'job'; job: JobWithDetails }
+  | { kind: 'invoice'; inv: JobsLedgerInvoice; job: JobWithDetails }
 
 type TallyPartRow = {
   id: string
@@ -96,6 +106,7 @@ function formatTimeSince(iso: string | null): string {
 }
 
 type MaterialRow = { id: string; description: string; amount: number }
+type PaymentRow = { id: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
 const JOBS_TABS: JobsTab[] = ['receivables', 'reports', 'stages', 'ledger', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary']
@@ -122,11 +133,14 @@ export default function Jobs() {
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [revenue, setRevenue] = useState('')
+  const [payments, setPayments] = useState<PaymentRow[]>([{ id: crypto.randomUUID(), amount: 0 }])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
+  const [creatingInvoice, setCreatingInvoice] = useState(false)
 
   // Labor tab state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -238,11 +252,19 @@ export default function Jobs() {
   const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
+  const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
+  const [markAsBilledJob, setMarkAsBilledJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [markAsBilledChecked, setMarkAsBilledChecked] = useState(false)
+  const [markAsBilledInvoice, setMarkAsBilledInvoice] = useState<InvoiceWithJob | null>(null)
+  const [markPaidJob, setMarkPaidJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [markPaidChecked, setMarkPaidChecked] = useState(false)
+  const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
@@ -272,18 +294,20 @@ export default function Jobs() {
     if (jobsErr) {
       setError(jobsErr.message)
       setLoading(false)
-      return
+      return []
     }
     const jobList = (jobsData ?? []) as JobsLedgerRow[]
     if (jobList.length === 0) {
       setJobs([])
       setLoading(false)
-      return
+      return []
     }
     const jobIds = jobList.map((j) => j.id)
-    const [matsRes, fixturesRes, teamRes, reportsRes] = await Promise.all([
+    const [matsRes, fixturesRes, paymentsRes, invoicesRes, teamRes, reportsRes] = await Promise.all([
       supabase.from('jobs_ledger_materials').select('*').in('job_id', jobIds).order('sequence_order'),
       supabase.from('jobs_ledger_fixtures').select('*').in('job_id', jobIds).order('sequence_order'),
+      supabase.from('jobs_ledger_payments').select('*').in('job_id', jobIds).order('sequence_order'),
+      supabase.from('jobs_ledger_invoices').select('*').in('job_id', jobIds).order('sequence_order'),
       supabase
         .from('jobs_ledger_team_members')
         .select('*, users(name)')
@@ -292,6 +316,8 @@ export default function Jobs() {
     ])
     const materialsList = (matsRes.data ?? []) as JobsLedgerMaterial[]
     const fixturesList = (fixturesRes.data ?? []) as JobsLedgerFixture[]
+    const paymentsList = (paymentsRes.data ?? []) as JobsLedgerPayment[]
+    const invoicesList = (invoicesRes.data ?? []) as JobsLedgerInvoice[]
     const teamList = (teamRes.data ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]
     const materialsByJob = new Map<string, JobsLedgerMaterial[]>()
     for (const m of materialsList) {
@@ -304,6 +330,18 @@ export default function Jobs() {
       const arr = fixturesByJob.get(f.job_id) ?? []
       arr.push(f)
       fixturesByJob.set(f.job_id, arr)
+    }
+    const paymentsByJob = new Map<string, JobsLedgerPayment[]>()
+    for (const p of paymentsList) {
+      const arr = paymentsByJob.get(p.job_id) ?? []
+      arr.push(p)
+      paymentsByJob.set(p.job_id, arr)
+    }
+    const invoicesByJob = new Map<string, JobsLedgerInvoice[]>()
+    for (const i of invoicesList) {
+      const arr = invoicesByJob.get(i.job_id) ?? []
+      arr.push(i)
+      invoicesByJob.set(i.job_id, arr)
     }
     const teamByJob = new Map<string, (JobsLedgerTeamMember & { users: { name: string } | null })[]>()
     for (const t of teamList) {
@@ -322,11 +360,14 @@ export default function Jobs() {
       ...j,
       materials: (materialsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       fixtures: (fixturesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      payments: (paymentsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      invoices: (invoicesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
       team_members: teamByJob.get(j.id) ?? [],
       report_count: reportCountByJob.get(j.id) ?? 0,
     }))
     setJobs(jobsWithDetails)
     setLoading(false)
+    return jobsWithDetails
   }
 
   function toggleStagesHamMode() {
@@ -356,6 +397,66 @@ export default function Jobs() {
       return
     }
     await loadJobs()
+  }
+
+  async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
+    setStagesInvoiceUpdatingId(invoiceId)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('jobs_ledger_invoices').update({ status }).eq('id', invoiceId)
+      if (err) throw err
+      await loadJobs()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to update invoice')
+    } finally {
+      setStagesInvoiceUpdatingId(null)
+    }
+  }
+
+  async function deleteInvoice(invoiceId: string) {
+    setStagesInvoiceUpdatingId(invoiceId)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
+      if (err) throw err
+      await loadJobs()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to delete invoice')
+    } finally {
+      setStagesInvoiceUpdatingId(null)
+    }
+  }
+
+  async function markInvoicePaid(invoiceId: string) {
+    setStagesInvoiceUpdatingId(invoiceId)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId })
+      if (err) throw err
+      const result = data as { error?: string } | null
+      if (result?.error) throw new Error(result.error)
+      await loadJobs()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to mark invoice paid')
+    } finally {
+      setStagesInvoiceUpdatingId(null)
+    }
+  }
+
+  async function markJobPaid(jobId: string) {
+    setStagesStatusUpdatingId(jobId)
+    setError(null)
+    try {
+      const { data, error: err } = await supabase.rpc('mark_job_paid', { p_job_id: jobId })
+      if (err) throw err
+      const result = data as { error?: string } | null
+      if (result?.error) throw new Error(result.error)
+      await loadJobs()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to mark job paid')
+    } finally {
+      setStagesStatusUpdatingId(null)
+    }
   }
 
   useEffect(() => {
@@ -2148,6 +2249,7 @@ export default function Jobs() {
     setGoogleDriveLink('')
     setJobPlansLink('')
     setRevenue('')
+    setPayments([{ id: crypto.randomUUID(), amount: 0 }])
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
     setTeamMemberIds([])
@@ -2162,6 +2264,11 @@ export default function Jobs() {
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
     setRevenue(job.revenue != null ? String(job.revenue) : '')
+    setPayments(
+      job.payments?.length
+        ? job.payments.map((p) => ({ id: p.id, amount: Number(p.amount) }))
+        : [{ id: crypto.randomUUID(), amount: 0 }]
+    )
     setMaterials(
       job.materials.length > 0
         ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))
@@ -2179,10 +2286,57 @@ export default function Jobs() {
   function closeForm() {
     setFormOpen(false)
     setEditing(null)
+    setNewInvoiceAmount('')
+  }
+
+  async function createInvoice() {
+    if (!editing) return
+    const amount = parseFloat(newInvoiceAmount)
+    if (!(amount > 0)) {
+      setError('Enter a valid amount greater than 0')
+      return
+    }
+    const remaining = Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0))
+    if (amount > remaining) {
+      setError(`Amount cannot exceed Remaining ($${formatCurrency(remaining)})`)
+      return
+    }
+    setCreatingInvoice(true)
+    setError(null)
+    try {
+      const nextOrder = (editing.invoices ?? []).length
+      const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
+        job_id: editing.id,
+        amount,
+        status: 'ready_to_bill',
+        sequence_order: nextOrder,
+      })
+      if (err) throw err
+      setNewInvoiceAmount('')
+      const updated = await loadJobs()
+      const found = updated?.find((j) => j.id === editing.id)
+      if (found) setEditing(found)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to create invoice')
+    } finally {
+      setCreatingInvoice(false)
+    }
   }
 
   function addMaterialRow() {
     setMaterials((prev) => [...prev, { id: crypto.randomUUID(), description: '', amount: 0 }])
+  }
+
+  function addPaymentRow() {
+    setPayments((prev) => [...prev, { id: crypto.randomUUID(), amount: 0 }])
+  }
+
+  function updatePaymentRow(id: string, updates: Partial<PaymentRow>) {
+    setPayments((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+  }
+
+  function removePaymentRow(id: string) {
+    setPayments((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
   function updateMaterialRow(id: string, updates: Partial<MaterialRow>) {
@@ -2241,13 +2395,23 @@ export default function Jobs() {
     setSaving(true)
     setError(null)
     const revNum = revenue.trim() === '' ? null : parseFloat(revenue)
+    const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
     const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
     try {
       if (editing) {
         await supabase
           .from('jobs_ledger')
-          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum })
+          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
           .eq('id', editing.id)
+        await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
+        for (const [i, p] of validPayments.entries()) {
+          await supabase.from('jobs_ledger_payments').insert({
+            job_id: editing.id,
+            amount: Number(p.amount) || 0,
+            sequence_order: i,
+          })
+        }
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
         for (const [i, m] of validMaterials.entries()) {
           await supabase.from('jobs_ledger_materials').insert({
@@ -2288,12 +2452,20 @@ export default function Jobs() {
             google_drive_link: googleDriveLink.trim() || null,
             job_plans_link: jobPlansLink.trim() || null,
             revenue: revNum,
+            payments_made: paymentsMadeNum,
           })
           .select('id')
           .single()
         if (insertErr) throw insertErr
         const jobId = inserted?.id
         if (jobId) {
+          for (const [i, p] of validPayments.entries()) {
+            await supabase.from('jobs_ledger_payments').insert({
+              job_id: jobId,
+              amount: Number(p.amount) || 0,
+              sequence_order: i,
+            })
+          }
           for (const [i, m] of validMaterials.entries()) {
             await supabase.from('jobs_ledger_materials').insert({
               job_id: jobId,
@@ -2973,15 +3145,30 @@ export default function Jobs() {
               : jobs
             const status = (j: JobWithDetails) => (j.status ?? 'working') as string
             const working = filtered.filter((j) => status(j) === 'working')
-            const readyToBill = filtered.filter((j) => status(j) === 'ready_to_bill')
-            const billed = filtered.filter((j) => status(j) === 'billed')
             const paid = filtered.filter((j) => status(j) === 'paid')
+            const readyToBillJobs = filtered.filter((j) => status(j) === 'ready_to_bill')
+            const billedJobs = filtered.filter((j) => status(j) === 'billed')
+            const readyToBillInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
+              (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').map((inv) => ({ ...inv, job: j }))
+            )
+            const billedInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
+              (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j }))
+            )
+
+            const readyToBillRows: StageRow[] = [
+              ...readyToBillJobs.map((j) => ({ kind: 'job' as const, job: j })),
+              ...readyToBillInvoices.map(({ job, ...inv }) => ({ kind: 'invoice' as const, inv, job })),
+            ]
+            const billedRows: StageRow[] = [
+              ...billedJobs.map((j) => ({ kind: 'job' as const, job: j })),
+              ...billedInvoices.map(({ job, ...inv }) => ({ kind: 'invoice' as const, inv, job })),
+            ]
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void) {
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -2990,7 +3177,7 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? 'Remaining' : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
                         {(actionLabel || onSendBack || onSendBackSimple) && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                         <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
@@ -3125,13 +3312,19 @@ export default function Jobs() {
                               )}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {j.revenue != null ? formatCurrency(Number(j.revenue)) : '—'}
+                              {showRemaining
+                                ? (() => {
+                                    const rev = j.revenue != null ? Number(j.revenue) : 0
+                                    const pm = j.payments_made != null ? Number(j.payments_made) : 0
+                                    return rev > 0 || pm > 0 ? formatCurrency(rev - pm) : '—'
+                                  })()
+                                : (j.revenue != null ? formatCurrency(Number(j.revenue)) : '—')}
                             </td>
                             {(actionLabel || onSendBack || onSendBackSimple) && (
                               <td style={{ padding: '0.75rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   {showTimeOpen && (
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Time since job created">
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
                                       Open {formatTimeSince(j.created_at ?? null)}
                                     </span>
                                   )}
@@ -3193,8 +3386,8 @@ export default function Jobs() {
                               </td>
                             )}
                             <td style={{ padding: '0.75rem' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
                                   {(j.report_count ?? 0)} report{(j.report_count ?? 0) !== 1 ? 's' : ''}
                                 </span>
                                 <button
@@ -3228,6 +3421,395 @@ export default function Jobs() {
               )
             }
 
+            function renderUnifiedStagesTable(
+              rows: StageRow[],
+              options: {
+                actionLabel: React.ReactNode | null
+                onJobAction: (j: JobWithDetails) => void
+                onInvoiceAction: (inv: InvoiceWithJob) => void
+                onJobSendBack?: (j: JobWithDetails) => void
+                onInvoiceSendBack: (inv: InvoiceWithJob) => void
+                showRemaining?: boolean
+                showTimeOpen?: boolean
+                sendBackBelowRemaining?: boolean
+              }
+            ) {
+              const { actionLabel, onJobAction, onInvoiceAction, onJobSendBack, onInvoiceSendBack, showRemaining, showTimeOpen, sendBackBelowRemaining } = options
+              return (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+                  <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Remaining</th>
+                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
+                        <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                            No jobs or invoices in this group
+                          </td>
+                        </tr>
+                      ) : (
+                        rows.map((row) => {
+                          if (row.kind === 'job') {
+                            const j = row.job
+                            return (
+                              <tr key={`job-${j.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '0.75rem' }}>{j.hcp_number || '—'}</td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div>{j.job_name || '—'}</div>
+                                  {(j.job_address ?? '').trim() && (
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.job_address}</div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.75rem', position: 'relative' }}>
+                                  {stagesHamMode ? (
+                                    <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                      <span>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (assignedEditJobId === j.id) {
+                                            setAssignedEditJobId(null)
+                                          } else {
+                                            setAssignedEditJobId(j.id)
+                                            setAssignedEditSelectedIds((j.team_members ?? []).map((t) => t.user_id))
+                                          }
+                                        }}
+                                        disabled={assignedEditSavingId === j.id}
+                                        title="Change assigned"
+                                        aria-label="Change assigned"
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          width: 24,
+                                          height: 24,
+                                          padding: 0,
+                                          border: 'none',
+                                          borderRadius: 4,
+                                          background: 'none',
+                                          cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
+                                          color: '#6b7280',
+                                        }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                          <path d="M100.4 417.2C104.5 402.6 112.2 389.3 123 378.5L304.2 197.3L338.1 163.4C354.7 180 389.4 214.7 442.1 267.4L476 301.3L442.1 335.2L260.9 516.4C250.2 527.1 236.8 534.9 222.2 539L94.4 574.6C86.1 576.9 77.1 574.6 71 568.4C64.9 562.2 62.6 553.3 64.9 545L100.4 417.2zM156 413.5C151.6 418.2 148.4 423.9 146.7 430.1L122.6 517L209.5 492.9C215.9 491.1 221.7 487.8 226.5 483.2L155.9 413.5zM510 267.4C493.4 250.8 458.7 216.1 406 163.4L372 129.5C398.5 103 413.4 88.1 416.9 84.6C430.4 71 448.8 63.4 468 63.4C487.2 63.4 505.6 71 519.1 84.6L554.8 120.3C568.4 133.9 576 152.3 576 171.4C576 190.5 568.4 209 554.8 222.5C551.3 226 536.4 240.9 509.9 267.4z" />
+                                        </svg>
+                                      </button>
+                                      {assignedEditJobId === j.id && (
+                                        <div
+                                          style={{
+                                            position: 'absolute',
+                                            top: '100%',
+                                            left: 0,
+                                            marginTop: 4,
+                                            zIndex: 50,
+                                            background: 'white',
+                                            border: '1px solid #d1d5db',
+                                            borderRadius: 4,
+                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                                            padding: '0.5rem',
+                                            minWidth: 180,
+                                            maxHeight: 200,
+                                            overflowY: 'auto',
+                                          }}
+                                        >
+                                          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Assigned</div>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            {users.map((u) => (
+                                              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                                                <input
+                                                  type="checkbox"
+                                                  checked={assignedEditSelectedIds.includes(u.id)}
+                                                  onChange={() => {
+                                                    setAssignedEditSelectedIds((prev) =>
+                                                      prev.includes(u.id) ? prev.filter((x) => x !== u.id) : [...prev, u.id]
+                                                    )
+                                                  }}
+                                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                                                />
+                                                <span>{u.name}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => updateJobTeamMembers(j.id, assignedEditSelectedIds)}
+                                              disabled={assignedEditSavingId === j.id}
+                                              style={{
+                                                padding: '0.35rem 0.75rem',
+                                                fontSize: '0.8125rem',
+                                                background: '#3b82f6',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: 4,
+                                                cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
+                                              }}
+                                            >
+                                              {assignedEditSavingId === j.id ? '…' : 'Apply'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setAssignedEditJobId(null)}
+                                              style={{
+                                                padding: '0.35rem 0.75rem',
+                                                fontSize: '0.8125rem',
+                                                background: 'none',
+                                                color: '#6b7280',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: 4,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    (j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                    <span>
+                                      {showRemaining
+                                        ? (() => {
+                                            const rev = j.revenue != null ? Number(j.revenue) : 0
+                                            const pm = j.payments_made != null ? Number(j.payments_made) : 0
+                                            return rev > 0 || pm > 0 ? formatCurrency(rev - pm) : '—'
+                                          })()
+                                        : (j.revenue != null ? formatCurrency(Number(j.revenue)) : '—')}
+                                    </span>
+                                    {sendBackBelowRemaining && onJobSendBack && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onJobSendBack(j)}
+                                        disabled={stagesStatusUpdatingId === j.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'none',
+                                          color: '#6b7280',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 4,
+                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        Send back
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    {actionLabel && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onJobAction(j)}
+                                        disabled={stagesStatusUpdatingId === j.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: '#3b82f6',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: 4,
+                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
+                                      </button>
+                                    )}
+                                    {showTimeOpen && (
+                                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
+                                        Open {formatTimeSince(j.created_at ?? null)}
+                                      </span>
+                                    )}
+                                    {!sendBackBelowRemaining && onJobSendBack && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onJobSendBack(j)}
+                                        disabled={stagesStatusUpdatingId === j.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'none',
+                                          color: '#6b7280',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 4,
+                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        Send back
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                                      {(j.report_count ?? 0)} report{(j.report_count ?? 0) !== 1 ? 's' : ''}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      View<br />Reports
+                                    </button>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEdit(j)}
+                                    title="Edit"
+                                    aria-label="Edit"
+                                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                      <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          } else {
+                            const { inv, job } = row
+                            const invWithJob: InvoiceWithJob = { ...inv, job }
+                            return (
+                              <tr key={`inv-${inv.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <td style={{ padding: '0.75rem' }}>{job.hcp_number || '—'}</td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div>{job.job_name || '—'}</div>
+                                  {(job.job_address ?? '').trim() && (
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.job_address}</div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  {(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}
+                                </td>
+                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                    <span>{formatCurrency(Number(inv.amount))}</span>
+                                    {sendBackBelowRemaining && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onInvoiceSendBack(invWithJob)}
+                                        disabled={stagesInvoiceUpdatingId === inv.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'none',
+                                          color: '#6b7280',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 4,
+                                          cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        Send back
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    {actionLabel && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onInvoiceAction(invWithJob)}
+                                        disabled={stagesInvoiceUpdatingId === inv.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: '#16a34a',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: 4,
+                                          cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        {stagesInvoiceUpdatingId === inv.id ? '…' : actionLabel}
+                                      </button>
+                                    )}
+                                    {!sendBackBelowRemaining && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onInvoiceSendBack(invWithJob)}
+                                        disabled={stagesInvoiceUpdatingId === inv.id}
+                                        style={{
+                                          padding: '0.35rem 0.75rem',
+                                          fontSize: '0.8125rem',
+                                          background: 'none',
+                                          color: '#6b7280',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 4,
+                                          cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        Send back
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                                      {(job.report_count ?? 0)} report{(job.report_count ?? 0) !== 1 ? 's' : ''}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
+                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      View<br />Reports
+                                    </button>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '0.75rem', verticalAlign: 'middle' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openEdit(job)}
+                                    title="Edit"
+                                    aria-label="Edit"
+                                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                      <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          }
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            }
+
+            const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+            const readyToBillTotal =
+              readyToBillJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
+              readyToBillInvoices.reduce((s, i) => s + Number(i.amount), 0)
+            const billedTotal =
+              billedJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
+              billedInvoices.reduce((s, i) => s + Number(i.amount), 0)
+            const paidTotal = paid.reduce((s, j) => s + (Number(j.revenue ?? 0)), 0)
+
             return (
               <>
                 <button
@@ -3237,15 +3819,14 @@ export default function Jobs() {
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
-                  Working ({working.length})
+                  Working ({working.length}) - ${formatCurrency(workingTotal)}
                 </button>
-                {stagesSectionOpen.working && renderStagesTable(working, 'Ready for Billing', stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'ready_to_bill')
-                  : (j) => {
-                    setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
-                    setReadyForBillingChecked1(false)
-                    setReadyForBillingChecked2(false)
-                  }, true)}
+                {stagesSectionOpen.working && renderStagesTable(
+                  working,
+                  'Ready for Billing',
+                  (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
+                  true, undefined, undefined, true
+                )}
 
                 <button
                   type="button"
@@ -3254,16 +3835,17 @@ export default function Jobs() {
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
-                  Ready to Bill ({readyToBill.length})
+                  Ready to Bill ({readyToBillJobs.length + readyToBillInvoices.length}) - ${formatCurrency(readyToBillTotal)}
                 </button>
-                {stagesSectionOpen.readyToBill && renderStagesTable(readyToBill, 'Mark as Billed', stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'billed')
-                  : (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'billed', message: 'This will mark the job as Billed.' }), true, stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'working')
-                  : (j) => {
-                    setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
-                    setSendBackChecked(false)
-                  })}
+                {stagesSectionOpen.readyToBill && renderUnifiedStagesTable(readyToBillRows, {
+                  actionLabel: 'Mark as Billed',
+                  onJobAction: (j) => stagesHamMode ? updateJobStatus(j.id, 'billed') : (setMarkAsBilledChecked(false), setMarkAsBilledJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
+                  onInvoiceAction: (inv) => stagesHamMode ? updateInvoiceStatus(inv.id, 'billed') : (setMarkAsBilledChecked(false), setMarkAsBilledInvoice(inv)),
+                  onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'working') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })),
+                  onInvoiceSendBack: (inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' })),
+                  showRemaining: true,
+                  showTimeOpen: true,
+                })}
 
                 <button
                   type="button"
@@ -3272,13 +3854,18 @@ export default function Jobs() {
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
-                  Billed ({billed.length})
+                  Billed ({billedJobs.length + billedInvoices.length}) - ${formatCurrency(billedTotal)}
                 </button>
-                {stagesSectionOpen.billed && renderStagesTable(billed, <>Mark<br />Paid</>, stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'paid')
-                  : (j) => setConfirmJobStatusJob({ id: j.id, toStatus: 'paid', message: 'This will mark the job as Paid.' }), true, undefined, stagesHamMode
-                  ? (j) => updateJobStatus(j.id, 'ready_to_bill')
-                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'ready_to_bill' }))}
+                {stagesSectionOpen.billed && renderUnifiedStagesTable(billedRows, {
+                  actionLabel: 'Mark Paid',
+                  onJobAction: (j) => stagesHamMode ? markJobPaid(j.id) : (setMarkPaidChecked(false), setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
+                  onInvoiceAction: (inv) => stagesHamMode ? markInvoicePaid(inv.id) : (setMarkPaidChecked(false), setMarkPaidInvoice(inv)),
+                  onJobSendBack: (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })),
+                  onInvoiceSendBack: (inv) => stagesHamMode ? updateInvoiceStatus(inv.id, 'ready_to_bill') : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
+                  showRemaining: true,
+                  showTimeOpen: true,
+                  sendBackBelowRemaining: true,
+                })}
 
                 <button
                   type="button"
@@ -3287,11 +3874,11 @@ export default function Jobs() {
                   style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                 >
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
-                  Paid ({paid.length})
+                  Paid in Full ({paid.length}) - ${formatCurrency(paidTotal)}
                 </button>
                 {stagesSectionOpen.paid && renderStagesTable(paid, null, () => {}, true, undefined, stagesHamMode
                   ? (j) => updateJobStatus(j.id, 'billed')
-                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }))}
+                  : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }), false, true)}
               </>
             )
           })()}
@@ -4986,6 +5573,130 @@ export default function Jobs() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                 />
               </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Payments Made ($)</label>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount ($)</th>
+                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              value={row.amount || ''}
+                              onChange={(e) => updatePaymentRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+                              placeholder="0"
+                              style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => removePaymentRow(row.id)}
+                              disabled={payments.length <= 1}
+                              style={{
+                                padding: '0.25rem',
+                                background: payments.length <= 1 ? '#f3f4f6' : '#fee2e2',
+                                color: payments.length <= 1 ? '#9ca3af' : '#991b1c',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: payments.length <= 1 ? 'not-allowed' : 'pointer',
+                                fontSize: '0.8125rem',
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button type="button" onClick={addPaymentRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                  Add Payment
+                </button>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
+                <div style={{ padding: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                  ${formatCurrency(Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)))}
+                </div>
+              </div>
+              {editing && (
+                <>
+                  <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '1rem', paddingTop: '1rem' }}>
+                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Create partial invoice</h4>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>Break off an invoice amount to send through Ready to Bill and Billed. Job stays in Working.</p>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <label style={{ fontSize: '0.875rem' }}>
+                        Amount: $
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={newInvoiceAmount}
+                          onChange={(e) => setNewInvoiceAmount(e.target.value)}
+                          placeholder="0"
+                          style={{ width: '6rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', marginLeft: 4 }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={createInvoice}
+                        disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {creatingInvoice ? '…' : 'Create invoice'}
+                      </button>
+                    </div>
+                  </div>
+                  {((editing.invoices ?? []).filter((i) => i.status === 'ready_to_bill' || i.status === 'billed').length > 0) && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Open invoices</h4>
+                      <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
+                        {(editing.invoices ?? [])
+                          .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
+                          .map((inv) => (
+                            <li key={inv.id} style={{ marginBottom: '0.25rem' }}>
+                              ${formatCurrency(Number(inv.amount))} — {inv.status === 'ready_to_bill' ? 'Ready to Bill' : 'Billed'}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveTab('stages')
+                                  setSearchParams((p) => {
+                                    const next = new URLSearchParams(p)
+                                    next.set('tab', 'stages')
+                                    return next
+                                  })
+                                  closeForm()
+                                }}
+                                style={{ marginLeft: 8, padding: '0.15rem 0.35rem', fontSize: '0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                View in Stages
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
               <button
@@ -5054,63 +5765,114 @@ export default function Jobs() {
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send to<br />Billing</h2>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready for Billing</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
               {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
             </p>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
-                <input
-                  type="checkbox"
-                  checked={readyForBillingChecked1}
-                  onChange={(e) => setReadyForBillingChecked1(e.target.checked)}
-                  style={{ marginTop: 4 }}
-                />
+                <input type="checkbox" checked={readyForBillingChecked1} onChange={(e) => setReadyForBillingChecked1(e.target.checked)} style={{ marginTop: 4 }} />
                 <span>I have reported all the Job Parts I&apos;ve used</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={readyForBillingChecked2}
-                  onChange={(e) => setReadyForBillingChecked2(e.target.checked)}
-                  style={{ marginTop: 4 }}
-                />
+                <input type="checkbox" checked={readyForBillingChecked2} onChange={(e) => setReadyForBillingChecked2(e.target.checked)} style={{ marginTop: 4 }} />
                 <span>The customer knows the work is done and is satisfied</span>
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setReadyForBillingJob(null)
-                  setReadyForBillingChecked1(false)
-                  setReadyForBillingChecked2(false)
-                }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id}
-                onClick={async () => {
-                  if (!readyForBillingJob) return
-                  await updateJobStatus(readyForBillingJob.id, 'ready_to_bill')
-                  setReadyForBillingJob(null)
-                  setReadyForBillingChecked1(false)
-                  setReadyForBillingChecked2(false)
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Send for billing'}
-              </button>
+              <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; await updateJobStatus(readyForBillingJob.id, 'ready_to_bill'); setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markAsBilledJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark as Billed</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markAsBilledJob.hcpNumber} · {markAsBilledJob.jobName}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markAsBilledChecked} onChange={(e) => setMarkAsBilledChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Invoice has been sent to the customer</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkAsBilledJob(null); setMarkAsBilledChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markAsBilledChecked || stagesStatusUpdatingId === markAsBilledJob.id} onClick={async () => { if (!markAsBilledJob) return; await updateJobStatus(markAsBilledJob.id, 'billed'); setMarkAsBilledJob(null); setMarkAsBilledChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markAsBilledChecked && stagesStatusUpdatingId !== markAsBilledJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markAsBilledChecked && stagesStatusUpdatingId !== markAsBilledJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === markAsBilledJob.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markAsBilledInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark as Billed</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markAsBilledInvoice.job.hcp_number || '—'} · {markAsBilledInvoice.job.job_name || '—'} · ${Number(markAsBilledInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markAsBilledChecked} onChange={(e) => setMarkAsBilledChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Invoice has been sent to the customer</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkAsBilledInvoice(null); setMarkAsBilledChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markAsBilledChecked || stagesInvoiceUpdatingId === markAsBilledInvoice.id} onClick={async () => { if (!markAsBilledInvoice) return; await updateInvoiceStatus(markAsBilledInvoice.id, 'billed'); setMarkAsBilledInvoice(null); setMarkAsBilledChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markAsBilledChecked && stagesInvoiceUpdatingId !== markAsBilledInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markAsBilledChecked && stagesInvoiceUpdatingId !== markAsBilledInvoice.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === markAsBilledInvoice.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markPaidJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidJob.hcpNumber} · {markPaidJob.jobName}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Payment has been received and recorded</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkPaidJob(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markPaidChecked || stagesStatusUpdatingId === markPaidJob.id} onClick={async () => { if (!markPaidJob) return; await markJobPaid(markPaidJob.id); setMarkPaidJob(null); setMarkPaidChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && stagesStatusUpdatingId !== markPaidJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && stagesStatusUpdatingId !== markPaidJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === markPaidJob.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markPaidInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidInvoice.job.hcp_number || '—'} · {markPaidInvoice.job.job_name || '—'} · ${Number(markPaidInvoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Payment has been received and recorded</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkPaidInvoice(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markPaidChecked || stagesInvoiceUpdatingId === markPaidInvoice.id} onClick={async () => { if (!markPaidInvoice) return; await markInvoicePaid(markPaidInvoice.id); setMarkPaidInvoice(null); setMarkPaidChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && stagesInvoiceUpdatingId !== markPaidInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && stagesInvoiceUpdatingId !== markPaidInvoice.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === markPaidInvoice.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sendBackInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send back</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.job.hcp_number || '—'} · {sendBackInvoice.inv.job.job_name || '—'} · ${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>{sendBackInvoice.action === 'delete' ? 'This will remove the invoice from Ready to Bill.' : 'This will move the invoice back to Ready to Bill.'}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={sendBackChecked} onChange={(e) => setSendBackChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>I am going to call the Subcontractor and explain why</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); loadJobs() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : 'Send back'}</button>
             </div>
           </div>
         </div>

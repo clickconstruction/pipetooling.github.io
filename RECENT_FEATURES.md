@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-26
+last_updated: 2026-03-03
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.68 → v2.4"
+version_range: "v2.72 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.68)"
+  - name: "Latest Version (v2.72)"
     line: ~186
+    description: "Partial Invoices (Option A), invoice-centric Ready to Bill and Billed"
+  - name: "v2.68"
+    line: ~200
     description: "Primary Bids RFI/Change Order/Lien Release, Projects hidden"
   - name: "v2.67"
     line: ~200
@@ -98,7 +101,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.64)"
+  - "Latest features at top (v2.72)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -115,74 +118,144 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
-2. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
-3. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
-4. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
-5. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
-6. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
-7. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
-8. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
-9. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
-10. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
-11. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
-12. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
-13. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
-14. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
-15. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
-16. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
-17. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
-18. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
-19. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
-20. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
-21. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
-22. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
-23. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
-24. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
-25. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
-26. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
-27. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
-28. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
-29. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
-30. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
-31. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
-32. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
-33. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
-34. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
-35. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
-36. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
-37. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
-38. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
-39. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
-40. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
-41. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
-42. [Latest Updates (v2.26)](#latest-updates-v226)
-43. [Latest Updates (v2.25)](#latest-updates-v225)
-44. [Latest Updates (v2.24)](#latest-updates-v224)
-45. [Latest Updates (v2.23)](#latest-updates-v223)
-46. [Latest Updates (v2.22)](#latest-updates-v222)
-47. [Latest Updates (v2.21)](#latest-updates-v221)
-48. [Latest Updates (v2.20)](#latest-updates-v220)
-49. [Latest Updates (v2.19)](#latest-updates-v219)
-50. [Latest Updates (v2.18)](#latest-updates-v218)
-51. [Latest Updates (v2.17)](#latest-updates-v217)
-52. [Latest Updates (v2.16)](#latest-updates-v216)
-53. [Latest Updates (v2.15)](#latest-updates-v215)
-54. [Latest Updates (v2.14)](#latest-updates-v214)
-55. [Latest Updates (v2.13)](#latest-updates-v213)
-56. [Latest Updates (v2.12)](#latest-updates-v212)
-57. [Latest Updates (v2.11)](#latest-updates-v211)
-58. [Latest Updates (v2.10)](#latest-updates-v210)
-59. [Latest Updates (v2.9)](#latest-updates-v29)
-60. [Latest Updates (v2.8)](#latest-updates-v28)
-61. [Latest Updates (v2.7)](#latest-updates-v27)
-62. [Latest Updates (v2.6)](#latest-updates-v26)
-63. [Workflow Features](#workflow-features)
-64. [Calendar Updates](#calendar-updates)
-65. [Access Control](#access-control)
-66. [Email Templates](#email-templates)
-67. [Financial Tracking](#financial-tracking)
-68. [Customer and Project Management](#customer-and-project-management)
+1. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
+2. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
+3. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
+4. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
+5. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
+6. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
+6. [Latest Updates (v2.66)](#latest-updates-v266) - RFI tab, Bids submitted_to, placeholder updates
+7. [Latest Updates (v2.65)](#latest-updates-v265) - Job Bill Details actions, Jobs/Dashboard button labels, Edit Parts
+8. [Latest Updates (v2.64)](#latest-updates-v264) - Dashboard layout, Jobs/Prospects/Bids/People, RLS
+9. [Latest Updates (v2.63)](#latest-updates-v263) - Jobs Labor Distance inline edit
+10. [Latest Updates (v2.62)](#latest-updates-v262) - Prospects enhancements
+11. [Latest Updates (v2.61)](#latest-updates-v261) - User notes on People page, Add button styling
+12. [Latest Updates (v2.59)](#latest-updates-v259) - Workflow collapsible sections, notify defaults, line items total
+13. [Latest Updates (v2.58)](#latest-updates-v258) - Subcontractor Job Tally Submit for Review RLS fix
+14. [Latest Updates (v2.57)](#latest-updates-v257) - Dashboard reports modal, icons, hide, delete dev-only; Settings save confirmation; ToastContext
+15. [Latest Updates (v2.56)](#latest-updates-v256) - Job Tally quantity, Materials abbreviations, Primary role
+16. [Latest Updates (v2.55)](#latest-updates-v255) - Dashboard and Jobs UI label updates
+17. [Latest Updates (v2.54)](#latest-updates-v254) - Quickfill page, nav icon, section order
+18. [Latest Updates (v2.53)](#latest-updates-v253) - Supply Houses & External Subs, Jobs Receivables, Dashboard pins
+19. [Latest Updates (v2.52)](#latest-updates-v252) - People Pay layout, Cost matrix mobile, Builder Review PIA
+18. [Latest Updates (v2.51)](#latest-updates-v251) - Fix app, Cost matrix pins, Builder Review, People Pay
+19. [Latest Updates (v2.50)](#latest-updates-v250) - Jobs tab order, Labor user lists, HCP row alignment
+20. [Latest Updates (v2.49)](#latest-updates-v249) - Labor and Sub Sheet Ledger moved to Jobs
+21. [Latest Updates (v2.48)](#latest-updates-v248) - Checklist FWD, Estimator Dashboard, iOS Safe Area
+22. [Latest Updates (v2.47)](#latest-updates-v247) - Hours Update Pay Sync (Realtime)
+23. [Latest Updates (v2.46)](#latest-updates-v246) - Supabase Disk IO Optimizations
+24. [Latest Updates (v2.45)](#latest-updates-v245) - Impersonation Fix, Teams Compact, Yesterday Label
+25. [Latest Updates (v2.44)](#latest-updates-v244) - Share Cost Matrix and Teams, Green Dot, Cost Matrix Nav
+26. [Latest Updates (v2.43)](#latest-updates-v243) - Navigation, Settings, Global Reload
+27. [Latest Updates (v2.42)](#latest-updates-v242) - Checklist, Dashboard, Settings, PipeTooling
+28. [Latest Updates (v2.41)](#latest-updates-v241) - People Pay/Hours Tabs, Cost Matrix, Hours Totals
+29. [Latest Updates (v2.40)](#latest-updates-v240) - People Labor/Ledger, Master Shares, Edit Button
+30. [Latest Updates (v2.39)](#latest-updates-v239) - Takeoff Print Breakdown
+31. [Latest Updates (v2.38)](#latest-updates-v238) - Estimator Cost Parameters, Price Book Closed by Default
+32. [Latest Updates (v2.37)](#latest-updates-v237) - Add Missing Fixtures, Driving in Pricing, Cover Letter, Price Book Default
+33. [Latest Updates (v2.36)](#latest-updates-v236) - Assembly Types & Assembly Book
+34. [Latest Updates (v2.35)](#latest-updates-v235) - Service-Type-Specific Books, Assistant Access
+35. [Latest Updates (v2.34)](#latest-updates-v234) - Duplicates Page, Materials Filters, Part Type Category Removal
+36. [Latest Updates (v2.33)](#latest-updates-v233) - Labor Step, Delete in Modals, Template→Assembly, Bid Board
+37. [Latest Updates (v2.32)](#latest-updates-v232) - Settings Renames, Materials Load All, Cost Estimate Distance
+38. [Latest Updates (v2.31)](#latest-updates-v231) - Pricing Takeoff-Based Cost, Counts Quick-adds, Settings Improvements
+39. [Latest Updates (v2.30)](#latest-updates-v230) - Estimator Service Type Filtering
+40. [Latest Updates (v2.29)](#latest-updates-v229) - Price/Labor Book Enhancements, Fixed Price Feature
+41. [Latest Updates (v2.28)](#latest-updates-v228) - Part Types vs Fixture Types Separation
+42. [Latest Updates (v2.27)](#latest-updates-v227) - Service Type System
+43. [Latest Updates (v2.26)](#latest-updates-v226)
+44. [Latest Updates (v2.25)](#latest-updates-v225)
+45. [Latest Updates (v2.24)](#latest-updates-v224)
+46. [Latest Updates (v2.23)](#latest-updates-v223)
+47. [Latest Updates (v2.22)](#latest-updates-v222)
+48. [Latest Updates (v2.21)](#latest-updates-v221)
+49. [Latest Updates (v2.20)](#latest-updates-v220)
+50. [Latest Updates (v2.19)](#latest-updates-v219)
+51. [Latest Updates (v2.18)](#latest-updates-v218)
+52. [Latest Updates (v2.17)](#latest-updates-v217)
+53. [Latest Updates (v2.16)](#latest-updates-v216)
+54. [Latest Updates (v2.15)](#latest-updates-v215)
+55. [Latest Updates (v2.14)](#latest-updates-v214)
+56. [Latest Updates (v2.13)](#latest-updates-v213)
+57. [Latest Updates (v2.12)](#latest-updates-v212)
+58. [Latest Updates (v2.11)](#latest-updates-v211)
+59. [Latest Updates (v2.10)](#latest-updates-v210)
+60. [Latest Updates (v2.9)](#latest-updates-v29)
+61. [Latest Updates (v2.8)](#latest-updates-v28)
+62. [Latest Updates (v2.7)](#latest-updates-v27)
+63. [Latest Updates (v2.6)](#latest-updates-v26)
+64. [Workflow Features](#workflow-features)
+65. [Calendar Updates](#calendar-updates)
+66. [Access Control](#access-control)
+67. [Email Templates](#email-templates)
+68. [Financial Tracking](#financial-tracking)
+69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.72)
+
+**Date**: 2026-03-03
+
+### Jobs – Whole Jobs Through Stages (Alongside Partial Invoices)
+
+- **Working**: Added "Ready for Billing" button to move jobs to Ready to Bill
+- **Ready to Bill**: Now shows both **jobs** (status=ready_to_bill) and **invoices**; jobs have Mark as Billed, Send back (to working)
+- **Billed**: Now shows both **jobs** and **invoices**; jobs have Mark Paid (via `mark_job_paid` RPC), Send back (to ready_to_bill)
+- **Database**: New RPC `mark_job_paid(p_job_id)` adds remaining amount to payments when marking whole job paid
+- **Dashboard**: Ready to Bill and Waiting for Payment now include job cards (in addition to invoice cards); same actions
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Dashboard.tsx`, `supabase/migrations/20260303000000_add_mark_job_paid.sql`
+
+---
+
+## Latest Updates (v2.71)
+
+**Date**: 2026-03-02
+
+### Jobs – Partial Invoices (Option A)
+
+- **Edit Job modal**: New **Create partial invoice** section (after Remaining, before Save): amount input (validated ≤ Remaining), Create invoice button. Lists open invoices (ready_to_bill, billed) with "View in Stages".
+- **Database**: `jobs_ledger_invoices` table (job_id, amount, status: ready_to_bill | billed | paid); RPC `mark_invoice_paid(p_invoice_id)` inserts payment, updates payments_made, marks invoice paid.
+- **Stages tab**: **Working** unchanged (jobs). **Ready to Bill** and **Billed** now show **invoices** (not jobs): each row shows job info + invoice amount; Mark as Billed, Mark Paid, Send back. **Paid in Full** unchanged (jobs where payments_made ≥ revenue). Removed "Ready for Billing" from Working; invoices created from Edit Job only.
+- **Dashboard**: Ready to Bill and Waiting for Payment sections now display **invoice rows** (job name, HCP, address, invoice amount); Mark as Billed, Mark Paid, Send back use invoice actions.
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Dashboard.tsx`, `supabase/migrations/20260302000000_create_jobs_ledger_invoices.sql`
+
+---
+
+## Latest Updates (v2.70)
+
+**Date**: 2026-03-01
+
+### Jobs – Payments Made, Remaining, Stages enhancements
+
+- **New Job / Edit Job modals**: Below Total Bill ($), added **Payments Made ($)** as a table of multiple payment rows (Add Payment, Remove per row). **Remaining ($)** displays Total Bill minus sum of payments. Mirrors Billed Materials pattern.
+- **Database**: `jobs_ledger_payments` table (job_id, amount, sequence_order); `jobs_ledger.payments_made` kept in sync (sum) for Stages/Dashboard. Existing payments_made values migrated to jobs_ledger_payments.
+- **Stages tab**: Working, Ready to Bill, Billed show **Remaining** (revenue - payments_made) instead of Revenue. **Paid in Full** (renamed from Paid) shows **Final Bill** (revenue). Stage titles include total amount, e.g. `Billed (5) - $3,250.00`.
+- **Dashboard**: Ready to Bill and Waiting for Payment sections show Remaining instead of Revenue.
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Dashboard.tsx`, `supabase/migrations/20260226220000_add_payments_made_to_jobs_ledger.sql`, `supabase/migrations/20260301000000_create_jobs_ledger_payments.sql`
+
+---
+
+## Latest Updates (v2.69)
+
+**Date**: 2026-02-26
+
+### Prospects – Timer enhancements and time tracking
+
+- **Follow Up timers**: Added "this time" (session timer) and "all time" (ledger + session) labels above the two timers. Session timer resets when switching prospects via No Longer a Fit, Can't reach, or Next Prospect.
+- **my day**: New display to the right of "all time" showing total time prospecting today (persisted events + current session). Loaded when entering Follow Up tab; refreshed after saving timer events.
+- **my time modal**: "my time" link at bottom-right of Follow Up opens a modal with: Today, Yesterday, Last 7 days, Lifetime. Includes current session in Today/Last 7/Lifetime when on Follow Up. Zero values show "—" instead of "00:00".
+- **Prospect List Time column**: Added Time column (to the left of Email/Links) showing total time spent per prospect. Desktop table and mobile cards. Zero shows "—".
+- **UI changes**: Set Callback Date & Time button is green; Can't reach moved left of Next Prospect; "my time" link aligned right.
+- **Removed debug instrumentation**: Removed leftover fetch calls to local ingest server in Bids.tsx and Jobs.tsx (was causing ERR_BLOCKED_BY_CLIENT).
+- **Meta tag**: Replaced deprecated `apple-mobile-web-app-capable` with `mobile-web-app-capable` in index.html.
+
+**Database**: `prospect_timer_events` table (user_id, prospect_id, timer_seconds, button_name, created_at) – see migration 20260231000025.
+
+**Files**: `src/pages/Prospects.tsx`, `src/pages/Bids.tsx`, `src/pages/Jobs.tsx`, `index.html`
 
 ---
 

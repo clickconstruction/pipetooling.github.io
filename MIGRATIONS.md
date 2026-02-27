@@ -94,6 +94,36 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–31, 2026
 
+**`20260303000000_add_mark_job_paid.sql`**
+- **Purpose**: Support marking whole jobs (status=billed) as paid; adds remaining amount to payments
+- **Changes**: New RPC `mark_job_paid(p_job_id)`: inserts (revenue - payments_made) into jobs_ledger_payments, updates payments_made, sets status to paid
+- **Impact**: Jobs page Stages and Dashboard can "Mark Paid" on whole jobs in Billed; mirrors mark_invoice_paid for partial invoices
+- **Category**: Jobs
+
+**`20260302000000_create_jobs_ledger_invoices.sql`**
+- **Purpose**: Support partial invoices per job; invoices flow through Ready to Bill → Billed → Paid; jobs stay in Working
+- **Changes**: Create `jobs_ledger_invoices` (job_id, amount, status: ready_to_bill | billed | paid, sequence_order); RLS mirrors jobs_ledger_payments. RPC `mark_invoice_paid(p_invoice_id)`: inserts payment, updates payments_made, sets job status to paid when fully paid
+- **Impact**: Edit Job modal has "Create partial invoice" section; Stages Ready to Bill and Billed show invoices (not jobs); Dashboard Ready to Bill and Waiting for Payment show invoice rows; Mark as Billed, Mark Paid, Send back actions
+- **Category**: Jobs
+
+**`20260301000000_create_jobs_ledger_payments.sql`**
+- **Purpose**: Support multiple payments per job; total = sum of amounts; Remaining = Total Bill - total
+- **Changes**: Create `jobs_ledger_payments` (job_id, amount, sequence_order); RLS mirrors jobs_ledger_materials (dev, master, assistant, primary). Data migration: insert one row per job where payments_made > 0
+- **Impact**: New Job and Edit Job modals show Payments Made as add/remove table; jobs_ledger.payments_made kept in sync on save
+- **Category**: Jobs
+
+**`20260226220000_add_payments_made_to_jobs_ledger.sql`**
+- **Purpose**: Track amount paid to date per job; Remaining = revenue - payments_made
+- **Changes**: Add `payments_made NUMERIC(12, 2) DEFAULT 0` to `public.jobs_ledger`
+- **Impact**: New Job and Edit Job modals include Payments Made ($) and Remaining ($); Stages/Dashboard use for Remaining display
+- **Category**: Jobs
+
+**`20260231000025_create_prospect_timer_events.sql`**
+- **Purpose**: Track time spent prospecting per prospect and per user per day
+- **Changes**: Create `prospect_timer_events` (user_id, prospect_id, created_at, timer_seconds, button_name); RLS for users to see/insert own events; indexes on user_id, created_at
+- **Impact**: Follow Up saves timer when clicking No Longer a Fit, Next Prospect, or Can't reach; Prospect List shows total time per prospect; "my time" modal shows today/yesterday/7 days/lifetime
+- **Category**: Prospects
+
 **`20260231000021_search_jobs_ledger.sql`**
 - **Purpose**: Search jobs_ledger for Team Costs job picker
 - **Changes**: Create `search_jobs_ledger(search_text)` RPC; returns id, hcp_number, job_name, job_address from jobs_ledger filtered by HCP, name, address

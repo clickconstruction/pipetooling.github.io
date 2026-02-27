@@ -64,6 +64,31 @@ type SubscribedStep = {
   notify_when_reopened: boolean
 }
 
+type InvoiceForDashboard = {
+  id: string
+  job_id: string
+  amount: number
+  status: string
+  hcp_number: string
+  job_name: string
+  job_address: string
+  google_drive_link: string | null
+  job_plans_link: string | null
+  created_at: string | null
+}
+
+type JobForDashboard = {
+  id: string
+  hcp_number: string
+  job_name: string
+  job_address: string
+  revenue: number | null
+  payments_made: number | null
+  google_drive_link: string | null
+  job_plans_link: string | null
+  created_at: string | null
+}
+
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type AssignedStep = Step & {
   project_id: string
@@ -214,10 +239,13 @@ export default function Dashboard() {
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [readyToBillJobs, setReadyToBillJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
+  const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
-  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [waitingForPaymentInvoices, setWaitingForPaymentInvoices] = useState<InvoiceForDashboard[]>([])
+  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<JobForDashboard[]>([])
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
+  const [invoiceStatusUpdatingId, setInvoiceStatusUpdatingId] = useState<string | null>(null)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
@@ -226,7 +254,14 @@ export default function Dashboard() {
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
+  const [markAsBilledJob, setMarkAsBilledJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [markAsBilledChecked, setMarkAsBilledChecked] = useState(false)
+  const [markAsBilledInvoice, setMarkAsBilledInvoice] = useState<InvoiceForDashboard | null>(null)
+  const [markPaidJob, setMarkPaidJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [markPaidChecked, setMarkPaidChecked] = useState(false)
+  const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceForDashboard | null>(null)
   const [sendBackJob, setSendBackJob] = useState<{ id: string; hcpNumber: string; jobName: string; toStatus: 'working' | 'ready_to_bill' } | null>(null)
+  const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceForDashboard; action: 'delete' | 'revert' } | null>(null)
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
 
@@ -619,31 +654,93 @@ export default function Dashboard() {
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
     setReadyToBillLoading(true)
-    supabase
-      .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at')
-      .eq('status', 'ready_to_bill')
-      .order('hcp_number', { ascending: false })
-      .then(({ data, error }) => {
-        setReadyToBillLoading(false)
-        if (error) return
-        setReadyToBillJobs((data ?? []) as typeof readyToBillJobs)
-      })
+    Promise.all([
+      supabase
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, amount, status, created_at, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at)')
+        .eq('status', 'ready_to_bill')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
+        .eq('status', 'ready_to_bill')
+        .order('created_at', { ascending: false }),
+    ]).then(([invRes, jobRes]) => {
+      setReadyToBillLoading(false)
+      if (!invRes.error) {
+        const rows = (invRes.data ?? []) as Array<{
+          id: string
+          job_id: string
+          amount: number
+          status: string
+          created_at: string | null
+          jobs_ledger: { hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; created_at: string | null }
+        }>
+        setReadyToBillInvoices(
+          rows.map((r) => ({
+            id: r.id,
+            job_id: r.job_id,
+            amount: r.amount,
+            status: r.status,
+            hcp_number: r.jobs_ledger?.hcp_number ?? '',
+            job_name: r.jobs_ledger?.job_name ?? '',
+            job_address: r.jobs_ledger?.job_address ?? '',
+            google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
+            job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
+            created_at: r.jobs_ledger?.created_at ?? r.created_at,
+          }))
+        )
+      }
+      if (!jobRes.error) {
+        setReadyToBillJobs((jobRes.data ?? []) as JobForDashboard[])
+      }
+    })
   }, [authUser?.id, role])
 
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
     setWaitingForPaymentLoading(true)
-    supabase
-      .from('jobs_ledger')
-      .select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at')
-      .eq('status', 'billed')
-      .order('hcp_number', { ascending: false })
-      .then(({ data, error }) => {
-        setWaitingForPaymentLoading(false)
-        if (error) return
-        setWaitingForPaymentJobs((data ?? []) as typeof waitingForPaymentJobs)
-      })
+    Promise.all([
+      supabase
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, amount, status, created_at, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at)')
+        .eq('status', 'billed')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
+        .eq('status', 'billed')
+        .order('created_at', { ascending: false }),
+    ]).then(([invRes, jobRes]) => {
+      setWaitingForPaymentLoading(false)
+      if (!invRes.error) {
+        const rows = (invRes.data ?? []) as Array<{
+          id: string
+          job_id: string
+          amount: number
+          status: string
+          created_at: string | null
+          jobs_ledger: { hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; created_at: string | null }
+        }>
+        setWaitingForPaymentInvoices(
+          rows.map((r) => ({
+            id: r.id,
+            job_id: r.job_id,
+            amount: r.amount,
+            status: r.status,
+            hcp_number: r.jobs_ledger?.hcp_number ?? '',
+            job_name: r.jobs_ledger?.job_name ?? '',
+            job_address: r.jobs_ledger?.job_address ?? '',
+            google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
+            job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
+            created_at: r.jobs_ledger?.created_at ?? r.created_at,
+          }))
+        )
+      }
+      if (!jobRes.error) {
+        setWaitingForPaymentJobs((jobRes.data ?? []) as JobForDashboard[])
+      }
+    })
   }, [authUser?.id, role])
 
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid') {
@@ -661,16 +758,118 @@ export default function Dashboard() {
     }
     showToast?.('Status updated', 'success')
     setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
-    setReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
-    setWaitingForPaymentJobs((prev) => prev.filter((j) => j.id !== jobId))
-    if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
-      const { data: readyData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at').eq('status', 'ready_to_bill').order('hcp_number', { ascending: false })
-      if (readyData) setReadyToBillJobs(readyData as typeof readyToBillJobs)
-      const { data: billedData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, created_at').eq('status', 'billed').order('hcp_number', { ascending: false })
-      if (billedData) setWaitingForPaymentJobs(billedData as typeof waitingForPaymentJobs)
-    }
+    refreshInvoices()
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
     if (assignedData) setAssignedJobs(assignedData as unknown as typeof assignedJobs)
+  }
+
+  async function refreshInvoices() {
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') return
+    const fetchInvoices = async (status: string) => {
+      const { data } = await supabase
+        .from('jobs_ledger_invoices')
+        .select('id, job_id, amount, status, created_at, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at)')
+        .eq('status', status)
+        .order('created_at', { ascending: false })
+      const rows = (data ?? []) as Array<{
+        id: string
+        job_id: string
+        amount: number
+        status: string
+        created_at: string | null
+        jobs_ledger: { hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; created_at: string | null }
+      }>
+      return rows.map((r) => ({
+        id: r.id,
+        job_id: r.job_id,
+        amount: r.amount,
+        status: r.status,
+        hcp_number: r.jobs_ledger?.hcp_number ?? '',
+        job_name: r.jobs_ledger?.job_name ?? '',
+        job_address: r.jobs_ledger?.job_address ?? '',
+        google_drive_link: r.jobs_ledger?.google_drive_link ?? null,
+        job_plans_link: r.jobs_ledger?.job_plans_link ?? null,
+        created_at: r.jobs_ledger?.created_at ?? r.created_at,
+      }))
+    }
+    const fetchJobs = async (status: string) => {
+      const { data } = await supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
+        .eq('status', status)
+        .order('created_at', { ascending: false })
+      return (data ?? []) as JobForDashboard[]
+    }
+    const [readyInv, billedInv, readyJobs, billedJobs] = await Promise.all([
+      fetchInvoices('ready_to_bill'),
+      fetchInvoices('billed'),
+      fetchJobs('ready_to_bill'),
+      fetchJobs('billed'),
+    ])
+    setReadyToBillInvoices(readyInv)
+    setWaitingForPaymentInvoices(billedInv)
+    setReadyToBillJobs(readyJobs)
+    setWaitingForPaymentJobs(billedJobs)
+  }
+
+  async function updateInvoiceStatus(invoiceId: string, status: 'ready_to_bill' | 'billed') {
+    setInvoiceStatusUpdatingId(invoiceId)
+    try {
+      const { error } = await supabase.from('jobs_ledger_invoices').update({ status }).eq('id', invoiceId)
+      if (error) throw error
+      showToast?.('Invoice updated', 'success')
+      await refreshInvoices()
+    } catch (e) {
+      showToast?.(e instanceof Error ? e.message : 'Failed to update invoice', 'error')
+    } finally {
+      setInvoiceStatusUpdatingId(null)
+    }
+  }
+
+  async function deleteInvoice(invoiceId: string) {
+    setInvoiceStatusUpdatingId(invoiceId)
+    try {
+      const { error } = await supabase.from('jobs_ledger_invoices').delete().eq('id', invoiceId)
+      if (error) throw error
+      showToast?.('Invoice removed', 'success')
+      await refreshInvoices()
+    } catch (e) {
+      showToast?.(e instanceof Error ? e.message : 'Failed to remove invoice', 'error')
+    } finally {
+      setInvoiceStatusUpdatingId(null)
+    }
+  }
+
+  async function markInvoicePaid(invoiceId: string) {
+    setInvoiceStatusUpdatingId(invoiceId)
+    try {
+      const { data, error } = await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId })
+      if (error) throw error
+      const result = data as { error?: string } | null
+      if (result?.error) throw new Error(result.error)
+      showToast?.('Payment recorded', 'success')
+      await refreshInvoices()
+    } catch (e) {
+      showToast?.(e instanceof Error ? e.message : 'Failed to record payment', 'error')
+    } finally {
+      setInvoiceStatusUpdatingId(null)
+    }
+  }
+
+  async function markJobPaid(jobId: string) {
+    setJobStatusUpdatingId(jobId)
+    try {
+      const { data, error } = await supabase.rpc('mark_job_paid', { p_job_id: jobId })
+      if (error) throw error
+      const result = data as { error?: string } | null
+      if (result?.error) throw new Error(result.error)
+      showToast?.('Payment recorded', 'success')
+      await refreshInvoices()
+    } catch (e) {
+      showToast?.(e instanceof Error ? e.message : 'Failed to record payment', 'error')
+    } finally {
+      setJobStatusUpdatingId(null)
+    }
   }
 
   useEffect(() => {
@@ -1917,10 +2116,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (readyToBillLoading || readyToBillJobs.length > 0) && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (readyToBillLoading || readyToBillInvoices.length > 0 || readyToBillJobs.length > 0) && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Ready to Bill</h2>
-          {readyToBillLoading && readyToBillJobs.length === 0 ? (
+          {readyToBillLoading && readyToBillInvoices.length === 0 && readyToBillJobs.length === 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[1, 2].map((i) => (
                 <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
@@ -1931,9 +2130,61 @@ export default function Dashboard() {
             </ul>
           ) : (
             <div>
-              {readyToBillJobs.map((j) => (
+              {readyToBillJobs.map((j) => {
+                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                return (
+                  <div
+                    key={j.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {j.hcp_number || '—'} · {j.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}</button>
+                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">Open<br />{formatTimeSince(j.created_at)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {readyToBillInvoices.map((inv) => (
                 <div
-                  key={j.id}
+                  key={inv.id}
                   style={{
                     border: '1px solid #e5e7eb',
                     borderRadius: 8,
@@ -1945,28 +2196,26 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                     <div>
                       <div style={{ fontWeight: 600 }}>
-                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                        {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                        {inv.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
                         ) : (
                           '—'
                         )}
                       </div>
-                      {j.revenue != null && (
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      )}
+                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                          {j.google_drive_link?.trim() && (
+                          {inv.google_drive_link?.trim() && (
                             <a
-                              href={j.google_drive_link.trim()}
+                              href={inv.google_drive_link.trim()}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
                               title="Google Drive"
                               style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                             >
@@ -1975,12 +2224,12 @@ export default function Dashboard() {
                               </svg>
                             </a>
                           )}
-                      {j.job_plans_link?.trim() && (
+                      {inv.job_plans_link?.trim() && (
                         <a
-                          href={j.job_plans_link.trim()}
+                          href={inv.job_plans_link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
                           title="Job Plans"
                           style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                         >
@@ -1993,25 +2242,22 @@ export default function Dashboard() {
                       )}
                       <button
                         type="button"
-                        onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
+                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                       >
                         View<br />Details
                       </button>
                       <button
                         type="button"
-                        onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
                         View<br />Reports
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' })
-                          setSendBackChecked(false)
-                        }}
-                        disabled={jobStatusUpdatingId === j.id}
+                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
@@ -2019,30 +2265,30 @@ export default function Dashboard() {
                           color: '#6b7280',
                           border: '1px solid #d1d5db',
                           borderRadius: 4,
-                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                         }}
                       >
                         Send<br />back
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateJobStatus(j.id, 'billed')}
-                        disabled={jobStatusUpdatingId === j.id}
+                        onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledInvoice(inv) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          background: '#3b82f6',
+                          background: '#16a34a',
                           color: 'white',
                           border: 'none',
                           borderRadius: 4,
-                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}
+                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark as<br />Billed</>}
                       </button>
-                      {j.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open<br />{formatTimeSince(j.created_at)}
+                      {inv.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
+                          Open<br />{formatTimeSince(inv.created_at)}
                         </span>
                       )}
                     </div>
@@ -2054,10 +2300,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentJobs.length > 0) && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Waiting for Payment</h2>
-          {waitingForPaymentLoading && waitingForPaymentJobs.length === 0 ? (
+          {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[1, 2].map((i) => (
                 <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
@@ -2068,9 +2314,61 @@ export default function Dashboard() {
             </ul>
           ) : (
             <div>
-              {waitingForPaymentJobs.map((j) => (
+              {waitingForPaymentJobs.map((j) => {
+                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                return (
+                  <div
+                    key={j.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {j.hcp_number || '—'} · {j.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">Open<br />{formatTimeSince(j.created_at)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {waitingForPaymentInvoices.map((inv) => (
                 <div
-                  key={j.id}
+                  key={inv.id}
                   style={{
                     border: '1px solid #e5e7eb',
                     borderRadius: 8,
@@ -2082,28 +2380,26 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                     <div>
                       <div style={{ fontWeight: 600 }}>
-                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                        {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                        {inv.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
                         ) : (
                           '—'
                         )}
                       </div>
-                      {j.revenue != null && (
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Revenue: ${Number(j.revenue).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      )}
+                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                          {j.google_drive_link?.trim() && (
+                          {inv.google_drive_link?.trim() && (
                             <a
-                              href={j.google_drive_link.trim()}
+                              href={inv.google_drive_link.trim()}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
                               title="Google Drive"
                               style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                             >
@@ -2112,12 +2408,12 @@ export default function Dashboard() {
                               </svg>
                             </a>
                           )}
-                      {j.job_plans_link?.trim() && (
+                      {inv.job_plans_link?.trim() && (
                         <a
-                          href={j.job_plans_link.trim()}
+                          href={inv.job_plans_link.trim()}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
                           title="Job Plans"
                           style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                         >
@@ -2130,25 +2426,22 @@ export default function Dashboard() {
                       )}
                       <button
                         type="button"
-                        onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
+                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                       >
                         View<br />Details
                       </button>
                       <button
                         type="button"
-                        onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
                         style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                       >
                         View<br />Reports
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' })
-                          setSendBackChecked(false)
-                        }}
-                        disabled={jobStatusUpdatingId === j.id}
+                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
@@ -2156,30 +2449,30 @@ export default function Dashboard() {
                           color: '#6b7280',
                           border: '1px solid #d1d5db',
                           borderRadius: 4,
-                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                         }}
                       >
                         Send<br />back
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateJobStatus(j.id, 'paid')}
-                        disabled={jobStatusUpdatingId === j.id}
+                        onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          background: '#3b82f6',
+                          background: '#16a34a',
                           color: 'white',
                           border: 'none',
                           borderRadius: 4,
-                          cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                         }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}
+                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}
                       </button>
-                      {j.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open<br />{formatTimeSince(j.created_at)}
+                      {inv.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
+                          Open<br />{formatTimeSince(inv.created_at)}
                         </span>
                       )}
                     </div>
@@ -2515,6 +2808,97 @@ export default function Dashboard() {
               >
                 {jobStatusUpdatingId === readyForBillingJob.id ? '…' : 'Send for billing'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markAsBilledJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark as Billed</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markAsBilledJob.hcpNumber} · {markAsBilledJob.jobName}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markAsBilledChecked} onChange={(e) => setMarkAsBilledChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Invoice has been sent to the customer</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkAsBilledJob(null); setMarkAsBilledChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markAsBilledChecked || jobStatusUpdatingId === markAsBilledJob.id} onClick={async () => { if (!markAsBilledJob) return; await updateJobStatus(markAsBilledJob.id, 'billed'); setMarkAsBilledJob(null); setMarkAsBilledChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markAsBilledChecked && jobStatusUpdatingId !== markAsBilledJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markAsBilledChecked && jobStatusUpdatingId !== markAsBilledJob.id ? 'pointer' : 'not-allowed' }}>{jobStatusUpdatingId === markAsBilledJob.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markAsBilledInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark as Billed</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markAsBilledInvoice.hcp_number || '—'} · {markAsBilledInvoice.job_name || '—'} · ${markAsBilledInvoice.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markAsBilledChecked} onChange={(e) => setMarkAsBilledChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Invoice has been sent to the customer</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkAsBilledInvoice(null); setMarkAsBilledChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markAsBilledChecked || invoiceStatusUpdatingId === markAsBilledInvoice.id} onClick={async () => { if (!markAsBilledInvoice) return; await updateInvoiceStatus(markAsBilledInvoice.id, 'billed'); setMarkAsBilledInvoice(null); setMarkAsBilledChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markAsBilledChecked && invoiceStatusUpdatingId !== markAsBilledInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markAsBilledChecked && invoiceStatusUpdatingId !== markAsBilledInvoice.id ? 'pointer' : 'not-allowed' }}>{invoiceStatusUpdatingId === markAsBilledInvoice.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markPaidJob && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidJob.hcpNumber} · {markPaidJob.jobName}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Payment has been received and recorded</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkPaidJob(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markPaidChecked || jobStatusUpdatingId === markPaidJob.id} onClick={async () => { if (!markPaidJob) return; await markJobPaid(markPaidJob.id); setMarkPaidJob(null); setMarkPaidChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && jobStatusUpdatingId !== markPaidJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && jobStatusUpdatingId !== markPaidJob.id ? 'pointer' : 'not-allowed' }}>{jobStatusUpdatingId === markPaidJob.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {markPaidInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Mark Paid</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{markPaidInvoice.hcp_number || '—'} · {markPaidInvoice.job_name || '—'} · ${markPaidInvoice.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={markPaidChecked} onChange={(e) => setMarkPaidChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>Payment has been received and recorded</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setMarkPaidInvoice(null); setMarkPaidChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!markPaidChecked || invoiceStatusUpdatingId === markPaidInvoice.id} onClick={async () => { if (!markPaidInvoice) return; await markInvoicePaid(markPaidInvoice.id); setMarkPaidInvoice(null); setMarkPaidChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: markPaidChecked && invoiceStatusUpdatingId !== markPaidInvoice.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: markPaidChecked && invoiceStatusUpdatingId !== markPaidInvoice.id ? 'pointer' : 'not-allowed' }}>{invoiceStatusUpdatingId === markPaidInvoice.id ? '…' : 'Confirm'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {sendBackInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send back</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{sendBackInvoice.inv.hcp_number || '—'} · {sendBackInvoice.inv.job_name || '—'} · ${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>{sendBackInvoice.action === 'delete' ? 'This will remove the invoice from Ready to Bill.' : 'This will move the invoice back to Ready to Bill.'}</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={sendBackChecked} onChange={(e) => setSendBackChecked(e.target.checked)} style={{ marginTop: 4 }} />
+                <span>I am going to call the Subcontractor and explain why</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => { setSendBackInvoice(null); setSendBackChecked(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" disabled={!sendBackChecked || invoiceStatusUpdatingId === sendBackInvoice.inv.id} onClick={async () => { if (!sendBackInvoice) return; if (sendBackInvoice.action === 'delete') await deleteInvoice(sendBackInvoice.inv.id); else await updateInvoiceStatus(sendBackInvoice.inv.id, 'ready_to_bill'); setSendBackInvoice(null); setSendBackChecked(false); refreshInvoices() }} style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}>{invoiceStatusUpdatingId === sendBackInvoice.inv.id ? '…' : 'Send back'}</button>
             </div>
           </div>
         </div>

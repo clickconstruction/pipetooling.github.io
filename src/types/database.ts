@@ -728,21 +728,6 @@ export type Database = {
           },
         ]
       }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
-      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -1195,6 +1180,7 @@ export type Database = {
           job_name: string
           job_plans_link: string | null
           master_user_id: string
+          payments_made: number | null
           revenue: number | null
           status: string
           updated_at: string | null
@@ -1208,6 +1194,7 @@ export type Database = {
           job_name?: string
           job_plans_link?: string | null
           master_user_id: string
+          payments_made?: number | null
           revenue?: number | null
           status?: string
           updated_at?: string | null
@@ -1221,6 +1208,7 @@ export type Database = {
           job_name?: string
           job_plans_link?: string | null
           master_user_id?: string
+          payments_made?: number | null
           revenue?: number | null
           status?: string
           updated_at?: string | null
@@ -1270,6 +1258,41 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_invoices: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          job_id: string
+          sequence_order: number
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          job_id: string
+          sequence_order?: number
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          sequence_order?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_invoices_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger_materials: {
         Row: {
           amount: number
@@ -1298,6 +1321,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "jobs_ledger_materials_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs_ledger_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          job_id: string
+          sequence_order: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          job_id: string
+          sequence_order?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_payments_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
@@ -2755,6 +2810,48 @@ export type Database = {
           },
         ]
       }
+      prospect_timer_events: {
+        Row: {
+          button_name: string
+          created_at: string | null
+          id: string
+          prospect_id: string | null
+          timer_seconds: number
+          user_id: string
+        }
+        Insert: {
+          button_name: string
+          created_at?: string | null
+          id?: string
+          prospect_id?: string | null
+          timer_seconds: number
+          user_id: string
+        }
+        Update: {
+          button_name?: string
+          created_at?: string | null
+          id?: string
+          prospect_id?: string | null
+          timer_seconds?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_timer_events_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_timer_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prospects: {
         Row: {
           company_name: string | null
@@ -3960,6 +4057,8 @@ export type Database = {
           quantity: number
         }[]
       }
+      mark_invoice_paid: { Args: { p_invoice_id: string }; Returns: Json }
+      mark_job_paid: { Args: { p_job_id: string }; Returns: Json }
       master_adopted_current_user: {
         Args: { master_user_id: string }
         Returns: boolean

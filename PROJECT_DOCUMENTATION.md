@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-02-25
+last_updated: 2026-03-01
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -1937,11 +1937,11 @@ user_id = auth.uid()
   - **Receivables Tab**: Assistants enter Payer, Point Of Contact, Account Rep (Master or Sub from dropdown), Amount to Collect. AR total displayed at top. Add Payer button at bottom. Uses `jobs_receivables`; RLS mirrors jobs_ledger (dev, master, assistant; assistants see master's data).
   - **Labor Tab**: Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Uses same roster (people + users) as People; helpers `rosterNamesEveryoneElse()` and `rosterNamesSubcontractors()`.
   - **Sub Sheet Ledger Tab**: Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal (same User two-list picker); Delete removes job; date editable inline.
-  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically.
-  - **Stages Tab**: Working, Ready to Bill, Billed, Paid tables; Edit pencil icon per row opens Edit Job modal. Stages opens by default (not Reports) for non-primary users.
+  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically. New/Edit Job modals include Total Bill ($), Payments Made ($) as multiple payment rows, Remaining ($) = Total Bill - sum of payments, and **Create partial invoice** section (amount input, Create invoice button; lists open invoices with View in Stages).
+  - **Stages Tab**: **Working** shows jobs with "Ready for Billing" button; **Ready to Bill** and **Billed** show both **jobs** (status-based) and **invoices**; **Paid in Full** shows jobs where payments_made ≥ revenue. Job actions: Ready for Billing, Mark as Billed, Mark Paid, Send back. Invoice actions: Mark as Billed, Mark Paid, Send back. Edit pencil opens Edit Job modal. Stages opens by default (not Reports) for non-primary users.
   - **Parts Tab**: Tally parts from Job Parts Tally; search and "Show my jobs only" (hidden for subcontractors). Fixture-only entries (sent to office) have editable cost; jobs with unpriced fixtures highlighted in red. Parts total includes fixture cost.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
-- **Data**: Receivables use `jobs_receivables`; Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_team_members`.
+- **Data**: Receivables use `jobs_receivables`; Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_team_members`.
 
 ### 6a. Job Parts Tally
 - **Page**: `JobTally.tsx`
