@@ -2020,6 +2020,7 @@ user_id = auth.uid()
   - **Sign out**: At top of Settings page
   - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
   - **Change Password**: Change your own password (requires current password verification)
+  - **My Profile**: Edit own name, email, and phone. Stored in `users` table. Phone is used for `[user phone number]` in prospect copy templates.
 - **Features (Dev, Master, Assistant)**:
   - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
 - **Features (Masters and Devs)**:
@@ -2045,6 +2046,7 @@ user_id = auth.uid()
   - Set a user's password ("Set password" button next to Send email to sign in / imitate)
   - Display last login time
   - **Email Template Management**: Create and edit email templates for all notification types
+  - **Prospect copy templates** (dev): Edit default body and subject for No Response Email, Phone call Follow up Email, and Just checking in Email. Stored in `app_settings`. New users inherit these defaults.
   - View all people entries (not just own entries)
   - **Pin to Dashboard** (dev-only): Pin AR, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (AR | $X, Supply Houses: $X, External Team: $X, Internal Team: $X). Share Cost Matrix and Teams section moved from People Pay to Settings (below AR pin).
   - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.

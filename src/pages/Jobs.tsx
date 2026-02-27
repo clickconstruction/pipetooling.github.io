@@ -2320,7 +2320,10 @@ export default function Jobs() {
       const found = updated?.find((j) => j.id === editing.id)
       if (found) setEditing(found)
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create invoice')
+      const err = e as { message?: string; details?: string; hint?: string }
+      const msg = err?.message || 'Failed to create invoice'
+      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
+      setError(extra ? `${msg}. ${extra}` : msg)
     } finally {
       setCreatingInvoice(false)
     }
@@ -2354,7 +2357,10 @@ export default function Jobs() {
       setError(null)
       await loadJobs()
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to create invoice')
+      const err = e as { message?: string; details?: string; hint?: string }
+      const msg = err?.message || 'Failed to create invoice'
+      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
+      setError(extra ? `${msg}. ${extra}` : msg)
     } finally {
       setCreatingPartialInvoiceFromModal(false)
     }

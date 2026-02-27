@@ -1909,7 +1909,7 @@ export default function Prospects() {
                   }}
                   style={{ width: 18, height: 18, cursor: 'pointer' }}
                 />
-                Mark and Move to next prospect when Didn&apos;t Answer is clicked
+                Automatically move to the next prospect when I click Didn&apos;t Answer
               </label>
               <button
                 type="button"

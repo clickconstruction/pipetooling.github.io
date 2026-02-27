@@ -94,6 +94,36 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–31, 2026
 
+**`20260308000000_add_assistants_share_master_to_invoice_insert.sql`**
+- **Purpose**: Fix assistants (e.g. Wendi) unable to create invoices on jobs they see via shared masters
+- **Changes**: Add `assistants_share_master(auth.uid(), j.master_user_id)` to INSERT policies for `jobs_ledger_invoices` and `jobs_ledger_payments`; drop and recreate both policies
+- **Impact**: Assistants with assistants_share_master access can now create invoices; INSERT matches SELECT/UPDATE/DELETE
+- **Category**: Jobs / RLS
+
+**`20260307000000_prospect_email_sent.sql`**
+- **Purpose**: Track when user has sent an email to a prospect for a given template
+- **Changes**: Create `prospect_email_sent` (prospect_id, user_id, template_key, created_at); RLS for users to see/insert own rows
+- **Impact**: Prospects Follow Up mail icon shows envelope-check (green) after user clicks mail icon for that template+prospect
+- **Category**: Prospects
+
+**`20260306000000_prospect_copy_subject.sql`**
+- **Purpose**: Store subject line per prospect copy template per user; dev defaults in app_settings
+- **Changes**: Add `subject_text TEXT` to `user_prospect_copy_templates`; add `prospect_copy_*_subject` keys to `app_settings`
+- **Impact**: Edit modal includes Subject field; subject supports same placeholders as body; devs set defaults in Settings
+- **Category**: Prospects / Settings
+
+**`20260305000000_add_users_phone.sql`**
+- **Purpose**: Store user's phone for My Profile and prospect copy template `[user phone number]` placeholder
+- **Changes**: Add `phone TEXT` column to `public.users`
+- **Impact**: Settings → My Profile; `[user phone number]` in prospect copy templates
+- **Category**: Settings / Prospects
+
+**`20260304000000_prospect_copy_templates.sql`**
+- **Purpose**: Per-user copy templates for Prospects Follow Up (No Response, Phone followup, Just checking in)
+- **Changes**: Create `user_prospect_copy_templates` (user_id, template_key, body_text); RLS for users to manage own rows
+- **Impact**: Follow Up copy section with three template buttons; edit modal with placeholder chips; blank-fields modal when copying with missing data
+- **Category**: Prospects
+
 **`20260303000001_prospect_calling_locks.sql`**
 - **Purpose**: Prevent multiple users from calling the same prospect; support Option D (Hybrid) for Prospects
 - **Changes**: Create `prospect_calling_locks` (prospect_id PK, user_id, locked_at); RLS: SELECT (all), INSERT/UPDATE/DELETE (own)

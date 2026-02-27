@@ -7,17 +7,17 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-26
+last_updated: 2026-02-27
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.75 → v2.4"
+version_range: "v2.76 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.75)"
+  - name: "Latest Version (v2.76)"
     line: ~186
-    description: "Jobs Stages default, Team Labor/Sub Labor labels, Prospects Option D calling locks"
+    description: "Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile"
   - name: "v2.73"
     line: ~200
     description: "Checkbox modals restored, unified stages table, invoice buttons green"
@@ -124,8 +124,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
-2. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
+1. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+2. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
+3. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
 3. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
 4. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
 5. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
@@ -199,6 +200,34 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.76)
+
+**Date**: 2026-02-27
+
+### Prospects – Copy Templates, Mail Icon, Subject Line, Email Sent Tracking
+
+- **Copy section** (Follow Up, below Add Notes): Three template buttons—No Response Email, Phone call Follow up Email, Just checking in Email. Each has: copy button (copies substituted text to clipboard), mail icon (opens default mail client with prospect email, subject, and body), edit icon (opens modal to edit body and subject).
+- **Placeholders**: User placeholders `[User name]`, `[user email]`, `[user phone number]`, `[company name]`; prospect placeholders `[prospect phone number]`, `[prospect contact name]`, `[prospect last contact]`, `[prospect last successful contact]`; `_______` for Phone call (contact name) and Just checking in (contact info). Clickable chips in edit modal insert placeholders at cursor.
+- **Subject line**: Edit modal includes Subject field; subject supports same placeholders as body. Stored per-user in `user_prospect_copy_templates.subject_text`; dev defaults in `app_settings` (e.g. `prospect_copy_no_response_email_subject`).
+- **Blank-fields modal**: When copying or opening mail, if any placeholder used in the template has blank data (e.g. prospect email, user phone), a modal lists missing fields and blocks the action until dismissed.
+- **Email sent tracking**: Mail icon (envelope SVG) opens `mailto:`; after click, icon changes to envelope-check (green) for that template+prospect. State persisted in `prospect_email_sent` table.
+- **Dev defaults**: Settings → Prospect copy templates (dev) — devs can edit default body and subject for all three templates.
+
+### Settings – My Profile
+
+- **My Profile section** (all users): Form to edit own name, email, and phone. Stored in `users` table. Phone is used for `[user phone number]` in prospect copy templates.
+- **Database**: `users.phone` column; RLS policy allows users to update own row.
+
+### Prospects – UI Updates
+
+- **Field order**: Last Contact and Last Successful Contact moved below Company Name, above Contact Name; labels no longer bolded.
+- **Checkbox label**: "Automatically move to the next prospect when I click Didn't Answer" (clearer than previous text).
+- **Icons**: Mail and edit buttons use Font Awesome SVG icons (envelope, envelope-check, pen-to-square).
+
+**Files**: `src/pages/Prospects.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260304000000_prospect_copy_templates.sql`, `20260305000000_add_users_phone.sql`, `20260306000000_prospect_copy_subject.sql`, `20260307000000_prospect_email_sent.sql`
 
 ---
 
