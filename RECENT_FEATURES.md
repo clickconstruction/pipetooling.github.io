@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-26
+last_updated: 2026-02-27
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.73 → v2.4"
+version_range: "v2.74 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.73)"
+  - name: "Latest Version (v2.74)"
     line: ~186
+    description: "Create Partial Invoice modal, Ready to Bill label, Paid in Full total hidden"
+  - name: "v2.73"
+    line: ~200
     description: "Checkbox modals restored, unified stages table, invoice buttons green"
   - name: "v2.72"
     line: ~200
@@ -104,7 +107,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.72)"
+  - "Latest features at top (v2.74)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -121,9 +124,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
-2. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
-3. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
+1. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
+2. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
+3. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
+4. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
 4. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
 4. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
 5. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
@@ -197,13 +201,28 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.74)
+
+**Date**: 2026-02-27
+
+### Jobs – Stages Tab Updates
+
+- **Ready to Bill label**: Button and modal changed from "Ready for Billing" to "Ready to Bill" in Working stage.
+- **Create Partial Invoice modal**: Green document icon button (to the left of Edit) in Working and Ready to Bill job rows. Opens standalone modal to create a partial invoice without opening Edit Job. Icon disabled when remaining amount is zero.
+- **Open X hours centered**: "Open 4 hours" (and similar) centered in Actions column for Working, Ready to Bill, and Billed.
+- **Paid in Full**: Total amount hidden; stage title shows count only, e.g. `Paid in Full (5)`.
+
+**Files**: `src/pages/Jobs.tsx`
+
+---
+
 ## Latest Updates (v2.73)
 
 **Date**: 2026-03-26
 
 ### Jobs & Dashboard – Checkbox Confirmation Modals Restored
 
-- **Ready for Billing**: Modal with checkboxes "I have reported all the Job Parts I've used" and "The customer knows the work is done and is satisfied" before moving job to Ready to Bill.
+- **Ready to Bill**: Modal with checkboxes "I have reported all the Job Parts I've used" and "The customer knows the work is done and is satisfied" before moving job to Ready to Bill.
 - **Mark as Billed**: Modal with checkbox "Invoice has been sent to the customer" (jobs and invoices).
 - **Mark Paid**: Modal with checkbox "Payment has been received and recorded" (jobs and invoices).
 - **Send back**: Modal with checkbox "I am going to call the Subcontractor and explain why" (jobs and invoices).

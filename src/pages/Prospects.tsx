@@ -63,6 +63,15 @@ function formatDaysSince(iso: string | null): string {
   return ` (${diffDays} days ago)`
 }
 
+function formatDueBadge(lastContact: string | null): string | null {
+  const now = Date.now()
+  if (!lastContact) return 'Due'
+  const diffMs = now - new Date(lastContact).getTime()
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
+  if (diffDays >= 7) return `Due ${diffDays} days`
+  return null
+}
+
 function formatInteractionType(type: string): string {
   switch (type) {
     case 'answered': return 'Answered'
@@ -221,12 +230,21 @@ export default function Prospects() {
   async function loadFollowUpProspects() {
     if (!authUser?.id) return
     setFollowUpLoading(true)
-    const { data, error } = await supabase
+    const { data: locks } = await supabase
+      .from('prospect_calling_locks')
+      .select('prospect_id')
+      .neq('user_id', authUser.id)
+    const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
+    let query = supabase
       .from('prospects')
       .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, links_to_website, notes, last_contact, created_at, updated_at')
       .or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
-      .order('last_contact', { ascending: false, nullsFirst: false })
-      .order('created_at', { ascending: false })
+    if (lockedByOthers.length > 0) {
+      query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
+    }
+    const { data, error } = await query
+      .order('last_contact', { ascending: true, nullsFirst: true })
+      .order('created_at', { ascending: true })
     if (error) {
       setFollowUpProspects([])
       setFollowUpLoading(false)
@@ -550,6 +568,19 @@ export default function Prospects() {
     loadScheduledCallback()
   }, [loadScheduledCallback])
 
+  // Acquire lock when viewing a prospect; release on cleanup (switch prospect/tab)
+  useEffect(() => {
+    if (activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
+    const prospectId = currentProspect.id
+    void supabase.from('prospect_calling_locks').upsert(
+      { prospect_id: prospectId, user_id: authUser.id },
+      { onConflict: 'prospect_id' }
+    )
+    return () => {
+      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser!.id)
+    }
+  }, [activeTab, currentProspect?.id, authUser?.id])
+
   // Follow Up timer: counts up while on tab, resets when user leaves and comes back
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -736,15 +767,17 @@ export default function Prospects() {
   async function handleNoLongerFit() {
     if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
+    const prospectId = currentProspect.id
     const { error: updErr } = await supabase
       .from('prospects')
       .update({ prospect_fit_status: 'not_a_fit' })
-      .eq('id', currentProspect.id)
+      .eq('id', prospectId)
     if (updErr) {
       setSaving(false)
       return
     }
     await saveTimerEvent('no_longer_fit')
+    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
     loadMyTimeToday()
     await supabase.from('prospect_comments').insert({
       prospect_id: currentProspect.id,
@@ -764,15 +797,17 @@ export default function Prospects() {
   async function handleCantReach() {
     if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
+    const prospectId = currentProspect.id
     const { error } = await supabase
       .from('prospects')
       .update({ prospect_fit_status: 'cant_reach' })
-      .eq('id', currentProspect.id)
+      .eq('id', prospectId)
     if (error) {
       setSaving(false)
       return
     }
     await saveTimerEvent('cant_reach')
+    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
     loadMyTimeToday()
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
@@ -801,7 +836,7 @@ export default function Prospects() {
         return [...prev, added].sort((a, b) => {
           const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
           const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
-          if (bLc !== aLc) return bLc - aLc
+          if (aLc !== bLc) return aLc - bLc
           return (a.company_name ?? '').localeCompare(b.company_name ?? '')
         })
       })
@@ -906,8 +941,9 @@ export default function Prospects() {
 
   async function handleNextProspect(skipTimerEvent?: boolean) {
     if (followUpProspects.length <= 1) return
-    if (!skipTimerEvent) {
+    if (!skipTimerEvent && currentProspect && authUser?.id) {
       await saveTimerEvent('next_prospect')
+      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', currentProspect.id).eq('user_id', authUser.id)
       loadMyTimeToday()
     }
     const nextIdx = (currentProspectIndex + 1) % followUpProspects.length
@@ -1307,7 +1343,24 @@ export default function Prospects() {
                       </Link>
                     </div>
                   )}
-                  <div><strong>Last Contact:</strong> {formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <strong>Last Contact:</strong>
+                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
+                    {formatDueBadge(currentProspect.last_contact) && (
+                      <span
+                        style={{
+                          padding: '0.125rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          background: '#fef3c7',
+                          color: '#92400e',
+                        }}
+                      >
+                        {formatDueBadge(currentProspect.last_contact)}
+                      </span>
+                    )}
+                  </div>
                   <div><strong>Last Successful Contact:</strong> {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
                 </div>
                 <div className="followUpInfoCardNotes">
