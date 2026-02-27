@@ -2,7 +2,23 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
+
+const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
+type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
+
+const COPY_TEMPLATE_LABELS: Record<CopyTemplateKey, string> = {
+  no_response_email: 'No Response Email',
+  phone_followup_email: 'Phone call Follow up Email',
+  just_checking_in_email: 'Just checking in Email',
+}
+
+const APP_SETTINGS_KEYS: Record<CopyTemplateKey, string> = {
+  no_response_email: 'prospect_copy_no_response_email',
+  phone_followup_email: 'prospect_copy_phone_followup_email',
+  just_checking_in_email: 'prospect_copy_just_checking_in_email',
+}
 
 type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert'
 
@@ -111,10 +127,32 @@ function getWebsiteHref(url: string | null): string {
   return 'https://' + s
 }
 
+function substituteCopyPlaceholders(
+  template: string,
+  authUser: { name: string; email: string },
+  prospect: Prospect,
+  personPhone: string | null,
+  templateKey: CopyTemplateKey
+): string {
+  let text = template
+    .replace(/\[User name\]/g, authUser.name ?? '')
+    .replace(/\[user email\]/g, authUser.email ?? '')
+    .replace(/\[user phone number\]/g, personPhone ?? '')
+    .replace(/\[company name\]/g, prospect.company_name ?? '')
+  if (templateKey === 'phone_followup_email') {
+    text = text.replace(/_______/, prospect.contact_name ?? '_______')
+  } else if (templateKey === 'just_checking_in_email') {
+    const contactInfo = prospect.phone_number ?? prospect.email ?? '_______'
+    text = text.replace(/_______/, contactInfo)
+  }
+  return text
+}
+
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading } = useAuth()
+  const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
 
@@ -189,6 +227,23 @@ export default function Prospects() {
   const [newEmail, setNewEmail] = useState('')
   const [newLinksToWebsite, setNewLinksToWebsite] = useState('')
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
+
+  // Copy templates (defaults from app_settings, overrides from user_prospect_copy_templates)
+  const [copyDefaults, setCopyDefaults] = useState<Record<CopyTemplateKey, string>>({
+    no_response_email: '',
+    phone_followup_email: '',
+    just_checking_in_email: '',
+  })
+  const [copyOverrides, setCopyOverrides] = useState<Record<CopyTemplateKey, string | null>>({
+    no_response_email: null,
+    phone_followup_email: null,
+    just_checking_in_email: null,
+  })
+  const [personPhone, setPersonPhone] = useState<string | null>(null)
+  const [authUserName, setAuthUserName] = useState<string>('')
+  const [editingCopyTemplateKey, setEditingCopyTemplateKey] = useState<CopyTemplateKey | null>(null)
+  const [editingCopyText, setEditingCopyText] = useState('')
+  const [copyTemplateSaving, setCopyTemplateSaving] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -361,6 +416,70 @@ export default function Prospects() {
     setProspectListLoading(false)
   }
 
+  async function loadCopyTemplates() {
+    if (!authUser?.id) return
+    const [defaultsRes, overridesRes] = await Promise.all([
+      supabase.from('app_settings').select('key, value_text').in('key', Object.values(APP_SETTINGS_KEYS)),
+      supabase.from('user_prospect_copy_templates').select('template_key, value_text').eq('user_id', authUser.id),
+    ])
+    const defaultsMap: Record<CopyTemplateKey, string> = {
+      no_response_email: '',
+      phone_followup_email: '',
+      just_checking_in_email: '',
+    }
+    for (const r of defaultsRes.data ?? []) {
+      const key = Object.entries(APP_SETTINGS_KEYS).find(([, v]) => v === r.key)?.[0] as CopyTemplateKey | undefined
+      if (key && r.value_text) defaultsMap[key] = r.value_text
+    }
+    setCopyDefaults(defaultsMap)
+    const overridesMap: Record<CopyTemplateKey, string | null> = {
+      no_response_email: null,
+      phone_followup_email: null,
+      just_checking_in_email: null,
+    }
+    for (const r of overridesRes.data ?? []) {
+      if (COPY_TEMPLATE_KEYS.includes(r.template_key as CopyTemplateKey)) {
+        overridesMap[r.template_key as CopyTemplateKey] = r.value_text
+      }
+    }
+    setCopyOverrides(overridesMap)
+  }
+
+  async function loadPersonPhone() {
+    if (!authUser?.id) return
+    // Prefer users.phone (set in Settings > My Profile); fall back to people.phone
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('phone')
+      .eq('id', authUser.id)
+      .maybeSingle()
+    const userPhone = (userRow as { phone: string | null } | null)?.phone
+    if (userPhone != null && userPhone.trim() !== '') {
+      setPersonPhone(userPhone.trim())
+      return
+    }
+    const { data: peopleData } = await supabase
+      .from('people')
+      .select('phone')
+      .eq('master_user_id', authUser.id)
+      .not('phone', 'is', null)
+      .limit(1)
+    const first = (peopleData ?? [])[0] as { phone: string | null } | undefined
+    setPersonPhone(first?.phone ?? null)
+  }
+
+  useEffect(() => {
+    if (authUser?.id) {
+      loadCopyTemplates()
+      loadPersonPhone()
+      supabase.from('users').select('name').eq('id', authUser.id).maybeSingle().then(({ data }) => {
+        setAuthUserName((data as { name: string } | null)?.name ?? '')
+      })
+    } else {
+      setAuthUserName('')
+    }
+  }, [authUser?.id])
+
   useEffect(() => {
     if (activeTab === 'follow-up' && authUser?.id) {
       loadFollowUpProspects()
@@ -422,6 +541,52 @@ export default function Prospects() {
 
   function cancelFollowUpNotes() {
     setFollowUpNotes(currentProspect?.notes ?? '')
+  }
+
+  function getResolvedCopyText(key: CopyTemplateKey): string {
+    const override = copyOverrides[key]
+    if (override != null && override !== '') return override
+    return copyDefaults[key] ?? ''
+  }
+
+  async function handleCopyTemplate(key: CopyTemplateKey) {
+    if (!authUser || !currentProspect) return
+    const text = getResolvedCopyText(key)
+    if (!text.trim()) {
+      showToast('No text to copy. Edit the template first.', 'warning')
+      return
+    }
+    const userInfo = { name: (authUserName || authUser.email) ?? '', email: authUser.email ?? '' }
+    const substituted = substituteCopyPlaceholders(text, userInfo, currentProspect, personPhone, key)
+    try {
+      await navigator.clipboard.writeText(substituted)
+      showToast('Copied to clipboard', 'success')
+    } catch {
+      showToast('Failed to copy to clipboard', 'error')
+    }
+  }
+
+  function openEditCopyModal(key: CopyTemplateKey) {
+    setEditingCopyTemplateKey(key)
+    setEditingCopyText(getResolvedCopyText(key))
+  }
+
+  async function saveCopyTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id || !editingCopyTemplateKey) return
+    setCopyTemplateSaving(true)
+    const { error } = await supabase.from('user_prospect_copy_templates').upsert(
+      { user_id: authUser.id, template_key: editingCopyTemplateKey, value_text: editingCopyText },
+      { onConflict: 'user_id,template_key' }
+    )
+    setCopyTemplateSaving(false)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setCopyOverrides((prev) => ({ ...prev, [editingCopyTemplateKey]: editingCopyText }))
+    setEditingCopyTemplateKey(null)
+    showToast('Template saved', 'success')
   }
 
   // When switching to Convert tab, default to current prospect from Follow Up
@@ -1389,6 +1554,47 @@ export default function Prospects() {
                     </button>
                   </div>
                 </div>
+
+                {/* Copy templates */}
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                    {COPY_TEMPLATE_KEYS.map((key) => (
+                      <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyTemplate(key)}
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            fontSize: '0.8125rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {COPY_TEMPLATE_LABELS[key]}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditCopyModal(key)}
+                          title="Edit template"
+                          style={{
+                            padding: '0.35rem',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          ✎
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Comments */}
@@ -2187,6 +2393,75 @@ export default function Prospects() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy template edit modal */}
+      {editingCopyTemplateKey && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: 560,
+              width: '90%',
+              maxHeight: '85vh',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0' }}>Edit {COPY_TEMPLATE_LABELS[editingCopyTemplateKey]}</h3>
+            <form onSubmit={saveCopyTemplate} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <textarea
+                value={editingCopyText}
+                onChange={(e) => setEditingCopyText(e.target.value)}
+                placeholder="Template text. Use [User name], [user email], [user phone number], [company name] as placeholders."
+                style={{
+                  width: '100%',
+                  minHeight: 200,
+                  padding: '0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.9375rem',
+                  resize: 'vertical',
+                  fontFamily: 'inherit',
+                  flex: 1,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                <button
+                  type="submit"
+                  disabled={copyTemplateSaving}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: copyTemplateSaving ? 'not-allowed' : 'pointer' }}
+                >
+                  {copyTemplateSaving ? 'Saving…' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
+                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

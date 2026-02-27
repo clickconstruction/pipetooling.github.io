@@ -18,14 +18,17 @@ export type Database = {
         Row: {
           key: string
           value_num: number | null
+          value_text: string | null
         }
         Insert: {
           key: string
           value_num?: number | null
+          value_text?: string | null
         }
         Update: {
           key?: string
           value_num?: number | null
+          value_text?: string | null
         }
         Relationships: []
       }
@@ -747,21 +750,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       counts_fixture_group_items: {
         Row: {
@@ -3623,6 +3611,35 @@ export type Database = {
           },
         ]
       }
+      user_prospect_copy_templates: {
+        Row: {
+          template_key: string
+          updated_at: string | null
+          user_id: string
+          value_text: string
+        }
+        Insert: {
+          template_key: string
+          updated_at?: string | null
+          user_id: string
+          value_text: string
+        }
+        Update: {
+          template_key?: string
+          updated_at?: string | null
+          user_id?: string
+          value_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_prospect_copy_templates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_report_notification_preferences: {
         Row: {
           created_at: string | null
@@ -3665,6 +3682,7 @@ export type Database = {
           last_sign_in_at: string | null
           name: string
           notes: string | null
+          phone: string | null
           primary_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
@@ -3677,6 +3695,7 @@ export type Database = {
           last_sign_in_at?: string | null
           name: string
           notes?: string | null
+          phone?: string | null
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
@@ -3689,6 +3708,7 @@ export type Database = {
           last_sign_in_at?: string | null
           name?: string
           notes?: string | null
+          phone?: string | null
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null

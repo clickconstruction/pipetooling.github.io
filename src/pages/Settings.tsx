@@ -292,6 +292,17 @@ export default function Settings() {
   const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
+  const [myProfileName, setMyProfileName] = useState('')
+  const [myProfileEmail, setMyProfileEmail] = useState('')
+  const [myProfilePhone, setMyProfilePhone] = useState('')
+  const [myProfileOriginalName, setMyProfileOriginalName] = useState('')
+  const [myProfileSaving, setMyProfileSaving] = useState(false)
+  const [myProfileError, setMyProfileError] = useState<string | null>(null)
+  const [prospectCopyNoResponse, setProspectCopyNoResponse] = useState('')
+  const [prospectCopyPhoneFollowup, setProspectCopyPhoneFollowup] = useState('')
+  const [prospectCopyJustCheckingIn, setProspectCopyJustCheckingIn] = useState('')
+  const [prospectCopySaving, setProspectCopySaving] = useState(false)
+  const [prospectCopySectionOpen, setProspectCopySectionOpen] = useState(false)
   const [dashboardButtons, setDashboardButtons] = useState<Record<string, boolean>>({
     job: true,
     job_labor: true,
@@ -1166,7 +1177,7 @@ export default function Settings() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids')
+      .select('role, estimator_service_type_ids, name, email, phone')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -1174,8 +1185,14 @@ export default function Settings() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null } | null)?.role ?? null
-    const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
+    const meRow = me as { role: UserRole; estimator_service_type_ids?: string[] | null; name?: string; email?: string; phone?: string | null } | null
+    const role = meRow?.role ?? null
+    const loadedName = meRow?.name ?? ''
+    setMyProfileName(loadedName)
+    setMyProfileOriginalName(loadedName)
+    setMyProfileEmail(meRow?.email ?? '')
+    setMyProfilePhone(meRow?.phone ?? '')
+    const estIds = meRow?.estimator_service_type_ids
     setMyRole(role)
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
@@ -1298,6 +1315,11 @@ export default function Settings() {
       const { data: appSettings } = await supabase.from('app_settings').select('key, value_num').eq('key', 'default_labor_rate').maybeSingle()
       const val = (appSettings as { value_num: number | null } | null)?.value_num
       setDefaultLaborRate(val != null ? String(val) : '')
+      const { data: prospectCopyRows } = await supabase.from('app_settings').select('key, value_text').in('key', ['prospect_copy_no_response_email', 'prospect_copy_phone_followup_email', 'prospect_copy_just_checking_in_email'])
+      const prospectCopyByKey = new Map((prospectCopyRows ?? []).map((r: { key: string; value_text: string | null }) => [r.key, r.value_text ?? '']))
+      setProspectCopyNoResponse(prospectCopyByKey.get('prospect_copy_no_response_email') ?? '')
+      setProspectCopyPhoneFollowup(prospectCopyByKey.get('prospect_copy_phone_followup_email') ?? '')
+      setProspectCopyJustCheckingIn(prospectCopyByKey.get('prospect_copy_just_checking_in_email') ?? '')
       const { data: reportSettings } = await supabase.from('app_settings').select('key, value_num').in('key', ['report_edit_window_days', 'report_sub_visibility_months'])
       const byKey = new Map((reportSettings ?? []).map((r: { key: string; value_num: number | null }) => [r.key, r.value_num ?? 0]))
       setReportEditWindowDays(String(byKey.get('report_edit_window_days') ?? 2))
@@ -1317,6 +1339,59 @@ export default function Settings() {
     const { error } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
     setDefaultLaborRateSaving(false)
     if (error) setError(error.message)
+  }
+
+  async function saveProspectCopyDefaults(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setProspectCopySaving(true)
+    const { error } = await supabase.from('app_settings').upsert(
+      [
+        { key: 'prospect_copy_no_response_email', value_text: prospectCopyNoResponse },
+        { key: 'prospect_copy_phone_followup_email', value_text: prospectCopyPhoneFollowup },
+        { key: 'prospect_copy_just_checking_in_email', value_text: prospectCopyJustCheckingIn },
+      ],
+      { onConflict: 'key' }
+    )
+    setProspectCopySaving(false)
+    if (error) setError(error.message)
+    else showToast('Prospect copy defaults saved.', 'success')
+  }
+
+  async function saveMyProfile(e: React.FormEvent) {
+    e.preventDefault()
+    if (!authUser?.id) return
+    const trimmedEmail = myProfileEmail.trim()
+    const trimmedName = myProfileName.trim()
+    const trimmedPhone = myProfilePhone.trim() || null
+    setMyProfileError(null)
+    if (!trimmedEmail) {
+      setMyProfileError('Email is required.')
+      return
+    }
+    if (trimmedName) {
+      const isDuplicate = await checkDuplicateName(trimmedName, authUser.id)
+      if (isDuplicate) {
+        setMyProfileError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
+        return
+      }
+    }
+    setMyProfileSaving(true)
+    const { error: err } = await supabase
+      .from('users')
+      .update({ name: trimmedName, email: trimmedEmail, phone: trimmedPhone })
+      .eq('id', authUser.id)
+    if (err) {
+      setMyProfileError(err.message)
+      setMyProfileSaving(false)
+      return
+    }
+    if (myProfileOriginalName.trim() && myProfileOriginalName.trim() !== trimmedName) {
+      await cascadePersonNameInPayTables(myProfileOriginalName.trim(), trimmedName)
+    }
+    setMyProfileOriginalName(trimmedName)
+    setMyProfileSaving(false)
+    showToast('Profile saved.', 'success')
   }
 
   async function saveReportSettings(e: React.FormEvent) {
@@ -3796,6 +3871,52 @@ export default function Settings() {
         </div>
       </div>
 
+      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+        <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>My Profile</h2>
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+          Update your name, email, and phone. Your phone is used in prospect copy templates.
+        </p>
+        <form onSubmit={saveMyProfile}>
+          {myProfileError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{myProfileError}</p>}
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name</label>
+            <input
+              type="text"
+              value={myProfileName}
+              onChange={(e) => setMyProfileName(e.target.value)}
+              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ marginBottom: '0.75rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Email</label>
+            <input
+              type="email"
+              value={myProfileEmail}
+              onChange={(e) => setMyProfileEmail(e.target.value)}
+              required
+              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Phone</label>
+            <input
+              type="tel"
+              value={myProfilePhone}
+              onChange={(e) => setMyProfilePhone(e.target.value)}
+              placeholder="e.g. (555) 123-4567"
+              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={myProfileSaving}
+            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: myProfileSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+          >
+            {myProfileSaving ? 'Saving…' : 'Save'}
+          </button>
+        </form>
+      </div>
+
       <div style={{ marginBottom: '2rem' }}>
         <h2
           style={{
@@ -4166,6 +4287,73 @@ export default function Settings() {
               {defaultLaborRateSaving ? 'Saving…' : 'Save'}
             </button>
           </form>
+
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setProspectCopySectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{prospectCopySectionOpen ? '▼' : '▶'}</span>
+              Prospect copy templates (dev)
+            </button>
+            {prospectCopySectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name] (and _______ for Phone call / Just checking in).
+                </p>
+                <form onSubmit={saveProspectCopyDefaults}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>No Response Email</label>
+                    <textarea
+                      value={prospectCopyNoResponse}
+                      onChange={(e) => setProspectCopyNoResponse(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone call Follow up Email</label>
+                    <textarea
+                      value={prospectCopyPhoneFollowup}
+                      onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Just checking in Email</label>
+                    <textarea
+                      value={prospectCopyJustCheckingIn}
+                      onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
+                      rows={6}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={prospectCopySaving}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                  >
+                    {prospectCopySaving ? 'Saving…' : 'Save'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
