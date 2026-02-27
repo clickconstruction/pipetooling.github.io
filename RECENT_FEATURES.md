@@ -7,17 +7,20 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-03
+last_updated: 2026-03-26
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.72 → v2.4"
+version_range: "v2.73 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.72)"
+  - name: "Latest Version (v2.73)"
     line: ~186
-    description: "Partial Invoices (Option A), invoice-centric Ready to Bill and Billed"
+    description: "Checkbox modals restored, unified stages table, invoice buttons green"
+  - name: "v2.72"
+    line: ~200
+    description: "Whole Jobs Through Stages alongside Partial Invoices"
   - name: "v2.68"
     line: ~200
     description: "Primary Bids RFI/Change Order/Lien Release, Projects hidden"
@@ -118,9 +121,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
-2. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
-3. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
+1. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
+2. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
+3. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
+4. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
 4. [Latest Updates (v2.69)](#latest-updates-v269) - Prospects timer enhancements, my time modal, Prospect List time
 5. [Latest Updates (v2.68)](#latest-updates-v268) - Primary Bids RFI/Change Order/Lien Release, Projects hidden
 6. [Latest Updates (v2.67)](#latest-updates-v267) - Team Costs, Crew Jobs in Quickfill, Fixture Send to Office, Show my jobs only
@@ -190,6 +194,36 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.73)
+
+**Date**: 2026-03-26
+
+### Jobs & Dashboard – Checkbox Confirmation Modals Restored
+
+- **Ready for Billing**: Modal with checkboxes "I have reported all the Job Parts I've used" and "The customer knows the work is done and is satisfied" before moving job to Ready to Bill.
+- **Mark as Billed**: Modal with checkbox "Invoice has been sent to the customer" (jobs and invoices).
+- **Mark Paid**: Modal with checkbox "Payment has been received and recorded" (jobs and invoices).
+- **Send back**: Modal with checkbox "I am going to call the Subcontractor and explain why" (jobs and invoices).
+- **Ham mode** (Jobs page): When Ham mode is ON, modals are skipped and actions call APIs directly.
+- **Dashboard**: No Ham mode; modals always show for Ready to Bill, Billed, and Paid actions.
+
+### Jobs – Stages Tab: Unified Table & Layout
+
+- **Unified table**: Ready to Bill and Billed now show jobs and invoices in a **single table** instead of two tables. Jobs use blue action buttons; invoices use green buttons for visual distinction.
+- **Layout**: Mark Paid button moved to the left (reduced row height); Send back moved below Remaining amount; "Open X days" and "X reports" centered.
+
+### Jobs & Dashboard – Invoice Button Styling
+
+- **Invoice buttons**: "Mark as Billed" and "Mark Paid" for invoice rows use green background (`#16a34a`) instead of blue (`#3b82f6`) to distinguish from job buttons.
+
+### Build Fix
+
+- **Database types**: Added `cost_matrix_tag_colors` to `src/types/database.ts` (table existed in migration but was missing from generated types; fixes People.tsx build error).
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Dashboard.tsx`, `src/types/database.ts`
 
 ---
 

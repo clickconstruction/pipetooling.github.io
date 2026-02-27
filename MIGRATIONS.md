@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-02-26
+last_updated: 2026-03-26
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -342,8 +342,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20260219260000_create_cost_matrix_tag_colors.sql`**
 - **Purpose**: Tag colors for Cost matrix
-- **Changes**: Created cost_matrix_tag_colors table
+- **Changes**: Created cost_matrix_tag_colors table (tag TEXT PK, color TEXT)
 - **Category**: People / Pay
+- **Note**: If build fails with "cost_matrix_tag_colors" not in types, add the table to `src/types/database.ts` or run `supabase gen types typescript`
 
 **`20260219250000_create_people_cost_matrix_tags.sql`**
 - **Purpose**: Cost matrix tags per person
