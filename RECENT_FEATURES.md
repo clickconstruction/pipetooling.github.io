@@ -7,15 +7,18 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-27
+last_updated: 2026-03-02
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.76 → v2.4"
+version_range: "v2.77 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.76)"
+  - name: "Latest Version (v2.77)"
+    line: ~186
+    description: "Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import"
+  - name: "v2.76"
     line: ~186
     description: "Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile"
   - name: "v2.73"
@@ -124,8 +127,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
-2. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
+1. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
+2. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+3. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
 3. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
 3. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
 4. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
@@ -200,6 +204,28 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.77)
+
+**Date**: 2026-03-02
+
+### Settings – Data Backup and Maintenance
+
+- **Data backup (dev) moved to top**: The Data backup section (export projects, materials, bids) is now at the very top of the Settings page, directly below the header.
+- **Maintenance: Materials prices minimizable**: The "Maintenance: Materials prices" subsection (Review orphaned material prices) is now collapsible. Click the header to expand/collapse. Minimized by default.
+
+### Settings – Fixture Types
+
+- **Fixture type badges**: The fixture type list now shows only the three book systems: **takeoff**, **labor**, and **price** (removed "counts"). Order: takeoff, labor, price. Takeoff badge uses purple styling; labor and price retain blue and green.
+
+### Bids Counts – Import
+
+- **Import button**: Next to "Add row" in the Counts tab, an **Import** button opens a modal. Paste tab- or comma-separated text (Fixture, Count, Plan Page per line) to bulk-import count rows.
+- **Format**: One line per row. Columns: Fixture or Tie-in (required), Count (required), Plan Page (optional). Use tab or comma as delimiter. Supports paste from Excel.
+- **Example**: `Toilet	5	A-101` or `Lavatory Sink,3,`
+- **Success**: Toast shows "Imported X rows" (and "Y lines skipped" if any), modal closes, count list refreshes.
 
 ---
 

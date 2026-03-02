@@ -273,7 +273,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 ### Bids System
 - **Bid Board**: Main bid list and management
-- **Counts**: Fixture/tie-in quantity entry
+- **Counts**: Fixture/tie-in quantity entry; Import for bulk paste (tab/comma-separated)
 - **Takeoff**: Map counts to material templates → create POs
 - **Cost Estimate**: Calculate material + labor + driving costs
 - **Pricing**: Compare costs to price book, analyze margins

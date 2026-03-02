@@ -257,6 +257,7 @@ export default function Prospects() {
 
   // Prospect List state
   const [prospectListProspects, setProspectListProspects] = useState<Prospect[]>([])
+  const [prospectListSearchQuery, setProspectListSearchQuery] = useState('')
   const [prospectListLoading, setProspectListLoading] = useState(false)
   const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Record<number, boolean>>({})
   const [selectedProspectForList, setSelectedProspectForList] = useState<Prospect | null>(null)
@@ -1947,14 +1948,35 @@ export default function Prospects() {
             <p style={{ color: '#6b7280' }}>You do not have access to Prospect List.</p>
           ) : prospectListLoading ? (
             <p style={{ color: '#6b7280' }}>Loading...</p>
-          ) : (() => {
+          ) : (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
+                <input
+                  type="search"
+                  placeholder="Search company, contact, phone, or email..."
+                  value={prospectListSearchQuery}
+                  onChange={(e) => setProspectListSearchQuery(e.target.value)}
+                  style={{ width: '100%', maxWidth: 400, padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                />
+              </div>
+              {(() => {
             const NO_LONGER_FIT_KEY = -1
             const CANT_REACH_KEY = -2
+            const q = prospectListSearchQuery.trim().toLowerCase()
+            const filtered = q
+              ? prospectListProspects.filter((p) => {
+                  const company = (p.company_name ?? '').toLowerCase()
+                  const contact = (p.contact_name ?? '').toLowerCase()
+                  const phone = (p.phone_number ?? '').toLowerCase()
+                  const email = (p.email ?? '').toLowerCase()
+                  return company.includes(q) || contact.includes(q) || phone.includes(q) || email.includes(q)
+                })
+              : prospectListProspects
             const byWarmth = new Map<number, Prospect[]>()
             const active: Prospect[] = []
             const noLongerFit: Prospect[] = []
             const cantReach: Prospect[] = []
-            for (const p of prospectListProspects) {
+            for (const p of filtered) {
               if (p.prospect_fit_status === 'cant_reach') {
                 cantReach.push(p)
               } else if (p.prospect_fit_status === 'not_a_fit') {
@@ -2195,6 +2217,8 @@ export default function Prospects() {
               </div>
             )
           })()}
+            </>
+          )}
         </>
       )}
 

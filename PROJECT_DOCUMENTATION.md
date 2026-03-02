@@ -2264,7 +2264,7 @@ user_id = auth.uid()
 
 **Counts Tab**:
 - **Search** box is **below** the selected-bid panel, **full width**; column header is **"Project Name"**. **"Edit Bid"** button in tab header (next to Close) opens Edit Bid modal for the selected bid.
-- Selecting a bid shows an inline panel with **Add row** and its fixture/count rows. Table columns: **Fixture\***, **Count\***, **Plan Page**, **Actions** (centered headers).
+- Selecting a bid shows an inline panel with **Add row**, **Import**, and its fixture/count rows. **Import** opens a modal to paste tab- or comma-separated text (Fixture, Count, Plan Page per line) for bulk import. Table columns: **Fixture\***, **Count\***, **Plan Page**, **Actions** (centered headers).
 - **NewCountRow (add row)**: Fixture, Count, and Plan Page in a **combined** cell; **Fixture quick-select** buttons (Bathrooms, Kitchen, Laundry, etc.) below Fixture input; **number pad** below Count (1–9, C, 0, Delete). **Save** and **Save and Add** (Save and Add keeps form open for another row). Fixture and Count required.
 
 **Takeoffs Tab**:
@@ -3374,7 +3374,7 @@ For questions or issues:
 ### Bids Management
 - **New Bids section** with route `/bids` and nav link for devs, master_technicians, and assistants (same as Materials visibility except subcontractors).
 - **Bid Board tab**: Table of bids (project folder link, plans link, GC/Builder, project name/address, bid due date, bid date sent, won/lost, bid value, agreed value, projected maximum profit, distance from office, last contact, notes). New/Edit modal with bid folders links [plumbing] [electrical] [HVAC]; distance as number input; profit labeled "Projected Maximum Profit". GC/Builder uses **customers** table with searchable combobox (same pattern as ProjectForm customer picker). Clicking GC/Builder name opens modal with customer or legacy GC/Builder details and won/lost bid counts.
-- **Counts tab**: Search bids; select bid to show fixture/count rows. Columns: Fixture, Count, Plan Page, actions. Plan Page field added to `bids_count_rows` and persisted.
+- **Counts tab**: Search bids; select bid to show fixture/count rows. **Add row** and **Import** buttons. Import: paste tab- or comma-separated text (Fixture, Count, Plan Page per line). Columns: Fixture, Count, Plan Page, actions. Plan Page field added to `bids_count_rows` and persisted.
 - **Takeoffs / Cover Letter tabs**: Takeoffs (template mappings, create PO, view PO); Cover Letter (select bid; Customer + Project Name/Address; Inclusions/Exclusions/Terms with defaults; combined document; Edit bid button).
 - **Submission & Followup tab**: Add rows (contact method, notes, time/date) per selected bid.
 - **Database**: Tables `bids_gc_builders`, `bids`, `bids_count_rows`, `bids_submission_entries`; migrations `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `allow_assistants_access_bids.sql`. RLS grants devs, masters, and assistants full access to bids tables.
@@ -3389,10 +3389,11 @@ For questions or issues:
 - **Material Templates list**: Search input above the template list filters by name or description (case-insensitive). Empty search shows all templates; "No templates match" when the filter returns no results.
 
 ### Settings – Data Backup (Dev Only)
-- **Data backup (dev)** section: Three export buttons for devs only.
+- **Data backup (dev)** section: At the very top of Settings (below header). Three export buttons for devs only.
   - **Export projects backup**: Downloads JSON with customers, projects, project_workflows, project_workflow_steps, project_workflow_step_actions, step_subscriptions, workflow_step_line_items, workflow_projections. Filename: `projects-backup-YYYY-MM-DD.json`.
   - **Export materials backup**: Downloads JSON with supply_houses, material_parts, material_part_prices, material_templates, material_template_items. Filename: `materials-backup-YYYY-MM-DD.json`.
   - **Export bids backup**: Downloads JSON with bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items (all POs and PO items visible under RLS, including Takeoffs-created POs). Filename: `bids-backup-YYYY-MM-DD.json`.
+- **Maintenance: Materials prices**: Collapsible subsection (minimized by default). "Review orphaned material prices" button.
 - Exports respect RLS (user only receives data they can read). Each file includes an `exportedAt` timestamp.
 
 ## Recent Updates (v2.8)

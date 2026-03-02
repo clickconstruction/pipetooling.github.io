@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-02-26
+last_updated: 2026-03-02
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -314,6 +314,20 @@ Both Fixture and Count show:
 - Asterisk in label (Fixture*, Count*)
 - Placeholder text with asterisk
 - Client-side validation on save
+
+#### Import Counts
+
+- **Import button**: Next to "Add row" when a bid is selected. Opens a modal for bulk import.
+- **Format**: One line per count row. Columns separated by **tab** or **comma**:
+  - Fixture or Tie-in (required)
+  - Count (required)
+  - Plan Page (optional)
+- **Examples**:
+  - Tab: `Toilet	5	A-101`
+  - Comma: `Lavatory Sink,3,` or `Water Heater,1,M-1`
+- **Multiple plan pages**: Use tab delimiter and put the full plan page string in the third column: `Toilet	5	4, 6, 7`
+- **Paste from Excel**: Supports both tab and comma delimiters. Invalid lines are skipped and reported.
+- **Success**: Toast shows imported count; modal closes; count list refreshes.
 
 ---
 
