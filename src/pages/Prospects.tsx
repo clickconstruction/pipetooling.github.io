@@ -1876,6 +1876,11 @@ export default function Prospects() {
                       </span>
                     )}
                   </div>
+                  {comments[0]?.created_by_user && (
+                    <div>
+                      Last updated by: {(comments[0].created_by_user.name || comments[0].created_by_user.email || 'Unknown').trim()}
+                    </div>
+                  )}
                   <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
                   <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
                   <div>
@@ -2058,13 +2063,13 @@ export default function Prospects() {
             <p style={{ color: '#6b7280' }}>Loading...</p>
           ) : (
             <>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
+              <div style={{ width: '100%', marginBottom: '0.25rem' }}>
                 <input
                   type="search"
                   placeholder="Search company, contact, phone, or email..."
                   value={prospectListSearchQuery}
                   onChange={(e) => setProspectListSearchQuery(e.target.value)}
-                  style={{ width: '100%', maxWidth: 400, padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
                 />
               </div>
               {(() => {
