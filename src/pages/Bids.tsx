@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { PartFormModal } from '../components/PartFormModal'
@@ -838,6 +839,7 @@ function buildLienReleaseText(
 
 export default function Bids() {
   const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const editCustomerModal = useEditCustomerModal()
   const location = useLocation()
@@ -979,6 +981,9 @@ export default function Bids() {
   const [selectedBidForCounts, setSelectedBidForCounts] = useState<BidWithBuilder | null>(null)
   const [countRows, setCountRows] = useState<BidCountRow[]>([])
   const [addingCountRow, setAddingCountRow] = useState(false)
+  const [countsImportOpen, setCountsImportOpen] = useState(false)
+  const [countsImportText, setCountsImportText] = useState('')
+  const [countsImportError, setCountsImportError] = useState<string | null>(null)
 
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
@@ -1461,6 +1466,75 @@ export default function Bids() {
     loadCountRows(bidId)
     if (selectedBidForTakeoff?.id === bidId) loadTakeoffCountRows(bidId)
     if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
+  }
+
+  function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; page: string | null }>; skippedCount: number } {
+    const rows: Array<{ fixture: string; count: number; page: string | null }> = []
+    let skippedCount = 0
+    const lines = text.split(/\r?\n/)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      const delimiter = trimmed.includes('\t') ? '\t' : ','
+      const cells = trimmed.split(delimiter).map((c) => c.trim())
+      const fixture = cells[0] ?? ''
+      const countStr = cells[1] ?? ''
+      const page = (cells[2] ?? '').trim() || null
+      if (!fixture || !countStr) {
+        skippedCount++
+        continue
+      }
+      const count = parseFloat(countStr)
+      if (isNaN(count) || count < 0) {
+        skippedCount++
+        continue
+      }
+      rows.push({ fixture, count, page })
+    }
+    return { rows, skippedCount }
+  }
+
+  async function handleCountsImport() {
+    setCountsImportError(null)
+    const { rows, skippedCount } = parseCountsImportText(countsImportText)
+    if (rows.length === 0) {
+      setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
+      return
+    }
+    const bidId = selectedBidForCounts?.id
+    if (!bidId) return
+    const { data: maxSeqData } = await supabase
+      .from('bids_count_rows')
+      .select('sequence_order')
+      .eq('bid_id', bidId)
+      .order('sequence_order', { ascending: false })
+      .limit(1)
+    const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
+    let inserted = 0
+    let failed = 0
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      if (!row) continue
+      const { error } = await supabase.from('bids_count_rows').insert({
+        bid_id: bidId,
+        fixture: row.fixture,
+        count: row.count,
+        page: row.page,
+        sequence_order: maxSeq + 1 + i,
+      })
+      if (error) {
+        failed++
+        setCountsImportError(`Failed to insert ${failed} row(s): ${error.message}`)
+        if (inserted > 0) { refreshAfterCountsChange() }
+        return
+      }
+      inserted++
+    }
+    setCountsImportText('')
+    setCountsImportOpen(false)
+    refreshAfterCountsChange()
+    const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
+    showToast(msg, 'success')
   }
 
   async function loadSubmissionEntries(bidId: string) {
@@ -7476,14 +7550,67 @@ export default function Bids() {
                 </table>
               </div>
               {!addingCountRow && (
-                <button
-                  type="button"
-                  onClick={() => setAddingCountRow(true)}
-                  style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Add row
-                </button>
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setAddingCountRow(true)}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Add row
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCountsImportText(''); setCountsImportError(null); setCountsImportOpen(true) }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Import
+                  </button>
+                </div>
               )}
+            </div>
+          )}
+          {countsImportOpen && selectedBidForCounts && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 500, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+                <h2 style={{ margin: '0 0 1rem 0' }}>Import Counts</h2>
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  Paste from Excel or enter one row per line. Use tab or comma to separate columns.
+                </p>
+                <textarea
+                  value={countsImportText}
+                  onChange={(e) => { setCountsImportText(e.target.value); setCountsImportError(null) }}
+                  placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3'}
+                  rows={8}
+                  style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', fontFamily: 'monospace', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }}
+                />
+                {countsImportError && (
+                  <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>{countsImportError}</p>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setCountsImportOpen(false); setCountsImportText(''); setCountsImportError(null) }}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCountsImport}
+                    disabled={!countsImportText.trim()}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: countsImportText.trim() ? '#059669' : '#d1d5db',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: countsImportText.trim() ? 'pointer' : 'not-allowed',
+                    }}
+                  >
+                    Import
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           {!selectedBidForCounts && (
