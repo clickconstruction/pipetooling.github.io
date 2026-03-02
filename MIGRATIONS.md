@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–31, 2026
 
+**`20260310000000_prospect_devs_see_timer_events.sql`**
+- **Purpose**: Allow devs to see all prospect_timer_events for Prospects Team tab activity tracking
+- **Changes**: Add RLS policy "Devs can see all prospect timer events" on `prospect_timer_events` FOR SELECT USING (public.is_dev())
+- **Impact**: Devs can view per-user counts of cards marked/updated on the Prospects Team tab
+- **Category**: Prospects / RLS
+
 **`20260308000000_add_assistants_share_master_to_invoice_insert.sql`**
 - **Purpose**: Fix assistants (e.g. Wendi) unable to create invoices on jobs they see via shared masters
 - **Changes**: Add `assistants_share_master(auth.uid(), j.master_user_id)` to INSERT policies for `jobs_ledger_invoices` and `jobs_ledger_payments`; drop and recreate both policies

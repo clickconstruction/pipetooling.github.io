@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-02
+last_updated: 2026-02-11
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,7 +15,10 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.77 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.77)"
+  - name: "Latest Version (v2.78)"
+    line: ~186
+    description: "AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal"
+  - name: "v2.77"
     line: ~186
     description: "Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import"
   - name: "v2.76"
@@ -127,8 +130,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
-2. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+1. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
+2. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
+3. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
 3. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
 3. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
 3. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
@@ -204,6 +208,32 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.78)
+
+**Date**: 2026-02-11
+
+### AR Removed, Billed Awaiting Payment
+
+- **AR tab removed from Jobs**: The Receivables tab has been removed from the Jobs page. Old URLs (`/jobs?tab=receivables`) redirect to Reports.
+- **AR pin removed**: The "Pin AR to Dashboard" section has been removed from Settings. Existing AR pins were cleaned up via migration.
+- **ReceivablesSection removed from Quickfill**: The AR total and Payer table have been removed from the Quickfill page.
+- **Billed renamed to Billed Awaiting Payment**: In Jobs Stages, the "Billed" stage is now labeled "Billed Awaiting Payment". Dashboard pin and Settings pin use the same label.
+- **Billed Dashboard pin**: Devs can pin "Billed Awaiting Payment" to masters/devs dashboards (Settings → Pin Billed to Dashboard). Pin shows live count and total, e.g. "Billed Awaiting Payment (22) - $52,326.13". Loading state shows "Billed Awaiting Payment…" to avoid flash of stale label.
+
+### Quickfill – Billed Awaiting Payment Section
+
+- **New section**: Quickfill now includes a "Billed Awaiting Payment" summary section (below Jobs Billing Reminder). Shows header with count and total, table with HCP, Job, Assigned, Remaining columns, and "View in Jobs Stages" link. Visible to dev, master_technician, assistant.
+
+### Jobs Stages – Total by Name Modal
+
+- **Total by Name button**: Next to the Billed Awaiting Payment header, a "Total by Name" button opens a modal with a breakdown of job names and their remaining totals (sorted by total descending).
+- **Dashboard integration**: Clicking the Billed Awaiting Payment pin on the Dashboard navigates to Jobs Stages and opens the Total by Name modal automatically.
+- **take me to Job: Stages: Billed**: In the modal footer (bottom left), a link closes the modal, expands the Billed section if collapsed, and scrolls to the Billed Awaiting Payment section on the Jobs Stages page.
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Quickfill.tsx`, `src/components/quickfill/BilledAwaitingPaymentSection.tsx`, `src/hooks/useBilledTotal.ts`, `src/lib/pinnedTabs.ts`, `src/pages/Settings.tsx`, `supabase/migrations/20260305120000_remove_ar_pins.sql`
 
 ---
 

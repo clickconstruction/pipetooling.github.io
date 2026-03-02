@@ -3169,6 +3169,32 @@ export type Database = {
           },
         ]
       }
+      quickfill_section_marks: {
+        Row: {
+          marked_at: string
+          marked_by: string | null
+          section_id: string
+        }
+        Insert: {
+          marked_at?: string
+          marked_by?: string | null
+          section_id: string
+        }
+        Update: {
+          marked_at?: string
+          marked_by?: string | null
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_section_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth_key: string

@@ -150,7 +150,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
-- Jobs page — Receivables tab: Enter Payer, Point Of Contact, Account Rep, Amount to Collect (AR tracking)
+- Jobs page — Stages tab: Billed Awaiting Payment section with Total by Name modal
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (in Settings), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via Settings "Share Cost Matrix and Teams" section
@@ -175,7 +175,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - View adopted assistants and shared masters
 - Change own password
 - No user management
-- (Dev only) Pin AR, Supply Houses AP, External Team, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
+- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, External Team, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
 
 **Edge Functions**:
 - Can call `login-as-user` (impersonate assistants/subs; cannot impersonate devs)
@@ -220,7 +220,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **People**:
 - View people they created and people shared with their master (via master_shares)
-- Jobs page — Receivables tab: Enter Payer, Point Of Contact, Account Rep, Amount (for master's AR)
+- Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 - Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
@@ -348,7 +348,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Access**:
 - Dashboard, Materials, Jobs (Reports and Ledger tabs), Bids (Bid Board, RFI, Change Order, Lien Release), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Receivables, Sub Sheet Ledger, Teams Summary), other Bids tabs (Builder Review, Counts, Takeoffs, Cost Estimate, Pricing, Cover Letter, Submission)
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Teams Summary), other Bids tabs (Builder Review, Counts, Takeoffs, Cost Estimate, Pricing, Cover Letter, Submission)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -372,7 +372,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 **Jobs - Reports and Ledger Tabs**:
 - **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only)
 - **Ledger (Billing) tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
-- Other Jobs tabs hidden (Receivables, Sub Sheet Ledger, Teams Summary)
+- Other Jobs tabs hidden (Sub Sheet Ledger, Teams Summary)
 
 **Dashboard**:
 - Recent Reports section (same as masters)

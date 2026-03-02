@@ -144,6 +144,8 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Job Tally**: Add parts to jobs by fixture; quantity stepper (1→2→3, whole numbers only); down arrow hidden when quantity is 1; create PO from tally for review
 - **Dashboard Recent Reports** (8 shown): Click to view in modal; envelope icon on unread; read reports grayed with hide (X) button; realtime updates when reports added
 - **Jobs Reports**: Devs can delete reports; others have full CRUD except delete
+- **Jobs Stages – Billed Awaiting Payment**: Stage shows jobs and invoices awaiting payment; Total by Name modal breaks down by job; Dashboard pin opens modal and navigates to Stages
+- **Quickfill – Billed Awaiting Payment**: Summary section with HCP, Job, Assigned, Remaining table; link to Jobs Stages
 
 ## Deployment
 

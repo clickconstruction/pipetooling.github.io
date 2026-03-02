@@ -44,7 +44,7 @@ const EditIcon = () => (
   </svg>
 )
 
-type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert'
+type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert' | 'team'
 
 type Prospect = {
   id: string
@@ -73,7 +73,7 @@ type ProspectComment = {
   created_by_user?: { name: string | null; email: string | null } | null
 }
 
-const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert']
+const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert', 'team']
 
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
@@ -337,11 +337,25 @@ export default function Prospects() {
   const [emailSentTemplateKeys, setEmailSentTemplateKeys] = useState<Set<string>>(new Set())
   const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
+  // Team tab state (dev-only) - last 30 days
+  type TeamRow = { user_id: string; name: string; email: string | null; cards_marked: number; cards_updated: number }
+  const [teamDataByDate, setTeamDataByDate] = useState<Record<string, TeamRow[]>>({})
+  const [teamLoading, setTeamLoading] = useState(false)
+
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
     if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      setActiveTab(tab as ProspectsTab)
+      if (tab === 'team' && authRole !== 'dev') {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'follow-up')
+          return next
+        }, { replace: true })
+        setActiveTab('follow-up')
+      } else {
+        setActiveTab(tab as ProspectsTab)
+      }
     } else if (!tab) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -349,7 +363,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams])
+  }, [location.search, setSearchParams, authRole])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -892,6 +906,88 @@ export default function Prospects() {
       setProspectLedgerSecondsMap({})
     }
   }, [activeTab, authUser?.id])
+
+  const loadTeamActivity = useCallback(async () => {
+    if (authRole !== 'dev') return
+    setTeamLoading(true)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startDate = new Date(today)
+    startDate.setDate(startDate.getDate() - 29)
+    const startIso = startDate.toISOString()
+    const endIso = new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString()
+    try {
+      const [usersRes, timerRes, commentsRes] = await Promise.all([
+        supabase.from('users').select('id, name, email, role').in('role', ['dev', 'master_technician', 'assistant']).order('name'),
+        (supabase as any).from('prospect_timer_events').select('user_id, prospect_id, created_at').gte('created_at', startIso).lte('created_at', endIso),
+        supabase.from('prospect_comments').select('created_by, prospect_id, created_at').gte('created_at', startIso).lte('created_at', endIso),
+      ])
+      const users = (usersRes.data ?? []) as Array<{ id: string; name: string | null; email: string | null; role: string }>
+      const timerRows = (timerRes.data ?? []) as Array<{ user_id: string; prospect_id: string | null; created_at: string }>
+      const commentRows = (commentsRes.data ?? []) as Array<{ created_by: string; prospect_id: string; created_at: string }>
+      const userList: TeamRow[] = users.map((u) => ({
+        user_id: u.id,
+        name: (u.name || u.email || 'Unknown').trim(),
+        email: u.email,
+        cards_marked: 0,
+        cards_updated: 0,
+      }))
+      const markedByDateUser = new Map<string, Map<string, Set<string>>>()
+      const updatedByDateUser = new Map<string, Map<string, Set<string>>>()
+      function getDateKey(iso: string): string {
+        const d = new Date(iso)
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      }
+      for (const r of timerRows) {
+        if (r.prospect_id) {
+          const dk = getDateKey(r.created_at)
+          let byUser = markedByDateUser.get(dk)
+          if (!byUser) {
+            byUser = new Map()
+            markedByDateUser.set(dk, byUser)
+          }
+          const set = byUser.get(r.user_id) ?? new Set()
+          set.add(r.prospect_id)
+          byUser.set(r.user_id, set)
+        }
+      }
+      for (const r of commentRows) {
+        const dk = getDateKey(r.created_at)
+        let byUser = updatedByDateUser.get(dk)
+        if (!byUser) {
+          byUser = new Map()
+          updatedByDateUser.set(dk, byUser)
+        }
+        const set = byUser.get(r.created_by) ?? new Set()
+        set.add(r.prospect_id)
+        byUser.set(r.created_by, set)
+      }
+      const result: Record<string, TeamRow[]> = {}
+      for (let i = 0; i < 30; i++) {
+        const d = new Date(today)
+        d.setDate(d.getDate() - (29 - i))
+        const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        const markedByUser = markedByDateUser.get(dk)
+        const updatedByUser = updatedByDateUser.get(dk)
+        result[dk] = userList.map((u) => ({
+          ...u,
+          cards_marked: markedByUser?.get(u.user_id)?.size ?? 0,
+          cards_updated: updatedByUser?.get(u.user_id)?.size ?? 0,
+        }))
+      }
+      setTeamDataByDate(result)
+    } catch {
+      setTeamDataByDate({})
+    } finally {
+      setTeamLoading(false)
+    }
+  }, [authRole])
+
+  useEffect(() => {
+    if (activeTab === 'team' && authRole === 'dev') {
+      loadTeamActivity()
+    }
+  }, [activeTab, authRole, loadTeamActivity])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -1471,6 +1567,18 @@ export default function Prospects() {
         >
           Convert
         </button>
+        {authRole === 'dev' && (
+          <>
+            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => setTab('team')}
+              style={tabStyle(activeTab === 'team')}
+            >
+              Team
+            </button>
+          </>
+        )}
       </div>
 
       {activeTab === 'follow-up' && (
@@ -2421,6 +2529,62 @@ export default function Prospects() {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'team' && authRole === 'dev' && (
+        <div style={{ padding: '1rem 0' }}>
+          {teamLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {(() => {
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+                const dates: string[] = []
+                for (let i = 0; i < 30; i++) {
+                  const d = new Date(today)
+                  d.setDate(d.getDate() - i)
+                  dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+                }
+                return dates
+                  .map((dk) => {
+                    const rows = teamDataByDate[dk] ?? []
+                    const visibleRows = rows.filter((r) => r.cards_marked > 0 || r.cards_updated > 0)
+                    if (rows.length === 0 || visibleRows.length === 0) return null
+                    const d = new Date(dk + 'T12:00:00')
+                    const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                    return (
+                      <section key={dk} style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ padding: '0.5rem 1rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.9375rem' }}>
+                          {dateLabel}
+                        </div>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Marked</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleRows.map((r) => (
+                                <tr key={r.user_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_marked}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_updated}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                  )
+                })
+              })()}
+            </div>
           )}
         </div>
       )}

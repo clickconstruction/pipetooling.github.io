@@ -200,12 +200,13 @@ export default function Settings() {
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
   const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
-  // AR pin to dashboard (dev-only)
-  const [pinARMasterIds, setPinARMasterIds] = useState<Set<string>>(new Set())
-  const [pinARSaving, setPinARSaving] = useState(false)
-  const [pinARUnpinSaving, setPinARUnpinSaving] = useState(false)
-  const [pinARMessage, setPinARMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [arTotal, setArTotal] = useState<number | null>(null)
+  // Billed pin to dashboard (dev-only)
+  const [pinBilledMasterIds, setPinBilledMasterIds] = useState<Set<string>>(new Set())
+  const [pinBilledSaving, setPinBilledSaving] = useState(false)
+  const [pinBilledUnpinSaving, setPinBilledUnpinSaving] = useState(false)
+  const [pinBilledMessage, setPinBilledMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [billedCount, setBilledCount] = useState<number | null>(null)
+  const [billedTotal, setBilledTotal] = useState<number | null>(null)
   // Supply Houses AP pin to dashboard (dev-only)
   const [pinAPMasterIds, setPinAPMasterIds] = useState<Set<string>>(new Set())
   const [pinAPSaving, setPinAPSaving] = useState(false)
@@ -1134,15 +1135,20 @@ export default function Settings() {
     }
   }
 
-  async function loadArTotalAndPinnedUsers() {
+  async function loadBilledTotalAndPinnedUsers() {
     if (myRole !== 'dev') return
-    const [arRes, pinnedRes] = await Promise.all([
-      supabase.from('jobs_receivables').select('amount'),
-      getUsersWithPin('/jobs', 'receivables'),
+    const [jobsRes, invoicesRes, pinnedRes] = await Promise.all([
+      supabase.from('jobs_ledger').select('revenue, payments_made').eq('status', 'billed'),
+      supabase.from('jobs_ledger_invoices').select('amount').eq('status', 'billed'),
+      getUsersWithPin('/jobs', 'billed'),
     ])
-    const total = (arRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
-    setArTotal(total)
-    setPinARMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
+    const jobs = (jobsRes.data ?? []) as Array<{ revenue: number | null; payments_made: number | null }>
+    const invoices = (invoicesRes.data ?? []) as Array<{ amount: number }>
+    const jobsTotal = jobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+    const invoicesTotal = invoices.reduce((s, i) => s + Number(i.amount ?? 0), 0)
+    setBilledCount(jobs.length + invoices.length)
+    setBilledTotal(jobsTotal + invoicesTotal)
+    setPinBilledMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
   }
 
   async function loadSupplyHousesAPTotalAndPinnedUsers() {
@@ -3175,7 +3181,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (myRole === 'dev') {
-      loadArTotalAndPinnedUsers()
+      loadBilledTotalAndPinnedUsers()
       loadSupplyHousesAPTotalAndPinnedUsers()
       loadExternalTeamTotalAndPinnedUsers()
       loadCostMatrixPinnedUsers()
@@ -7401,16 +7407,16 @@ export default function Settings() {
               </div>
 
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin AR to Dashboard</h2>
+                <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin AR total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin Billed count and total to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
-          {pinARMasterIds.size > 0 && (
+          {pinBilledMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
               Pinned for:{' '}
               {users
                 .filter((u) => u.role === 'master_technician' || u.role === 'dev')
-                .filter((u) => pinARMasterIds.has(u.id))
+                .filter((u) => pinBilledMasterIds.has(u.id))
                 .map((u) => u.name || u.email || 'Unknown')
                 .join(', ')}
             </p>
@@ -7420,29 +7426,31 @@ export default function Settings() {
               <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                 <input
                   type="checkbox"
-                  checked={pinARMasterIds.has(u.id)}
+                  checked={pinBilledMasterIds.has(u.id)}
                   onChange={(e) => {
-                    setPinARMasterIds((prev) => {
+                    setPinBilledMasterIds((prev) => {
                       const next = new Set(prev)
                       if (e.target.checked) next.add(u.id)
                       else next.delete(u.id)
                       return next
                     })
                   }}
-                  disabled={pinARSaving}
+                  disabled={pinBilledSaving}
                 />
                 {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
               </label>
             ))}
             <button
               type="button"
-              disabled={pinARSaving || pinARMasterIds.size === 0}
+              disabled={pinBilledSaving || pinBilledMasterIds.size === 0}
               onClick={async () => {
-                setPinARSaving(true)
-                setPinARMessage(null)
-                const total = arTotal ?? 0
-                const item = { path: '/jobs', label: `AR | $${Math.round(total).toLocaleString('en-US')}`, tab: 'receivables' as const }
-                const ids = Array.from(pinARMasterIds)
+                setPinBilledSaving(true)
+                setPinBilledMessage(null)
+                const count = billedCount ?? 0
+                const total = billedTotal ?? 0
+                const label = `Billed Awaiting Payment (${count}) - $${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                const item = { path: '/jobs', label, tab: 'billed' as const }
+                const ids = Array.from(pinBilledMasterIds)
                 let ok = 0
                 let errMsg: string | null = null
                 for (const userId of ids) {
@@ -7450,12 +7458,12 @@ export default function Settings() {
                   if (error) errMsg = error.message
                   else ok++
                 }
-                setPinARSaving(false)
-                if (errMsg) setPinARMessage({ type: 'error', text: errMsg })
+                setPinBilledSaving(false)
+                if (errMsg) setPinBilledMessage({ type: 'error', text: errMsg })
                 else {
-                  loadArTotalAndPinnedUsers()
-                  setPinARMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
-                  setTimeout(() => setPinARMessage(null), 5000)
+                  loadBilledTotalAndPinnedUsers()
+                  setPinBilledMessage({ type: 'success', text: `Pinned for ${ok} user${ok !== 1 ? 's' : ''}. Users may need to refresh their Dashboard to see it.` })
+                  setTimeout(() => setPinBilledMessage(null), 5000)
                 }
               }}
               style={{
@@ -7465,7 +7473,7 @@ export default function Settings() {
                 color: 'white',
                 border: 'none',
                 borderRadius: 6,
-                cursor: pinARSaving || pinARMasterIds.size === 0 ? 'not-allowed' : 'pointer',
+                cursor: pinBilledSaving || pinBilledMasterIds.size === 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
@@ -7473,17 +7481,17 @@ export default function Settings() {
             </button>
             <button
               type="button"
-              disabled={pinARSaving || pinARUnpinSaving}
+              disabled={pinBilledSaving || pinBilledUnpinSaving}
               onClick={async () => {
-                setPinARUnpinSaving(true)
-                setPinARMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/jobs', 'receivables')
-                setPinARUnpinSaving(false)
-                if (error) setPinARMessage({ type: 'error', text: error.message })
+                setPinBilledUnpinSaving(true)
+                setPinBilledMessage(null)
+                const { count, error } = await deletePinForPathAndTab('/jobs', 'billed')
+                setPinBilledUnpinSaving(false)
+                if (error) setPinBilledMessage({ type: 'error', text: error.message })
                 else {
-                  loadArTotalAndPinnedUsers()
-                  setPinARMessage({ type: 'success', text: `Unpinned AR for ${count} user${count !== 1 ? 's' : ''}.` })
-                  setTimeout(() => setPinARMessage(null), 5000)
+                  loadBilledTotalAndPinnedUsers()
+                  setPinBilledMessage({ type: 'success', text: `Unpinned Billed for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setTimeout(() => setPinBilledMessage(null), 5000)
                 }
               }}
               style={{
@@ -7493,16 +7501,16 @@ export default function Settings() {
                 color: '#374151',
                 border: '1px solid #d1d5db',
                 borderRadius: 6,
-                cursor: pinARSaving || pinARUnpinSaving ? 'not-allowed' : 'pointer',
+                cursor: pinBilledSaving || pinBilledUnpinSaving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
               }}
             >
               Unpin All
             </button>
           </div>
-          {pinARMessage && (
-            <p style={{ color: pinARMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-              {pinARMessage.text}
+          {pinBilledMessage && (
+            <p style={{ color: pinBilledMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+              {pinBilledMessage.text}
             </p>
           )}
         </div>

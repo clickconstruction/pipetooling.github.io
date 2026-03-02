@@ -17,7 +17,7 @@ import {
 } from '../lib/pinnedTabs'
 import { useToastContext } from '../contexts/ToastContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
-import { useARTotal } from '../hooks/useARTotal'
+import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useExternalTeamTotal } from '../hooks/useExternalTeamTotal'
 import type { Database } from '../types/database'
@@ -270,12 +270,12 @@ export default function Dashboard() {
   const visiblePins = filterPinnedByRole(pinnedRoutes, role)
   const pinsToShow = visiblePins.filter((p) => p.path !== '/dashboard' && p.path !== '/')
   const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
-  const hasARPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'receivables')
+  const hasBilledPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'billed')
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
   const hasExternalTeamPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'external-team')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
-  const { total: arTotal } = useARTotal(hasARPin, financialRefreshKey)
+  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: externalTeamTotal } = useExternalTeamTotal(hasExternalTeamPin, financialRefreshKey)
 
@@ -365,15 +365,16 @@ export default function Dashboard() {
 
   // Realtime: refresh financial pin totals when underlying data changes
   useEffect(() => {
-    if (!authUser?.id || (!hasARPin && !hasSupplyHousesAPPin && !hasExternalTeamPin)) return
+    if (!authUser?.id || (!hasBilledPin && !hasSupplyHousesAPPin && !hasExternalTeamPin)) return
     const channel = supabase
       .channel('dashboard-financial-pins')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_receivables' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'external_team_job_payments' }, () => setFinancialRefreshKey((k) => k + 1))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [authUser?.id, hasARPin, hasSupplyHousesAPPin, hasExternalTeamPin])
+  }, [authUser?.id, hasBilledPin, hasSupplyHousesAPPin, hasExternalTeamPin])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -1408,15 +1409,15 @@ export default function Dashboard() {
             {pinsToShow.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
-              const isAR = item.path === '/jobs' && item.tab === 'receivables'
+              const isBilled = item.path === '/jobs' && item.tab === 'billed'
               const isExternalTeam = item.path === '/materials' && item.tab === 'external-team'
               const to = item.tab
-                ? `${item.path}?tab=${encodeURIComponent(item.tab)}${isCostMatrix ? '#cost-matrix' : ''}`
+                ? `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
                 : item.path
               const displayLabel = isCostMatrix
                 ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : isAR
-                  ? (arTotal != null ? `AR: $${Math.round(arTotal).toLocaleString('en-US')}` : item.label)
+                : isBilled
+                  ? (billedCount != null && billedTotal != null ? `Billed Awaiting Payment (${billedCount}) - $${billedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Billed Awaiting Payment…')
                   : isSupplyHouseAP
                     ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
                     : isExternalTeam
