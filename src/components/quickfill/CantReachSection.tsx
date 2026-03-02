@@ -51,7 +51,7 @@ export function CantReachSection() {
   const [prospects, setProspects] = useState<Prospect[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
 
   const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
 

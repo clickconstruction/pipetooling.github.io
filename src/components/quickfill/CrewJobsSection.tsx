@@ -23,6 +23,7 @@ export function CrewJobsSection() {
   const [crewJobSearchResults, setCrewJobSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
   const [teamLaborSearch, setTeamLaborSearch] = useState('')
   const [breakdownModal, setBreakdownModal] = useState<{ jobId: string; jobName: string; type: 'hours' | 'cost' } | null>(null)
+  const [teamLaborOpen, setTeamLaborOpen] = useState(false)
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string; job_address: string }>>({})
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
@@ -352,15 +353,26 @@ export function CrewJobsSection() {
               </table>
             </div>
           )}
-          <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem' }}>Team Job Labor</h3>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <input type="search" placeholder="Search HCP, job name, address…" value={teamLaborSearch} onChange={(e) => setTeamLaborSearch(e.target.value)} style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }} />
-          </div>
-          {teamLaborLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading Team Job Labor…</p>
-          ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <div style={{ marginTop: '1.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setTeamLaborOpen((prev) => !prev)}
+              aria-expanded={teamLaborOpen}
+              style={{ margin: 0, width: '100%', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+            >
+              <span aria-hidden>{teamLaborOpen ? '\u25BC' : '\u25B6'}</span>
+              Team Job Labor
+            </button>
+            {teamLaborOpen && (
+              <>
+                <div style={{ marginBottom: '0.75rem', marginTop: '0.75rem' }}>
+                  <input type="search" placeholder="Search HCP, job name, address…" value={teamLaborSearch} onChange={(e) => setTeamLaborSearch(e.target.value)} style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }} />
+                </div>
+                {teamLaborLoading ? (
+                  <p style={{ color: '#6b7280' }}>Loading Team Job Labor…</p>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
@@ -389,9 +401,12 @@ export function CrewJobsSection() {
                   ))}
                 </tbody>
               </table>
-              {teamLaborData.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No job labor data yet. Add jobs in Crew Jobs above.</p>}
-            </div>
-          )}
+                    {teamLaborData.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No job labor data yet. Add jobs in Crew Jobs above.</p>}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </>
       )}
 

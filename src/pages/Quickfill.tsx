@@ -8,15 +8,16 @@ import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection
 import { HoursSection } from '../components/quickfill/HoursSection'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-hours', sectionId: 'hours', label: 'Hours' },
-  { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
-  { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting' },
+  { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
-  { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: "Can't Reach" },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs' },
-  { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
+  { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
+  { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses and Subs' },
+  { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
 ]
 
 type ButtonColor = 'red' | 'yellow' | 'green'
@@ -64,8 +65,9 @@ function hoursUntilExpand(markedAt: string): number {
 
 export default function Quickfill() {
   const { user: authUser } = useAuth()
+  const unpricedFixturesCount = useUnpricedFixturesCount()
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
-  const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set())
+  const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
 
   async function loadSectionMarks() {
     const { data } = await supabase
@@ -113,7 +115,7 @@ export default function Quickfill() {
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
-        {SECTIONS.map(({ id, sectionId, label }) => {
+        {SECTIONS.filter(({ sectionId }) => sectionId !== 'unpriced-fixtures' || unpricedFixturesCount > 0).map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
           const color = getButtonColor(mark?.marked_at ?? null)
           return (
@@ -159,19 +161,8 @@ export default function Quickfill() {
         <HoursSection />
       </QuickfillSectionWrapper>
       <QuickfillSectionWrapper
-        id="quickfill-jobs-billing"
-        label="Jobs Billing"
-        color={getButtonColor(sectionMarks['jobs-billing']?.marked_at ?? null)}
-        collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
-        mark={sectionMarks['jobs-billing']}
-        onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
-        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'jobs-billing']))}
-      >
-        <JobsBillingReminderSection />
-      </QuickfillSectionWrapper>
-      <QuickfillSectionWrapper
         id="quickfill-billed-awaiting"
-        label="Billed Awaiting"
+        label="Billing Awaiting Payments"
         color={getButtonColor(sectionMarks['billed-awaiting']?.marked_at ?? null)}
         collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
         mark={sectionMarks['billed-awaiting']}
@@ -180,28 +171,19 @@ export default function Quickfill() {
       >
         <BilledAwaitingPaymentSection />
       </QuickfillSectionWrapper>
-      <QuickfillSectionWrapper
-        id="quickfill-unpriced-fixtures"
-        label="Unpriced Fixtures"
-        color={getButtonColor(sectionMarks['unpriced-fixtures']?.marked_at ?? null)}
-        collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
-        mark={sectionMarks['unpriced-fixtures']}
-        onMarkUpToDate={() => markSectionUpToDate('unpriced-fixtures')}
-        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'unpriced-fixtures']))}
-      >
-        <UnpricedFixturesSection />
-      </QuickfillSectionWrapper>
-      <QuickfillSectionWrapper
-        id="quickfill-cant-reach"
-        label="Can't Reach"
-        color={getButtonColor(sectionMarks['cant-reach']?.marked_at ?? null)}
-        collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
-        mark={sectionMarks['cant-reach']}
-        onMarkUpToDate={() => markSectionUpToDate('cant-reach')}
-        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'cant-reach']))}
-      >
-        <CantReachSection />
-      </QuickfillSectionWrapper>
+      {unpricedFixturesCount > 0 && (
+        <QuickfillSectionWrapper
+          id="quickfill-unpriced-fixtures"
+          label="Unpriced Fixtures"
+          color={getButtonColor(sectionMarks['unpriced-fixtures']?.marked_at ?? null)}
+          collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
+          mark={sectionMarks['unpriced-fixtures']}
+          onMarkUpToDate={() => markSectionUpToDate('unpriced-fixtures')}
+          onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'unpriced-fixtures']))}
+        >
+          <UnpricedFixturesSection />
+        </QuickfillSectionWrapper>
+      )}
       <QuickfillSectionWrapper
         id="quickfill-crew-jobs"
         label="Crew Jobs"
@@ -214,8 +196,19 @@ export default function Quickfill() {
         <CrewJobsSection />
       </QuickfillSectionWrapper>
       <QuickfillSectionWrapper
+        id="quickfill-cant-reach"
+        label="Unreachable Prospects"
+        color={getButtonColor(sectionMarks['cant-reach']?.marked_at ?? null)}
+        collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
+        mark={sectionMarks['cant-reach']}
+        onMarkUpToDate={() => markSectionUpToDate('cant-reach')}
+        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'cant-reach']))}
+      >
+        <CantReachSection />
+      </QuickfillSectionWrapper>
+      <QuickfillSectionWrapper
         id="quickfill-supply-houses"
-        label="Supply Houses"
+        label="Supply Houses and Subs"
         color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
         collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
         mark={sectionMarks['supply-houses']}
@@ -223,6 +216,17 @@ export default function Quickfill() {
         onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'supply-houses']))}
       >
         <SupplyHousesSection />
+      </QuickfillSectionWrapper>
+      <QuickfillSectionWrapper
+        id="quickfill-jobs-billing"
+        label="Jobs Billing"
+        color={getButtonColor(sectionMarks['jobs-billing']?.marked_at ?? null)}
+        collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
+        mark={sectionMarks['jobs-billing']}
+        onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
+        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'jobs-billing']))}
+      >
+        <JobsBillingReminderSection />
       </QuickfillSectionWrapper>
     </div>
   )
@@ -242,7 +246,7 @@ function QuickfillSectionWrapper({
   label: string
   color: ButtonColor
   collapsed: boolean
-  mark: { marked_at: string; marked_by?: string } | undefined
+  mark: { marked_at: string; marked_by?: string; marked_by_name?: string | null } | undefined
   onMarkUpToDate: () => void
   onOpenNow: () => void
   children: React.ReactNode
@@ -265,7 +269,7 @@ function QuickfillSectionWrapper({
           }}
         >
           <span>
-            {label} — Marked up to date at {mark ? formatTime(mark.marked_at) : ''}. Expands in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
+            {label} — Marked up to date at {mark ? formatTime(mark.marked_at) : ''}{mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''}. Expands automatically in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
           </span>
           <button
             type="button"
