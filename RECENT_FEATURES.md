@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-02-11
+last_updated: 2026-03-11
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.77 → v2.4"
+version_range: "v2.79 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.78)"
+  - name: "Latest Version (v2.79)"
     line: ~186
+    description: "Quickfill feedback loop, section nav, Prospects Team tab, label updates"
+  - name: "v2.78"
+    line: ~240
     description: "AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal"
   - name: "v2.77"
     line: ~186
@@ -113,7 +116,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.74)"
+  - "Latest features at top (v2.79)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -130,12 +133,13 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
-2. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
-3. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
-3. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
-3. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
-3. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
+1. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
+2. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
+3. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
+4. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+5. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
+6. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
+7. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
 4. [Latest Updates (v2.72)](#latest-updates-v272) - Whole Jobs Through Stages
 5. [Latest Updates (v2.71)](#latest-updates-v271) - Partial Invoices (Option A)
 6. [Latest Updates (v2.70)](#latest-updates-v270) - Payments Made, Remaining, Stages enhancements
@@ -208,6 +212,47 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.79)
+
+**Date**: 2026-03-11
+
+### Quickfill – Section Navigation and Feedback Loop
+
+- **Section nav buttons**: Row of buttons below the title (Hours, Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs, Unreachable Prospects, Supply Houses and Subs, Jobs Billing). Click to scroll to section. Each button shows "Last marked: X" and "by [user]" below.
+- **Mark up to date**: Below each section, a "Mark [section] up to date!" button. When clicked: section collapses for 12 hours, nav button turns green. Button hidden when section is collapsed; re-marking collapses the section.
+- **Color states**: Nav buttons green (marked within 12h), yellow (12–30h), red (>30h or never).
+- **Open now**: Collapsed sections show "Open now" button to expand immediately. Collapsed message: "Marked up to date at X by [user]. Expands automatically in Yh."
+- **Section order**: Hours first; then Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs, Unreachable Prospects, Supply Houses and Subs, Jobs Billing last.
+- **Unpriced Fixtures**: Nav button and section hidden when no unpriced fixtures.
+
+### Quickfill – Label and Layout Updates
+
+- **Billed Awaiting** → **Billing Awaiting Payments**
+- **Can't Reach** → **Unreachable Prospects** (expanded by default).
+- **Supply Houses** → **Supply Houses and Subs**
+- **Unreachable Prospects** moved after Crew Jobs.
+- **Team Job Labor** (in Crew Jobs): Collapsible, collapsed by default.
+
+### Quickfill – Database
+
+- **quickfill_section_marks** table: `section_id`, `marked_at`, `marked_by`. RLS: dev, master_technician, assistant can SELECT and UPSERT.
+- **useUnpricedFixturesCount** hook: Fetches unpriced fixtures count for conditional Unpriced Fixtures visibility.
+
+### Prospects – Team Tab (Dev-Only)
+
+- **Team tab**: Shows last 30 days of prospect activity on one scrollable page. Each day: User | Cards Marked | Cards Updated. Rows with 0/0 hidden; days with no activity hidden.
+- **Migration**: `prospect_devs_see_timer_events` allows devs to SELECT all `prospect_timer_events` for Team activity tracking.
+
+### Prospects – Other Updates
+
+- **Search bar**: Full width in Prospect List.
+- **Last updated by**: Between Last Contact and Last Successful Contact, shows "Last updated by: [user]" (from most recent comment).
+- **Can't reach expanded**: In Prospect List, "Can't reach (N)" section expanded by default.
+
+**Files**: `src/pages/Quickfill.tsx`, `src/components/quickfill/CrewJobsSection.tsx`, `src/components/quickfill/CantReachSection.tsx`, `src/hooks/useUnpricedFixturesCount.ts`, `src/pages/Prospects.tsx`, `supabase/migrations/20260311000000_quickfill_section_marks.sql`, `src/types/database.ts`
 
 ---
 
