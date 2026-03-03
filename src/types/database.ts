@@ -3723,6 +3723,38 @@ export type Database = {
           },
         ]
       }
+      user_prospect_quick_notes: {
+        Row: {
+          id: string
+          user_id: string
+          label: string
+          sequence_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          label: string
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          label?: string
+          sequence_order?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_prospect_quick_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_report_notification_preferences: {
         Row: {
           created_at: string | null

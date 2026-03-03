@@ -266,6 +266,9 @@ export default function Prospects() {
   const [followUpNotes, setFollowUpNotes] = useState('')
   const [followUpNotesSaving, setFollowUpNotesSaving] = useState(false)
 
+  // Per-user quick notes (e.g. "left voicemail") - below comments textarea, above saved comments
+  const [quickNotes, setQuickNotes] = useState<Array<{ id: string; label: string; sequence_order: number }>>([])
+
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
 
@@ -595,10 +598,21 @@ export default function Prospects() {
     setPersonPhone(first?.phone ?? null)
   }
 
+  async function loadQuickNotes() {
+    if (!authUser?.id) return
+    const { data } = await supabase
+      .from('user_prospect_quick_notes')
+      .select('id, label, sequence_order')
+      .eq('user_id', authUser.id)
+      .order('sequence_order')
+    setQuickNotes((data ?? []) as Array<{ id: string; label: string; sequence_order: number }>)
+  }
+
   useEffect(() => {
     if (authUser?.id) {
       loadCopyTemplates()
       loadPersonPhone()
+      loadQuickNotes()
       supabase.from('users').select('name').eq('id', authUser.id).maybeSingle().then(({ data }) => {
         setAuthUserName((data as { name: string } | null)?.name ?? '')
       })
@@ -1394,6 +1408,30 @@ export default function Prospects() {
     setSaving(false)
   }
 
+  function handleQuickNoteClick(label: string) {
+    setCommentInputValue(label)
+  }
+
+  async function handleAddQuickNote() {
+    if (!authUser?.id) return
+    const label = prompt('Quick note label:')
+    if (!label?.trim()) return
+    const { error } = await supabase.from('user_prospect_quick_notes').insert({
+      user_id: authUser.id,
+      label: label.trim(),
+      sequence_order: quickNotes.length,
+    })
+    if (!error) await loadQuickNotes()
+    else showToast(error.message, 'error')
+  }
+
+  async function handleDeleteQuickNote(id: string) {
+    if (!authUser?.id) return
+    const { error } = await supabase.from('user_prospect_quick_notes').delete().eq('id', id)
+    if (!error) await loadQuickNotes()
+    else showToast(error.message, 'error')
+  }
+
   async function handleNextProspect(skipTimerEvent?: boolean) {
     if (followUpProspects.length <= 1) return
     if (!skipTimerEvent && currentProspect && authUser?.id) {
@@ -1827,6 +1865,65 @@ export default function Prospects() {
                     boxSizing: 'border-box',
                   }}
                 />
+                {/* Quick notes - below textarea, above comments list */}
+                {canAccessFollowUp && (
+                  <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                    {quickNotes.map((qn) => (
+                      <span key={qn.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickNoteClick(qn.label)}
+                          disabled={saving}
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            fontSize: '0.8125rem',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            fontWeight: 500,
+                            opacity: saving ? 0.6 : 1,
+                          }}
+                        >
+                          {qn.label}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuickNote(qn.id)}
+                          title="Remove quick note"
+                          style={{
+                            padding: '0.2rem 0.35rem',
+                            fontSize: '0.75rem',
+                            background: 'none',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleAddQuickNote}
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        fontSize: '0.8125rem',
+                        background: '#f3f4f6',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        color: '#6b7280',
+                      }}
+                    >
+                      + Add
+                    </button>
+                  </div>
+                )}
                 {comments.length === 0 ? (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No comments yet.</p>
                 ) : (
