@@ -109,7 +109,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260310000001_create_user_prospect_quick_notes.sql`**
 - **Purpose**: Per-user quick note buttons for Prospects Follow Up (e.g. "left voicemail")
 - **Changes**: Create `user_prospect_quick_notes` (id, user_id, label, sequence_order, created_at); RLS for users to manage own rows
-- **Impact**: Below comments textarea, above saved comments: quick note buttons appear; clicking inserts that text as a prospect_comment; users can add and delete their own quick notes via "+ Add" and ×
+- **Impact**: Below comments textarea, above saved comments: quick note buttons appear; clicking fills the comments box so the user can then click Didn't Answer or Answered to add with that tag; users can add and delete their own quick notes via "+ Add" and ×
 - **Category**: Prospects
 
 **`20260308000000_add_assistants_share_master_to_invoice_insert.sql`**

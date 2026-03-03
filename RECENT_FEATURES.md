@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-11
+last_updated: 2026-03-03
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.79 → v2.4"
+version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.79)"
+  - name: "Latest Version (v2.80)"
     line: ~186
+    description: "Prospects Address field, Follow Up quick notes"
+  - name: "v2.79"
+    line: ~210
     description: "Quickfill feedback loop, section nav, Prospects Team tab, label updates"
   - name: "v2.78"
     line: ~240
@@ -116,7 +119,7 @@ key_sections:
     description: "Triggers, constraints, transaction functions"
 
 quick_navigation:
-  - "Latest features at top (v2.79)"
+  - "Latest features at top (v2.80)"
   - "Search for specific version: v2.XX"
   - "Search for feature name (e.g., 'Load All', 'Driving Cost')"
 
@@ -133,10 +136,11 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
-2. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
-3. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
-4. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
+1. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
+2. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
+3. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
+4. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
+5. [Latest Updates (v2.76)](#latest-updates-v276) - Prospects copy templates, mail icon, subject line, email sent tracking; Settings My Profile
 5. [Latest Updates (v2.75)](#latest-updates-v275) - Jobs default tab, tab labels, Prospects Option D
 6. [Latest Updates (v2.74)](#latest-updates-v274) - Create Partial Invoice modal, Ready to Bill, Paid in Full
 7. [Latest Updates (v2.73)](#latest-updates-v273) - Checkbox modals, unified stages, invoice buttons
@@ -212,6 +216,25 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.80)
+
+**Date**: 2026-03-03
+
+### Prospects – Address Field
+
+- **Address**: New field for all prospects. Shown in New Prospect modal, Edit modal, Prospect List (desktop table and mobile cards), Follow Up info block (below Links to Website), Convert tab summary, and Cant Reach section.
+- **Convert**: When converting a prospect to a customer, address pre-fills the customer form.
+- **Migration**: `20260309000000_add_address_to_prospects.sql`
+
+### Prospects – Quick Notes (Follow Up)
+
+- **Quick note buttons**: Below the comments textarea, above saved comments. Per-user buttons (e.g. "left voicemail") that each user can add and delete.
+- **Behavior**: Clicking a quick note fills the comments box; user can then click Didn't Answer or Answered to add with that tag (or press Enter for plain comment).
+- **+ Add**: Prompts for label; inserts into `user_prospect_quick_notes`. × removes a quick note.
+- **Migration**: `20260310000001_create_user_prospect_quick_notes.sql`
 
 ---
 
