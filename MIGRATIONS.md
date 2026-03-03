@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### February 21–31, 2026
 
+**`20260309000000_add_address_to_prospects.sql`**
+- **Purpose**: Add address field to prospects
+- **Changes**: Add `address TEXT` column to `public.prospects`
+- **Impact**: Prospects can store and display address in New Prospect modal, Edit modal, Prospect List (desktop table and mobile cards), Convert tab summary, and Cant Reach section; address pre-fills customer form when converting prospect to customer
+- **Category**: Prospects
+
 **`20260310000000_prospect_devs_see_timer_events.sql`**
 - **Purpose**: Allow devs to see all prospect_timer_events for Prospects Team tab activity tracking
 - **Changes**: Add RLS policy "Devs can see all prospect timer events" on `prospect_timer_events` FOR SELECT USING (public.is_dev())

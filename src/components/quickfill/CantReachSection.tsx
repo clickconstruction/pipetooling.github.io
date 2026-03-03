@@ -9,6 +9,7 @@ type Prospect = {
   contact_name: string | null
   phone_number: string | null
   email: string | null
+  address: string | null
   links_to_website: string | null
   last_contact: string | null
   prospect_fit_status: string | null
@@ -60,7 +61,7 @@ export function CantReachSection() {
     setLoading(true)
     const { data, error } = await supabase
       .from('prospects')
-      .select('id, company_name, contact_name, phone_number, email, links_to_website, last_contact, prospect_fit_status')
+      .select('id, company_name, contact_name, phone_number, email, address, links_to_website, last_contact, prospect_fit_status')
       .eq('prospect_fit_status', 'cant_reach')
       .order('last_contact', { ascending: false, nullsFirst: false })
     if (error) {
@@ -131,17 +132,19 @@ export function CantReachSection() {
           <div className="prospectListDesktop">
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '18%' }} />
                 <col style={{ width: '14%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '10%' }} />
                 <col style={{ width: '12%' }} />
-                <col style={{ width: '14%' }} />
-                <col style={{ width: '28%' }} />
+                <col style={{ width: '26%' }} />
                 <col style={{ width: '14%' }} />
               </colgroup>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Company Name</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
@@ -153,6 +156,7 @@ export function CantReachSection() {
                   <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.75rem' }}>{p.company_name || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
+                    <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {p.phone_number ? (
                         <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
@@ -211,6 +215,10 @@ export function CantReachSection() {
                   <div className="prospectListMobileCardRow">
                     <span className="prospectListMobileCardLabel">Contact</span>
                     <span>{p.contact_name || '—'}</span>
+                  </div>
+                  <div className="prospectListMobileCardRow">
+                    <span className="prospectListMobileCardLabel">Address</span>
+                    <span>{p.address || '—'}</span>
                   </div>
                   <div className="prospectListMobileCardRow">
                     <span className="prospectListMobileCardLabel">Phone</span>

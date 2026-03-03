@@ -2941,6 +2941,7 @@ export type Database = {
       }
       prospects: {
         Row: {
+          address: string | null
           company_name: string | null
           contact_name: string | null
           created_at: string | null
@@ -2958,6 +2959,7 @@ export type Database = {
           warmth_value: string | null
         }
         Insert: {
+          address?: string | null
           company_name?: string | null
           contact_name?: string | null
           created_at?: string | null
@@ -2975,6 +2977,7 @@ export type Database = {
           warmth_value?: string | null
         }
         Update: {
+          address?: string | null
           company_name?: string | null
           contact_name?: string | null
           created_at?: string | null

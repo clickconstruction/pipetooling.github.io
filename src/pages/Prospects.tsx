@@ -56,6 +56,7 @@ type Prospect = {
   contact_name: string | null
   phone_number: string | null
   email: string | null
+  address: string | null
   links_to_website: string | null
   notes: string | null
   last_contact: string | null
@@ -248,6 +249,7 @@ export default function Prospects() {
   const [editContactName, setEditContactName] = useState('')
   const [editPhoneNumber, setEditPhoneNumber] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editAddress, setEditAddress] = useState('')
   const [editLinksToWebsite, setEditLinksToWebsite] = useState('')
 
   // Callback form state
@@ -302,6 +304,7 @@ export default function Prospects() {
   const [newContactName, setNewContactName] = useState('')
   const [newPhoneNumber, setNewPhoneNumber] = useState('')
   const [newEmail, setNewEmail] = useState('')
+  const [newAddress, setNewAddress] = useState('')
   const [newLinksToWebsite, setNewLinksToWebsite] = useState('')
   const [newProspectError, setNewProspectError] = useState<string | null>(null)
 
@@ -398,7 +401,7 @@ export default function Prospects() {
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
     let query = supabase
       .from('prospects')
-      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, links_to_website, notes, last_contact, created_at, updated_at')
+      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
       .or('prospect_fit_status.is.null,prospect_fit_status.neq.not_a_fit')
     if (lockedByOthers.length > 0) {
       query = query.not('id', 'in', `(${lockedByOthers.join(',')})`)
@@ -514,7 +517,7 @@ export default function Prospects() {
     setProspectListLoading(true)
     const { data, error } = await supabase
       .from('prospects')
-      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, links_to_website, notes, last_contact, created_at, updated_at')
+      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
     if (error) {
       setProspectListProspects([])
       setProspectListLoading(false)
@@ -1105,6 +1108,7 @@ export default function Prospects() {
     setEditContactName(currentProspect.contact_name ?? '')
     setEditPhoneNumber(currentProspect.phone_number ?? '')
     setEditEmail(currentProspect.email ?? '')
+    setEditAddress(currentProspect.address ?? '')
     setEditLinksToWebsite(currentProspect.links_to_website ?? '')
     setEditModalOpen(true)
   }
@@ -1115,6 +1119,7 @@ export default function Prospects() {
     setEditContactName(p.contact_name ?? '')
     setEditPhoneNumber(p.phone_number ?? '')
     setEditEmail(p.email ?? '')
+    setEditAddress(p.address ?? '')
     setEditLinksToWebsite(p.links_to_website ?? '')
     setEditModalOpen(true)
   }
@@ -1152,6 +1157,7 @@ export default function Prospects() {
         contact_name: editContactName.trim() || null,
         phone_number: editPhoneNumber.trim() || null,
         email: editEmail.trim() || null,
+        address: editAddress.trim() || null,
         links_to_website: editLinksToWebsite.trim() || null,
       })
       .eq('id', prospectToEdit.id)
@@ -1161,6 +1167,7 @@ export default function Prospects() {
         contact_name: editContactName.trim() || null,
         phone_number: editPhoneNumber.trim() || null,
         email: editEmail.trim() || null,
+        address: editAddress.trim() || null,
         links_to_website: editLinksToWebsite.trim() || null,
       }
       setFollowUpProspects((prev) =>
@@ -1447,6 +1454,7 @@ export default function Prospects() {
       contact_name: newContactName.trim() || null,
       phone_number: newPhoneNumber.trim() || null,
       email: newEmail.trim() || null,
+      address: newAddress.trim() || null,
       links_to_website: newLinksToWebsite.trim() || null,
     }
     const { error } = await supabase.from('prospects').insert(payload)
@@ -1460,6 +1468,7 @@ export default function Prospects() {
     setNewContactName('')
     setNewPhoneNumber('')
     setNewEmail('')
+    setNewAddress('')
     setNewLinksToWebsite('')
     await loadFollowUpProspects()
     await loadProspectListProspects()
@@ -1531,6 +1540,8 @@ export default function Prospects() {
               setNewCompanyName('')
               setNewContactName('')
               setNewPhoneNumber('')
+              setNewEmail('')
+              setNewAddress('')
               setNewLinksToWebsite('')
               setNewProspectError(null)
               setNewProspectModalOpen(true)
@@ -2146,18 +2157,20 @@ export default function Prospects() {
                           <div className="prospectListDesktop">
                             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                               <colgroup>
-                                <col style={{ width: '16%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '11%' }} />
-                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
                                 <col style={{ width: '8%' }} />
-                                <col style={{ width: '25%' }} />
+                                <col style={{ width: '24%' }} />
                                 {warmth === CANT_REACH_KEY && <col style={{ width: '6%' }} />}
                               </colgroup>
                               <thead style={{ background: '#f9fafb' }}>
                                 <tr>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Company Name</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time</th>
@@ -2167,7 +2180,7 @@ export default function Prospects() {
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 7 : 6} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 8 : 7} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -2181,6 +2194,7 @@ export default function Prospects() {
                                     >
                                       <td style={{ padding: '0.75rem' }}>{p.company_name || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
+                                      <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>
                                         {p.phone_number ? (
                                           <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
@@ -2254,6 +2268,10 @@ export default function Prospects() {
                                     <div className="prospectListMobileCardRow">
                                       <span className="prospectListMobileCardLabel">Contact</span>
                                       <span>{p.contact_name || '—'}</span>
+                                    </div>
+                                    <div className="prospectListMobileCardRow">
+                                      <span className="prospectListMobileCardLabel">Address</span>
+                                      <span>{p.address || '—'}</span>
                                     </div>
                                     <div className="prospectListMobileCardRow">
                                       <span className="prospectListMobileCardLabel">Phone</span>
@@ -2379,6 +2397,10 @@ export default function Prospects() {
                         <a href={`mailto:${encodeURIComponent(convertProspect.email)}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{convertProspect.email}</a>
                       ) : '—'}</span>
                     </div>
+                    <div className="convertProspectSummaryRow">
+                      <span className="convertProspectSummaryLabel">Address</span>
+                      <span>{convertProspect.address || '—'}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -2394,7 +2416,7 @@ export default function Prospects() {
                       showQuickFill={false}
                       initialValues={{
                         name: convertProspect?.company_name ?? '',
-                        address: '',
+                        address: convertProspect?.address ?? '',
                         phone: convertProspect?.phone_number ?? '',
                         email: convertProspect?.email ?? '',
                         dateMet: convertFirstInteractionDate,
@@ -2679,6 +2701,15 @@ export default function Prospects() {
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </label>
+              <label>
+                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
+                <input
+                  type="text"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </label>
@@ -3187,6 +3218,15 @@ export default function Prospects() {
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </label>
+              <label>
+                <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Address</span>
+                <input
+                  type="text"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </label>
