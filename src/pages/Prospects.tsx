@@ -1929,6 +1929,7 @@ export default function Prospects() {
                       '—'
                     )}
                   </div>
+                  <div><strong>Address:</strong> {currentProspect.address || '—'}</div>
                   {scheduledCallback && (
                     <div>
                       <strong>Call back scheduled for:</strong>{' '}
