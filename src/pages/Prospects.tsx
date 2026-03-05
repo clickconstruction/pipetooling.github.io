@@ -419,16 +419,25 @@ export default function Prospects() {
     }
     const raw = (data ?? []) as Prospect[]
     const prospects = raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach')
-    setFollowUpProspects(prospects)
 
     const prospectId = searchParams.get('prospect_id')
-    if (prospectId && prospects.length > 0) {
-      const idx = prospects.findIndex((p) => p.id === prospectId)
-      if (idx >= 0) setCurrentProspectIndex(idx)
-      else setCurrentProspectIndex(0)
-    } else {
-      setCurrentProspectIndex(0)
+    let finalProspects = prospects
+    let idx = prospectId ? prospects.findIndex((p) => p.id === prospectId) : -1
+
+    if (prospectId && idx < 0) {
+      const { data: single } = await supabase
+        .from('prospects')
+        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+        .eq('id', prospectId)
+        .maybeSingle()
+      if (single) {
+        finalProspects = [single as Prospect, ...prospects]
+        idx = 0
+      }
     }
+
+    setFollowUpProspects(finalProspects)
+    setCurrentProspectIndex(idx >= 0 ? idx : 0)
     setFollowUpLoading(false)
   }
 
