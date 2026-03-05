@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
@@ -18,6 +19,7 @@ type Props = {
 }
 
 export default function NewReportModal({ open, onClose, onSaved, authUserId, initialJob, initialTemplateName }: Props) {
+  const { showToast } = useToastContext()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -29,6 +31,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchMode, setSearchMode] = useState<'search' | 'last'>('search')
+  const [copyJustClicked, setCopyJustClicked] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -110,6 +113,29 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
   function handleClose() {
     reset()
     onClose()
+  }
+
+  async function handleCopyToText() {
+    const fields = templateFields[selectedTemplateId] ?? []
+    const parts: string[] = []
+    if (selectedJob) {
+      parts.push(`Job: ${selectedJob.display_name}${selectedJob.hcp_number ? ` (HCP: ${selectedJob.hcp_number})` : ''}`)
+    }
+    for (const f of fields) {
+      const val = (fieldValues[f.label] ?? '').trim()
+      if (val) parts.push(`${f.label}:\n${val}`)
+    }
+    const text = parts.join('\n\n')
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyJustClicked(true)
+      setTimeout(() => setCopyJustClicked(false), 1500)
+      showToast('Copied to clipboard', 'success')
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      showToast('Failed to copy to clipboard', 'error')
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -251,9 +277,27 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
 
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleCopyToText}
+              disabled={fields.length === 0 || !fields.some((f) => (fieldValues[f.label] ?? '').trim())}
+              style={{
+                padding: '0.5rem 1rem',
+                border: copyJustClicked ? '1px solid #22c55e' : '1px solid #d1d5db',
+                background: copyJustClicked ? '#dcfce7' : 'white',
+                borderRadius: 4,
+                cursor: 'pointer',
+                color: copyJustClicked ? '#16a34a' : undefined,
+                fontWeight: copyJustClicked ? 600 : undefined,
+              }}
+            >
+              {copyJustClicked ? 'Copied!' : 'Copy to Text'}
+            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+            </div>
           </div>
         </form>
       </div>
