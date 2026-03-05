@@ -140,6 +140,7 @@ export type Database = {
           bid_value: number | null
           created_at: string | null
           created_by: string
+          count_tooling_link: string | null
           customer_id: string | null
           design_drawing_plan_date: string | null
           distance_from_office: string | null
@@ -175,6 +176,7 @@ export type Database = {
           bid_value?: number | null
           created_at?: string | null
           created_by: string
+          count_tooling_link?: string | null
           customer_id?: string | null
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null
@@ -210,6 +212,7 @@ export type Database = {
           bid_value?: number | null
           created_at?: string | null
           created_by?: string
+          count_tooling_link?: string | null
           customer_id?: string | null
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null

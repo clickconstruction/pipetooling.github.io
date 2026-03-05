@@ -2178,6 +2178,10 @@ export default function Prospects() {
                   placeholder="Search company, contact, phone, or email..."
                   value={prospectListSearchQuery}
                   onChange={(e) => setProspectListSearchQuery(e.target.value)}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
                 />
               </div>

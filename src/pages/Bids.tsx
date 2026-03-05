@@ -949,6 +949,7 @@ export default function Bids() {
 
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
+  const [countToolingLink, setCountToolingLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
   const [address, setAddress] = useState('')
@@ -4155,11 +4156,13 @@ export default function Bids() {
     push(`Project Contact Phone: ${b.gc_contact_phone ?? '—'}`)
     push(`Project Contact Email: ${b.gc_contact_email ?? '—'}`)
     y += lineHeight
-    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
-    y += lineHeight
     pushLink('Project Folder:', b.drive_link?.trim() || null)
     y += lineHeight
     pushLink('Job Plans:', b.plans_link?.trim() || null)
+    y += lineHeight
+    pushLink('Count Tooling:', b.count_tooling_link?.trim() || null)
+    y += lineHeight
+    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
 
     const filename = `Bid_Summary_${(bidDisplayName(b) || 'Bid').replace(/[^a-zA-Z0-9]+/g, '_').slice(0, 40)}.pdf`
     doc.save(filename)
@@ -4330,11 +4333,13 @@ export default function Bids() {
     push(`Project Contact Phone: ${b.gc_contact_phone ?? '—'}`)
     push(`Project Contact Email: ${b.gc_contact_email ?? '—'}`)
     y += lineHeight
-    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
-    y += lineHeight
     pushLink('Project Folder:', b.drive_link?.trim() || null)
     y += lineHeight
     pushLink('Job Plans:', b.plans_link?.trim() || null)
+    y += lineHeight
+    pushLink('Count Tooling:', b.count_tooling_link?.trim() || null)
+    y += lineHeight
+    pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
 
     // Margins (same as UI section)
     y += lineHeight
@@ -6090,6 +6095,7 @@ export default function Bids() {
     setEditingBid(null)
     setDriveLink('')
     setPlansLink('')
+    setCountToolingLink('')
     setBidSubmissionLink('')
     setDesignDrawingPlanDate('')
     setGcCustomerId('')
@@ -6121,6 +6127,7 @@ export default function Bids() {
     setEditingBid(bid)
     setDriveLink(bid.drive_link ?? '')
     setPlansLink(bid.plans_link ?? '')
+    setCountToolingLink(bid.count_tooling_link ?? '')
     setBidSubmissionLink(bid.bid_submission_link ?? '')
     if (bid.customer_id && bid.customers) {
       setGcCustomerId(bid.customer_id)
@@ -6184,6 +6191,7 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
+      count_tooling_link: countToolingLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       customer_id: gcCustomerId || null,
@@ -6251,6 +6259,7 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
+      count_tooling_link: countToolingLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       customer_id: gcCustomerId || null,
@@ -6930,6 +6939,7 @@ export default function Bids() {
                 <tr>
                   <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project<br />Folder</th>
                   <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Job<br />Plans</th>
+                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count<br />Tool</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>GC/Builder</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Address</th>
@@ -6944,7 +6954,7 @@ export default function Bids() {
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={myRole === 'primary' ? 10 : 11} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={myRole === 'primary' ? 11 : 12} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
@@ -6969,6 +6979,17 @@ export default function Bids() {
                           <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.plans_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
                               <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128z"/>
+                            </svg>
+                          </a>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td style={{ padding: 0, textAlign: 'center' }} title="Count Tool">
+                        {bid.count_tooling_link ? (
+                          <a href={bid.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(bid.count_tooling_link!) }} style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor">
+                              <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM298.2 359.6C306.8 349.5 305.7 334.4 295.6 325.8C285.5 317.2 270.4 318.3 261.8 328.4L213.8 384.4C206.1 393.4 206.1 406.6 213.8 415.6L261.8 471.6C270.4 481.7 285.6 482.8 295.6 474.2C305.6 465.6 306.8 450.4 298.2 440.4L263.6 400L298.2 359.6zM378.2 328.4C369.6 318.3 354.4 317.2 344.4 325.8C334.4 334.4 333.2 349.6 341.8 359.6L376.4 400L341.8 440.4C333.2 450.5 334.3 465.6 344.4 474.2C354.5 482.8 369.6 481.7 378.2 471.6L426.2 415.6C433.9 406.6 433.9 393.4 426.2 384.4L378.2 328.4z"/>
                             </svg>
                           </a>
                         ) : (
@@ -11046,23 +11067,27 @@ export default function Bids() {
                 <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Email</strong> {selectedBidForSubmission.gc_contact_email ?? '—'}</p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Bid Submission</strong>{' '}
-                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
-                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.bid_submission_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
-                  ) : '—'}
-                </p>
-                <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}>
                   <strong>Project Folder</strong>{' '}
                   {selectedBidForSubmission.drive_link?.trim() ? (
                     <a href={selectedBidForSubmission.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.drive_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.drive_link}</a>
                   ) : '—'}
                 </p>
-                <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Job Plans</strong>{' '}
                   {selectedBidForSubmission.plans_link?.trim() ? (
                     <a href={selectedBidForSubmission.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.plans_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.plans_link}</a>
+                  ) : '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Count Tooling</strong>{' '}
+                  {selectedBidForSubmission.count_tooling_link?.trim() ? (
+                    <a href={selectedBidForSubmission.count_tooling_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.count_tooling_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.count_tooling_link}</a>
+                  ) : '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Bid Submission</strong>{' '}
+                  {selectedBidForSubmission.bid_submission_link?.trim() ? (
+                    <a href={selectedBidForSubmission.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(selectedBidForSubmission.bid_submission_link!.trim()) }} style={{ color: '#3b82f6' }}>{selectedBidForSubmission.bid_submission_link}</a>
                   ) : '—'}
                 </p>
               </div>
@@ -12586,6 +12611,26 @@ export default function Bids() {
                       try {
                         const text = await navigator.clipboard.readText()
                         setPlansLink(text)
+                      } catch (err) {
+                        console.error('Failed to read clipboard:', err)
+                      }
+                    }}
+                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                  >
+                    paste<br />clipboard
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Count Tooling</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://counttooling.com/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const text = await navigator.clipboard.readText()
+                        setCountToolingLink(text)
                       } catch (err) {
                         console.error('Failed to read clipboard:', err)
                       }

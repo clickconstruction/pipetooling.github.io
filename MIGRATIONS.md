@@ -90,6 +90,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### March 2026
+
+#### March 12, 2026
+
+**`20260312000000_add_bids_count_tooling_link.sql`**
+- **Purpose**: Add Count Tooling link field to bids (counttooling.com URLs)
+- **Changes**: Add `count_tooling_link TEXT` column to `public.bids`
+- **Impact**: New Bid and Edit Bid modals include "Count Tooling" URL input between Job Plans and Bid Submission; Submission & Followup panel and PDF exports display the link when present
+- **Category**: Bids
+
 ### February 2026
 
 #### February 21–31, 2026
