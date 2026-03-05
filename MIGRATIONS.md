@@ -92,6 +92,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### March 2026
 
+#### March 13, 2026
+
+**`20260313000000_allow_estimators_insert_reports.sql`**
+- **Purpose**: Fix RLS so estimators can create reports (was causing "new row violates row-level security policy")
+- **Changes**: Add policy "Estimators can insert reports" on `public.reports` FOR INSERT WITH CHECK (user is estimator AND created_by_user_id = auth.uid())
+- **Impact**: Estimators can now submit Job Reports from Dashboard/Jobs; previously INSERT was blocked
+- **Category**: Reports / RLS
+
 #### March 12, 2026
 
 **`20260312000000_add_bids_count_tooling_link.sql`**
