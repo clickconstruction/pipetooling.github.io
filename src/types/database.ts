@@ -1,4 +1,3 @@
-Initialising login role...
 export type Json =
   | string
   | number
@@ -759,6 +758,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
       }
       cost_matrix_teams_shares: {
         Row: {
