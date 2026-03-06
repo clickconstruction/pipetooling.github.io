@@ -2279,6 +2279,32 @@ export type Database = {
         }
         Relationships: []
       }
+      hours_days_correct: {
+        Row: {
+          work_date: string
+          marked_by: string | null
+          marked_at: string | null
+        }
+        Insert: {
+          work_date: string
+          marked_by?: string | null
+          marked_at?: string | null
+        }
+        Update: {
+          work_date?: string
+          marked_by?: string | null
+          marked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hours_days_correct_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_labor_job_items: {
         Row: {
           count: number
@@ -2387,6 +2413,88 @@ export type Database = {
           show_in_hours?: boolean
         }
         Relationships: []
+      }
+      pay_stubs: {
+        Row: {
+          id: string
+          person_name: string
+          period_start: string
+          period_end: string
+          hours_total: number
+          gross_pay: number
+          created_at: string | null
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          person_name: string
+          period_start: string
+          period_end: string
+          hours_total: number
+          gross_pay: number
+          created_at?: string | null
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          person_name?: string
+          period_start?: string
+          period_end?: string
+          hours_total?: number
+          gross_pay?: number
+          created_at?: string | null
+          created_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stubs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_stub_days: {
+        Row: {
+          id: string
+          pay_stub_id: string
+          person_name: string
+          work_date: string
+          hours_at_time: number
+          rate_at_time: number
+          paid_amount: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          pay_stub_id: string
+          person_name: string
+          work_date: string
+          hours_at_time: number
+          rate_at_time: number
+          paid_amount: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          pay_stub_id?: string
+          person_name?: string
+          work_date?: string
+          hours_at_time?: number
+          rate_at_time?: number
+          paid_amount?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_days_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_team_members: {
         Row: {

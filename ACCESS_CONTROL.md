@@ -154,6 +154,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Pay tab (dev, Pay Approved Masters, or shared by dev): Due by Trade, Due by Team, Cost matrix, Teams; People pay config, Share Cost Matrix and Teams (in Settings), Tag colors at bottom. Cost matrix date headers on two lines (Mon / 2/16) on mobile. Dev can share Cost matrix and Teams (view-only) with selected masters or assistants via Settings "Share Cost Matrix and Teams" section
+- Pay Stubs tab (dev, Pay Approved Masters, and their assistants): Ledger of generated pay stubs; generator to create pay stubs by person and date range; view/print to PDF
 - Hours tab (dev, Pay Approved Masters, and their assistants): Timesheet entry
 
 **Bids**:
@@ -224,6 +225,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 - Pay tab (if shared by dev): View-only Cost matrix and Teams (no People pay config, no Add team or edit teams)
+- Pay Stubs tab (if master is Pay Approved): Ledger and generator for pay stubs
 - Hours tab (if master is Pay Approved): Timesheet entry for people in roster
 
 **Bids**:
@@ -465,6 +467,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ |
 | Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ |
 | Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ | ❌ |
+| Pay Stubs tab (ledger, generator) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
 | Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
 
 ### Workflow Management

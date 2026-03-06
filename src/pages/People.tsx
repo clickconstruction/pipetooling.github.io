@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { formatCurrency } from '../lib/format'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
@@ -25,7 +26,7 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay' | 'hours' | 'team_costs'
+type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'team_costs'
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -81,6 +82,7 @@ export default function People() {
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
+  const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -119,6 +121,29 @@ export default function People() {
     start.setDate(d.getDate() - day)
     return start.toISOString().slice(0, 10)
   })
+  // Pay Stubs tab state
+  type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null }
+  const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
+  const [payStubsLoading, setPayStubsLoading] = useState(false)
+  const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
+  const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day)
+    return start.toISOString().slice(0, 10)
+  })
+  const [payStubPeriodEnd, setPayStubPeriodEnd] = useState(() => {
+    const d = new Date()
+    const day = d.getDay()
+    const start = new Date(d)
+    start.setDate(d.getDate() - day + 6)
+    return start.toISOString().slice(0, 10)
+  })
+  const [payStubCalendarPerson, setPayStubCalendarPerson] = useState<string | null>(null)
+  const [payStubCalendarYear, setPayStubCalendarYear] = useState(() => new Date().getFullYear())
+  const [payStubCalendarData, setPayStubCalendarData] = useState<{ earnedByDate: Record<string, number>; paidByDate: Record<string, number> } | null>(null)
+  const [payStubCalendarLoading, setPayStubCalendarLoading] = useState(false)
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -276,7 +301,7 @@ export default function People() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'users' || tab === 'pay' || tab === 'hours' || tab === 'team_costs') {
+    if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'team_costs') {
       setActiveTab(tab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -555,6 +580,249 @@ export default function People() {
     setPeopleHours((data ?? []) as HoursRow[])
   }
 
+  async function loadHoursDaysCorrect(start: string, end: string) {
+    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
+    const { data, error } = await (supabase as any)
+      .from('hours_days_correct')
+      .select('work_date')
+      .gte('work_date', start)
+      .lte('work_date', end)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setHoursDaysCorrect((prev) => {
+      const next = new Set(prev)
+      for (const d of getDaysInRange(start, end)) next.delete(d)
+      for (const r of (data ?? []) as { work_date: string }[]) next.add(r.work_date)
+      return next
+    })
+  }
+
+  async function toggleHoursDayCorrect(workDate: string) {
+    if (!canAccessHours && !canAccessPay) return
+    const isCorrect = hoursDaysCorrect.has(workDate)
+    if (isCorrect) {
+      const { error } = await (supabase as any).from('hours_days_correct').delete().eq('work_date', workDate)
+      if (error) setError(error.message)
+      else setHoursDaysCorrect((prev) => { const next = new Set(prev); next.delete(workDate); return next })
+    } else {
+      const { error } = await (supabase as any).from('hours_days_correct').insert({ work_date: workDate, marked_by: authUser?.id ?? null })
+      if (error) setError(error.message)
+      else setHoursDaysCorrect((prev) => { const next = new Set(prev); next.add(workDate); return next })
+    }
+  }
+
+  async function loadPayStubs() {
+    if (!canAccessPay) return
+    const { data, error } = await supabase
+      .from('pay_stubs')
+      .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at')
+      .order('created_at', { ascending: false })
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setPayStubs((data ?? []) as PayStubRow[])
+  }
+
+  async function loadPayStubCalendarData(personName: string, year: number) {
+    const start = `${year}-01-01`
+    const end = `${year}-12-31`
+    setPayStubCalendarLoading(true)
+    setPayStubCalendarData(null)
+    const [hoursRes, paidRes] = await Promise.all([
+      supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
+      supabase.from('pay_stub_days').select('work_date, paid_amount').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
+    ])
+    setPayStubCalendarLoading(false)
+    if (hoursRes.error || paidRes.error) {
+      setError(hoursRes.error?.message ?? paidRes.error?.message ?? 'Failed to load calendar data')
+      return
+    }
+    const cfg = payConfig[personName]
+    const wage = cfg?.hourly_wage ?? 0
+    const isSalary = cfg?.is_salary ?? false
+    const hoursMap = new Map<string, number>()
+    for (const r of (hoursRes.data ?? []) as { work_date: string; hours: number }[]) {
+      hoursMap.set(r.work_date, r.hours)
+    }
+    const paidMap = new Map<string, number>()
+    for (const r of (paidRes.data ?? []) as { work_date: string; paid_amount: number }[]) {
+      paidMap.set(r.work_date, (paidMap.get(r.work_date) ?? 0) + r.paid_amount)
+    }
+    const earnedByDate: Record<string, number> = {}
+    const paidByDate: Record<string, number> = {}
+    const d = new Date(start + 'T12:00:00')
+    const endD = new Date(end + 'T12:00:00')
+    while (d <= endD) {
+      const key = d.toISOString().slice(0, 10)
+      const hrs = isSalary ? (d.getDay() >= 1 && d.getDay() <= 5 ? 8 : 0) : hoursMap.get(key) ?? 0
+      earnedByDate[key] = hrs * wage
+      paidByDate[key] = paidMap.get(key) ?? 0
+      d.setDate(d.getDate() + 1)
+    }
+    setPayStubCalendarData({ earnedByDate, paidByDate })
+  }
+
+  function getPersonContact(personName: string): { email: string | null; phone: string | null } {
+    const n = personName.trim()
+    const p = people.find((x) => x.name?.trim() === n)
+    if (p) return { email: p.email ?? null, phone: p.phone ?? null }
+    const u = users.find((x) => x.name?.trim() === n)
+    if (u) return { email: u.email ?? null, phone: null }
+    return { email: null, phone: null }
+  }
+
+  function buildPayStubHtml(
+    personName: string,
+    periodStart: string,
+    periodEnd: string,
+    hourlyWage: number,
+    hoursRows: Array<{ date: string; hours: number }>,
+    hoursTotal: number,
+    grossPay: number
+  ): string {
+    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const { email, phone } = getPersonContact(personName)
+    const periodLabel = `Pay Period: ${new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(periodEnd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+    const wageDisplay = hourlyWage > 0 ? `$${formatCurrency(hourlyWage)}/hr` : '—'
+    const tableRows = hoursRows.map((r) => `<tr><td>${escapeHtml(r.date)}</td><td style="text-align:right">${r.hours.toFixed(2)}</td></tr>`).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pay Stub - ${escapeHtml(personName)}</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+      th { background: #f5f5f5; }
+      .meta { margin-bottom: 0.5rem; color: #666; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>Pay Stub</h1>
+      <div style="margin-bottom: 0.5rem;"><strong>${escapeHtml(personName)}</strong></div>
+      ${email ? `<div class="meta">${escapeHtml(email)}</div>` : ''}
+      ${phone ? `<div class="meta">${escapeHtml(phone)}</div>` : ''}
+      <div class="meta">${periodLabel}</div>
+      <div class="meta">Hourly wage: ${wageDisplay}</div>
+      <table>
+        <thead><tr><th>Date</th><th style="text-align:right">Hours</th></tr></thead>
+        <tbody>${tableRows}</tbody>
+        <tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td></tr></tfoot>
+      </table>
+      <div style="margin-top: 1rem; font-weight: 600;">Gross Pay: $${formatCurrency(grossPay)}</div>
+    </body></html>`
+    return html
+  }
+
+  function openPayStubWindow(html: string, doPrint: boolean) {
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    if (doPrint) {
+      win.print()
+      win.onafterprint = () => win.close()
+    }
+  }
+
+  async function generatePayStub() {
+    if (!authUser?.id || !payStubGeneratorPerson?.trim()) return
+    const personName = payStubGeneratorPerson.trim()
+    const start = payStubPeriodStart
+    const end = payStubPeriodEnd
+    const { data: hoursData } = await supabase
+      .from('people_hours')
+      .select('work_date, hours')
+      .eq('person_name', personName)
+      .gte('work_date', start)
+      .lte('work_date', end)
+    const hoursRows = ((hoursData ?? []) as { work_date: string; hours: number }[])
+      .sort((a, b) => a.work_date.localeCompare(b.work_date))
+      .map((r) => ({ date: r.work_date, hours: r.hours }))
+    const cfg = payConfig[personName]
+    const wage = cfg?.hourly_wage ?? 0
+    const isSalary = cfg?.is_salary ?? false
+    const daysInRange = getDaysInRange(start, end)
+    const dayRows: Array<{ work_date: string; hours: number; paid_amount: number }> = []
+    for (const d of daysInRange) {
+      const hrs = isSalary
+        ? (() => {
+            const day = new Date(d + 'T12:00:00').getDay()
+            return day >= 1 && day <= 5 ? 8 : 0
+          })()
+        : hoursRows.find((r) => r.date === d)?.hours ?? 0
+      const paidAmount = hrs * wage
+      dayRows.push({ work_date: d, hours: hrs, paid_amount: paidAmount })
+    }
+    const hoursTotal = dayRows.reduce((s, r) => s + r.hours, 0)
+    const grossPay = dayRows.reduce((s, r) => s + r.paid_amount, 0)
+    const { data: stubData, error: stubErr } = await supabase
+      .from('pay_stubs')
+      .insert({
+        person_name: personName,
+        period_start: start,
+        period_end: end,
+        hours_total: hoursTotal,
+        gross_pay: grossPay,
+        created_by: authUser.id,
+      })
+      .select('id')
+      .single()
+    if (stubErr || !stubData) {
+      setError(stubErr?.message ?? 'Failed to create pay stub')
+      return
+    }
+    const payStubId = stubData.id as string
+    const { error: daysErr } = await supabase.from('pay_stub_days').insert(
+      dayRows.map((r) => ({
+        pay_stub_id: payStubId,
+        person_name: personName,
+        work_date: r.work_date,
+        hours_at_time: r.hours,
+        rate_at_time: wage,
+        paid_amount: r.paid_amount,
+      }))
+    )
+    if (daysErr) {
+      setError(daysErr.message)
+      return
+    }
+    await loadPayStubs()
+    const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay)
+    openPayStubWindow(html, false)
+  }
+
+  async function viewPayStub(stub: PayStubRow) {
+    const { data } = await supabase
+      .from('people_hours')
+      .select('work_date, hours')
+      .eq('person_name', stub.person_name)
+      .gte('work_date', stub.period_start)
+      .lte('work_date', stub.period_end)
+    const hoursRows = ((data ?? []) as { work_date: string; hours: number }[])
+      .sort((a, b) => a.work_date.localeCompare(b.work_date))
+      .map((r) => ({ date: r.work_date, hours: r.hours }))
+    const cfg = payConfig[stub.person_name]
+    const wage = cfg?.hourly_wage ?? 0
+    const html = buildPayStubHtml(stub.person_name, stub.period_start, stub.period_end, wage, hoursRows, stub.hours_total, stub.gross_pay)
+    openPayStubWindow(html, false)
+  }
+
+  async function printPayStub(stub: PayStubRow) {
+    const { data } = await supabase
+      .from('people_hours')
+      .select('work_date, hours')
+      .eq('person_name', stub.person_name)
+      .gte('work_date', stub.period_start)
+      .lte('work_date', stub.period_end)
+    const hoursRows = ((data ?? []) as { work_date: string; hours: number }[])
+      .sort((a, b) => a.work_date.localeCompare(b.work_date))
+      .map((r) => ({ date: r.work_date, hours: r.hours }))
+    const cfg = payConfig[stub.person_name]
+    const wage = cfg?.hourly_wage ?? 0
+    const html = buildPayStubHtml(stub.person_name, stub.period_start, stub.period_end, wage, hoursRows, stub.hours_total, stub.gross_pay)
+    openPayStubWindow(html, true)
+  }
+
   async function loadTeams() {
     if (!canAccessPay && !canViewCostMatrixShared) return
     const [teamsRes, membersRes] = await Promise.all([
@@ -728,10 +996,33 @@ export default function People() {
       Promise.all([
         loadPayConfig(),
         loadPeopleHours(hoursDateStart, hoursDateEnd),
+        loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
         loadHoursDisplayOrder(),
       ]).finally(() => setHoursTabLoading(false))
     }
   }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
+
+  useEffect(() => {
+    if (activeTab === 'pay_stubs' && canAccessPay) {
+      setPayStubsLoading(true)
+      Promise.all([loadPayConfig(), loadPayStubs()]).finally(() => setPayStubsLoading(false))
+    }
+  }, [activeTab, canAccessPay])
+
+  useEffect(() => {
+    if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
+      loadPeopleHours(payStubPeriodStart, payStubPeriodEnd)
+      loadHoursDaysCorrect(payStubPeriodStart, payStubPeriodEnd)
+    }
+  }, [activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
+
+  useEffect(() => {
+    if (payStubCalendarPerson) {
+      loadPayStubCalendarData(payStubCalendarPerson, payStubCalendarYear)
+    } else {
+      setPayStubCalendarData(null)
+    }
+  }, [payStubCalendarPerson, payStubCalendarYear])
 
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
@@ -990,6 +1281,7 @@ export default function People() {
 
   async function saveHours(personName: string, workDate: string, hours: number) {
     if (!canAccessHours && !canAccessPay) return
+    if (hoursDaysCorrect.has(workDate)) return
     // Optimistic update: show new value immediately
     setPeopleHours((prev) => {
       const rest = prev.filter((h) => !(h.person_name === personName && h.work_date === workDate))
@@ -1191,6 +1483,22 @@ export default function People() {
         >
           Users
         </button>
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('pay_stubs')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'pay_stubs')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'pay_stubs')}
+          >
+            Pay Stubs
+          </button>
+        )}
         {(canAccessPay || canViewCostMatrixShared) && (
           <button
             type="button"
@@ -1642,6 +1950,216 @@ export default function People() {
         </section>
       ))}
         </>
+      )}
+
+      {activeTab === 'pay_stubs' && canAccessPay && (
+        <div>
+          {payStubsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <>
+              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Ledger</h2>
+                {payStubs.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay stubs yet. Generate one below.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Created</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payStubs.map((stub) => (
+                          <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setPayStubCalendarPerson(stub.person_name)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {stub.person_name}
+                              </button>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {new Date(stub.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(stub.period_end + 'T12:00:00').toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {stub.created_at ? new Date(stub.created_at).toLocaleDateString() : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => viewPayStub(stub)}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem' }}
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => printPayStub(stub)}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
+                              >
+                                Print
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+              <section>
+                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Generator</h2>
+                {showPeopleForHours.length === 0 && (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
+                    No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.
+                  </p>
+                )}
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <label>
+                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Person</span>
+                    <select
+                      value={payStubGeneratorPerson}
+                      onChange={(e) => setPayStubGeneratorPerson(e.target.value)}
+                      style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 140 }}
+                    >
+                      <option value="">Select person</option>
+                      {showPeopleForHours.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                    <input
+                      type="date"
+                      value={payStubPeriodStart}
+                      onChange={(e) => setPayStubPeriodStart(e.target.value)}
+                      style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </label>
+                  <label>
+                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                    <input
+                      type="date"
+                      value={payStubPeriodEnd}
+                      onChange={(e) => setPayStubPeriodEnd(e.target.value)}
+                      style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </label>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={generatePayStub}
+                      disabled={!payStubGeneratorPerson?.trim()}
+                      title={
+                        !payStubGeneratorPerson?.trim()
+                          ? showPeopleForHours.length === 0
+                            ? 'Go to Pay tab and check Show in Hours for people to track'
+                            : 'Select a person to generate a pay stub'
+                          : undefined
+                      }
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.875rem',
+                        background: payStubGeneratorPerson?.trim() ? '#3b82f6' : '#9ca3af',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: payStubGeneratorPerson?.trim() ? 'pointer' : 'not-allowed',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Generate
+                    </button>
+                    {!payStubGeneratorPerson?.trim() && (
+                      <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                        {showPeopleForHours.length === 0
+                          ? 'Go to Pay tab and check Show in Hours for people to track'
+                          : 'Select a person to generate a pay stub'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                {payStubGeneratorPerson?.trim() && payStubPeriodStart <= payStubPeriodEnd && (() => {
+                  const days = getDaysInRange(payStubPeriodStart, payStubPeriodEnd)
+                  const byDay = days.map((d) => ({ date: d, cost: getCostForPersonDate(payStubGeneratorPerson.trim(), d) }))
+                  const total = byDay.reduce((s, x) => s + x.cost, 0)
+                  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+                  return (
+                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                        Pay tab payments for {payStubGeneratorPerson.trim()} ({payStubPeriodStart} to {payStubPeriodEnd})
+                      </div>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Date</th>
+                              <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Day</th>
+                              <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {byDay.map(({ date, cost }) => {
+                              const isCorrect = hoursDaysCorrect.has(date)
+                              return (
+                                <tr
+                                  key={date}
+                                  style={{
+                                    borderBottom: '1px solid #f3f4f6',
+                                    background: isCorrect ? undefined : 'rgba(251, 146, 60, 0.15)',
+                                  }}
+                                  title={isCorrect ? undefined : 'Day not marked Correct in Hours tab'}
+                                >
+                                  <td style={{ padding: '0.25rem 0.5rem' }}>{date}</td>
+                                  <td style={{ padding: '0.25rem 0.5rem', color: '#6b7280' }}>
+                                    {dayNames[new Date(date + 'T12:00:00').getDay()]}
+                                  </td>
+                                  <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>
+                                    ${cost > 0 ? cost.toFixed(2) : '0.00'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                            <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+                              <td colSpan={2} style={{ padding: '0.35rem 0.5rem' }}>Total</td>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
+                                ${total.toFixed(2)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </section>
+            </>
+          )}
+        </div>
       )}
 
       {activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared) && (
@@ -2642,32 +3160,37 @@ export default function People() {
                           </span>
                           {personName}{isSalary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
                         </td>
-                        {hoursDays.map((d) => (
-                          <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
-                            {isSalary ? (
-                              <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
-                            ) : (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
-                                placeholder="-"
-                                onFocus={(e) => {
-                                  setEditingHoursCell({ personName, workDate: d })
-                                  setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
-                                  e.target.select()
-                                }}
-                                onChange={(e) => setEditingHoursValue(e.target.value)}
-                                onBlur={() => {
-                                  const v = hmsToDecimal(editingHoursValue)
-                                  saveHours(personName, d, v)
-                                  setEditingHoursCell(null)
-                                }}
-                                style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
-                              />
-                            )}
-                          </td>
-                        ))}
+                        {hoursDays.map((d) => {
+                          const dayLocked = hoursDaysCorrect.has(d)
+                          return (
+                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
+                              {isSalary ? (
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
+                              ) : dayLocked ? (
+                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getHoursForPersonDate(personName, d)) || '-'}</span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
+                                  placeholder="-"
+                                  onFocus={(e) => {
+                                    setEditingHoursCell({ personName, workDate: d })
+                                    setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
+                                    e.target.select()
+                                  }}
+                                  onChange={(e) => setEditingHoursValue(e.target.value)}
+                                  onBlur={() => {
+                                    const v = hmsToDecimal(editingHoursValue)
+                                    saveHours(personName, d, v)
+                                    setEditingHoursCell(null)
+                                  }}
+                                  style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                                />
+                              )}
+                            </td>
+                          )
+                        })}
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
                           {decimalToHms(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)) || '-'}
                         </td>
@@ -2712,6 +3235,24 @@ export default function People() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
                             {grandTotal.toFixed(2)}
                           </td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          {hoursDays.map((d) => {
+                            const checked = hoursDaysCorrect.has(d)
+                            return (
+                              <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title={checked ? 'Uncheck to allow edits' : 'Check to lock this day'}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleHoursDayCorrect(d)}
+                                  />
+                                </label>
+                              </td>
+                            )
+                          })}
+                          <td colSpan={2} style={{ padding: '0.5rem 0.5rem', borderTop: '1px solid #e5e7eb' }} />
                         </tr>
                       </>
                     )
@@ -3091,6 +3632,125 @@ export default function People() {
             <button type="button" onClick={() => { setCrewJobSearchModal(null); setCrewJobSearchText(''); setCrewJobSearchResults([]) }} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {payStubCalendarPerson && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}
+          onClick={() => setPayStubCalendarPerson(null)}
+        >
+          <div
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{payStubCalendarPerson} — Annual Pay to Date</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <label>
+                  <span style={{ marginRight: '0.35rem', fontSize: '0.875rem' }}>Year</span>
+                  <select
+                    value={payStubCalendarYear}
+                    onChange={(e) => setPayStubCalendarYear(parseInt(e.target.value, 10))}
+                    style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  >
+                    {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" onClick={() => setPayStubCalendarPerson(null)} style={{ padding: '0.35rem 0.75rem' }}>
+                  Close
+                </button>
+              </div>
+            </div>
+            {payStubCalendarLoading ? (
+              <p style={{ color: '#6b7280' }}>Loading…</p>
+            ) : payStubCalendarData ? (
+              <>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', fontSize: '0.8125rem', flexWrap: 'wrap' }}>
+                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#22c55e', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Fully paid</span>
+                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#eab308', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Underpaid</span>
+                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#f97316', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Overpaid</span>
+                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#e5e7eb', marginRight: '0.25rem', verticalAlign: 'middle' }} /> No hours</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: '#e5e7eb', border: '1px solid #e5e7eb', fontSize: '0.625rem' }}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+                    <div key={d} style={{ background: '#f9fafb', padding: '0.25rem', textAlign: 'center', fontWeight: 600 }}>
+                      {d}
+                    </div>
+                  ))}
+                  {(() => {
+                    const jan1 = new Date(payStubCalendarYear, 0, 1)
+                    const firstSunday = new Date(jan1)
+                    firstSunday.setDate(jan1.getDate() - jan1.getDay())
+                    const dec31 = new Date(payStubCalendarYear, 11, 31)
+                    const lastSunday = new Date(dec31)
+                    lastSunday.setDate(dec31.getDate() + (6 - dec31.getDay()))
+                    const cells: Array<{ date: string; earned: number; paid: number } | null> = []
+                    const d = new Date(firstSunday)
+                    while (d <= lastSunday) {
+                      const key = d.toISOString().slice(0, 10)
+                      const inYear = d.getFullYear() === payStubCalendarYear
+                      if (inYear && payStubCalendarData) {
+                        const earned = payStubCalendarData.earnedByDate[key] ?? 0
+                        const paid = payStubCalendarData.paidByDate[key] ?? 0
+                        cells.push({ date: key, earned, paid })
+                      } else {
+                        cells.push(null)
+                      }
+                      d.setDate(d.getDate() + 1)
+                    }
+                    return cells.map((cell, idx) => {
+                      if (!cell) {
+                        return <div key={idx} style={{ background: '#f3f4f6', minHeight: 10 }} />
+                      }
+                      const { date, earned, paid } = cell
+                      const tol = 0.01
+                      let bg = '#e5e7eb'
+                      let title = `${date}: no hours`
+                      if (earned > 0 || paid > 0) {
+                        if (paid > earned + tol) {
+                          bg = '#f97316'
+                          title = `${date}: $${formatCurrency(earned)} earned, $${formatCurrency(paid)} paid (overpaid)`
+                        } else if (paid < earned - tol || (paid === 0 && earned > 0)) {
+                          bg = '#eab308'
+                          title = `${date}: $${formatCurrency(earned)} earned, $${formatCurrency(paid)} paid (underpaid)`
+                        } else {
+                          bg = '#22c55e'
+                          title = `${date}: $${formatCurrency(earned)} earned, $${formatCurrency(paid)} paid`
+                        }
+                      }
+                      return (
+                        <div
+                          key={idx}
+                          style={{ background: bg, minHeight: 10, cursor: 'default' }}
+                          title={title}
+                        />
+                      )
+                    })
+                  })()}
+                </div>
+                {payStubCalendarData && (
+                  <div style={{ marginTop: '1rem', fontSize: '0.875rem', display: 'flex', gap: '1.5rem' }}>
+                    <span>Earned YTD: ${formatCurrency(Object.values(payStubCalendarData.earnedByDate).reduce((s, v) => s + v, 0))}</span>
+                    <span>Paid YTD: ${formatCurrency(Object.values(payStubCalendarData.paidByDate).reduce((s, v) => s + v, 0))}</span>
+                    <span>
+                      Unpaid: $
+                      {formatCurrency(
+                        Object.entries(payStubCalendarData.earnedByDate).reduce(
+                          (s, [k, earned]) => s + Math.max(0, earned - (payStubCalendarData.paidByDate[k] ?? 0)),
+                          0
+                        )
+                      )}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
         </div>
       )}

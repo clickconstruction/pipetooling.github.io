@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through February 29, 2026"
+date_range: "Through March 16, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### March 2026
+
+#### March 16, 2026
+
+**`20260316000000_create_hours_days_correct.sql`** *(applied)*
+- **Purpose**: Mark days as verified in Hours tab; locks that day from further edits for payroll clarity
+- **Changes**: Create `hours_days_correct` table (work_date PK, marked_by, marked_at); RLS same as people_hours (SELECT/INSERT/DELETE)
+- **Impact**: Hours tab footer has "Correct" checkbox per day column; when checked, that day's hours are read-only; Pay Stubs Generator payments table shows orange rows for days not marked Correct
+- **Category**: People / Pay
+
+#### March 15, 2026
+
+**`20260315000000_create_pay_stub_days.sql`**
+- **Purpose**: Per-day allocation when pay stubs are generated; enables mismatch detection when hours change after payment
+- **Changes**: Create `pay_stub_days` table (pay_stub_id, person_name, work_date, hours_at_time, rate_at_time, paid_amount); RLS same as pay_stubs; backfill existing pay_stubs with daily allocations from current people_hours and pay_config
+- **Impact**: Generate flow now inserts pay_stub_days; clicking person name in Pay Stubs ledger opens annual calendar modal (7×52 grid) with green/yellow/orange/gray day status; YTD earned, paid, unpaid totals
+- **Category**: People / Pay
+
+#### March 14, 2026
+
+**`20260314000000_create_pay_stubs.sql`**
+- **Purpose**: Ledger of generated pay stubs for employees; supports People → Pay Stubs tab
+- **Changes**: Create `pay_stubs` table (id, person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours (is_pay_approved_master OR is_assistant_of_pay_approved_master) for SELECT/INSERT
+- **Impact**: People page Pay Stubs tab shows ledger and generator; users can create pay stubs by person and date range, view in HTML, and print to PDF
+- **Category**: People / Pay
 
 #### March 13, 2026
 
@@ -555,6 +579,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Store hours worked per person per day
 - **Changes**: Created `people_hours` (person_name, work_date, hours, entered_by); RLS for dev, approved masters, assistants
 - **Impact**: Hours tab timesheet; editable for hourly people, read-only for salary (8 hrs/day)
+- **Category**: People / Pay
+
+**`20260314000000_create_pay_stubs.sql`**
+- **Purpose**: Ledger of generated pay stubs for employees
+- **Changes**: Created `pay_stubs` (person_name, period_start, period_end, hours_total, gross_pay, created_at, created_by); RLS same as people_hours
+- **Impact**: People → Pay Stubs tab; ledger, generator, view/print to PDF
+- **Category**: People / Pay
+
+**`20260315000000_create_pay_stub_days.sql`**
+- **Purpose**: Per-day paid allocation for mismatch detection
+- **Changes**: Created `pay_stub_days` (pay_stub_id, person_name, work_date, hours_at_time, rate_at_time, paid_amount); backfill from existing pay_stubs
+- **Impact**: Annual calendar modal when clicking person name; green/yellow/orange/gray day status; YTD totals
 - **Category**: People / Pay
 
 **`20260213000001_create_people_pay_config.sql`**
