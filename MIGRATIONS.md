@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through March 16, 2026"
+date_range: "Through March 17, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -91,6 +91,36 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### March 2026
+
+#### March 19, 2026
+
+**`20260319000002_insert_report_rpc.sql`**
+- **Purpose**: Add `insert_report` RPC (SECURITY DEFINER) to bypass RLS for estimators
+- **Changes**: Create `insert_report(p_template_id, p_field_values, p_job_ledger_id, p_project_id)` function; validates `is_estimator()` and inserts with `created_by_user_id = auth.uid()`
+- **Impact**: Estimators use RPC instead of direct insert; fixes persistent "new row violates row-level security policy" when policy-based fix insufficient
+- **Category**: Reports / RLS
+
+**`20260319000000_fix_is_estimator_search_path.sql`**
+- **Purpose**: Fix search_path for `is_estimator()` SECURITY DEFINER function (same pattern as is_assistant, is_master_or_dev)
+- **Changes**: `ALTER FUNCTION public.is_estimator() SET search_path = public`
+- **Impact**: Ensures is_estimator() resolves public.users correctly when used in reports RLS policy; may fix "new row violates row-level security policy" for estimators
+- **Category**: Reports / RLS
+
+#### March 18, 2026
+
+**`20260318000000_estimators_insert_reports_use_helper.sql`**
+- **Purpose**: Fix estimators RLS by using `public.is_estimator()` (SECURITY DEFINER) instead of inline EXISTS
+- **Changes**: Drop and recreate "Estimators can insert reports" policy; avoids RLS recursion when policy reads users table
+- **Impact**: Estimators can submit Job Reports; fixes "new row violates row-level security policy"
+- **Category**: Reports / RLS
+
+#### March 17, 2026
+
+**`20260317000000_fix_estimators_insert_reports.sql`**
+- **Purpose**: Fix RLS so estimators can insert reports (fixes "new row violates row-level security policy")
+- **Changes**: Drop and recreate "Estimators can insert reports" policy on `public.reports` FOR INSERT
+- **Impact**: Estimators (e.g. Juan) can submit Job Reports from Dashboard/Jobs
+- **Category**: Reports / RLS
 
 #### March 16, 2026
 

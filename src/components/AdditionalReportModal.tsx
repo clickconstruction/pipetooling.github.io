@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
+import type { UserRole } from '../hooks/useAuth'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -10,13 +11,14 @@ type Props = {
   onClose: () => void
   onSaved: () => void
   authUserId: string | null
+  userRole?: UserRole | null
   jobId: string
   hcpNumber: string
   jobName: string
   jobAddress: string
 }
 
-export default function AdditionalReportModal({ open, onClose, onSaved, authUserId, jobId, hcpNumber, jobName, jobAddress }: Props) {
+export default function AdditionalReportModal({ open, onClose, onSaved, authUserId, userRole, jobId, hcpNumber, jobName, jobAddress }: Props) {
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
@@ -70,14 +72,31 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
     for (const f of fields) {
       fv[f.label] = fieldValues[f.label] ?? ''
     }
-    const payload = {
-      template_id: selectedTemplateId,
-      created_by_user_id: authUserId,
-      field_values: fv,
-      job_ledger_id: jobId,
-      project_id: null,
+    let inserted: { id: string } | null = null
+    let err: { message: string } | null = null
+
+    if (userRole === 'estimator') {
+      const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
+        p_template_id: selectedTemplateId,
+        p_field_values: fv,
+        p_job_ledger_id: jobId,
+        p_project_id: null,
+      })
+      err = rpcErr
+      if (reportId && typeof reportId === 'string') inserted = { id: reportId }
+    } else {
+      const { data: sessionUser } = await supabase.auth.getUser()
+      const createdByUserId = sessionUser?.user?.id ?? authUserId
+      const { data: row, error: insertErr } = await supabase.from('reports').insert({
+        template_id: selectedTemplateId,
+        created_by_user_id: createdByUserId,
+        field_values: fv,
+        job_ledger_id: jobId,
+        project_id: null,
+      }).select('id').single()
+      err = insertErr
+      inserted = row
     }
-    const { data: inserted, error: err } = await supabase.from('reports').insert(payload).select('id, template_id, created_by_user_id, job_ledger_id, project_id').single()
     setSaving(false)
     if (err) {
       setError(err.message)

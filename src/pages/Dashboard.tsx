@@ -2690,6 +2690,7 @@ export default function Dashboard() {
         onClose={() => setNewReportModalOpen(false)}
         onSaved={() => setNewReportModalOpen(false)}
         authUserId={authUser?.id ?? null}
+        userRole={role}
       />
       <ReportViewModal
         open={viewReportModalOpen}
@@ -2735,6 +2736,7 @@ export default function Dashboard() {
           jobName={viewReportsJob.jobName}
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
+          userRole={role}
         />
       )}
       {leaveReportJob && (
@@ -2743,6 +2745,7 @@ export default function Dashboard() {
           onClose={() => setLeaveReportJob(null)}
           onSaved={() => setLeaveReportJob(null)}
           authUserId={authUser?.id ?? null}
+          userRole={role}
           jobId={leaveReportJob.id}
           hcpNumber={leaveReportJob.hcpNumber}
           jobName={leaveReportJob.jobName}

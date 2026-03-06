@@ -5672,6 +5672,7 @@ export default function Jobs() {
         onClose={() => setNewReportModalOpen(false)}
         onSaved={() => { setNewReportModalOpen(false); loadReports(); }}
         authUserId={authUser?.id ?? null}
+        userRole={authRole}
       />
       {viewReportsJob && (
         <JobReportsModal
@@ -5682,6 +5683,7 @@ export default function Jobs() {
           jobName={viewReportsJob.jobName}
           jobAddress={viewReportsJob.jobAddress}
           authUserId={authUser?.id ?? null}
+          userRole={authRole}
         />
       )}
       {readyForBillingJob && (

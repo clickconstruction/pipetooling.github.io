@@ -4252,6 +4252,15 @@ export type Database = {
           source: string
         }[]
       }
+      insert_report: {
+        Args: {
+          p_template_id: string
+          p_field_values: Json
+          p_job_ledger_id: string | null
+          p_project_id: string | null
+        }
+        Returns: string
+      }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import ReportViewModal from './ReportViewModal'
 import AdditionalReportModal from './AdditionalReportModal'
+import type { UserRole } from '../hooks/useAuth'
 
 type ReportForView = {
   id: string
@@ -25,9 +26,10 @@ type Props = {
   jobName: string
   jobAddress: string
   authUserId: string | null
+  userRole?: UserRole | null
 }
 
-export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId }: Props) {
+export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId, userRole }: Props) {
   const [reports, setReports] = useState<ReportForView[]>([])
   const [loading, setLoading] = useState(false)
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
@@ -166,6 +168,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
           setNewReportOpen(false)
         }}
         authUserId={authUserId}
+        userRole={userRole}
         jobId={jobId}
         hcpNumber={hcpNumber}
         jobName={jobName}

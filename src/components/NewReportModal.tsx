@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
+import type { UserRole } from '../hooks/useAuth'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -14,11 +15,12 @@ type Props = {
   onClose: () => void
   onSaved: () => void
   authUserId: string | null
+  userRole?: UserRole | null
   initialJob?: { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string }
   initialTemplateName?: string
 }
 
-export default function NewReportModal({ open, onClose, onSaved, authUserId, initialJob, initialTemplateName }: Props) {
+export default function NewReportModal({ open, onClose, onSaved, authUserId, userRole, initialJob, initialTemplateName }: Props) {
   const { showToast } = useToastContext()
   const [templates, setTemplates] = useState<ReportTemplate[]>([])
   const [templateFields, setTemplateFields] = useState<Record<string, ReportTemplateField[]>>({})
@@ -125,8 +127,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
       const val = (fieldValues[f.label] ?? '').trim()
       if (val) parts.push(`${f.label}:\n${val}`)
     }
-    const text = parts.join('\n\n')
+    let text = parts.join('\n\n')
     if (!text) return
+    // iOS Safari treats text with "Word:" patterns as a URL and URL-encodes it when pasting.
+    // Insert U+2066 (LEFT-TO-RIGHT ISOLATE) before label colons to prevent this.
+    text = text.replace(/(^|\n)([^\s:]+):/g, '$1$2\u2066:')
     try {
       await navigator.clipboard.writeText(text)
       setCopyJustClicked(true)
@@ -148,14 +153,35 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
     for (const f of fields) {
       fv[f.label] = fieldValues[f.label] ?? ''
     }
-    const payload = {
-      template_id: selectedTemplateId,
-      created_by_user_id: authUserId,
-      field_values: fv,
-      job_ledger_id: selectedJob.source === 'job_ledger' ? selectedJob.id : null,
-      project_id: selectedJob.source === 'project' ? selectedJob.id : null,
+    const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
+    const projectId = selectedJob.source === 'project' ? selectedJob.id : null
+
+    let inserted: { id: string } | null = null
+    let err: { message: string } | null = null
+
+    if (userRole === 'estimator') {
+      // Use RPC - SECURITY DEFINER bypasses RLS (fixes estimator insert policy issues)
+      const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
+        p_template_id: selectedTemplateId,
+        p_field_values: fv,
+        p_job_ledger_id: jobLedgerId,
+        p_project_id: projectId,
+      })
+      err = rpcErr
+      if (reportId && typeof reportId === 'string') inserted = { id: reportId }
+    } else {
+      const { data: sessionUser } = await supabase.auth.getUser()
+      const createdByUserId = sessionUser?.user?.id ?? authUserId
+      const { data: row, error: insertErr } = await supabase.from('reports').insert({
+        template_id: selectedTemplateId,
+        created_by_user_id: createdByUserId,
+        field_values: fv,
+        job_ledger_id: jobLedgerId,
+        project_id: projectId,
+      }).select('id').single()
+      err = insertErr
+      inserted = row
     }
-    const { data: inserted, error: err } = await supabase.from('reports').insert(payload).select('id, template_id, created_by_user_id, job_ledger_id, project_id').single()
     setSaving(false)
     if (err) {
       setError(err.message)
@@ -211,6 +237,23 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, ini
             </div>
             {selectedJob && (
               <p style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'})</p>
+            )}
+            {lastReportJob && (
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                recent report location:{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchMode('last')
+                    setSelectedJob(lastReportJob)
+                    setSearchResults([])
+                    setJobSearchText('')
+                  }}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', font: 'inherit' }}
+                >
+                  {lastReportJob.display_name}{lastReportJob.hcp_number ? ` (HCP: ${lastReportJob.hcp_number})` : ''}
+                </button>
+              </p>
             )}
             <input
               type="text"
