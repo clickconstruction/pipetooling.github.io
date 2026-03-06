@@ -66,8 +66,8 @@ You're getting "Session invalid or expired" because the `delete-user` Edge Funct
 ### "Forbidden - Only devs can delete users"
 
 - Make sure you're signed in as a dev user
-- Go to Settings → Admin Code
-- Enter code: `admin1234` to become a dev
+- Go to Settings → Advanced
+- Enter promotion code to become a dev
 
 ## Security Warning
 

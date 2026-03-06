@@ -70,18 +70,16 @@ After running the migration, verify:
 
 2. **Check functions exist**:
    ```sql
-   SELECT proname FROM pg_proc WHERE proname IN ('is_dev', 'claim_dev_with_code');
-   -- Should return both function names
+   SELECT proname FROM pg_proc WHERE proname = 'is_dev';
+   -- Should return is_dev (claim_dev_with_code was dropped; use claim-dev Edge Function for promotion)
    ```
 
 3. **Test the functions**:
    ```sql
    -- Test is_dev() (must be logged in as a dev user)
    SELECT public.is_dev();
-   
-   -- Test claim_dev_with_code() (must be logged in)
-   SELECT public.claim_dev_with_code('admin1234');
    ```
+   Note: `claim_dev_with_code` was deprecated and removed. Dev promotion now uses the `claim-dev` Edge Function (DEV_PROMOTION_CODE secret). See EDGE_FUNCTIONS.md.
 
 4. **Check enum values**:
    ```sql
@@ -123,7 +121,7 @@ If you need to rollback this migration:
    SECURITY DEFINER
    AS $$
    BEGIN
-     IF code_input = 'admin1234' THEN
+     IF code_input = '<deprecated-code>' THEN
        UPDATE public.users
        SET role = 'owner'
        WHERE id = auth.uid();

@@ -28,7 +28,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 ## For AI Agents / New Developers
 
-**Start here**: Read [AI_CONTEXT.md](./AI_CONTEXT.md) first (30-second project overview)
+**Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./AI_CONTEXT.md) (entry point + 30-second project overview)
 
 **Then consult based on your task**:
 

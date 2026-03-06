@@ -3267,13 +3267,27 @@ export default function Settings() {
     e.preventDefault()
     setCodeError(null)
     setCodeSubmitting(true)
-    const { data, error: eRpc } = await supabase.rpc('claim_dev_with_code', { code_input: code.trim() })
+    const { data, error: eFn } = await supabase.functions.invoke('claim-dev', {
+      body: { code: code.trim() },
+    })
     setCodeSubmitting(false)
-    if (eRpc) {
-      setCodeError(eRpc.message)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch { /* ignore */ }
+      }
+      setCodeError(msg)
       return
     }
-    if (data) {
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setCodeError(err)
+      return
+    }
+    if ((data as { success?: boolean } | null)?.success) {
       setCode('')
       setCodeError(null)
       await loadData()

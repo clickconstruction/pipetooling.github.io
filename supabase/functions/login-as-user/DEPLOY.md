@@ -142,8 +142,8 @@ After deployment, you should see:
 ### "Forbidden - Only devs, masters, and assistants can login as other users"
 - **Cause**: Your user role is not 'dev', 'master_technician', or 'assistant'
 - **Solution**: 
-  1. Go to Settings → Admin Code
-  2. Enter code: `admin1234`
+  1. Go to Settings → Advanced
+  2. Enter promotion code to become a dev
   3. Or update your role in database
 
 ### Magic link redirects to localhost instead of production

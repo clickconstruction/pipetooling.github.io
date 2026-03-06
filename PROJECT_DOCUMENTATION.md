@@ -841,7 +841,7 @@ WHERE proname IN (
 
 #### `public.claim_dev_with_code(code text)`
 - **Returns**: `boolean`
-- **Purpose**: Grants dev role if code matches `'admin1234'`
+- **Purpose**: Deprecated. Replaced by claim-dev Edge Function (DEV_PROMOTION_CODE secret).
 - **Usage**: Called from Settings page
 
 #### `public.touch_last_sign_in()`
@@ -1452,7 +1452,7 @@ counts_fixture_groups (id)
   - Manually create users
   - Delete users
   - Impersonate other users (via "imitate" button)
-  - Claim dev role with code `'admin1234'`
+  - Claim dev role via Settings (enter promotion code; stored in DEV_PROMOTION_CODE secret)
 
 #### `master_technician`
 - **Access**: Dashboard, Customers, Projects, People, Calendar, Settings
@@ -3207,7 +3207,7 @@ async function myFunction() {
 - **Audit Trail**: No audit logging currently (who changed what, when)
 
 ### Security Considerations
-- **Admin Code**: Hardcoded `'admin1234'` should be configurable
+- **Admin Code**: Now configurable via DEV_PROMOTION_CODE Supabase secret (claim-dev Edge Function)
 - **Rate Limiting**: No rate limiting on Edge Functions
 - **Input Validation**: Some user inputs not validated (e.g., email format)
 - **SQL Injection**: RLS policies use parameterized queries (safe), but be cautious with dynamic SQL
@@ -3279,7 +3279,7 @@ async function myFunction() {
 4. **Create first user**:
    - Sign up via UI
   - In Supabase dashboard, manually set role to `'dev'` OR
-  - Use Settings page to enter admin code `'admin1234'`
+  - Use Settings page to enter promotion code (configured in Supabase secrets)
 5. **Explore features**:
    - Create customer
    - Create project

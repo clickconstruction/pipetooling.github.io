@@ -67,8 +67,8 @@ You're getting a 401 Unauthorized error because the `login-as-user` Edge Functio
 ### "Forbidden - Only devs and masters can login as other users"
 
 - Make sure you're signed in as a dev or master user
-- Go to Settings → Admin Code
-- Enter code: `admin1234` to become a dev
+- Go to Settings → Advanced
+- Enter promotion code to become a dev
 
 ### "User not found"
 

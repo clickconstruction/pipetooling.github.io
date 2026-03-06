@@ -12,11 +12,12 @@
 - **Stack**: React + TypeScript + Supabase (PostgreSQL + Auth + RLS + Edge Functions)
 - **Deployment**: GitHub Pages (static hosting)
 - **Users**: 5 roles with complex access control (dev, master, assistant, subcontractor, estimator)
-- **4 Major Systems**: 
+- **4 Major Systems** (+ significant subsystems):
   1. Projects/Workflows (ongoing work tracking)
   2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
   3. Materials (price book, templates, purchase orders, Supply Houses & External Subs with invoices and job payments)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
+  - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, Crew Jobs, Receivables) are major subsystems
 
 ---
 
@@ -101,8 +102,10 @@ pipetooling.github.io/
 ├── src/
 │   ├── pages/              # Main UI pages (Customers, Projects, Workflow, People, Jobs, Bids, Materials, Checklist, etc.)
 │   ├── components/         # Reusable UI components
-│   ├── contexts/           # React contexts (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext)
-│   ├── lib/               # Utilities (supabaseClient, errorHandling, etc.)
+│   ├── contexts/           # React contexts (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
+│   ├── hooks/              # Custom hooks (useAuth, usePushNotifications, etc.)
+│   ├── lib/                # Utilities (supabaseClient, etc.)
+│   ├── utils/              # Utilities (errorHandling, authErrorHandler)
 │   ├── types/             # TypeScript type definitions
 │   └── App.tsx            # Root component with routing
 ├── supabase/
@@ -117,18 +120,23 @@ pipetooling.github.io/
 ## Most Important Files
 
 ### Core Application
-- **`src/pages/Workflow.tsx`** (~1500 lines) - Most complex component, manages project workflow
-- **`src/pages/Bids.tsx`** (~12k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission
-- **`src/pages/Materials.tsx`** (~1000 lines) - Price book, templates, purchase orders
+- **`src/pages/Workflow.tsx`** (~3.2k lines) - Most complex component, manages project workflow
+- **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release
+- **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
+- **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab)
+- **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
+- **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
+- **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
 - **`src/contexts/UpdatePromptContext.tsx`** - PWA update prompt (service worker refresh)
 - **`src/lib/supabase.ts`** - Supabase client configuration
-- **`src/lib/errorHandling.ts`** - Retry wrappers and error utilities
+- **`src/utils/errorHandling.ts`** - Retry wrappers and error utilities
 
 ### Documentation (Start Here)
+- **`AGENTS.md`** - AI agent entry point (points here)
 - **`README.md`** - Quick start and documentation index
 - **`AI_CONTEXT.md`** - This file (quick overview)
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
@@ -183,7 +191,7 @@ pipetooling.github.io/
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
 | Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |
-| Edge Functions API | `EDGE_FUNCTIONS.md` → All 6 functions with examples |
+| Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Email templates | `EMAIL_TEMPLATES_SETUP.md`, `EMAIL_TESTING.md` |
@@ -196,7 +204,7 @@ pipetooling.github.io/
 
 ### Error Handling
 ```typescript
-import { withSupabaseRetry } from '@/lib/errorHandling'
+import { withSupabaseRetry } from '@/utils/errorHandling'
 
 // Wraps Supabase calls with retry logic
 const { data, error } = await withSupabaseRetry(() => 
@@ -226,7 +234,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### State Management
-- **Global**: React Context (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext)
+- **Global**: React Context (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
 - **Page-level**: `useState`, `useEffect` hooks
 - **No global state library**: No Redux, MobX, or Zustand
 - **Server state**: Direct Supabase queries (no React Query)
@@ -319,7 +327,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 │                    React Frontend                        │
 │  ┌────────────┐  ┌────────────┐  ┌────────────┐        │
 │  │  Projects  │  │    Bids    │  │ Materials  │        │
-│  │ Workflows  │  │  6 Tabs    │  │ Price Book │        │
+│  │ Workflows  │  │ 11 Tabs    │  │ Price Book │        │
 │  └────────────┘  └────────────┘  └────────────┘        │
 │         │                │                │              │
 │         └────────────────┴────────────────┘              │
@@ -347,10 +355,11 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 │                                                          │
 │  ┌────────────────────────────────────────────┐         │
 │  │      Edge Functions (Deno)                 │         │
-│  │  • create-user, delete-user                │         │
-│  │  • login-as-user (impersonation)           │         │
+│  │  • create-user, delete-user, login-as-user │         │
 │  │  • send-workflow-notification (Resend)     │         │
-│  │  • set-user-password, test-email           │         │
+│  │  • send-checklist-notification             │         │
+│  │  • send-scheduled-reminders, send-report   │         │
+│  │  • set-user-password, claim-dev, test-email│         │
 │  └────────────────────────────────────────────┘         │
 └──────────────────────────────────────────────────────────┘
                            │
@@ -463,7 +472,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 ---
 
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-03-05
 
 **Maintained By**: Documentation generated during comprehensive documentation update project
 

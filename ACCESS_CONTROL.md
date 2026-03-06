@@ -104,7 +104,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Access all edge functions
 - Delete any resource
 - Export all data
-- Claim dev role with code `'admin1234'`
+- Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 

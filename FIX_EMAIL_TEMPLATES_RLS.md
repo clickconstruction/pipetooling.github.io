@@ -79,7 +79,7 @@ If you're still getting the error after running the SQL above, verify your role:
 1. **Check your role in the app**:
    - Go to Settings → Admin Code
    - If you see the admin code input, you're not a `dev` yet
-   - Enter code: `admin1234` to become a `dev`
+   - Enter promotion code in Settings (Advanced) to become a dev
 
 2. **Or check via SQL**:
    ```sql

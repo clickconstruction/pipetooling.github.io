@@ -121,8 +121,8 @@ After deployment, you should see:
 ### "Forbidden - Only devs can delete users"
 - **Cause**: Your user role is not 'dev'
 - **Solution**: 
-  1. Go to Settings → Admin Code
-  2. Enter code: `admin1234`
+  1. Go to Settings → Advanced
+  2. Enter promotion code to become a dev
   3. Or update your role in database
 
 ### "User not found"

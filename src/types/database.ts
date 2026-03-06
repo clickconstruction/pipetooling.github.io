@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -138,9 +164,9 @@ export type Database = {
           bid_due_date: string | null
           bid_submission_link: string | null
           bid_value: number | null
+          count_tooling_link: string | null
           created_at: string | null
           created_by: string
-          count_tooling_link: string | null
           customer_id: string | null
           design_drawing_plan_date: string | null
           distance_from_office: string | null
@@ -174,9 +200,9 @@ export type Database = {
           bid_due_date?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
+          count_tooling_link?: string | null
           created_at?: string | null
           created_by: string
-          count_tooling_link?: string | null
           customer_id?: string | null
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null
@@ -210,9 +236,9 @@ export type Database = {
           bid_due_date?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
+          count_tooling_link?: string | null
           created_at?: string | null
           created_by?: string
-          count_tooling_link?: string | null
           customer_id?: string | null
           design_drawing_plan_date?: string | null
           distance_from_office?: string | null
@@ -733,21 +759,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       cost_matrix_teams_shares: {
         Row: {
@@ -2789,42 +2800,6 @@ export type Database = {
           },
         ]
       }
-      prospect_email_sent: {
-        Row: {
-          created_at: string | null
-          prospect_id: string
-          template_key: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          prospect_id: string
-          template_key: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          prospect_id?: string
-          template_key?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prospect_email_sent_prospect_id_fkey"
-            columns: ["prospect_id"]
-            isOneToOne: false
-            referencedRelation: "prospects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prospect_email_sent_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       prospect_calling_locks: {
         Row: {
           locked_at: string | null
@@ -2896,6 +2871,42 @@ export type Database = {
             columns: ["prospect_id"]
             isOneToOne: false
             referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_email_sent: {
+        Row: {
+          created_at: string | null
+          prospect_id: string
+          template_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          prospect_id: string
+          template_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          prospect_id?: string
+          template_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_email_sent_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospect_email_sent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3175,32 +3186,6 @@ export type Database = {
           },
         ]
       }
-      quickfill_section_marks: {
-        Row: {
-          marked_at: string
-          marked_by: string | null
-          section_id: string
-        }
-        Insert: {
-          marked_at?: string
-          marked_by?: string | null
-          section_id: string
-        }
-        Update: {
-          marked_at?: string
-          marked_by?: string | null
-          section_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quickfill_section_marks_marked_by_fkey"
-            columns: ["marked_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       push_subscriptions: {
         Row: {
           auth_key: string
@@ -3230,6 +3215,32 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      quickfill_section_marks: {
+        Row: {
+          marked_at: string
+          marked_by: string | null
+          section_id: string
+        }
+        Insert: {
+          marked_at?: string
+          marked_by?: string | null
+          section_id: string
+        }
+        Update: {
+          marked_at?: string
+          marked_by?: string | null
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_section_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       report_enabled_users: {
         Row: {
@@ -3728,25 +3739,25 @@ export type Database = {
       }
       user_prospect_quick_notes: {
         Row: {
+          created_at: string | null
           id: string
-          user_id: string
           label: string
           sequence_order: number
-          created_at: string | null
+          user_id: string
         }
         Insert: {
+          created_at?: string | null
           id?: string
-          user_id: string
           label: string
           sequence_order?: number
-          created_at?: string | null
+          user_id: string
         }
         Update: {
+          created_at?: string | null
           id?: string
-          user_id?: string
           label?: string
           sequence_order?: number
-          created_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -4435,6 +4446,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       project_status: ["active", "completed", "on_hold", "awaiting_start"],

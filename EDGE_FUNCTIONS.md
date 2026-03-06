@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "Manual JWT validation"
-total_functions: 7
+total_functions: 10
 
 key_sections:
   - name: "create-user"
@@ -67,6 +67,7 @@ required_secrets:
   - "SUPABASE_ANON_KEY"
   - "SUPABASE_SERVICE_ROLE_KEY"
   - "RESEND_API_KEY (for email functions)"
+  - "DEV_PROMOTION_CODE (for claim-dev)"
 
 when_to_read:
   - Calling edge functions from frontend
@@ -86,6 +87,7 @@ when_to_read:
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
    - [set-user-password](#set-user-password)
+   - [claim-dev](#claim-dev)
    - [test-email](#test-email)
 4. [Error Handling](#error-handling)
 5. [Deployment](#deployment)
@@ -849,6 +851,88 @@ const response = await supabase.functions.invoke('set-user-password', {
 **Security Note**: Only devs can call this function. Use with caution.
 
 **Deployment**: Function deployment handled via Supabase CLI
+
+---
+
+### claim-dev
+
+**Purpose**: Promote the current user to dev role by entering the promotion code (stored in Supabase secret)
+
+**Endpoint**: `POST /functions/v1/claim-dev`
+
+**Required Role**: Authenticated user (any role; promotes self to dev on success)
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DEV_PROMOTION_CODE` - Promotion code (add via Dashboard or `supabase secrets set DEV_PROMOTION_CODE <value>`)
+
+#### Request Parameters
+
+```typescript
+interface ClaimDevRequest {
+  code: string  // Promotion code to claim dev role
+}
+```
+
+#### Example Request
+
+```typescript
+const response = await supabase.functions.invoke('claim-dev', {
+  body: { code: 'your-promotion-code' }
+})
+```
+
+#### Success Response
+
+**Status**: 200 OK
+
+```json
+{
+  "success": true
+}
+```
+
+#### Error / Invalid Code Response
+
+**Status**: 200 OK (invalid code returns success: false, not an error status)
+
+```json
+{
+  "success": false
+}
+```
+
+#### Error Responses
+
+**401 Unauthorized** - No/invalid session:
+```json
+{
+  "error": "Unauthorized - Invalid or expired session. Please sign out and sign in again."
+}
+```
+
+**500 Internal Server Error** - Secret not configured:
+```json
+{
+  "error": "DEV_PROMOTION_CODE not configured"
+}
+```
+
+#### Implementation Details
+
+1. Validates JWT (user must be logged in)
+2. Reads `DEV_PROMOTION_CODE` from Supabase secrets (env var)
+3. Compares input code to secret using constant-time comparison
+4. On match: uses service role client to `UPDATE public.users SET role = 'dev' WHERE id = auth.uid()`
+5. Returns `{ success: false }` for invalid code (does not reveal whether code was wrong)
+
+**Use Cases**:
+- Initial dev promotion (no existing dev to promote you)
+- Bootstrap admin access
+
+**Security Note**: Add `DEV_PROMOTION_CODE` in Supabase Dashboard (Project Settings → Edge Functions → Secrets) or via CLI. Do not reuse the old hardcoded value; generate a strong random code.
 
 ---
 
