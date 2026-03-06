@@ -92,6 +92,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### March 2026
 
+#### March 22, 2026
+
+**`20260322000000_create_inspection_quick_links.sql`**
+- **Purpose**: Make inspection quick links editable; replace hardcoded permit portal list with lookup table
+- **Changes**: Create `inspection_quick_links` table (id, label, url, sequence_order); RLS SELECT for authenticated, INSERT/UPDATE/DELETE for dev, master, assistant, primary (via `can_manage_inspection_types`); seed 7 links
+- **Impact**: Jobs Inspections tab Quick Links section has "Edit Quick Inspection Links" button; links fetched from DB; users who see Inspections tab can add/edit/delete links
+- **Category**: Jobs / Inspections
+
+#### March 21, 2026
+
+**`20260321000000_create_inspection_types.sql`**
+- **Purpose**: Make inspection types editable; replace hardcoded CHECK with lookup table
+- **Changes**: Create `inspection_types` table (name PK, sequence_order); create `can_manage_inspection_types()` helper; seed 8 types; drop `inspections_type_check`, add FK `inspections.inspection_type` → `inspection_types(name)` ON UPDATE CASCADE ON DELETE RESTRICT; RLS SELECT for authenticated, INSERT/UPDATE/DELETE for dev, master, assistant, primary
+- **Impact**: Jobs Inspections tab has "Edit Inspection Types" button; Add Inspection modal fetches types from DB; users who see Inspections tab can add/edit/delete types
+- **Category**: Jobs / Inspections
+
+#### March 20, 2026
+
+**`20260320000000_create_inspections.sql`**
+- **Purpose**: Add Inspections tab to Jobs page; scheduled inspections linked to jobs (jobs_ledger or projects)
+- **Changes**: Create `inspections` table (id, job_ledger_id, project_id, address, inspection_type, scheduled_date, created_by_user_id, created_at, updated_at); CHECK exactly one of job_ledger_id/project_id; CHECK inspection_type in 8 allowed values; RLS for dev, master, assistant, primary (SELECT/INSERT/UPDATE); devs only for DELETE
+- **Impact**: Jobs page Inspections tab with quick links to permit portals, calendar, Add Inspection modal; Dashboard "Upcoming inspection (3 days)" for assistants
+- **Category**: Jobs / Inspections
+
 #### March 19, 2026
 
 **`20260319000002_insert_report_rpc.sql`**

@@ -4032,8 +4032,8 @@ export default function Settings() {
             Choose which quick-action buttons appear on your Dashboard.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
-            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect'] as const).map((key) => {
-              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'New Prospect' : key.charAt(0).toUpperCase() + key.slice(1)
+            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections'] as const).map((key) => {
+              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'New Prospect' : key === 'inspections' ? 'Inspections' : key.charAt(0).toUpperCase() + key.slice(1)
               return (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                   <input

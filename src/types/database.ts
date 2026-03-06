@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       app_settings: {
@@ -759,21 +734,6 @@ export type Database = {
           },
         ]
       }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
-      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -1171,6 +1131,145 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "service_types"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      hours_days_correct: {
+        Row: {
+          marked_at: string | null
+          marked_by: string | null
+          work_date: string
+        }
+        Insert: {
+          marked_at?: string | null
+          marked_by?: string | null
+          work_date: string
+        }
+        Update: {
+          marked_at?: string | null
+          marked_by?: string | null
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hours_days_correct_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inspection_quick_links: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          sequence_order: number
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          sequence_order?: number
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          sequence_order?: number
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
+      inspection_types: {
+        Row: {
+          created_at: string | null
+          name: string
+          sequence_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          name: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          name?: string
+          sequence_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      inspections: {
+        Row: {
+          address: string
+          created_at: string | null
+          created_by_user_id: string
+          id: string
+          inspection_type: string
+          job_ledger_id: string | null
+          project_id: string | null
+          scheduled_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          address: string
+          created_at?: string | null
+          created_by_user_id: string
+          id?: string
+          inspection_type: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          scheduled_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string | null
+          created_by_user_id?: string
+          id?: string
+          inspection_type?: string
+          job_ledger_id?: string | null
+          project_id?: string | null
+          scheduled_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspections_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inspections_type_fk"
+            columns: ["inspection_type"]
+            isOneToOne: false
+            referencedRelation: "inspection_types"
+            referencedColumns: ["name"]
           },
         ]
       }
@@ -2149,6 +2248,88 @@ export type Database = {
           },
         ]
       }
+      pay_stub_days: {
+        Row: {
+          created_at: string | null
+          hours_at_time: number
+          id: string
+          paid_amount: number
+          pay_stub_id: string
+          person_name: string
+          rate_at_time: number
+          work_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          hours_at_time: number
+          id?: string
+          paid_amount: number
+          pay_stub_id: string
+          person_name: string
+          rate_at_time: number
+          work_date: string
+        }
+        Update: {
+          created_at?: string | null
+          hours_at_time?: number
+          id?: string
+          paid_amount?: number
+          pay_stub_id?: string
+          person_name?: string
+          rate_at_time?: number
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stub_days_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_stubs: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          gross_pay: number
+          hours_total: number
+          id: string
+          period_end: string
+          period_start: string
+          person_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          gross_pay: number
+          hours_total: number
+          id?: string
+          period_end: string
+          period_start: string
+          person_name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          gross_pay?: number
+          hours_total?: number
+          id?: string
+          period_end?: string
+          period_start?: string
+          person_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_stubs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           created_at: string | null
@@ -2279,32 +2460,6 @@ export type Database = {
         }
         Relationships: []
       }
-      hours_days_correct: {
-        Row: {
-          work_date: string
-          marked_by: string | null
-          marked_at: string | null
-        }
-        Insert: {
-          work_date: string
-          marked_by?: string | null
-          marked_at?: string | null
-        }
-        Update: {
-          work_date?: string
-          marked_by?: string | null
-          marked_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hours_days_correct_marked_by_fkey"
-            columns: ["marked_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people_labor_job_items: {
         Row: {
           count: number
@@ -2413,88 +2568,6 @@ export type Database = {
           show_in_hours?: boolean
         }
         Relationships: []
-      }
-      pay_stubs: {
-        Row: {
-          id: string
-          person_name: string
-          period_start: string
-          period_end: string
-          hours_total: number
-          gross_pay: number
-          created_at: string | null
-          created_by: string | null
-        }
-        Insert: {
-          id?: string
-          person_name: string
-          period_start: string
-          period_end: string
-          hours_total: number
-          gross_pay: number
-          created_at?: string | null
-          created_by?: string | null
-        }
-        Update: {
-          id?: string
-          person_name?: string
-          period_start?: string
-          period_end?: string
-          hours_total?: number
-          gross_pay?: number
-          created_at?: string | null
-          created_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pay_stubs_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      pay_stub_days: {
-        Row: {
-          id: string
-          pay_stub_id: string
-          person_name: string
-          work_date: string
-          hours_at_time: number
-          rate_at_time: number
-          paid_amount: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          pay_stub_id: string
-          person_name: string
-          work_date: string
-          hours_at_time: number
-          rate_at_time: number
-          paid_amount: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          pay_stub_id?: string
-          person_name?: string
-          work_date?: string
-          hours_at_time?: number
-          rate_at_time?: number
-          paid_amount?: number
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pay_stub_days_pay_stub_id_fkey"
-            columns: ["pay_stub_id"]
-            isOneToOne: false
-            referencedRelation: "pay_stubs"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       people_team_members: {
         Row: {
@@ -4202,6 +4275,7 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_manage_inspection_types: { Args: never; Returns: boolean }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
         Returns: boolean
@@ -4252,15 +4326,6 @@ export type Database = {
           source: string
         }[]
       }
-      insert_report: {
-        Args: {
-          p_template_id: string
-          p_field_values: Json
-          p_job_ledger_id: string | null
-          p_project_id: string | null
-        }
-        Returns: string
-      }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }
@@ -4296,6 +4361,15 @@ export type Database = {
           supply_house_name: string
           total_parts: number
         }[]
+      }
+      insert_report: {
+        Args: {
+          p_field_values: Json
+          p_job_ledger_id: string
+          p_project_id: string
+          p_template_id: string
+        }
+        Returns: string
       }
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
@@ -4577,9 +4651,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       project_status: ["active", "completed", "on_hold", "awaiting_start"],
@@ -4605,3 +4676,4 @@ export const Constants = {
     },
   },
 } as const
+
