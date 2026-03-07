@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through March 17, 2026"
+date_range: "Through March 26, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -92,6 +92,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### March 2026
 
+#### March 26, 2026
+
+**`20260326000000_fix_cost_estimate_labor_rows_rls_assistants.sql`**
+- **Purpose**: Fix 500 Internal Server Error when assistants (or dev/master/estimator) fetch cost estimate labor rows on Bids > Pricing
+- **Changes**: Create `is_bid_pricing_user()` SECURITY DEFINER helper; simplify cost_estimate_labor_rows RLS policies to use helper instead of nested users/bids subqueries (avoids recursion)
+- **Impact**: Assistant William and other bid-pricing users can load Pricing tab without 500
+- **Category**: Bids / RLS
+
 #### March 22, 2026
 
 **`20260322000000_create_inspection_quick_links.sql`**
@@ -109,6 +117,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Jobs / Inspections
 
 #### March 20, 2026
+
+**`20260320000000_search_jobs_for_reports_add_address.sql`**
+- **Purpose**: Add address to job search results for Add Inspection and New Report modals
+- **Changes**: Alter `search_jobs_for_reports` RPC to return `address` column; jobs_ledger uses `job_address`, projects uses `address`
+- **Impact**: Add Inspection job search displays "Suzy Wilson (HCP: 612) - 8201 Wilke Rd. Kingsbury Tx 78638"; New Report modal also receives address in results
+- **Category**: Jobs / Inspections, Reports
 
 **`20260320000000_create_inspections.sql`**
 - **Purpose**: Add Inspections tab to Jobs page; scheduled inspections linked to jobs (jobs_ledger or projects)

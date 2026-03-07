@@ -8,7 +8,7 @@ type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
 type Report = Database['public']['Tables']['reports']['Row']
 
-type JobSearchResult = { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string }
+type JobSearchResult = { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string; address?: string }
 
 type Props = {
   open: boolean
@@ -16,7 +16,7 @@ type Props = {
   onSaved: () => void
   authUserId: string | null
   userRole?: UserRole | null
-  initialJob?: { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string }
+  initialJob?: { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string; address?: string }
   initialTemplateName?: string
 }
 
@@ -99,8 +99,25 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   useEffect(() => {
     if (!open || searchMode !== 'search') return
     const q = jobSearchText.trim()
-    supabase.rpc('search_jobs_for_reports', { search_text: q }).then(({ data }) => {
-      setSearchResults((data as JobSearchResult[]) ?? [])
+    supabase.rpc('search_jobs_for_reports', { search_text: q }).then(async ({ data }) => {
+      let raw = (data as JobSearchResult[] | null) ?? []
+      if (raw.length > 0) {
+        const jobIds = raw.filter((r) => r.source === 'job_ledger').map((r) => r.id)
+        const projectIds = raw.filter((r) => r.source === 'project').map((r) => r.id)
+        const [jobRes, projectRes] = await Promise.all([
+          jobIds.length > 0 ? supabase.from('jobs_ledger').select('id, job_address').in('id', jobIds) : { data: [] as { id: string; job_address?: string }[] },
+          projectIds.length > 0 ? supabase.from('projects').select('id, address').in('id', projectIds) : { data: [] as { id: string; address?: string }[] },
+        ])
+        const jobRows = (jobRes.data as { id: string; job_address?: string }[]) ?? []
+        const projectRows = (projectRes.data as { id: string; address?: string }[]) ?? []
+        const jobAddrMap = Object.fromEntries(jobRows.map((r) => [r.id, r.job_address ?? '']))
+        const projectAddrMap = Object.fromEntries(projectRows.map((r) => [r.id, r.address ?? '']))
+        raw = raw.map((r) => ({
+          ...r,
+          address: (r.address && r.address.trim()) || (r.source === 'job_ledger' ? jobAddrMap[r.id] : projectAddrMap[r.id]) || '',
+        }))
+      }
+      setSearchResults(raw)
     })
   }, [open, jobSearchText, searchMode])
 
@@ -236,7 +253,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               )}
             </div>
             {selectedJob && (
-              <p style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'})</p>
+              <div style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>
+                <div>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'})</div>
+                {selectedJob.address && <div style={{ marginTop: '0.25rem', color: '#4b5563', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
+              </div>
             )}
             {lastReportJob && (
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -259,7 +279,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               type="text"
               value={jobSearchText}
               onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
-              placeholder="Search by HCP # or project name"
+              placeholder="Search by HCP #, project name, or address"
               style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
             />
             {searchMode === 'search' && searchResults.length > 0 && (
@@ -271,7 +291,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     onClick={() => { setSelectedJob(r); setSearchResults([]) }}
                     style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
                   >
-                    {r.display_name} {r.hcp_number ? `(HCP: ${r.hcp_number})` : ''}
+                    {r.display_name} {r.hcp_number ? `(HCP: ${r.hcp_number})` : ''}{r.address ? `  -  ${r.address}` : ''}
                   </button>
                 ))}
               </div>

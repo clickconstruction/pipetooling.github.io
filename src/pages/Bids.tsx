@@ -2436,12 +2436,7 @@ export default function Bids() {
   }
 
   async function loadPricingDataForBid(bidId: string) {
-    const { data: countData, error: countErr } = await supabase
-      .from('bids_count_rows')
-      .select('*')
-      .eq('bid_id', bidId)
-      .order('sequence_order', { ascending: true })
-    if (countErr) {
+    const clearPricingState = () => {
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
@@ -2450,54 +2445,31 @@ export default function Bids() {
       setPricingMaterialTotalTrimSet(null)
       setPricingLaborRate(null)
       setPricingFixtureMaterialsFromTakeoff({})
+    }
+
+    // Phase 1: parallel fetches (all need only bidId)
+    const [countRes, estRes, mappingsRes] = await Promise.all([
+      supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true }),
+      supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle(),
+      supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId),
+    ])
+
+    if (countRes.error) {
+      clearPricingState()
       return
     }
-    const countRows = (countData as BidCountRow[]) ?? []
+    const countRows = (countRes.data as BidCountRow[]) ?? []
     setPricingCountRows(countRows)
-    const { data: estData, error: estErr } = await supabase
-      .from('cost_estimates')
-      .select('*')
-      .eq('bid_id', bidId)
-      .maybeSingle()
-    if (estErr || !estData) {
-      setPricingCostEstimate(null)
-      setPricingLaborRows([])
-      setPricingMaterialTotalRoughIn(null)
-      setPricingMaterialTotalTopOut(null)
-      setPricingMaterialTotalTrimSet(null)
-      setPricingLaborRate(null)
-      setPricingFixtureMaterialsFromTakeoff({})
+
+    if (estRes.error || !estRes.data) {
+      clearPricingState()
       return
     }
-    const est = estData as CostEstimate
+    const est = estRes.data as CostEstimate
     setPricingCostEstimate(est)
     setPricingLaborRate(est.labor_rate != null ? Number(est.labor_rate) : null)
-    const [roughTotal, topTotal, trimTotal] = await Promise.all([
-      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
-      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
-      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
-    ])
-    setPricingMaterialTotalRoughIn(est.purchase_order_id_rough_in ? roughTotal : null)
-    setPricingMaterialTotalTopOut(est.purchase_order_id_top_out ? topTotal : null)
-    setPricingMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trimTotal : null)
-    const { data: laborData, error: laborErr } = await supabase
-      .from('cost_estimate_labor_rows')
-      .select('*')
-      .eq('cost_estimate_id', est.id)
-      .order('sequence_order', { ascending: true })
-    if (laborErr) {
-      setPricingLaborRows([])
-      setPricingFixtureMaterialsFromTakeoff({})
-      return
-    }
-    setPricingLaborRows((laborData as CostEstimateLaborRow[]) ?? [])
 
-    // Load takeoff mappings for per-fixture materials
-    const { data: mappingsData } = await supabase
-      .from('bids_takeoff_template_mappings')
-      .select('id, count_row_id, template_id, stage, quantity')
-      .eq('bid_id', bidId)
-    // Load PO items for part prices (part_id -> price_at_time per stage)
+    // Phase 2: parallel fetches (all need est)
     const loadPOItems = async (poId: string | null) => {
       if (!poId) return []
       const { data, error } = await supabase
@@ -2507,34 +2479,73 @@ export default function Bids() {
       if (error) return []
       return (data as Array<{ part_id: string; quantity: number; price_at_time: number }>) ?? []
     }
-    const [roughItems, topItems, trimItems] = await Promise.all([
+    const [roughTotal, topTotal, trimTotal, laborRes, roughItems, topItems, trimItems] = await Promise.all([
+      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
+      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
+      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
+      supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
       loadPOItems(est.purchase_order_id_rough_in),
       loadPOItems(est.purchase_order_id_top_out),
       loadPOItems(est.purchase_order_id_trim_set),
     ])
-    // Compute per-fixture materials from takeoff (expandTemplate + PO part prices)
+
+    setPricingMaterialTotalRoughIn(est.purchase_order_id_rough_in ? roughTotal : null)
+    setPricingMaterialTotalTopOut(est.purchase_order_id_top_out ? topTotal : null)
+    setPricingMaterialTotalTrimSet(est.purchase_order_id_trim_set ? trimTotal : null)
+
+    if (laborRes.error) {
+      setPricingLaborRows([])
+      setPricingFixtureMaterialsFromTakeoff({})
+      return
+    }
+    setPricingLaborRows((laborRes.data as CostEstimateLaborRow[]) ?? [])
+
+    // Progressive loading: show table with proportional materials immediately; compute per-fixture materials in background
+    setPricingFixtureMaterialsFromTakeoff({})
+
     const partPriceByStage: Record<string, Record<string, number>> = {
       rough_in: Object.fromEntries(roughItems.map((i) => [i.part_id, i.price_at_time])),
       top_out: Object.fromEntries(topItems.map((i) => [i.part_id, i.price_at_time])),
       trim_set: Object.fromEntries(trimItems.map((i) => [i.part_id, i.price_at_time])),
     }
-    const mappings = (mappingsData as Array<{ id: string; count_row_id: string; template_id: string; stage: string; quantity: number }>) ?? []
-    const fixtureMaterials: Record<string, number> = {}
-    for (const countRow of countRows) {
-      const rowMappings = mappings.filter((m) => m.count_row_id === countRow.id)
-      if (rowMappings.length === 0) continue
-      let sum = 0
-      for (const m of rowMappings) {
-        const parts = await expandTemplate(supabase, m.template_id, m.quantity)
-        const priceMap = partPriceByStage[m.stage] ?? {}
-        for (const { part_id, quantity } of parts) {
-          const price = priceMap[part_id] ?? 0
-          sum += quantity * price
+    const mappings = (mappingsRes.data as Array<{ id: string; count_row_id: string; template_id: string; stage: string; quantity: number }>) ?? []
+
+    if (mappings.length > 0) {
+      void (async () => {
+        // Deduplicate and parallelize expandTemplate
+        const uniqueKeys = new Set(mappings.map((m) => `${m.template_id}:${m.quantity}`))
+        const cache = new Map<string, Array<{ part_id: string; quantity: number }>>()
+        await Promise.all(
+          [...uniqueKeys].map(async (key) => {
+            const [tid, qtyStr] = key.split(':')
+            const qty = Number(qtyStr)
+            const parts = await expandTemplate(supabase, tid, qty)
+            cache.set(key, parts)
+          })
+        )
+
+        // Compute fixtureMaterials from cache (sync)
+        const fixtureMaterials: Record<string, number> = {}
+        for (const countRow of countRows) {
+          const rowMappings = mappings.filter((m) => m.count_row_id === countRow.id)
+          if (rowMappings.length === 0) continue
+          let sum = 0
+          for (const m of rowMappings) {
+            const parts = cache.get(`${m.template_id}:${m.quantity}`) ?? []
+            const priceMap = partPriceByStage[m.stage] ?? {}
+            for (const { part_id, quantity } of parts) {
+              const price = priceMap[part_id] ?? 0
+              sum += quantity * price
+            }
+          }
+          fixtureMaterials[countRow.id] = sum
         }
-      }
-      fixtureMaterials[countRow.id] = sum
+
+        if (pricingBidIdRef.current === bidId) {
+          setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
+        }
+      })()
     }
-    setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
   }
 
   async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
@@ -9830,7 +9841,35 @@ export default function Bids() {
                         <tr>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price book entry</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                              Price book entry
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPricingAssignmentSearches((prev) => {
+                                    const next = { ...prev }
+                                    for (const row of rows) {
+                                      const fixture = row.countRow.fixture ?? ''
+                                      next[row.countRow.id] = fixture.slice(0, 3)
+                                    }
+                                    return next
+                                  })
+                                }}
+                                style={{
+                                  padding: '0.2rem 0.4rem',
+                                  fontSize: '0.75rem',
+                                  background: '#f3f4f6',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 4,
+                                  cursor: 'pointer'
+                                }}
+                                title="Pre-fill first 3 letters of each fixture into search"
+                              >
+                                partial-fill
+                              </button>
+                            </span>
+                          </th>
                           <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Our cost</th>
                           <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin %</th>

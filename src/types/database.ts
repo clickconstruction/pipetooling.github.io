@@ -4489,6 +4489,7 @@ export type Database = {
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
+          address: string
           display_name: string
           hcp_number: string
           id: string
