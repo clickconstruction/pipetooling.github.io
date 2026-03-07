@@ -2518,8 +2518,8 @@ export default function Bids() {
         await Promise.all(
           [...uniqueKeys].map(async (key) => {
             const [tid, qtyStr] = key.split(':')
-            const qty = Number(qtyStr)
-            const parts = await expandTemplate(supabase, tid, qty)
+            const qty = Number(qtyStr ?? 0)
+            const parts = await expandTemplate(supabase, tid ?? '', qty)
             cache.set(key, parts)
           })
         )
