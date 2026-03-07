@@ -1538,6 +1538,49 @@ export default function Bids() {
     showToast(msg, 'success')
   }
 
+  async function handleCountsImportFromTooling() {
+    const bidId = selectedBidForCounts?.id
+    if (!bidId) return
+    try {
+      const text = await navigator.clipboard.readText()
+      const { rows, skippedCount } = parseCountsImportText(text)
+      if (rows.length === 0) {
+        showToast(skippedCount > 0 ? 'No valid rows in clipboard. Use tab-delimited: Fixture, Count, Plan Page' : 'Clipboard is empty. Copy from /Tooling first.', 'error')
+        return
+      }
+      const { data: maxSeqData } = await supabase
+        .from('bids_count_rows')
+        .select('sequence_order')
+        .eq('bid_id', bidId)
+        .order('sequence_order', { ascending: false })
+        .limit(1)
+      const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
+      let inserted = 0
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (!row) continue
+        const { error } = await supabase.from('bids_count_rows').insert({
+          bid_id: bidId,
+          fixture: row.fixture,
+          count: row.count,
+          page: row.page,
+          sequence_order: maxSeq + 1 + i,
+        })
+        if (error) {
+          showToast(`Failed to insert: ${error.message}`, 'error')
+          if (inserted > 0) refreshAfterCountsChange()
+          return
+        }
+        inserted++
+      }
+      refreshAfterCountsChange()
+      const msg = skippedCount > 0 ? `Imported ${inserted} rows from /Tooling. ${skippedCount} lines skipped.` : `Imported ${inserted} rows from /Tooling.`
+      showToast(msg, 'success')
+    } catch (err) {
+      showToast('Could not read clipboard. Paste into Import instead.', 'error')
+    }
+  }
+
   async function loadSubmissionEntries(bidId: string) {
     const { data, error } = await supabase
       .from('bids_submission_entries')
@@ -7539,6 +7582,14 @@ export default function Bids() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCounts) || 'Bid'}</h2>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleCountsImportFromTooling}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    title="Copy from /Tooling first, then click to import tab-delimited rows (Fixture, Count, Plan Page)"
+                  >
+                    Import from /Tooling
+                  </button>
                   <button
                     type="button"
                     onClick={() => openEditBid(selectedBidForCounts)}
