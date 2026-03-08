@@ -1405,21 +1405,6 @@ export default function People() {
     setCrewJobSearchResults([])
   }
 
-  function addJobToPersonForDate(personName: string, workDate: string, job: { id: string; hcp_number: string; job_name: string; job_address: string }) {
-    const key = `${workDate}:${personName}`
-    const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
-    if (row.job_assignments.some((a) => a.job_id === job.id)) return
-    const n = row.job_assignments.length + 1
-    const pct = Math.round((100 / n) * 10) / 10
-    const newAssignments = row.job_assignments.map((a) => ({ ...a, pct }))
-    newAssignments.push({ job_id: job.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
-    setCrewJobDetailsMap((prev) => ({ ...prev, [job.id]: { hcp_number: job.hcp_number, job_name: job.job_name, job_address: job.job_address } }))
-    saveCrewJobRowForDate(personName, workDate, { ...row, job_assignments: newAssignments })
-    setHoursUnassignedJobSearch(null)
-    setHoursUnassignedJobSearchText('')
-    setHoursUnassignedJobSearchResults([])
-  }
-
   useEffect(() => {
     const jobIds = new Set<string>()
     for (const row of Object.values(crewJobsData)) {

@@ -757,6 +757,21 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
+      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -4403,8 +4418,8 @@ export type Database = {
       insert_report: {
         Args: {
           p_field_values: Json
-          p_job_ledger_id: string
-          p_project_id: string
+          p_job_ledger_id: string | null
+          p_project_id: string | null
           p_template_id: string
         }
         Returns: string
