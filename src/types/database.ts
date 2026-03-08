@@ -613,6 +613,29 @@ export type Database = {
           },
         ]
       }
+      common_jobs: {
+        Row: {
+          job_id: string
+          sequence_order: number
+        }
+        Insert: {
+          job_id: string
+          sequence_order?: number
+        }
+        Update: {
+          job_id?: string
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "common_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_labor_rows: {
         Row: {
           cost_estimate_id: string
@@ -753,21 +776,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       counts_fixture_group_items: {
         Row: {
@@ -2311,6 +2319,8 @@ export type Database = {
           gross_pay: number
           hours_total: number
           id: string
+          paid_at: string | null
+          paid_by: string | null
           period_end: string
           period_start: string
           person_name: string
@@ -2321,6 +2331,8 @@ export type Database = {
           gross_pay: number
           hours_total: number
           id?: string
+          paid_at?: string | null
+          paid_by?: string | null
           period_end: string
           period_start: string
           person_name: string
@@ -2331,6 +2343,8 @@ export type Database = {
           gross_pay?: number
           hours_total?: number
           id?: string
+          paid_at?: string | null
+          paid_by?: string | null
           period_end?: string
           period_start?: string
           person_name?: string
@@ -2339,6 +2353,13 @@ export type Database = {
           {
             foreignKeyName: "pay_stubs_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_stubs_paid_by_fkey"
+            columns: ["paid_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4014,6 +4035,7 @@ export type Database = {
       }
       users: {
         Row: {
+          archived_at: string | null
           created_at: string | null
           email: string
           estimator_service_type_ids: string[] | null
@@ -4027,6 +4049,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
           email: string
           estimator_service_type_ids?: string[] | null
@@ -4040,6 +4063,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
           email?: string
           estimator_service_type_ids?: string[] | null
@@ -4295,7 +4319,6 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
-      claim_dev_with_code: { Args: { code_input: string }; Returns: boolean }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
@@ -4380,14 +4403,15 @@ export type Database = {
       insert_report: {
         Args: {
           p_field_values: Json
-          p_job_ledger_id: string | null
-          p_project_id: string | null
+          p_job_ledger_id: string
+          p_project_id: string
           p_template_id: string
         }
         Returns: string
       }
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
+      is_bid_pricing_user: { Args: never; Returns: boolean }
       is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
@@ -4692,4 +4716,3 @@ export const Constants = {
     },
   },
 } as const
-

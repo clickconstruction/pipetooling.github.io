@@ -178,5 +178,5 @@ After deployment, you should see:
 ## Related Functions
 
 - `create-user` - Manually create users
-- `delete-user` - Delete users
+- `archive-user` - Archive users
 - `invite-user` - Send invitation emails

@@ -92,6 +92,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### March 2026
 
+#### March 7, 2026
+
+**`20250307120000_create_common_jobs.sql`**
+- **Purpose**: Org-wide quick-add jobs for Assign User to Jobs modal (People > Hours)
+- **Changes**: Create `common_jobs` table (job_id PK FK jobs_ledger, sequence_order); RLS SELECT for pay access + shared read; INSERT/DELETE for pay access users (dev, pay-approved master, assistant)
+- **Impact**: Assign User to Jobs modal shows Common Jobs section above Jobs; display mode shows quick-add buttons; edit mode allows add/remove from shared list
+- **Category**: People / Hours / Crew Jobs
+
+#### March 28, 2026
+
+**`20260328000000_pay_stubs_physical_payment.sql`**
+- **Purpose**: Track physical payment separately from stub creation; record when a pay stub was actually paid (cash, check, direct deposit)
+- **Changes**: Add `paid_at TIMESTAMPTZ` and `paid_by UUID REFERENCES users(id)` to `pay_stubs`; create UPDATE policy for pay access users (same predicate as SELECT/INSERT)
+- **Impact**: People > Pay Stubs > Ledger shows Paid column with "Mark as paid" / "Paid [date]" + Unmark; users can record when they physically pay each person
+- **Category**: People / Pay Stubs
+
+#### March 27, 2026
+
+**`20260327000000_devs_delete_pay_stubs.sql`**
+- **Purpose**: Allow devs to delete pay stubs (e.g. to correct mistakes)
+- **Changes**: Create RLS policy "Devs can delete pay stubs" on `pay_stubs` using `public.is_dev()`; `pay_stub_days` cascade automatically via FK ON DELETE CASCADE
+- **Impact**: People > Pay Stubs > Ledger shows Delete button for devs; devs can remove erroneous pay stubs
+- **Category**: People / Pay Stubs / RLS
+
 #### March 26, 2026
 
 **`20260326000000_fix_cost_estimate_labor_rows_rls_assistants.sql`**

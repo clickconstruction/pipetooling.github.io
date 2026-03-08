@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-03-02
+last_updated: 2026-03-26
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -232,6 +232,7 @@ Enter fixture and tie-in counts for each bid. Counts form the foundation for mat
 **Selected Bid Panel** (at top):
 - Shows currently selected bid details
 - **Edit Bid button** in header (next to Close) opens Edit Bid modal
+- **Import from /Tooling button**: Reads clipboard and imports tab-delimited rows (Fixture, Count, Plan Page). Use with /Tooling app "Copy to /Tooling" export. Format: `WC\t4\t1`, `ft of 4in PVC\t28.29\t1`, etc. One line per count row.
 
 **Search Box**:
 - Positioned **below** selected-bid panel, **above** bids list table
@@ -865,6 +866,12 @@ UNIQUE (version_id, fixture_type_id)
 **Benefits**:
 - Quickly find entries in large price books
 - Create missing entries without leaving search flow
+
+#### partial-fill Button
+
+**Location**: Price Book Entry column header in the pricing comparison table
+
+**Behavior**: Click to pre-fill each row's search input with the first 3 letters of its Fixture or Tie-in. Speeds up assigning price book entries when many rows share similar fixture names.
 
 #### Searchable Assignment Dropdowns
 

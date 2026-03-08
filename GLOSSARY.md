@@ -682,7 +682,7 @@ Serverless function running on Deno runtime. Handles privileged operations requi
 
 **Location**: `supabase/functions/`
 
-**Examples**: create-user, delete-user, login-as-user, send-workflow-notification
+**Examples**: create-user, archive-user, restore-user, login-as-user, send-workflow-notification
 
 ### Resend
 Email delivery service used for sending notification emails.

@@ -18,10 +18,14 @@ key_sections:
     line: ~55
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
-  - name: "delete-user"
+  - name: "archive-user"
     line: ~181
-    anchor: "#delete-user"
-    description: "Delete users by email/name (dev-only)"
+    anchor: "#archive-user"
+    description: "Archive users by email/name (dev-only)"
+  - name: "restore-user"
+    line: ~250
+    anchor: "#restore-user"
+    description: "Restore archived users (dev-only)"
   - name: "login-as-user"
     line: ~293
     anchor: "#login-as-user"
@@ -82,7 +86,8 @@ when_to_read:
 2. [Authentication](#authentication)
 3. [Functions](#functions)
    - [create-user](#create-user)
-   - [delete-user](#delete-user)
+   - [archive-user](#archive-user)
+   - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
@@ -249,11 +254,11 @@ const response = await supabase.functions.invoke('create-user', {
 
 ---
 
-### delete-user
+### archive-user
 
-**Purpose**: Delete users by email or name (dev-only operation)
+**Purpose**: Archive users by email or name (dev-only operation). Archived users are hidden across the app and cannot sign in, but can be restored later.
 
-**Endpoint**: `POST /functions/v1/delete-user`
+**Endpoint**: `POST /functions/v1/archive-user`
 
 **Required Role**: `dev`
 
@@ -265,42 +270,32 @@ const response = await supabase.functions.invoke('create-user', {
 **Authentication**: 
 - `verify_jwt: false` - Function handles its own authentication internally
 - Validates JWT token and checks user role = 'dev' in the function code
-- Provides detailed error messages for authentication failures
 
 #### Request Parameters
 
 ```typescript
-interface DeleteUserRequest {
+interface ArchiveUserRequest {
   email?: string                    // Find user by email
   name?: string                     // Find user by name (if email not provided)
-  reassign_customers_to?: string    // Optional: UUID of master to reassign customers to before deletion
+  reassign_customers_to?: string    // Optional: UUID of master to reassign customers to before archival
 }
 ```
 
 **Notes**: 
 - Must provide either `email` or `name` (email takes precedence if both provided)
-- If `reassign_customers_to` is provided, all customers owned by the deleted user will be reassigned to the specified master before deletion
+- If `reassign_customers_to` is provided, all customers owned by the user will be reassigned to the specified master before archival
 - The new master must be a `dev` or `master_technician` role
+- Sets `archived_at` in `public.users` and `banned_until` in `auth.users` (user cannot sign in)
 
 #### Example Request
 
 ```typescript
-// Delete by email (simple deletion)
-const response = await supabase.functions.invoke('delete-user', {
-  body: {
-    email: 'user@example.com'
-  }
+const response = await supabase.functions.invoke('archive-user', {
+  body: { email: 'user@example.com' }
 })
 
-// Delete by name
-const response = await supabase.functions.invoke('delete-user', {
-  body: {
-    name: 'John Doe'
-  }
-})
-
-// Delete and reassign customers to another master
-const response = await supabase.functions.invoke('delete-user', {
+// With customer reassignment
+const response = await supabase.functions.invoke('archive-user', {
   body: {
     email: 'oldmaster@example.com',
     reassign_customers_to: 'uuid-of-new-master'
@@ -310,94 +305,53 @@ const response = await supabase.functions.invoke('delete-user', {
 
 #### Success Response
 
-**Status**: 200 OK
+```json
+{
+  "success": true,
+  "message": "User user@example.com archived successfully",
+  "customersReassigned": 0
+}
+```
+
+---
+
+### restore-user
+
+**Purpose**: Restore an archived user (dev-only). Clears `archived_at` and `banned_until` so the user can sign in again.
+
+**Endpoint**: `POST /functions/v1/restore-user`
+
+**Required Role**: `dev`
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+#### Request Parameters
+
+```typescript
+interface RestoreUserRequest {
+  user_id: string    // UUID of the archived user to restore
+}
+```
+
+#### Example Request
+
+```typescript
+const response = await supabase.functions.invoke('restore-user', {
+  body: { user_id: 'uuid-of-archived-user' }
+})
+```
+
+#### Success Response
 
 ```json
 {
   "success": true,
-  "message": "User user@example.com deleted successfully"
+  "message": "User user@example.com restored"
 }
 ```
-
-**With customer reassignment**:
-
-```json
-{
-  "success": true,
-  "message": "User oldmaster@example.com deleted and 5 customers reassigned",
-  "customersReassigned": 5
-}
-```
-
-#### Error Responses
-
-**400 Bad Request** - Missing fields:
-```json
-{
-  "error": "Missing required fields: email or name"
-}
-```
-
-**400 Bad Request** - Invalid new master (reassignment):
-```json
-{
-  "error": "New master user not found"
-}
-```
-
-**400 Bad Request** - Invalid role for new master:
-```json
-{
-  "error": "New master must be a dev or master_technician"
-}
-```
-
-**403 Forbidden** - Self-deletion attempt:
-```json
-{
-  "error": "Cannot delete yourself"
-}
-```
-
-**404 Not Found** - User not found:
-```json
-{
-  "error": "User not found with email: user@example.com"
-}
-```
-
-**500 Internal Server Error** - Reassignment failed:
-```json
-{
-  "error": "Failed to reassign customers: [error message]"
-}
-```
-
-**500 Internal Server Error** - Service role key missing:
-```json
-{
-  "error": "SUPABASE_SERVICE_ROLE_KEY not configured"
-}
-```
-
-#### Implementation Details
-
-1. Validates caller is `dev` role
-2. Finds user by email or name in `public.users` table
-3. Prevents self-deletion (cannot delete calling user)
-4. **If `reassign_customers_to` is provided**:
-   - Validates new master exists and has role `dev` or `master_technician`
-   - Counts customers owned by user to delete
-   - Reassigns all customers to new master via UPDATE
-5. Deletes from `auth.users` using `supabase.auth.admin.deleteUser()`
-6. Cascading deletes handled by database foreign keys:
-   - `master_assistants` records
-   - `customers` owned by user (CASCADE DELETE - unless reassigned first)
-   - `projects` owned by user
-   - `purchase_orders` created by user
-   - Other related records with FK constraints
-
-**Deployment**: See [`supabase/functions/delete-user/DEPLOY.md`](supabase/functions/delete-user/DEPLOY.md)
 
 ---
 
@@ -1161,7 +1115,8 @@ RESEND_API_KEY=your-resend-api-key               # For email functions
 
 ```bash
 supabase functions deploy create-user
-supabase functions deploy delete-user
+supabase functions deploy archive-user
+supabase functions deploy restore-user
 supabase functions deploy login-as-user
 supabase functions deploy send-workflow-notification
 supabase functions deploy set-user-password
@@ -1205,7 +1160,8 @@ curl -X POST http://localhost:54321/functions/v1/create-user \
 Each function has a `DEPLOY.md` or `DEPLOY_NOW.md` file with specific deployment instructions:
 
 - [`create-user/DEPLOY.md`](supabase/functions/create-user/DEPLOY.md)
-- [`delete-user/DEPLOY.md`](supabase/functions/delete-user/DEPLOY.md)
+- [`archive-user`](supabase/functions/archive-user/) - Archive users (replaces delete-user)
+- [`restore-user`](supabase/functions/restore-user/) - Restore archived users
 - [`login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
 - [`send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
 - [`test-email/DEPLOY.md`](supabase/functions/test-email/DEPLOY.md)

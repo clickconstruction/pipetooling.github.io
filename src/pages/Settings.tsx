@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { loginAsUser as doLoginAsUser } from '../lib/loginAsUser'
-import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
+import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
+import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
+import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
 import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
@@ -31,6 +32,7 @@ type UserRow = {
   last_sign_in_at: string | null
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
+  archived_at?: string | null
 }
 
 type PersonRow = {
@@ -253,8 +255,12 @@ export default function Settings() {
   const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
   const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
   const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
+  const [archivedUsers, setArchivedUsers] = useState<UserRow[]>([])
+  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
+  const [restoreSubmitting, setRestoreSubmitting] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+  const [restoringUserId, setRestoringUserId] = useState<string | null>(null)
   const [sendingSignInEmailId, setSendingSignInEmailId] = useState<string | null>(null)
-  const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
   const [setPasswordUser, setSetPasswordUser] = useState<UserRow | null>(null)
   const [setPasswordValue, setSetPasswordValue] = useState('')
   const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
@@ -487,6 +493,10 @@ export default function Settings() {
   const [editPersonError, setEditPersonError] = useState<string | null>(null)
   const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
   const [convertSummary, setConvertSummary] = useState<string | null>(null)
+  const [mergeDuplicatesModalOpen, setMergeDuplicatesModalOpen] = useState(false)
+  const [mergeDuplicatesLoading, setMergeDuplicatesLoading] = useState(false)
+  const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
+  const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const [exportProjectsLoading, setExportProjectsLoading] = useState(false)
   const [exportMaterialsLoading, setExportMaterialsLoading] = useState(false)
   const [exportBidsLoading, setExportBidsLoading] = useState(false)
@@ -1243,6 +1253,7 @@ export default function Settings() {
     const { data: list, error: eList } = await supabase
       .from('users')
       .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids')
+      .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
@@ -1341,9 +1352,20 @@ export default function Settings() {
       setReportSubVisibilityMonths(String(byKey.get('report_sub_visibility_months') ?? 3))
       const { data: enabled } = await supabase.from('report_enabled_users').select('user_id')
       setReportEnabledUserIds(new Set((enabled ?? []).map((r: { user_id: string }) => r.user_id)))
+      await loadArchivedUsers()
     }
     
     setLoading(false)
+  }
+
+  async function loadArchivedUsers() {
+    if (!authUser?.id) return
+    const { data } = await supabase
+      .from('users')
+      .select('id, email, name, role, archived_at')
+      .not('archived_at', 'is', null)
+      .order('archived_at', { ascending: false })
+    setArchivedUsers((data as UserRow[]) ?? [])
   }
 
   async function saveDefaultLaborRate(e: React.FormEvent) {
@@ -3329,7 +3351,8 @@ export default function Settings() {
   async function updateUserProfile(
     id: string,
     updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null },
-    oldName?: string
+    oldName?: string,
+    userEmail?: string | null
   ) {
     setUpdatingId(id)
     setError(null)
@@ -3349,7 +3372,14 @@ export default function Settings() {
       setEditError(e.message)
     } else {
       if (oldName != null && oldName.trim() !== updates.name.trim()) {
-        await cascadePersonNameInPayTables(oldName, updates.name)
+        const fromDb = await getPersonNamesForUser(id, userEmail ?? null)
+        const namesToCascade = new Set([oldName.trim(), ...fromDb.map((n) => n.trim()).filter(Boolean)])
+        const trimmedNew = updates.name.trim()
+        for (const name of namesToCascade) {
+          if (name?.trim() && name.trim() !== trimmedNew) {
+            await cascadePersonNameInPayTables(name.trim(), trimmedNew)
+          }
+        }
       }
       setUsers((prev) =>
         prev.map((u) =>
@@ -3393,7 +3423,7 @@ export default function Settings() {
     if (editingUser?.role === 'primary') {
       updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
     }
-    await updateUserProfile(editingUserId, updates, editingUser?.name)
+    await updateUserProfile(editingUserId, updates, editingUser?.name, editingUser?.email)
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
@@ -3415,18 +3445,6 @@ export default function Settings() {
     })
     if (e) setError(e.message)
     setSendingSignInEmailId(null)
-  }
-
-  async function loginAsUser(u: UserRow) {
-    setLoggingInAsId(u.id)
-    setError(null)
-    try {
-      await doLoginAsUser(u, 'http://localhost:5173/dashboard')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to imitate')
-    } finally {
-      setLoggingInAsId(null)
-    }
   }
 
   function openInvite() {
@@ -3455,18 +3473,18 @@ export default function Settings() {
     setManualAddOpen(false)
   }
 
-  function openDelete() {
+  function openArchive() {
     setDeleteOpen(true)
     setDeleteEmail('')
     setDeleteName('')
     setDeleteError(null)
   }
 
-  function closeDelete() {
+  function closeArchive() {
     setDeleteOpen(false)
   }
 
-  function openDeleteReassign() {
+  function openArchiveReassign() {
     setDeleteReassignOpen(true)
     setDeleteReassignUserId('')
     setDeleteReassignNewMasterId('')
@@ -3474,7 +3492,7 @@ export default function Settings() {
     setDeleteReassignError(null)
   }
 
-  function closeDeleteReassign() {
+  function closeArchiveReassign() {
     setDeleteReassignOpen(false)
   }
 
@@ -3494,7 +3512,7 @@ export default function Settings() {
     }
   }
 
-  async function handleDeleteReassign(e: React.FormEvent) {
+  async function handleArchiveReassign(e: React.FormEvent) {
     e.preventDefault()
     setDeleteReassignError(null)
     
@@ -3508,18 +3526,18 @@ export default function Settings() {
       return
     }
     
-    const userToDelete = users.find(u => u.id === deleteReassignUserId)
-    if (!userToDelete) {
-      setDeleteReassignError('User to delete not found')
+    const userToArchive = users.find(u => u.id === deleteReassignUserId)
+    if (!userToArchive) {
+      setDeleteReassignError('User to archive not found')
       return
     }
     
     setDeleteReassignSubmitting(true)
     
-    const { data, error: eFn } = await supabase.functions.invoke('delete-user', {
+    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
       body: { 
-        email: userToDelete.email, 
-        name: userToDelete.name,
+        email: userToArchive.email, 
+        name: userToArchive.name,
         reassign_customers_to: deleteReassignNewMasterId 
       },
     })
@@ -3540,7 +3558,31 @@ export default function Settings() {
       return
     }
     
-    closeDeleteReassign()
+    closeArchiveReassign()
+    await loadData()
+  }
+
+  async function handleRestore(userId: string) {
+    setRestoreError(null)
+    setRestoringUserId(userId)
+    setRestoreSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('restore-user', {
+      body: { user_id: userId },
+    })
+    setRestoreSubmitting(false)
+    setRestoringUserId(null)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        msg = (eFn.context.json as { error?: string }).error || msg
+      }
+      setRestoreError(msg)
+      return
+    }
+    if (data?.error) {
+      setRestoreError(data.error)
+      return
+    }
     await loadData()
   }
 
@@ -3655,11 +3697,11 @@ export default function Settings() {
     }, 2000)
   }
 
-  async function handleDelete(e: React.FormEvent) {
+  async function handleArchive(e: React.FormEvent) {
     e.preventDefault()
     setDeleteError(null)
     setDeleteSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('delete-user', {
+    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
       body: { email: deleteEmail.trim(), name: deleteName.trim() },
     })
     setDeleteSubmitting(false)
@@ -3679,8 +3721,61 @@ export default function Settings() {
       setDeleteError(err)
       return
     }
-    closeDelete()
+    closeArchive()
     await loadData()
+  }
+
+  async function openFindDuplicatesModal() {
+    setMergeDuplicatesModalOpen(true)
+    setMergeDuplicatesLoading(true)
+    try {
+      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+      const payConfig: Record<string, PayConfigRowForMerge> = {}
+      for (const r of (data ?? []) as PayConfigRowForMerge[]) {
+        payConfig[r.person_name] = r
+      }
+      const people = [...myPeople, ...nonUserPeople]
+      const emailDups = findPersonUserDuplicates(people, users, payConfig)
+      const nameSimilarDups = findNameSimilarDuplicates(payConfig)
+      const seen = new Set<string>()
+      const dups = [...emailDups]
+      for (const d of emailDups) seen.add(`${d.personName}|${d.userDisplayName}`)
+      for (const d of nameSimilarDups) {
+        const key = `${d.personName}|${d.userDisplayName}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          dups.push(d)
+        }
+      }
+      setMergeDuplicates(dups)
+    } finally {
+      setMergeDuplicatesLoading(false)
+    }
+  }
+
+  async function handleMergeDuplicate(dup: { personName: string; userDisplayName: string; email: string }) {
+    setMergingPersonName(dup.personName)
+    setError(null)
+    let userId: string | undefined
+    if (dup.email?.trim()) {
+      userId = users.find((u) => u.email?.toLowerCase() === dup.email?.toLowerCase())?.id
+    } else {
+      userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
+    }
+    try {
+      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+      const payConfig: Record<string, PayConfigRowForMerge> = {}
+      for (const r of (data ?? []) as PayConfigRowForMerge[]) {
+        payConfig[r.person_name] = r
+      }
+      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId)
+      await loadData()
+      setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Merge failed')
+    } finally {
+      setMergingPersonName(null)
+    }
   }
 
   async function handleConvertMaster(e: React.FormEvent) {
@@ -4627,11 +4722,11 @@ export default function Settings() {
             <button type="button" onClick={openManualAdd} style={{ padding: '0.5rem 1rem' }}>
               Manually add user
             </button>
-            <button type="button" onClick={openDelete} style={{ padding: '0.5rem 1rem' }}>
-              Delete user
+            <button type="button" onClick={openArchive} style={{ padding: '0.5rem 1rem' }}>
+              Archive user
             </button>
-            <button type="button" onClick={openDeleteReassign} style={{ padding: '0.5rem 1rem' }}>
-              Delete User & Reassign Customers
+            <button type="button" onClick={openArchiveReassign} style={{ padding: '0.5rem 1rem' }}>
+              Archive User & Reassign Customers
             </button>
           </div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
@@ -4745,16 +4840,6 @@ export default function Settings() {
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
                         </button>
-                        {u.role !== 'dev' && (
-                          <button
-                            type="button"
-                            onClick={() => loginAsUser(u)}
-                            disabled={loggingInAsId === u.id}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                          >
-                            {loggingInAsId === u.id ? 'Redirecting…' : 'imitate'}
-                          </button>
-                        )}
                         <button
                           type="button"
                           onClick={() => {
@@ -4840,6 +4925,75 @@ export default function Settings() {
             </p>
           )}
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
+
+          {/* Archived users */}
+          <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
+            <button
+              type="button"
+              onClick={() => setArchivedSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{archivedSectionOpen ? '▼' : '▶'}</span>
+              Archived users ({archivedUsers.length})
+            </button>
+            {archivedSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                {restoreError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{restoreError}</p>}
+                {archivedUsers.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No archived users.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Archived</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedUsers.map((u) => (
+                          <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.email}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.name}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.role}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                              {u.archived_at ? new Date(u.archived_at).toLocaleDateString() : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleRestore(u.id)}
+                                disabled={restoreSubmitting}
+                                style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                              >
+                                {restoringUserId === u.id ? 'Restoring…' : 'Restore'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Convert Master to Assistant/Subcontractor */}
           {users.length > 0 && (
@@ -4971,10 +5125,60 @@ export default function Settings() {
               )}
             </div>
           )}
+            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+              <p style={{ color: '#6b7280', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
+                Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
+              </p>
+              <button
+                type="button"
+                onClick={openFindDuplicatesModal}
+                style={{ padding: '0.35rem 0.75rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                Find duplicates
+              </button>
+            </div>
             </div>
             )}
           </div>
         </>
+      )}
+
+      {mergeDuplicatesModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
+              <button
+                type="button"
+                onClick={() => setMergeDuplicatesModalOpen(false)}
+                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            {mergeDuplicatesLoading ? (
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Checking…</p>
+            ) : mergeDuplicates.length === 0 ? (
+              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No duplicates found.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                {mergeDuplicates.map((dup) => (
+                  <li key={dup.personName} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{dup.personName} → {dup.userDisplayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMergeDuplicate(dup)}
+                      disabled={mergingPersonName === dup.personName}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+                    >
+                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       )}
 
       {viewingOrphanPrices && (
@@ -5644,11 +5848,11 @@ export default function Settings() {
       {deleteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Delete user</h2>
+            <h2 style={{ marginTop: 0 }}>Archive user</h2>
             <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Type the user&apos;s email and name exactly. Both must match to delete.
+              Type the user&apos;s email and name exactly. Both must match to archive.
             </p>
-            <form onSubmit={handleDelete}>
+            <form onSubmit={handleArchive}>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="delete-email" style={{ display: 'block', marginBottom: 4 }}>Email *</label>
                 <input
@@ -5676,9 +5880,9 @@ export default function Settings() {
               {deleteError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{deleteError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" disabled={deleteSubmitting} style={{ color: '#b91c1c' }}>
-                  {deleteSubmitting ? 'Deleting…' : 'Delete user'}
+                  {deleteSubmitting ? 'Archiving…' : 'Archive user'}
                 </button>
-                <button type="button" onClick={closeDelete} disabled={deleteSubmitting}>Cancel</button>
+                <button type="button" onClick={closeArchive} disabled={deleteSubmitting}>Cancel</button>
               </div>
             </form>
           </div>
@@ -5688,15 +5892,15 @@ export default function Settings() {
       {deleteReassignOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
-            <h2 style={{ marginTop: 0 }}>Delete User & Reassign Customers</h2>
+            <h2 style={{ marginTop: 0 }}>Archive User & Reassign Customers</h2>
             <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Select a user to delete and a master to inherit their customers. 
-              The user will be deleted after all customers are reassigned.
+              Select a user to archive and a master to inherit their customers. 
+              The user will be archived after all customers are reassigned.
             </p>
-            <form onSubmit={handleDeleteReassign}>
+            <form onSubmit={handleArchiveReassign}>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="delete-reassign-user" style={{ display: 'block', marginBottom: 4 }}>
-                  User to delete *
+                  User to archive *
                 </label>
                 <select
                   id="delete-reassign-user"
@@ -5800,7 +6004,7 @@ export default function Settings() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={closeDeleteReassign} 
+                  onClick={closeArchiveReassign} 
                   disabled={deleteReassignSubmitting}
                   style={{ padding: '0.5rem 1rem' }}
                 >

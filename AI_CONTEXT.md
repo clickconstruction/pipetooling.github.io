@@ -124,7 +124,7 @@ pipetooling.github.io/
 - **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
-- **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Teams Summary tabs)
+- **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
@@ -355,7 +355,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 │                                                          │
 │  ┌────────────────────────────────────────────┐         │
 │  │      Edge Functions (Deno)                 │         │
-│  │  • create-user, delete-user, login-as-user │         │
+│  │  • create-user, archive-user, restore-user, login-as-user │         │
 │  │  • send-workflow-notification (Resend)     │         │
 │  │  • send-checklist-notification             │         │
 │  │  • send-scheduled-reminders, send-report   │         │

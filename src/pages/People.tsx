@@ -3,7 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
+import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 
@@ -69,6 +71,8 @@ export default function People() {
   const payConfigDraftRef = useRef(payConfigDraft)
   payConfigDraftRef.current = payConfigDraft
   const payConfigDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
+  const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const [payConfigSectionOpen, setPayConfigSectionOpen] = useState(false)
   const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
   const [costMatrixTagColorsSectionOpen, setCostMatrixTagColorsSectionOpen] = useState(false)
@@ -121,8 +125,8 @@ export default function People() {
     start.setDate(d.getDate() - day)
     return start.toISOString().slice(0, 10)
   })
-  // Pay Stubs tab state
-  type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null }
+  // Pay History tab state
+  type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null; paid_at: string | null; paid_by: string | null }
   const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
   const [payStubsLoading, setPayStubsLoading] = useState(false)
   const [payStubGeneratorPerson, setPayStubGeneratorPerson] = useState('')
@@ -144,6 +148,11 @@ export default function People() {
   const [payStubCalendarYear, setPayStubCalendarYear] = useState(() => new Date().getFullYear())
   const [payStubCalendarData, setPayStubCalendarData] = useState<{ earnedByDate: Record<string, number>; paidByDate: Record<string, number> } | null>(null)
   const [payStubCalendarLoading, setPayStubCalendarLoading] = useState(false)
+  const [deletingPayStubId, setDeletingPayStubId] = useState<string | null>(null)
+  const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
+  const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
+  const [runPayrollModalOpen, setRunPayrollModalOpen] = useState(false)
+  const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -171,6 +180,20 @@ export default function People() {
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string; job_address: string }>>({})
   const [teamLaborData, setTeamLaborData] = useState<Array<{ jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }>>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
+  const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(false)
+  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
+  const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+  const [hoursUnassignedSelectedDay, setHoursUnassignedSelectedDay] = useState<string>('')
+  const [hoursUnassignedJobSearch, setHoursUnassignedJobSearch] = useState<{ personName: string; workDate: string } | null>(null)
+  const [hoursUnassignedJobSearchText, setHoursUnassignedJobSearchText] = useState('')
+  const [hoursUnassignedJobSearchResults, setHoursUnassignedJobSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
+  const [hoursUnassignedDraft, setHoursUnassignedDraft] = useState<CrewJobRow | null>(null)
+  const [officeJob, setOfficeJob] = useState<{ id: string; hcp_number: string; job_name: string; job_address: string } | null>(null)
+  const [commonJobs, setCommonJobs] = useState<Array<{ job_id: string; hcp_number: string; job_name: string; job_address: string }>>([])
+  const [commonJobsEditMode, setCommonJobsEditMode] = useState(false)
+  const [commonJobsSearchOpen, setCommonJobsSearchOpen] = useState(false)
+  const [commonJobsSearchText, setCommonJobsSearchText] = useState('')
+  const [commonJobsSearchResults, setCommonJobsSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
 
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => {
@@ -355,6 +378,8 @@ export default function People() {
     loadPayAccess()
   }, [authUser?.id])
 
+  const canEditCrewJobs = canAccessPay || (authUserRole === 'assistant' && canAccessHours)
+
   useEffect(() => {
     if (!canSeePushStatus) return
     supabase
@@ -516,6 +541,23 @@ export default function People() {
       return
     }
     await loadPeople()
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, email, name')
+      .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary'])
+    const usersAfterInvite = (usersData ?? []) as Array<{ id: string; email: string | null; name: string }>
+    const dups = findPersonUserDuplicates(people, usersAfterInvite, payConfig)
+    const invitedDup = dups.find((d) => d.email.toLowerCase() === p.email?.trim().toLowerCase())
+    if (invitedDup) {
+      const userId = usersAfterInvite.find((u) => u.email?.toLowerCase() === invitedDup.email?.toLowerCase())?.id
+      try {
+        await mergePersonIntoUser(invitedDup.personName, invitedDup.userDisplayName, payConfig, userId)
+        await loadPayConfig()
+        setMergeDuplicates((prev) => prev.filter((x) => x.personName !== invitedDup.personName))
+      } catch (mergeErr) {
+        setError(mergeErr instanceof Error ? mergeErr.message : 'Merge failed')
+      }
+    }
   }
 
   function confirmAndInvite() {
@@ -523,6 +565,32 @@ export default function People() {
     const p = inviteConfirm
     setInviteConfirm(null)
     inviteAsUser(p)
+  }
+
+  async function handleMergeDuplicate(dup: { personName: string; userDisplayName: string; email: string }) {
+    setMergingPersonName(dup.personName)
+    setError(null)
+    let userId: string | undefined
+    if (dup.email?.trim()) {
+      userId = users.find((u) => u.email?.toLowerCase() === dup.email?.toLowerCase())?.id
+    } else {
+      userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
+    }
+    try {
+      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId)
+      await loadPayConfig()
+      setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
+      if (activeTab === 'hours') {
+        loadPeopleHours(hoursDateStart, hoursDateEnd)
+      }
+      if (activeTab === 'pay') {
+        loadPeopleHours(matrixStartDate, matrixEndDate)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Merge failed')
+    } finally {
+      setMergingPersonName(null)
+    }
   }
 
   function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null; notes: string | null } | ({ source: 'people' } & Person))[] {
@@ -617,7 +685,7 @@ export default function People() {
     if (!canAccessPay) return
     const { data, error } = await supabase
       .from('pay_stubs')
-      .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at')
+      .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by')
       .order('created_at', { ascending: false })
     if (error) {
       setError(error.message)
@@ -665,6 +733,42 @@ export default function People() {
     setPayStubCalendarData({ earnedByDate, paidByDate })
   }
 
+  function computePayReportJobBreakdown(
+    personName: string,
+    dayRows: Array<{ work_date: string; hours: number }>,
+    crewByDatePerson: Record<string, CrewJobRow>,
+    jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }>
+  ): Array<{ date: string; hours: number; jobsText: string }> {
+    function getEffectiveAssignments(pn: string, workDate: string): CrewJobAssignment[] {
+      const key = `${workDate}:${pn}`
+      const row = crewByDatePerson[key]
+      if (!row) return []
+      if (row.crew_lead_person_name) {
+        const leadKey = `${workDate}:${row.crew_lead_person_name}`
+        const leadRow = crewByDatePerson[leadKey]
+        return leadRow?.job_assignments ?? []
+      }
+      return row.job_assignments
+    }
+    function jobLabel(jobId: string): string {
+      const d = jobsMap[jobId]
+      if (!d) return jobId.slice(0, 8)
+      const jobNum = (d.hcp_number ?? '').trim()
+      const jobName = (d.job_name ?? '').trim()
+      if (jobNum && jobName) return `Job ${jobNum} (${jobName})`
+      return jobNum || jobName || (d.job_address ?? '').trim() || jobId.slice(0, 8)
+    }
+    return dayRows.map((r) => {
+      const assignments = getEffectiveAssignments(personName, r.work_date)
+      if (assignments.length === 0) return { date: r.work_date, hours: r.hours, jobsText: '—' }
+      const parts = assignments.map((a) => {
+        const jobHours = r.hours * (a.pct / 100)
+        return `${jobLabel(a.job_id)} ${jobHours.toFixed(2)} hrs`
+      })
+      return { date: r.work_date, hours: r.hours, jobsText: parts.join(', ') }
+    })
+  }
+
   function getPersonContact(personName: string): { email: string | null; phone: string | null } {
     const n = personName.trim()
     const p = people.find((x) => x.name?.trim() === n)
@@ -681,14 +785,29 @@ export default function People() {
     hourlyWage: number,
     hoursRows: Array<{ date: string; hours: number }>,
     hoursTotal: number,
-    grossPay: number
+    grossPay: number,
+    rowsWithJobs?: Array<{ date: string; hours: number; jobsText: string }>
   ): string {
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    const dateWithDay = (dateStr: string) => {
+      const d = new Date(dateStr + 'T12:00:00')
+      const day = d.toLocaleDateString('en-US', { weekday: 'short' })
+      return `${dateStr} (${day})`
+    }
     const { email, phone } = getPersonContact(personName)
     const periodLabel = `Pay Period: ${new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(periodEnd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
     const wageDisplay = hourlyWage > 0 ? `$${formatCurrency(hourlyWage)}/hr` : '—'
-    const tableRows = hoursRows.map((r) => `<tr><td>${escapeHtml(r.date)}</td><td style="text-align:right">${r.hours.toFixed(2)}</td></tr>`).join('')
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pay Stub - ${escapeHtml(personName)}</title><style>
+    const hasJobs = rowsWithJobs && rowsWithJobs.length > 0
+    const tableRows = hasJobs
+      ? rowsWithJobs!.map((r) => `<tr><td>${escapeHtml(dateWithDay(r.date))}</td><td style="text-align:right">${r.hours.toFixed(2)}</td><td>${escapeHtml(r.jobsText)}</td></tr>`).join('')
+      : hoursRows.map((r) => `<tr><td>${escapeHtml(dateWithDay(r.date))}</td><td style="text-align:right">${r.hours.toFixed(2)}</td></tr>`).join('')
+    const tableHeader = hasJobs
+      ? '<thead><tr><th>Date</th><th style="text-align:right">Hours</th><th>Jobs</th></tr></thead>'
+      : '<thead><tr><th>Date</th><th style="text-align:right">Hours</th></tr></thead>'
+    const tableFooter = hasJobs
+      ? `<tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td><td></td></tr></tfoot>`
+      : `<tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td></tr></tfoot>`
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Pay Report - ${escapeHtml(personName)}</title><style>
       body { font-family: sans-serif; margin: 1in; }
       table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
       th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
@@ -696,16 +815,16 @@ export default function People() {
       .meta { margin-bottom: 0.5rem; color: #666; }
       @media print { body { margin: 0.5in; } }
     </style></head><body>
-      <h1>Pay Stub</h1>
+      <h1>Pay Report</h1>
       <div style="margin-bottom: 0.5rem;"><strong>${escapeHtml(personName)}</strong></div>
       ${email ? `<div class="meta">${escapeHtml(email)}</div>` : ''}
       ${phone ? `<div class="meta">${escapeHtml(phone)}</div>` : ''}
       <div class="meta">${periodLabel}</div>
       <div class="meta">Hourly wage: ${wageDisplay}</div>
       <table>
-        <thead><tr><th>Date</th><th style="text-align:right">Hours</th></tr></thead>
+        ${tableHeader}
         <tbody>${tableRows}</tbody>
-        <tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td></tr></tfoot>
+        ${tableFooter}
       </table>
       <div style="margin-top: 1rem; font-weight: 600;">Gross Pay: $${formatCurrency(grossPay)}</div>
     </body></html>`
@@ -724,9 +843,9 @@ export default function People() {
     }
   }
 
-  async function generatePayStub() {
-    if (!authUser?.id || !payStubGeneratorPerson?.trim()) return
-    const personName = payStubGeneratorPerson.trim()
+  async function generatePayStub(personOverride?: string) {
+    const personName = (personOverride ?? payStubGeneratorPerson)?.trim()
+    if (!authUser?.id || !personName) return
     const start = payStubPeriodStart
     const end = payStubPeriodEnd
     const { data: hoursData } = await supabase
@@ -768,7 +887,7 @@ export default function People() {
       .select('id')
       .single()
     if (stubErr || !stubData) {
-      setError(stubErr?.message ?? 'Failed to create pay stub')
+      setError(stubErr?.message ?? 'Failed to create pay report')
       return
     }
     const payStubId = stubData.id as string
@@ -787,40 +906,169 @@ export default function People() {
       return
     }
     await loadPayStubs()
-    const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay)
+    const { data: crewData } = await supabase
+      .from('people_crew_jobs')
+      .select('work_date, person_name, crew_lead_person_name, job_assignments')
+      .gte('work_date', start)
+      .lte('work_date', end)
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewByDatePerson: Record<string, CrewJobRow> = {}
+    for (const r of crewRows) {
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
+        crew_lead_person_name: r.crew_lead_person_name,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+    const jobIds = new Set<string>()
+    for (const r of dayRows) {
+      const row = crewByDatePerson[`${r.work_date}:${personName}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      for (const a of assignments) jobIds.add(a.job_id)
+    }
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    if (jobIds.size > 0) {
+      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportJobBreakdown(personName, dayRows, crewByDatePerson, jobsMap)
+    const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay, rowsWithJobs)
     openPayStubWindow(html, false)
   }
 
   async function viewPayStub(stub: PayStubRow) {
-    const { data } = await supabase
-      .from('people_hours')
-      .select('work_date, hours')
-      .eq('person_name', stub.person_name)
-      .gte('work_date', stub.period_start)
-      .lte('work_date', stub.period_end)
-    const hoursRows = ((data ?? []) as { work_date: string; hours: number }[])
-      .sort((a, b) => a.work_date.localeCompare(b.work_date))
-      .map((r) => ({ date: r.work_date, hours: r.hours }))
+    const start = stub.period_start
+    const end = stub.period_end
     const cfg = payConfig[stub.person_name]
+    const isSalary = cfg?.is_salary ?? false
+    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time').eq('pay_stub_id', stub.id).order('work_date')
+    let dayRows: Array<{ work_date: string; hours: number }>
+    if (daysData && daysData.length > 0) {
+      dayRows = (daysData as { work_date: string; hours_at_time: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours_at_time }))
+    } else {
+      const { data: hoursData } = await supabase.from('people_hours').select('work_date, hours').eq('person_name', stub.person_name).gte('work_date', start).lte('work_date', end)
+      const hoursRows = ((hoursData ?? []) as { work_date: string; hours: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours }))
+      const daysInRange = getDaysInRange(start, end)
+      dayRows = daysInRange.map((d) => {
+        const hrs = isSalary ? (() => { const day = new Date(d + 'T12:00:00').getDay(); return day >= 1 && day <= 5 ? 8 : 0 })() : (hoursRows.find((r) => r.work_date === d)?.hours ?? 0)
+        return { work_date: d, hours: hrs }
+      })
+    }
     const wage = cfg?.hourly_wage ?? 0
-    const html = buildPayStubHtml(stub.person_name, stub.period_start, stub.period_end, wage, hoursRows, stub.hours_total, stub.gross_pay)
+    const { data: crewData } = await supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end)
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewByDatePerson: Record<string, CrewJobRow> = {}
+    for (const r of crewRows) {
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
+    }
+    const jobIds = new Set<string>()
+    for (const r of dayRows) {
+      const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
+      const assignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      for (const a of assignments) jobIds.add(a.job_id)
+    }
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    if (jobIds.size > 0) {
+      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
+    const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
+    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs)
     openPayStubWindow(html, false)
   }
 
   async function printPayStub(stub: PayStubRow) {
-    const { data } = await supabase
-      .from('people_hours')
-      .select('work_date, hours')
-      .eq('person_name', stub.person_name)
-      .gte('work_date', stub.period_start)
-      .lte('work_date', stub.period_end)
-    const hoursRows = ((data ?? []) as { work_date: string; hours: number }[])
-      .sort((a, b) => a.work_date.localeCompare(b.work_date))
-      .map((r) => ({ date: r.work_date, hours: r.hours }))
+    const start = stub.period_start
+    const end = stub.period_end
     const cfg = payConfig[stub.person_name]
+    const isSalary = cfg?.is_salary ?? false
+    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time').eq('pay_stub_id', stub.id).order('work_date')
+    let dayRows: Array<{ work_date: string; hours: number }>
+    if (daysData && daysData.length > 0) {
+      dayRows = (daysData as { work_date: string; hours_at_time: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours_at_time }))
+    } else {
+      const { data: hoursData } = await supabase.from('people_hours').select('work_date, hours').eq('person_name', stub.person_name).gte('work_date', start).lte('work_date', end)
+      const hoursRows = ((hoursData ?? []) as { work_date: string; hours: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours }))
+      const daysInRange = getDaysInRange(start, end)
+      dayRows = daysInRange.map((d) => {
+        const hrs = isSalary ? (() => { const day = new Date(d + 'T12:00:00').getDay(); return day >= 1 && day <= 5 ? 8 : 0 })() : (hoursRows.find((r) => r.work_date === d)?.hours ?? 0)
+        return { work_date: d, hours: hrs }
+      })
+    }
     const wage = cfg?.hourly_wage ?? 0
-    const html = buildPayStubHtml(stub.person_name, stub.period_start, stub.period_end, wage, hoursRows, stub.hours_total, stub.gross_pay)
+    const { data: crewData } = await supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end)
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewByDatePerson: Record<string, CrewJobRow> = {}
+    for (const r of crewRows) {
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
+    }
+    const jobIds = new Set<string>()
+    for (const r of dayRows) {
+      const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
+      const assignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      for (const a of assignments) jobIds.add(a.job_id)
+    }
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    if (jobIds.size > 0) {
+      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
+    const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
+    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs)
     openPayStubWindow(html, true)
+  }
+
+  async function deletePayStub(stub: PayStubRow) {
+    setDeletingPayStubId(stub.id)
+    setError(null)
+    const { error: err } = await supabase.from('pay_stubs').delete().eq('id', stub.id)
+    if (err) {
+      setError(err.message)
+    } else {
+      setPayStubs((prev) => prev.filter((s) => s.id !== stub.id))
+      setPayStubDeleteConfirm(null)
+    }
+    setDeletingPayStubId(null)
+  }
+
+  async function markPayStubPaid(stub: PayStubRow) {
+    if (!authUser?.id) return
+    setMarkingPayStubId(stub.id)
+    setError(null)
+    try {
+      await withSupabaseRetry(
+        async () => await supabase.from('pay_stubs').update({ paid_at: new Date().toISOString(), paid_by: authUser.id }).eq('id', stub.id),
+        'mark pay stub paid'
+      )
+      await loadPayStubs()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to mark as paid')
+    }
+    setMarkingPayStubId(null)
+  }
+
+  async function unmarkPayStubPaid(stub: PayStubRow) {
+    setMarkingPayStubId(stub.id)
+    setError(null)
+    try {
+      await withSupabaseRetry(
+        async () => await supabase.from('pay_stubs').update({ paid_at: null, paid_by: null }).eq('id', stub.id),
+        'unmark pay stub paid'
+      )
+      await loadPayStubs()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unmark paid')
+    }
+    setMarkingPayStubId(null)
   }
 
   async function loadTeams() {
@@ -905,6 +1153,15 @@ export default function People() {
       ]).finally(() => setPayTabLoading(false))
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
+
+  useEffect(() => {
+    if (activeTab === 'pay' && Object.keys(payConfig).length > 0) {
+      const dups = findPersonUserDuplicates(people, users, payConfig)
+      setMergeDuplicates(dups)
+    } else {
+      setMergeDuplicates([])
+    }
+  }, [activeTab, payConfig, people, users])
 
   useEffect(() => {
     if (activeTab === 'pay' && isDev) {
@@ -1051,12 +1308,49 @@ export default function People() {
     }
   }, [activeTab, crewJobsDate, canAccessPay, canViewCostMatrixShared])
 
+  useEffect(() => {
+    if (activeTab !== 'hours' || !canAccessHours) return
+    const days = getDaysInRange(hoursDateStart, hoursDateEnd)
+    if (days.length === 0) return
+    supabase
+      .from('people_crew_jobs')
+      .select('work_date, person_name, crew_lead_person_name, job_assignments')
+      .in('work_date', days)
+      .then(({ data }) => {
+        const map: Record<string, CrewJobRow> = {}
+        for (const r of (data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>) {
+          const key = `${r.work_date}:${r.person_name}`
+          map[key] = {
+            crew_lead_person_name: r.crew_lead_person_name ?? null,
+            job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+          }
+        }
+        setCrewJobsByDatePerson(map)
+      })
+  }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
+
   async function saveCrewJobRow(personName: string, row: CrewJobRow) {
     if (!canAccessPay) return
     setCrewJobsData((prev) => ({ ...prev, [personName]: row }))
     const { error } = await supabase.from('people_crew_jobs').upsert(
       {
         work_date: crewJobsDate,
+        person_name: personName,
+        crew_lead_person_name: row.crew_lead_person_name || null,
+        job_assignments: row.job_assignments,
+      },
+      { onConflict: 'work_date,person_name' }
+    )
+    if (error) setError(error.message)
+    else loadTeamLaborData()
+  }
+
+  async function saveCrewJobRowForDate(personName: string, workDate: string, row: CrewJobRow) {
+    if (!canEditCrewJobs) return
+    setCrewJobsByDatePerson((prev) => ({ ...prev, [`${workDate}:${personName}`]: row }))
+    const { error } = await supabase.from('people_crew_jobs').upsert(
+      {
+        work_date: workDate,
         person_name: personName,
         crew_lead_person_name: row.crew_lead_person_name || null,
         job_assignments: row.job_assignments,
@@ -1111,6 +1405,21 @@ export default function People() {
     setCrewJobSearchResults([])
   }
 
+  function addJobToPersonForDate(personName: string, workDate: string, job: { id: string; hcp_number: string; job_name: string; job_address: string }) {
+    const key = `${workDate}:${personName}`
+    const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
+    if (row.job_assignments.some((a) => a.job_id === job.id)) return
+    const n = row.job_assignments.length + 1
+    const pct = Math.round((100 / n) * 10) / 10
+    const newAssignments = row.job_assignments.map((a) => ({ ...a, pct }))
+    newAssignments.push({ job_id: job.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
+    setCrewJobDetailsMap((prev) => ({ ...prev, [job.id]: { hcp_number: job.hcp_number, job_name: job.job_name, job_address: job.job_address } }))
+    saveCrewJobRowForDate(personName, workDate, { ...row, job_assignments: newAssignments })
+    setHoursUnassignedJobSearch(null)
+    setHoursUnassignedJobSearchText('')
+    setHoursUnassignedJobSearchResults([])
+  }
+
   useEffect(() => {
     const jobIds = new Set<string>()
     for (const row of Object.values(crewJobsData)) {
@@ -1132,6 +1441,117 @@ export default function People() {
   }, [crewJobsData])
 
   useEffect(() => {
+    const jobIds = new Set<string>()
+    for (const row of Object.values(crewJobsByDatePerson)) {
+      for (const a of row.job_assignments) jobIds.add(a.job_id)
+    }
+    const missing = [...jobIds].filter((id) => !crewJobDetailsMap[id])
+    if (missing.length === 0) return
+    supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, job_name, job_address')
+      .in('id', missing)
+      .then(({ data }) => {
+        const map: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+        for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+          map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+        }
+        setCrewJobDetailsMap((prev) => ({ ...prev, ...map }))
+      })
+  }, [crewJobsByDatePerson])
+
+  useEffect(() => {
+    if (hoursUnassignedModal && hoursUnassignedSelectedDay) {
+      const key = `${hoursUnassignedSelectedDay}:${hoursUnassignedModal.personName}`
+      const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
+      setHoursUnassignedDraft({
+        ...row,
+        job_assignments: [...(row.job_assignments || [])],
+      })
+    } else {
+      setHoursUnassignedDraft(null)
+    }
+  }, [hoursUnassignedModal?.personName, hoursUnassignedSelectedDay])
+
+  useEffect(() => {
+    if (hoursUnassignedModal) {
+      supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, job_name, job_address')
+        .eq('hcp_number', '000')
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => {
+          const job = (data as { id: string; hcp_number: string; job_name: string; job_address: string } | null) ?? null
+          if (job) {
+            setOfficeJob(job)
+          } else {
+            supabase
+              .from('jobs_ledger')
+              .select('id, hcp_number, job_name, job_address')
+              .ilike('job_name', '%Office%')
+              .limit(1)
+              .maybeSingle()
+              .then(({ data: officeData }) => {
+                setOfficeJob((officeData as { id: string; hcp_number: string; job_name: string; job_address: string } | null) ?? null)
+              })
+          }
+        })
+    } else {
+      setOfficeJob(null)
+    }
+  }, [hoursUnassignedModal?.personName])
+
+  useEffect(() => {
+    async function loadCommonJobs() {
+      if (!hoursUnassignedModal) return
+      const commonRows = await withSupabaseRetry(
+        () => supabase.from('common_jobs').select('job_id, sequence_order').order('sequence_order') as unknown as Promise<{ data: Array<{ job_id: string; sequence_order: number }> | null; error: { message: string; code?: string; details?: string } | null }>,
+        'fetch common jobs'
+      )
+      const rows = (commonRows ?? []) as Array<{ job_id: string; sequence_order: number }>
+      if (rows.length === 0) {
+        setCommonJobs([])
+        return
+      }
+      const jobIds = rows.map((r) => r.job_id)
+      const jobsData = await withSupabaseRetry(
+        () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', jobIds) as unknown as Promise<{ data: Array<{ id: string; hcp_number: string; job_name: string; job_address: string }> | null; error: { message: string; code?: string; details?: string } | null }>,
+        'fetch jobs for common jobs'
+      )
+      const jobsMap = new Map((jobsData ?? []).map((j: { id: string; hcp_number: string; job_name: string; job_address: string }) => [j.id, j]))
+      const ordered = rows
+        .filter((r) => jobsMap.has(r.job_id))
+        .map((r) => {
+          const j = jobsMap.get(r.job_id)!
+          return { job_id: j.id, hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
+        })
+      setCommonJobs(ordered)
+    }
+    loadCommonJobs()
+  }, [hoursUnassignedModal?.personName])
+
+  useEffect(() => {
+    if (!hoursUnassignedModal) {
+      setCommonJobsEditMode(false)
+      setCommonJobsSearchOpen(false)
+      setCommonJobsSearchText('')
+      setCommonJobsSearchResults([])
+    }
+  }, [hoursUnassignedModal])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (commonJobsSearchOpen && commonJobsSearchText !== undefined) {
+        supabase.rpc('search_jobs_ledger', { search_text: commonJobsSearchText }).then(({ data }) => {
+          setCommonJobsSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>)
+        })
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [commonJobsSearchOpen, commonJobsSearchText])
+
+  useEffect(() => {
     const t = setTimeout(() => {
       if (crewJobSearchModal && crewJobSearchText !== undefined) {
         supabase.rpc('search_jobs_ledger', { search_text: crewJobSearchText }).then(({ data }) => {
@@ -1141,6 +1561,17 @@ export default function People() {
     }, 300)
     return () => clearTimeout(t)
   }, [crewJobSearchModal, crewJobSearchText])
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (hoursUnassignedJobSearch && hoursUnassignedJobSearchText !== undefined) {
+        supabase.rpc('search_jobs_ledger', { search_text: hoursUnassignedJobSearchText }).then(({ data }) => {
+          setHoursUnassignedJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>)
+        })
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [hoursUnassignedJobSearch, hoursUnassignedJobSearchText])
 
   async function loadTeamLaborData() {
     setTeamLaborLoading(true)
@@ -1459,8 +1890,45 @@ export default function People() {
     setHoursDateEnd(dEnd.toISOString().slice(0, 10))
   }
 
+  function shiftPayStubWeek(delta: number) {
+    const dStart = new Date(payStubPeriodStart + 'T12:00:00')
+    const dEnd = new Date(payStubPeriodEnd + 'T12:00:00')
+    dStart.setDate(dStart.getDate() + delta * 7)
+    dEnd.setDate(dEnd.getDate() + delta * 7)
+    setPayStubPeriodStart(dStart.toISOString().slice(0, 10))
+    setPayStubPeriodEnd(dEnd.toISOString().slice(0, 10))
+  }
+
   const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
+
+  function getEffectiveAssignmentsForDate(personName: string, workDate: string): CrewJobAssignment[] {
+    const key = `${workDate}:${personName}`
+    const row = crewJobsByDatePerson[key]
+    if (!row) return []
+    if (row.crew_lead_person_name) {
+      const leadKey = `${workDate}:${row.crew_lead_person_name}`
+      const leadRow = crewJobsByDatePerson[leadKey]
+      return leadRow?.job_assignments ?? []
+    }
+    return row.job_assignments
+  }
+
+  function hasAssignmentsForDate(personName: string, workDate: string): boolean {
+    const key = `${workDate}:${personName}`
+    const row = crewJobsByDatePerson[key]
+    if (!row) return false
+    return !!(row.crew_lead_person_name || (row.job_assignments?.length ?? 0) > 0)
+  }
+
+  function hasUnassignedCorrectDays(personName: string): boolean {
+    return hoursDays.some((d) => {
+      if (!hoursDaysCorrect.has(d)) return false
+      const hours = getEffectiveHours(personName, d)
+      if (hours <= 0) return false
+      return !hasAssignmentsForDate(personName, d)
+    })
+  }
 
   const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
 
@@ -1496,7 +1964,7 @@ export default function People() {
             }}
             style={tabStyle(activeTab === 'pay_stubs')}
           >
-            Pay Stubs
+            Pay History
           </button>
         )}
         {(canAccessPay || canViewCostMatrixShared) && (
@@ -1551,9 +2019,6 @@ export default function People() {
       </div>
       {activeTab === 'users' && (
         <>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-            Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
-          </p>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {isDev && (
             <section style={{ marginBottom: '2rem' }}>
@@ -1959,77 +2424,28 @@ export default function People() {
           ) : (
             <>
               {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-              <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Ledger</h2>
-                {payStubs.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay stubs yet. Generate one below.</p>
-                ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Created</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {payStubs.map((stub) => (
-                          <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => setPayStubCalendarPerson(stub.person_name)}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  cursor: 'pointer',
-                                  color: '#2563eb',
-                                  textDecoration: 'underline',
-                                  fontSize: 'inherit',
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                {stub.person_name}
-                              </button>
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {new Date(stub.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(stub.period_end + 'T12:00:00').toLocaleDateString()}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {stub.created_at ? new Date(stub.created_at).toLocaleDateString() : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => viewPayStub(stub)}
-                                style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem' }}
-                              >
-                                View
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => printPayStub(stub)}
-                                style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
-                              >
-                                Print
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <section style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setRunPayrollModalOpen(true)}
+                  disabled={showPeopleForHours.length === 0}
+                  title={showPeopleForHours.length === 0 ? 'Go to Pay tab and check Show in Hours for people to track' : undefined}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.9375rem',
+                    background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Generate Pay Reports
+                </button>
               </section>
-              <section>
-                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Generator</h2>
+              <section style={{ marginBottom: '2rem' }}>
+                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Generate Pay Reports</h2>
                 {showPeopleForHours.length === 0 && (
                   <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
                     No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.
@@ -2072,13 +2488,13 @@ export default function People() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      onClick={generatePayStub}
+                      onClick={() => generatePayStub()}
                       disabled={!payStubGeneratorPerson?.trim()}
                       title={
                         !payStubGeneratorPerson?.trim()
                           ? showPeopleForHours.length === 0
                             ? 'Go to Pay tab and check Show in Hours for people to track'
-                            : 'Select a person to generate a pay stub'
+                            : 'Select a person to generate a pay report'
                           : undefined
                       }
                       style={{
@@ -2092,13 +2508,13 @@ export default function People() {
                         fontWeight: 500,
                       }}
                     >
-                      Generate
+                      Generate Pay Report
                     </button>
                     {!payStubGeneratorPerson?.trim() && (
                       <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
                         {showPeopleForHours.length === 0
                           ? 'Go to Pay tab and check Show in Hours for people to track'
-                          : 'Select a person to generate a pay stub'}
+                          : 'Select a person to generate a pay report'}
                       </span>
                     )}
                   </span>
@@ -2157,10 +2573,297 @@ export default function People() {
                   )
                 })()}
               </section>
+              <section>
+                <h2 style={{ margin: '0 0 0.75rem 0', fontSize: '1.125rem' }}>Ledger</h2>
+                {payStubs.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay reports yet. Generate one above.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Created</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {payStubs.map((stub) => (
+                          <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setPayStubCalendarPerson(stub.person_name)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  cursor: 'pointer',
+                                  color: '#2563eb',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {stub.person_name}
+                              </button>
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {new Date(stub.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(stub.period_end + 'T12:00:00').toLocaleDateString()}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {stub.created_at ? new Date(stub.created_at).toLocaleDateString() : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              {stub.paid_at ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                  <span style={{ fontSize: '0.8125rem', color: '#059669' }}>Paid {new Date(stub.paid_at).toLocaleDateString()}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => unmarkPayStubPaid(stub)}
+                                    disabled={markingPayStubId === stub.id}
+                                    style={{ padding: '2px 6px', fontSize: '0.75rem', background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer', color: '#6b7280' }}
+                                  >
+                                    {markingPayStubId === stub.id ? '...' : 'Unmark'}
+                                  </button>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => markPayStubPaid(stub)}
+                                  disabled={markingPayStubId === stub.id}
+                                  style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}
+                                >
+                                  {markingPayStubId === stub.id ? '...' : 'Mark as paid'}
+                                </button>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => viewPayStub(stub)}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => printPayStub(stub)}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Print
+                              </button>
+                              {isDev && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPayStubDeleteConfirm(stub)}
+                                  disabled={deletingPayStubId === stub.id}
+                                  style={{ padding: '2px 6px', fontSize: '0.8125rem', marginLeft: '0.35rem', background: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}
+                                >
+                                  {deletingPayStubId === stub.id ? '...' : 'Delete'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
             </>
           )}
         </div>
       )}
+
+      {payStubDeleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Delete this pay report for {payStubDeleteConfirm.person_name} ({new Date(payStubDeleteConfirm.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(payStubDeleteConfirm.period_end + 'T12:00:00').toLocaleDateString()})? This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setPayStubDeleteConfirm(null)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingPayStubId === payStubDeleteConfirm.id}
+                onClick={() => deletePayStub(payStubDeleteConfirm)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: deletingPayStubId !== payStubDeleteConfirm.id ? '#dc2626' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: deletingPayStubId !== payStubDeleteConfirm.id ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {deletingPayStubId === payStubDeleteConfirm.id ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {runPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (() => {
+        const start = payStubPeriodStart
+        const end = payStubPeriodEnd
+        const days = getDaysInRange(start, end)
+        const paidCount = showPeopleForHours.filter((person) => {
+          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+          return stub?.paid_at
+        }).length
+        const totalAmount = showPeopleForHours.reduce((sum, person) => {
+          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+          if (stub) return sum + stub.gross_pay
+          return sum + days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+        }, 0)
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 560, maxHeight: '85vh', overflow: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div>
+                  <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Generate Pay Reports</h2>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                    <label>
+                      <span style={{ marginRight: '0.35rem', fontSize: '0.875rem' }}>Start</span>
+                      <input
+                        type="date"
+                        value={start}
+                        onChange={(e) => setPayStubPeriodStart(e.target.value)}
+                        style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                    </label>
+                    <label>
+                      <span style={{ marginRight: '0.35rem', fontSize: '0.875rem' }}>End</span>
+                      <input
+                        type="date"
+                        value={end}
+                        onChange={(e) => setPayStubPeriodEnd(e.target.value)}
+                        style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                    </label>
+                    <button type="button" onClick={() => shiftPayStubWeek(0)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>This week</button>
+                    <button type="button" onClick={() => shiftPayStubWeek(-1)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Last week</button>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setRunPayrollModalOpen(false)} style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }} aria-label="Close">×</button>
+              </div>
+              {showPeopleForHours.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
+              ) : (
+                <>
+                  <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Est. Gross</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {showPeopleForHours.map((person) => {
+                          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+                          const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
+                          const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+                          const allDaysCorrect = days.every((d) => hoursDaysCorrect.has(d))
+                          const status = stub
+                            ? stub.paid_at
+                              ? 'Paid'
+                              : 'Report only'
+                            : estGross > 0
+                              ? allDaysCorrect
+                                ? 'Ready'
+                                : 'Review'
+                              : 'No hours'
+                          const isGenerating = generatingPayStubPerson === person
+                          return (
+                            <tr key={person} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                {stub && !stub.paid_at ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={false}
+                                    onChange={() => markPayStubPaid(stub)}
+                                    disabled={markingPayStubId === stub.id}
+                                    title="Mark as paid"
+                                  />
+                                ) : stub?.paid_at ? (
+                                  <span style={{ color: '#059669', fontSize: '0.875rem' }} title="Paid">✓</span>
+                                ) : (
+                                  <span style={{ color: '#d1d5db' }}>—</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{person}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.8125rem',
+                                    color: status === 'Paid' ? '#059669' : status === 'Review' ? '#ea580c' : status === 'No hours' || status === 'Report only' ? '#6b7280' : undefined,
+                                  }}
+                                >
+                                  {status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hours.toFixed(2)}</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estGross)}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                {stub ? (
+                                  <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                    <button type="button" onClick={() => viewPayStub(stub)} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>View</button>
+                                    {stub.paid_at ? (
+                                      <button type="button" onClick={() => unmarkPayStubPaid(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.75rem', background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer', color: '#6b7280' }}>{markingPayStubId === stub.id ? '...' : 'Unmark'}</button>
+                                    ) : (
+                                      <button type="button" onClick={() => markPayStubPaid(stub)} disabled={markingPayStubId === stub.id} style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer' }}>{markingPayStubId === stub.id ? '...' : 'Mark as paid'}</button>
+                                    )}
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      setGeneratingPayStubPerson(person)
+                                      setError(null)
+                                      await generatePayStub(person)
+                                      setGeneratingPayStubPerson(null)
+                                    }}
+                                    disabled={isGenerating || estGross <= 0}
+                                    style={{ padding: '2px 6px', fontSize: '0.8125rem', background: isGenerating || estGross <= 0 ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: isGenerating || estGross <= 0 ? 'not-allowed' : 'pointer' }}
+                                  >
+                                    {isGenerating ? '...' : 'Generate Pay Report'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem' }}>
+                    {paidCount} of {showPeopleForHours.length} paid · Total: ${formatCurrency(totalAmount)}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2789,6 +3492,28 @@ export default function People() {
               show max hours
             </label>
           </section>
+          {canAccessPay && mergeDuplicates.length > 0 && (
+          <section style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 4 }}>
+            <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: '#92400e' }}>
+              Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+              {mergeDuplicates.map((dup) => (
+                <li key={dup.personName} style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>{dup.personName} → {dup.userDisplayName}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleMergeDuplicate(dup)}
+                    disabled={mergingPersonName === dup.personName}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer' }}
+                  >
+                    {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+          )}
           {canAccessPay && (
           <section>
             <button
@@ -3135,13 +3860,48 @@ export default function People() {
                   {showPeopleForHours.map((personName, idx) => {
                     const cfg = payConfig[personName]
                     const isSalary = cfg?.is_salary ?? false
+                    const isUnassigned = hasUnassignedCorrectDays(personName)
+                    const isClickable = isUnassigned && canEditCrewJobs
                     return (
-                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr
+                        key={personName}
+                        style={{
+                          borderBottom: '1px solid #e5e7eb',
+                          ...(isUnassigned && {
+                            outline: '2px solid #dc2626',
+                            outlineOffset: -1,
+                            background: 'rgba(220, 38, 38, 0.05)',
+                          }),
+                          ...(isClickable && { cursor: 'pointer' }),
+                        }}
+                        onClick={isClickable ? () => {
+                          const unassignedDays = hoursDays.filter((d) => {
+                            if (!hoursDaysCorrect.has(d)) return false
+                            if (getEffectiveHours(personName, d) <= 0) return false
+                            return !hasAssignmentsForDate(personName, d)
+                          })
+                          setHoursUnassignedSelectedDay(unassignedDays[0] ?? '')
+                          setHoursUnassignedModal({ personName })
+                        } : undefined}
+                        role={isClickable ? 'button' : undefined}
+                        tabIndex={isClickable ? 0 : undefined}
+                        onKeyDown={isClickable ? (e) => {
+                          if (e.key === 'Enter') {
+                            const unassignedDays = hoursDays.filter((d) => {
+                              if (!hoursDaysCorrect.has(d)) return false
+                              if (getEffectiveHours(personName, d) <= 0) return false
+                              return !hasAssignmentsForDate(personName, d)
+                            })
+                            setHoursUnassignedSelectedDay(unassignedDays[0] ?? '')
+                            setHoursUnassignedModal({ personName })
+                          }
+                        } : undefined}
+                      >
                         <td style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem' }}>
                             <button
                               type="button"
-                              onClick={() => moveHoursRow(personName, 'up')}
+                              onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'up') }}
                               disabled={idx === 0}
                               title="Move up"
                               style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
@@ -3150,7 +3910,7 @@ export default function People() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => moveHoursRow(personName, 'down')}
+                              onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'down') }}
                               disabled={idx === showPeopleForHours.length - 1}
                               title="Move down"
                               style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
@@ -3174,6 +3934,7 @@ export default function People() {
                                   inputMode="numeric"
                                   value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
                                   placeholder="-"
+                                  onClick={(e) => e.stopPropagation()}
                                   onFocus={(e) => {
                                     setEditingHoursCell({ personName, workDate: d })
                                     setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
@@ -3273,7 +4034,30 @@ export default function People() {
         })
         return (
         <div>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Crew Jobs</h2>
+          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setCrewJobsSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{crewJobsSectionOpen ? '▼' : '▶'}</span>
+              Crew Jobs
+            </button>
+            {crewJobsSectionOpen && (
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button
@@ -3293,6 +4077,9 @@ export default function People() {
                 onChange={(e) => setCrewJobsDate(e.target.value)}
                 style={{ padding: '0.35rem 0.5rem', fontSize: '0.9375rem', fontWeight: 500, border: '1px solid #d1d5db', borderRadius: 4, minWidth: 140 }}
               />
+              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.25rem' }}>
+                ({new Date(crewJobsDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })})
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -3439,6 +4226,9 @@ export default function People() {
               </table>
             </div>
           )}
+          </div>
+            )}
+          </div>
           <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Team Job Labor</h2>
           <div style={{ marginBottom: '1rem' }}>
             <input
@@ -3635,6 +4425,358 @@ export default function People() {
           </div>
         </div>
       )}
+
+      {hoursUnassignedModal && canEditCrewJobs && (() => {
+        const personName = hoursUnassignedModal.personName
+        const unassignedDays = hoursDays.filter((d) => {
+          if (!hoursDaysCorrect.has(d)) return false
+          if (getEffectiveHours(personName, d) <= 0) return false
+          return !hasAssignmentsForDate(personName, d)
+        })
+        const selectedDay = (hoursUnassignedSelectedDay && unassignedDays.includes(hoursUnassignedSelectedDay) ? hoursUnassignedSelectedDay : unassignedDays[0]) ?? ''
+        const key = `${selectedDay}:${personName}`
+        const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
+        const draftRow = hoursUnassignedDraft ?? row
+        const hasCrewLead = !!draftRow.crew_lead_person_name
+        const availableCrewLeads = showPeopleForMatrix.filter((p) => {
+          if (p === personName) return false
+          const assignments = getEffectiveAssignmentsForDate(p, selectedDay)
+          if (officeJob && assignments.some((a) => a.job_id === officeJob.id)) return false
+          return true
+        })
+        const jobsEditable = !hasCrewLead
+        const crewEditable = !showPeopleForMatrix.some((p) => {
+          const r = crewJobsByDatePerson[`${selectedDay}:${p}`]
+          return r?.crew_lead_person_name === personName
+        })
+        const isJobSearchOpen = hoursUnassignedJobSearch?.personName === personName && hoursUnassignedJobSearch?.workDate === selectedDay
+        return (
+          <div key="hours-unassigned-modal" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs</h3>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+                {personName} has hours on Correct days but no job assignments. Assign a crew lead or add jobs for each day.
+              </p>
+              {unassignedDays.length === 0 ? (
+                <p style={{ color: '#22c55e' }}>All days are now assigned.</p>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>Day to assign</label>
+                    <select
+                      value={selectedDay}
+                      onChange={(e) => setHoursUnassignedSelectedDay(e.target.value)}
+                      style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
+                    >
+                      {unassignedDays.map((d) => (
+                        <option key={d} value={d}>
+                          {new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedDay && (
+                    <>
+                      {crewEditable && (
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>Crew lead (inherit jobs from)</label>
+                          <select
+                            value={draftRow.crew_lead_person_name ?? ''}
+                            onChange={(e) => {
+                              const v = e.target.value || null
+                              setHoursUnassignedDraft({ ...draftRow, crew_lead_person_name: v, job_assignments: [] })
+                            }}
+                            style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
+                          >
+                            <option value="">—</option>
+                            {availableCrewLeads.map((p) => (
+                              <option key={p} value={p}>{p}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      {jobsEditable && (
+                        <>
+                          <div style={{ marginBottom: '1rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                              <label style={{ fontSize: '0.875rem' }}>Common Jobs</label>
+                              {canEditCrewJobs && !commonJobsEditMode && (
+                                <button type="button" onClick={() => setCommonJobsEditMode(true)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#6b7280' }}>Edit</button>
+                              )}
+                              {canEditCrewJobs && commonJobsEditMode && (
+                                <button type="button" onClick={() => setCommonJobsEditMode(false)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#6b7280' }}>Done</button>
+                              )}
+                            </div>
+                            {!commonJobsEditMode ? (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                                {commonJobs.length === 0 ? (
+                                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>No common jobs</span>
+                                ) : (
+                                  commonJobs.map((j) => {
+                                    const disabled = draftRow.job_assignments.some((a) => a.job_id === j.job_id)
+                                    return (
+                                      <button
+                                        key={j.job_id}
+                                        type="button"
+                                        disabled={disabled}
+                                        onClick={() => {
+                                          if (disabled) return
+                                          const current = hoursUnassignedDraft ?? row
+                                          if (current.job_assignments.some((a) => a.job_id === j.job_id)) return
+                                          const n = current.job_assignments.length + 1
+                                          const pct = Math.round((100 / n) * 10) / 10
+                                          const newAssignments = current.job_assignments.map((a) => ({ ...a, pct }))
+                                          newAssignments.push({ job_id: j.job_id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
+                                          setCrewJobDetailsMap((prev) => ({ ...prev, [j.job_id]: { hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address } }))
+                                          setHoursUnassignedDraft({ crew_lead_person_name: null, job_assignments: newAssignments })
+                                        }}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+                                      >
+                                        Job {j.hcp_number || '—'} ({j.job_name || '—'})
+                                      </button>
+                                    )
+                                  })
+                                )}
+                              </div>
+                            ) : (
+                              <div style={{ marginBottom: '0.5rem' }}>
+                                {commonJobs.length === 0 ? (
+                                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Add jobs to get started</span>
+                                ) : (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                                    {commonJobs.map((j) => (
+                                      <span key={j.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                                        <span>Job {j.hcp_number || '—'} ({j.job_name || '—'})</span>
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            await withSupabaseRetry(
+              () => supabase.from('common_jobs').delete().eq('job_id', j.job_id) as unknown as Promise<{ data: null; error: { message: string; code?: string; details?: string } | null }>,
+              'remove job from common jobs'
+            )
+                                            setCommonJobs((prev) => prev.filter((x) => x.job_id !== j.job_id))
+                                          }}
+                                          style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                                          title="Remove from common jobs"
+                                        >
+                                          ×
+                                        </button>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {!commonJobsSearchOpen ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setCommonJobsSearchOpen(true); setCommonJobsSearchText(''); setCommonJobsSearchResults([]) }}
+                                    style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
+                                  >
+                                    Add job
+                                  </button>
+                                ) : (
+                                  <div style={{ width: '100%', marginTop: '0.5rem' }}>
+                                    <input
+                                      type="search"
+                                      placeholder="Search HCP, job name, address…"
+                                      value={commonJobsSearchText}
+                                      onChange={(e) => setCommonJobsSearchText(e.target.value)}
+                                      autoFocus
+                                      style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                    />
+                                    <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
+                                      {commonJobsSearchResults.filter((r) => !commonJobs.some((c) => c.job_id === r.id)).map((j) => (
+                                        <button
+                                          key={j.id}
+                                          type="button"
+                                          onClick={async () => {
+                                            const nextOrder = commonJobs.length
+                                            await withSupabaseRetry(
+                                              () => supabase.from('common_jobs').insert({ job_id: j.id, sequence_order: nextOrder }) as unknown as Promise<{ data: unknown; error: { message: string; code?: string; details?: string } | null }>,
+                                              'add job to common jobs'
+                                            )
+                                            setCommonJobs((prev) => [...prev, { job_id: j.id, hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }])
+                                            setCommonJobsSearchOpen(false)
+                                            setCommonJobsSearchText('')
+                                            setCommonJobsSearchResults([])
+                                          }}
+                                          style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                                        >
+                                          <div style={{ fontWeight: 500 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                                          {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <button type="button" onClick={() => { setCommonJobsSearchOpen(false); setCommonJobsSearchText(''); setCommonJobsSearchResults([]) }} style={{ marginTop: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
+                                      Cancel
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                            <label style={{ fontSize: '0.875rem' }}>Jobs</label>
+                            {officeJob && !draftRow.job_assignments.some((a) => a.job_id === officeJob.id) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = hoursUnassignedDraft ?? row
+                                  if (current.job_assignments.some((a) => a.job_id === officeJob.id)) return
+                                  const n = current.job_assignments.length + 1
+                                  const pct = Math.round((100 / n) * 10) / 10
+                                  const newAssignments = current.job_assignments.map((a) => ({ ...a, pct }))
+                                  newAssignments.push({ job_id: officeJob.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
+                                  setCrewJobDetailsMap((prev) => ({ ...prev, [officeJob.id]: { hcp_number: officeJob.hcp_number, job_name: officeJob.job_name, job_address: officeJob.job_address } }))
+                                  setHoursUnassignedDraft({ crew_lead_person_name: null, job_assignments: newAssignments })
+                                }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Office (Job 000)
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                            {draftRow.job_assignments.map((a, idx) => {
+                              const details = crewJobDetailsMap[a.job_id]
+                              const label = details ? `Job ${details.hcp_number || '—'} (${details.job_name || '—'})` : a.job_id.slice(0, 8)
+                              return (
+                                <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                                  <span>{label}</span>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={a.pct}
+                                    onChange={(e) => {
+                                      const v = parseFloat(e.target.value) || 0
+                                      const rest = draftRow.job_assignments.filter((_, i) => i !== idx)
+                                      const restSum = rest.reduce((s, x) => s + x.pct, 0)
+                                      const scale = restSum > 0 ? (100 - v) / restSum : 1
+                                      let newAssignments = draftRow.job_assignments.map((x, i) =>
+                                        i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
+                                      )
+                                      const sum = newAssignments.reduce((s, x) => s + x.pct, 0)
+                                      if (Math.abs(sum - 100) > 0.01 && newAssignments.length > 0) {
+                                        const lastIdx = newAssignments.length - 1
+                                        newAssignments = newAssignments.map((x, i) =>
+                                          i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
+                                        )
+                                      }
+                                      setHoursUnassignedDraft({ ...draftRow, job_assignments: newAssignments })
+                                    }}
+                                    style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                  />
+                                  %
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const rest = draftRow.job_assignments.filter((_, i) => i !== idx)
+                                      if (rest.length === 0) {
+                                        setHoursUnassignedDraft({ ...draftRow, job_assignments: [] })
+                                        return
+                                      }
+                                      const n = rest.length
+                                      const pctEach = Math.round((100 / n) * 10) / 10
+                                      const newAssignments = rest.map((x, i) => ({
+                                        ...x,
+                                        pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
+                                      }))
+                                      setHoursUnassignedDraft({ ...draftRow, job_assignments: newAssignments })
+                                    }}
+                                    style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                                    title="Remove job"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              )
+                            })}
+                            {!isJobSearchOpen ? (
+                              <button
+                                type="button"
+                                onClick={() => { setHoursUnassignedJobSearch({ personName, workDate: selectedDay }); setHoursUnassignedJobSearchText(''); setHoursUnassignedJobSearchResults([]) }}
+                                style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
+                              >
+                                +
+                              </button>
+                            ) : (
+                              <div style={{ width: '100%', marginTop: '0.5rem' }}>
+                                <input
+                                  type="search"
+                                  placeholder="Search HCP, job name, address…"
+                                  value={hoursUnassignedJobSearchText}
+                                  onChange={(e) => setHoursUnassignedJobSearchText(e.target.value)}
+                                  autoFocus
+                                  style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                />
+                                <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
+                                  {hoursUnassignedJobSearchResults.map((j) => (
+                                    <button
+                                      key={j.id}
+                                      type="button"
+                                      onClick={() => {
+                                        const current = hoursUnassignedDraft ?? row
+                                        if (current.job_assignments.some((a) => a.job_id === j.id)) return
+                                        const n = current.job_assignments.length + 1
+                                        const pct = Math.round((100 / n) * 10) / 10
+                                        const newAssignments = current.job_assignments.map((a) => ({ ...a, pct }))
+                                        newAssignments.push({ job_id: j.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
+                                        setCrewJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address } }))
+                                        setHoursUnassignedDraft({ crew_lead_person_name: null, job_assignments: newAssignments })
+                                        setHoursUnassignedJobSearch(null)
+                                        setHoursUnassignedJobSearchText('')
+                                        setHoursUnassignedJobSearchResults([])
+                                      }}
+                                      style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                                    >
+                                      <div style={{ fontWeight: 500 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                                      {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
+                                    </button>
+                                  ))}
+                                </div>
+                                <button type="button" onClick={() => { setHoursUnassignedJobSearch(null); setHoursUnassignedJobSearchText(''); setHoursUnassignedJobSearchResults([]) }} style={{ fontSize: '0.8125rem' }}>
+                                  Cancel search
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                {unassignedDays.length > 0 && selectedDay && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const toSave = hoursUnassignedDraft ?? row
+                      await saveCrewJobRowForDate(personName, selectedDay, toSave)
+                      setHoursUnassignedDraft(null)
+                      const next = unassignedDays.filter((d) => d !== selectedDay)[0]
+                      if (next) setHoursUnassignedSelectedDay(next)
+                      else setHoursUnassignedModal(null)
+                    }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  >
+                    Accept
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setHoursUnassignedModal(null); setHoursUnassignedDraft(null); setHoursUnassignedJobSearch(null); setHoursUnassignedJobSearchText(''); setHoursUnassignedJobSearchResults([]) }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {payStubCalendarPerson && (
         <div

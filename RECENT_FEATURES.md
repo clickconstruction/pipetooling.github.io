@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-03
+last_updated: 2026-03-26
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.80)"
+  - name: "Latest Version (v2.82)"
     line: ~186
+    description: "Person/User duplicate merge, Pay tab detection, cascade pay_stubs"
+  - name: "v2.81"
+    line: ~230
+    description: "Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports"
+  - name: "v2.80"
+    line: ~230
     description: "Prospects Address field, Follow Up quick notes"
   - name: "v2.79"
     line: ~210
@@ -136,7 +142,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
+1. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
+2. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
+2. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
 2. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
 3. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
 4. [Latest Updates (v2.77)](#latest-updates-v277) - Settings Data backup top, Maintenance minimizable, Fixture type badges, Bids Counts Import
@@ -216,6 +224,75 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.83)
+
+**Date**: 2026-03-07
+
+### Settings – Archive and Restore User Flow
+
+- **Archive instead of delete**: Replaced permanent user deletion with archive (soft delete). Archived users are hidden across the app and cannot sign in, but can be restored later.
+- **Archive user**: Button and modal (email + name confirmation) now call `archive-user` edge function. Sets `archived_at` in `public.users` and `banned_until` in `auth.users`.
+- **Archive User & Reassign Customers**: Same flow as before; reassigns customers to another master before archiving.
+- **Archived users section**: Collapsible "Archived users (N)" table below Active Accounts. Shows email, name, role, archived date, and Restore button.
+- **Restore**: `restore-user` edge function clears `archived_at` and `banned_until`; user reappears in Active Accounts and can sign in again.
+- **RLS**: Non-devs see only active users (`archived_at IS NULL`); devs see all including archived.
+- **Migrations**: `20260307000000_add_users_archived_at.sql`, `20260307000001_users_rls_exclude_archived.sql`
+- **Edge functions**: `archive-user`, `restore-user` (replaces `delete-user`)
+
+---
+
+## Latest Updates (v2.82)
+
+**Date**: 2026-03-07
+
+### People – Person/User Duplicate Merge
+
+- **Merge process**: When a roster person and a user share the same email (e.g., person "Jesse" and user "Jesse (Assistant)"), both can appear in the Hours tab. New merge process consolidates them into a single canonical identity (the user).
+- **Detection**: On Pay tab load, detects duplicates (person_name in pay_config where person's email matches a user and names differ).
+- **Merge UI**: Yellow notice above "People pay config" lists duplicates with "Merge" button. Click to consolidate person's pay config into user's, delete person's row, and cascade name change across pay tables.
+- **Proactive merge on invite**: When inviting a person as user, automatically merges if a duplicate exists (e.g., user was created with different name).
+- **Cascade extended**: `cascadePersonNameInPayTables` now includes `pay_stubs` and `pay_stub_days` so pay stub history stays consistent after merges.
+- **Files**: `src/lib/mergePersonUserDuplicates.ts` (find + merge), `src/lib/cascadePersonName.ts` (pay_stubs, pay_stub_days), `src/pages/People.tsx` (detection, UI, invite hook).
+
+---
+
+## Latest Updates (v2.81)
+
+**Date**: 2026-03-26
+
+### Bids – Counts Tab
+
+- **Import from /Tooling**: New button at top of Counts tab (next to Edit Bid). Reads from clipboard and imports tab-delimited rows (Fixture, Count, Plan Page). Copy from /Tooling app using "Copy to /Tooling" export, then click to auto-add rows. Format: `WC\t4\t1`, `ft of 4in PVC\t28.29\t1`, etc.
+
+### Bids – Pricing Tab
+
+- **partial-fill button**: In Price book entry column header. Click to pre-fill each row's search with the first 3 letters of its Fixture or Tie-in. Speeds up assigning price book entries.
+- **Performance**: Parallelized fetches, deduplicated expandTemplate calls, progressive loading for per-fixture materials. Pricing tab loads faster, especially for bids with many takeoff mappings.
+
+### Jobs – Inspections Tab
+
+- **Inspections tab**: New tab (right of Job Summary) with Quick Links to permit portals, Inspection Schedule (calendar + Upcoming), Add Inspection modal.
+- **Edit Inspection Types**: Button to manage inspection types (Plumbing Rough-In, Gas Final, etc.) in a lookup table.
+- **Edit Quick Inspection Links**: Button to manage Quick Links (City of New Braunfels, Alamo Heights, etc.) in a lookup table.
+- **Upcoming**: Shows date, days until, day of week (e.g. `2026-03-09 (3) Monday`). Layout: type + address on separate lines; map icon next to address opens Google Maps.
+- **Dashboard**: "Upcoming inspection (3 days)" for assistants; Inspections button in Dashboard quick buttons (Settings).
+
+### Reports – New Report
+
+- **Address in search**: Job search shows `Suzy Wilson (HCP: 612) - 8201 Wilke Rd. Kingsbury Tx 78638`. Selected job: name on first line, address on second line.
+- **Search placeholder**: "Search by HCP #, project name, or address" (all job searches).
+
+### Add Inspection Modal
+
+- **Address in search**: Same as New Report; job search results include address.
+
+### RLS Fixes
+
+- **cost_estimate_labor_rows**: Fix 500 for assistants on Bids Pricing; use `is_bid_pricing_user()` SECURITY DEFINER helper. Migration: `20260326000000_fix_cost_estimate_labor_rows_rls_assistants.sql`.
+- **Estimators insert reports**: Use `is_estimator()` helper to avoid RLS recursion. Migration: `20260318000000_estimators_insert_reports_use_helper.sql`.
 
 ---
 

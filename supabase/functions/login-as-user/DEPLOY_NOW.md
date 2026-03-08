@@ -18,7 +18,7 @@ You're getting a 401 Unauthorized error because the `login-as-user` Edge Functio
    - **Value**: Paste your service role key
    - Click **"Add Secret"**
 
-**Note**: If you already set this for `delete-user`, you can skip this step.
+**Note**: If you already set this for `archive-user`, you can skip this step.
 
 ### Step 2: Deploy the Function
 
