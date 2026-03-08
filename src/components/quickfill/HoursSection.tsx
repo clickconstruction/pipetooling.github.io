@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { HoursUnassignedModal } from '../HoursUnassignedModal'
 
 type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
 type HoursRow = { person_name: string; work_date: string; hours: number }
+type CrewJobAssignment = { job_id: string; pct: number }
+type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -65,9 +68,18 @@ export function HoursSection() {
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
+  const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
+  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
+  const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+
+  const canEditCrewJobs = canAccessHours
 
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => loadPeopleHours(hoursDateStart, hoursDateEnd)
+  const loadHoursDaysCorrectRef = useRef<() => void>()
+  loadHoursDaysCorrectRef.current = () => loadHoursDaysCorrect(hoursDateStart, hoursDateEnd)
+  const loadCrewJobsRef = useRef<() => void>()
+  loadCrewJobsRef.current = () => loadCrewJobsForDateRange(hoursDateStart, hoursDateEnd)
 
   async function loadPayAccess() {
     if (!authUser?.id) return
@@ -125,6 +137,55 @@ export function HoursSection() {
     setHoursDisplayOrder(map)
   }
 
+  async function loadHoursDaysCorrect(start: string, end: string) {
+    if (!canAccessHours) return
+    const { data, error } = await supabase.from('hours_days_correct').select('work_date').gte('work_date', start).lte('work_date', end)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    const days = getDaysInRange(start, end)
+    setHoursDaysCorrect((prev) => {
+      const next = new Set(prev)
+      for (const d of days) next.delete(d)
+      for (const r of (data ?? []) as { work_date: string }[]) next.add(r.work_date)
+      return next
+    })
+  }
+
+  async function loadCrewJobsForDateRange(start: string, end: string) {
+    if (!canAccessHours) return
+    const days = getDaysInRange(start, end)
+    if (days.length === 0) return
+    const { data } = await supabase
+      .from('people_crew_jobs')
+      .select('work_date, person_name, crew_lead_person_name, job_assignments')
+      .in('work_date', days)
+    const map: Record<string, CrewJobRow> = {}
+    for (const r of (data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>) {
+      const key = `${r.work_date}:${r.person_name}`
+      map[key] = {
+        crew_lead_person_name: r.crew_lead_person_name ?? null,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+    setCrewJobsByDatePerson(map)
+  }
+
+  async function toggleHoursDayCorrect(workDate: string) {
+    if (!canAccessHours) return
+    const isCorrect = hoursDaysCorrect.has(workDate)
+    if (isCorrect) {
+      const { error } = await supabase.from('hours_days_correct').delete().eq('work_date', workDate)
+      if (error) setError(error.message)
+      else setHoursDaysCorrect((prev) => { const next = new Set(prev); next.delete(workDate); return next })
+    } else {
+      const { error } = await supabase.from('hours_days_correct').insert({ work_date: workDate, marked_by: authUser?.id ?? null })
+      if (error) setError(error.message)
+      else setHoursDaysCorrect((prev) => { const next = new Set(prev); next.add(workDate); return next })
+    }
+  }
+
   async function moveHoursRow(personName: string, direction: 'up' | 'down') {
     const showPeople = Object.keys(payConfig)
       .filter((n) => payConfig[n]?.show_in_hours ?? false)
@@ -153,6 +214,7 @@ export function HoursSection() {
   }
 
   async function saveHours(personName: string, workDate: string, hours: number) {
+    if (hoursDaysCorrect.has(workDate)) return
     setPeopleHours((prev) => {
       const rest = prev.filter((h) => !(h.person_name === personName && h.work_date === workDate))
       return [...rest, { person_name: personName, work_date: workDate, hours }]
@@ -202,6 +264,8 @@ export function HoursSection() {
       loadPayConfig(),
       loadPeopleHours(hoursDateStart, hoursDateEnd),
       loadHoursDisplayOrder(),
+      loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
+      loadCrewJobsForDateRange(hoursDateStart, hoursDateEnd),
     ]).finally(() => setLoading(false))
   }, [canAccessHours, hoursDateStart, hoursDateEnd])
 
@@ -211,6 +275,12 @@ export function HoursSection() {
       .channel('quickfill-people-hours-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
         loadPeopleHoursRef.current?.()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'hours_days_correct' }, () => {
+        loadHoursDaysCorrectRef.current?.()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_jobs' }, () => {
+        loadCrewJobsRef.current?.()
       })
       .subscribe()
     return () => {
@@ -226,6 +296,22 @@ export function HoursSection() {
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
+
+  function hasAssignmentsForDate(personName: string, workDate: string): boolean {
+    const key = `${workDate}:${personName}`
+    const row = crewJobsByDatePerson[key]
+    if (!row) return false
+    return !!(row.crew_lead_person_name || (row.job_assignments?.length ?? 0) > 0)
+  }
+
+  function hasUnassignedCorrectDays(personName: string): boolean {
+    return hoursDays.some((d) => {
+      if (!hoursDaysCorrect.has(d)) return false
+      const hours = getEffectiveHours(personName, d)
+      if (hours <= 0) return false
+      return !hasAssignmentsForDate(personName, d)
+    })
+  }
 
   if (!canAccessHours) {
     return (
@@ -285,8 +371,35 @@ export function HoursSection() {
                   {showPeopleForHours.map((personName, idx) => {
                     const cfg = payConfig[personName]
                     const isSalary = cfg?.is_salary ?? false
+                    const isUnassigned = hasUnassignedCorrectDays(personName)
                     return (
-                      <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr
+                        key={personName}
+                        style={{
+                          borderBottom: '1px solid #e5e7eb',
+                          ...(isUnassigned && {
+                            outline: '2px solid #dc2626',
+                            outlineOffset: -1,
+                            background: 'rgba(220, 38, 38, 0.05)',
+                          }),
+                          ...(isUnassigned && canEditCrewJobs && { cursor: 'pointer' }),
+                        }}
+                        title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs' : 'Assign jobs in Crew Jobs section or People page') : undefined}
+                        {...(isUnassigned && canEditCrewJobs && {
+                          role: 'button',
+                          tabIndex: 0,
+                          onClick: (e: React.MouseEvent) => {
+                            if ((e.target as HTMLElement).closest('input, button, label')) return
+                            setHoursUnassignedModal({ personName })
+                          },
+                          onKeyDown: (e: React.KeyboardEvent) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              setHoursUnassignedModal({ personName })
+                            }
+                          },
+                        })}
+                      >
                         <td style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem' }}>
                             <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
@@ -294,32 +407,37 @@ export function HoursSection() {
                           </span>
                           {personName}{isSalary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
                         </td>
-                        {hoursDays.map((d) => (
-                          <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
-                            {isSalary ? (
-                              <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
-                            ) : (
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
-                                placeholder="-"
-                                onFocus={(e) => {
-                                  setEditingHoursCell({ personName, workDate: d })
-                                  setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
-                                  e.target.select()
-                                }}
-                                onChange={(e) => setEditingHoursValue(e.target.value)}
-                                onBlur={() => {
-                                  const v = hmsToDecimal(editingHoursValue)
-                                  saveHours(personName, d, v)
-                                  setEditingHoursCell(null)
-                                }}
-                                style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
-                              />
-                            )}
-                          </td>
-                        ))}
+                        {hoursDays.map((d) => {
+                          const dayLocked = hoursDaysCorrect.has(d)
+                          return (
+                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
+                              {isSalary ? (
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
+                              ) : dayLocked ? (
+                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getHoursForPersonDate(personName, d)) || '-'}</span>
+                              ) : (
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  value={editingHoursCell?.personName === personName && editingHoursCell?.workDate === d ? editingHoursValue : decimalToHms(getHoursForPersonDate(personName, d))}
+                                  placeholder="-"
+                                  onFocus={(e) => {
+                                    setEditingHoursCell({ personName, workDate: d })
+                                    setEditingHoursValue(decimalToHms(getHoursForPersonDate(personName, d)) || '')
+                                    e.target.select()
+                                  }}
+                                  onChange={(e) => setEditingHoursValue(e.target.value)}
+                                  onBlur={() => {
+                                    const v = hmsToDecimal(editingHoursValue)
+                                    saveHours(personName, d, v)
+                                    setEditingHoursCell(null)
+                                  }}
+                                  style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                                />
+                              )}
+                            </td>
+                          )
+                        })}
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{decimalToHms(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)) || '-'}</td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)).toFixed(2)}</td>
                       </tr>
@@ -357,6 +475,20 @@ export function HoursSection() {
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
                           <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>{grandTotal.toFixed(2)}</td>
                         </tr>
+                        <tr>
+                          <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', fontWeight: 500, fontSize: '0.8125rem' }} title="Mark day as verified to lock from edits">Correct:</td>
+                          {hoursDays.map((d) => {
+                            const checked = hoursDaysCorrect.has(d)
+                            return (
+                              <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title={checked ? 'Uncheck to allow edits' : 'Check to lock this day'}>
+                                  <input type="checkbox" checked={checked} onChange={() => toggleHoursDayCorrect(d)} />
+                                </label>
+                              </td>
+                            )
+                          })}
+                          <td colSpan={2} style={{ padding: '0.35rem 0.5rem', borderTop: '1px solid #e5e7eb' }} />
+                        </tr>
                       </>
                     )
                   })()}
@@ -365,6 +497,20 @@ export function HoursSection() {
             </div>
           )}
         </>
+      )}
+
+      {hoursUnassignedModal && canEditCrewJobs && (
+        <HoursUnassignedModal
+          personName={hoursUnassignedModal.personName}
+          hoursDateStart={hoursDateStart}
+          hoursDateEnd={hoursDateEnd}
+          onClose={() => setHoursUnassignedModal(null)}
+          onSaved={() => {
+            loadCrewJobsRef.current?.()
+            loadHoursDaysCorrectRef.current?.()
+          }}
+          canEditCrewJobs={canEditCrewJobs}
+        />
       )}
     </section>
   )

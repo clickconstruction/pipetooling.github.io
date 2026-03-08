@@ -94,6 +94,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 7, 2026
 
+**`20250407120001_common_jobs_assistant_rls.sql`**
+- **Purpose**: Ensure all assistants (not just pay-approved) can INSERT/SELECT/DELETE common_jobs; fixes assistants' Common Jobs not persisting between sessions
+- **Changes**: Drop and recreate common_jobs RLS policies to explicitly include `is_assistant()` alongside `is_assistant_of_pay_approved_master()`
+- **Impact**: Assistants (e.g. Taunya) can add and see Common Jobs across sessions
+- **Category**: People / Hours / Crew Jobs / RLS
+
+**`20250407120000_common_jobs_allow_duplicates.sql`**
+- **Purpose**: Allow the same job to appear multiple times in Common Jobs; broaden access so any user who can open Assign User to Jobs modal can add/remove jobs
+- **Changes**: Add `id UUID` column as PRIMARY KEY; drop `job_id` as PK; create index on `job_id`; backfill existing rows with `gen_random_uuid()`
+- **Impact**: Users can add the same job to Common Jobs multiple times for quick access; remove deletes by row `id` (not `job_id`); add flow no longer filters out jobs already in list
+- **Category**: People / Hours / Crew Jobs
+
 **`20250307120000_create_common_jobs.sql`**
 - **Purpose**: Org-wide quick-add jobs for Assign User to Jobs modal (People > Hours)
 - **Changes**: Create `common_jobs` table (job_id PK FK jobs_ledger, sequence_order); RLS SELECT for pay access + shared read; INSERT/DELETE for pay access users (dev, pay-approved master, assistant)

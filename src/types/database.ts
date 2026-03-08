@@ -615,14 +615,17 @@ export type Database = {
       }
       common_jobs: {
         Row: {
+          id: string
           job_id: string
           sequence_order: number
         }
         Insert: {
+          id?: string
           job_id: string
           sequence_order?: number
         }
         Update: {
+          id?: string
           job_id?: string
           sequence_order?: number
         }
@@ -630,7 +633,7 @@ export type Database = {
           {
             foreignKeyName: "common_jobs_job_id_fkey"
             columns: ["job_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
@@ -756,21 +759,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       cost_matrix_teams_shares: {
         Row: {
@@ -4418,8 +4406,8 @@ export type Database = {
       insert_report: {
         Args: {
           p_field_values: Json
-          p_job_ledger_id: string | null
-          p_project_id: string | null
+          p_job_ledger_id: string
+          p_project_id: string
           p_template_id: string
         }
         Returns: string
