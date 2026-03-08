@@ -95,7 +95,7 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
         project_id: null,
       }).select('id').single()
       err = insertErr
-      inserted = row
+      inserted = row ?? null
     }
     setSaving(false)
     if (err) {

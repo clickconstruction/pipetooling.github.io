@@ -193,11 +193,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         template_id: selectedTemplateId,
         created_by_user_id: createdByUserId,
         field_values: fv,
-        job_ledger_id: jobLedgerId,
-        project_id: projectId,
+        job_ledger_id: jobLedgerId ?? null,
+        project_id: projectId ?? null,
       }).select('id').single()
       err = insertErr
-      inserted = row
+      inserted = row ?? null
     }
     setSaving(false)
     if (err) {
