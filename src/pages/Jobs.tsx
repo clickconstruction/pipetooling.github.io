@@ -117,7 +117,7 @@ const LABOR_ASSIGNED_DELIMITER = ' | '
 export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: authUser, role: authRole } = useAuth()
+  const { user: authUser, role: authRole, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -302,7 +302,10 @@ export default function Jobs() {
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
 
   async function loadJobs() {
-    if (!authUser?.id) return
+    if (!authUser?.id) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError(null)
     const { data: jobsData, error: jobsErr } = await supabase
@@ -1074,8 +1077,10 @@ export default function Jobs() {
     const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
     for (const r of crewRows) {
       const assignments = getEffectiveAssignments(r.person_name, r.work_date)
-      const hours = hoursMap[`${r.person_name}:${r.work_date}`] ?? (configMap[r.person_name]?.is_salary ? 8 : 0)
-      const rate = configMap[r.person_name]?.hourly_wage ?? 0
+      const cfg = configMap[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
+      const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         if (!jobAgg[a.job_id]) jobAgg[a.job_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
         const agg = jobAgg[a.job_id]!
@@ -1763,9 +1768,10 @@ export default function Jobs() {
   }
 
   useEffect(() => {
+    if (authLoading || !authUser?.id) return
     loadJobs()
     loadUsers()
-  }, [authUser?.id])
+  }, [authUser?.id, authLoading])
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -1988,8 +1994,9 @@ export default function Jobs() {
   }, [laborBookEntriesVersionId])
 
   useEffect(() => {
-    if (activeTab === 'stages' && authUser?.id) loadJobs()
-  }, [activeTab, authUser?.id])
+    if (authLoading || !authUser?.id || activeTab !== 'stages') return
+    loadJobs()
+  }, [activeTab, authUser?.id, authLoading])
 
   useEffect(() => {
     if (activeTab === 'stages' && searchParams.get('showBilledTotalByName') === 'true') {
@@ -3140,6 +3147,9 @@ export default function Jobs() {
       {activeTab === 'stages' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {loading && (
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Loading jobs…</p>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <button
               type="button"

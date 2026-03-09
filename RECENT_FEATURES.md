@@ -142,8 +142,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
-2. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
+1. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
+2. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
+3. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
 2. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
 2. [Latest Updates (v2.79)](#latest-updates-v279) - Quickfill feedback loop, section nav, Prospects Team tab, label updates
 3. [Latest Updates (v2.78)](#latest-updates-v278) - AR removed, Billed Awaiting Payment, Quickfill Billed section, Total by Name modal
@@ -230,6 +231,13 @@ when_to_read:
 ## Latest Updates (v2.83)
 
 **Date**: 2026-03-07
+
+### Development Tools – Sync to Testing Script
+
+- **Sync to Testing.command**: Double-clickable macOS script at project root that clears `testing-pipetooling.github.io` and copies the full contents of `pipetooling.github.io` into it (including hidden files like `.git`).
+- **Location**: `Sync to Testing.command` (in the pipetooling root folder, alongside `pipetooling.github.io` and `testing-pipetooling.github.io`).
+- **Usage**: Double-click in Finder; Terminal opens, runs the sync, and waits for Enter before closing.
+- **Use case**: Quickly refresh the testing site with a copy of production before deploying or testing changes.
 
 ### Settings – Archive and Restore User Flow
 

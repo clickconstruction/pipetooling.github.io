@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -160,8 +159,10 @@ export function CrewJobsSection() {
     const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
     for (const r of crewRows) {
       const assignments = getEffectiveAssignments(r.person_name, r.work_date)
-      const hours = hoursMap[`${r.person_name}:${r.work_date}`] ?? (configMap[r.person_name]?.is_salary ? 8 : 0)
-      const rate = configMap[r.person_name]?.hourly_wage ?? 0
+      const cfg = configMap[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
+      const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         if (!jobAgg[a.job_id]) jobAgg[a.job_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
         const agg = jobAgg[a.job_id]!
@@ -253,9 +254,6 @@ export function CrewJobsSection() {
   return (
     <section style={{ marginBottom: '2rem' }}>
       <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Crew Jobs</h2>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', textAlign: 'center' }}>
-        <Link to="/people?tab=team_costs" style={{ color: '#2563eb', textDecoration: 'underline' }}>Full Team Costs</Link> in People
-      </p>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
         <p style={{ color: '#6b7280' }}>Loading…</p>

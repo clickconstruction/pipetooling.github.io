@@ -5,7 +5,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
-type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean }
+type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 type JobDetails = { hcp_number: string; job_name: string; job_address: string }
 
 function getDaysInRange(start: string, end: string): string[] {
@@ -60,6 +60,10 @@ export function HoursUnassignedModal({
 
   function getEffectiveHours(pName: string, workDate: string): number {
     const cfg = payConfig[pName]
+    if (cfg?.is_salary && (cfg?.record_hours_but_salary ?? false)) {
+      const row = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)
+      return row?.hours ?? 0
+    }
     if (cfg?.is_salary) {
       const day = new Date(workDate + 'T12:00:00').getDay()
       if (day === 0 || day === 6) return 0
@@ -121,7 +125,7 @@ export function HoursUnassignedModal({
       const [correctRes, hoursRes, configRes, crewRes, officeRes] = await Promise.all([
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix'),
+        supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
         supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').eq('hcp_number', '000').limit(1).maybeSingle(),
       ])
@@ -169,7 +173,13 @@ export function HoursUnassignedModal({
       )) ?? []
       if (commonRows.length > 0) {
         const ids = commonRows.map((r) => r.job_id)
-        const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', ids)
+        const jobsData = (await withSupabaseRetry(
+          async () => {
+            const r = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: ids })
+            return r as { data: Array<{ id: string; hcp_number: string; job_name: string; job_address: string }> | null; error: { message: string } | null }
+          },
+          'fetch common job details'
+        )) ?? []
         const jobsMap = new Map((jobsData ?? []).map((j: { id: string; hcp_number: string; job_name: string; job_address: string }) => [j.id, j]))
         const ordered = commonRows
           .filter((r) => jobsMap.has(r.job_id))

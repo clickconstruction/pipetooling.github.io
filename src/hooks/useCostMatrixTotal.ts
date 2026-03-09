@@ -6,6 +6,7 @@ type PayConfigRow = {
   hourly_wage: number | null
   is_salary: boolean
   show_in_cost_matrix: boolean
+  record_hours_but_salary: boolean
 }
 
 type HoursRow = { person_name: string; work_date: string; hours: number }
@@ -53,7 +54,7 @@ export function useCostMatrixTotal(enabled: boolean): { total: number | null; lo
     const days = getDaysInRange(start, end)
 
     Promise.all([
-      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_cost_matrix'),
+      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_cost_matrix, record_hours_but_salary'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
       supabase.from('people_hours_display_order').select('person_name, sequence_order'),
     ])

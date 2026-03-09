@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
 
-type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
+type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
@@ -103,7 +103,7 @@ export function HoursSection() {
   }
 
   async function loadPayConfig() {
-    const { data, error: err } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+    const { data, error: err } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
     if (err) {
       setError(err.message)
       return
@@ -241,6 +241,17 @@ export function HoursSection() {
     return getHoursForPersonDate(personName, workDate)
   }
 
+  function canEditHours(personName: string): boolean {
+    const cfg = payConfig[personName]
+    return !(cfg?.is_salary ?? false) || (cfg?.record_hours_but_salary ?? false)
+  }
+
+  function getDisplayHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
+    return getHoursForPersonDate(personName, workDate)
+  }
+
   function shiftHoursWeek(delta: number) {
     const dStart = new Date(hoursDateStart + 'T12:00:00')
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
@@ -307,7 +318,7 @@ export function HoursSection() {
   function hasUnassignedCorrectDays(personName: string): boolean {
     return hoursDays.some((d) => {
       if (!hoursDaysCorrect.has(d)) return false
-      const hours = getEffectiveHours(personName, d)
+      const hours = getDisplayHours(personName, d)
       if (hours <= 0) return false
       return !hasAssignmentsForDate(personName, d)
     })
@@ -369,8 +380,6 @@ export function HoursSection() {
                 </thead>
                 <tbody>
                   {showPeopleForHours.map((personName, idx) => {
-                    const cfg = payConfig[personName]
-                    const isSalary = cfg?.is_salary ?? false
                     const isUnassigned = hasUnassignedCorrectDays(personName)
                     return (
                       <tr
@@ -405,16 +414,17 @@ export function HoursSection() {
                             <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
                             <button type="button" onClick={() => moveHoursRow(personName, 'down')} disabled={idx === showPeopleForHours.length - 1} title="Move down" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
                           </span>
-                          {personName}{isSalary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
+                          {personName}
                         </td>
                         {hoursDays.map((d) => {
                           const dayLocked = hoursDaysCorrect.has(d)
+                          const canEdit = canEditHours(personName)
                           return (
-                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
-                              {isSalary ? (
-                                <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
+                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: canEdit ? 'right' : 'center' }}>
+                              {!canEdit ? (
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
-                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getHoursForPersonDate(personName, d)) || '-'}</span>
+                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : (
                                 <input
                                   type="text"
@@ -438,21 +448,21 @@ export function HoursSection() {
                             </td>
                           )
                         })}
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{decimalToHms(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)) || '-'}</td>
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)).toFixed(2)}</td>
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{decimalToHms(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)) || '-'}</td>
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>{(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)).toFixed(2)}</td>
                       </tr>
                     )
                   })}
                 </tbody>
                 <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
                   {(() => {
-                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getEffectiveHours(p, d), 0), 0)
+                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getDisplayHours(p, d), 0), 0)
                     return (
                       <>
                         <tr>
                           <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (HH:MM:SS):</td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
                               <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
                                 {decimalToHms(daySum) || '-'}
@@ -465,7 +475,7 @@ export function HoursSection() {
                         <tr>
                           <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (Decimal):</td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
                               <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
                                 {daySum.toFixed(2)}

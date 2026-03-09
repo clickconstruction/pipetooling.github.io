@@ -79,6 +79,7 @@ export type Database = {
           is_fixed_price: boolean
           price_book_entry_id: string
           price_book_version_id: string
+          unit_price_override: number | null
         }
         Insert: {
           bid_id: string
@@ -88,6 +89,7 @@ export type Database = {
           is_fixed_price?: boolean
           price_book_entry_id: string
           price_book_version_id: string
+          unit_price_override?: number | null
         }
         Update: {
           bid_id?: string
@@ -97,6 +99,7 @@ export type Database = {
           is_fixed_price?: boolean
           price_book_entry_id?: string
           price_book_version_id?: string
+          unit_price_override?: number | null
         }
         Relationships: [
           {
@@ -127,6 +130,37 @@ export type Database = {
             referencedRelation: "price_book_versions"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      bid_count_row_custom_prices: {
+        Row: {
+          id: string
+          bid_id: string
+          count_row_id: string
+          price_book_version_id: string
+          unit_price: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          bid_id: string
+          count_row_id: string
+          price_book_version_id: string
+          unit_price: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          bid_id?: string
+          count_row_id?: string
+          price_book_version_id?: string
+          unit_price?: number
+          created_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "bid_count_row_custom_prices_bid_id_fkey", columns: ["bid_id"], referencedRelation: "bids", referencedColumns: ["id"] },
+          { foreignKeyName: "bid_count_row_custom_prices_count_row_id_fkey", columns: ["count_row_id"], referencedRelation: "bids_count_rows", referencedColumns: ["id"] },
+          { foreignKeyName: "bid_count_row_custom_prices_price_book_version_id_fkey", columns: ["price_book_version_id"], referencedRelation: "price_book_versions", referencedColumns: ["id"] },
         ]
       }
       bids: {
@@ -2384,6 +2418,47 @@ export type Database = {
           },
         ]
       }
+      person_offsets: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          occurred_date: string
+          pay_stub_id: string | null
+          person_name: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occurred_date: string
+          pay_stub_id?: string | null
+          person_name: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occurred_date?: string
+          pay_stub_id?: string | null
+          person_name?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_offsets_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           created_at: string | null
@@ -4050,6 +4125,148 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vehicle_odometer_entries: {
+        Row: {
+          created_at: string | null
+          id: string
+          odometer_value: number
+          read_date: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          odometer_value: number
+          read_date: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          odometer_value?: number
+          read_date?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_odometer_entries_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_possessions: {
+        Row: {
+          created_at: string | null
+          end_date: string | null
+          id: string
+          start_date: string
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          start_date: string
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          start_date?: string
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_possessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_possessions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicle_replacement_value_entries: {
+        Row: {
+          created_at: string | null
+          id: string
+          read_date: string
+          replacement_value: number
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          read_date: string
+          replacement_value: number
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          read_date?: string
+          replacement_value?: number
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_replacement_value_entries_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          created_at: string | null
+          id: string
+          make: string
+          model: string
+          updated_at: string | null
+          vin: string | null
+          weekly_insurance_cost: number
+          weekly_registration_cost: number
+          year: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          make?: string
+          model?: string
+          updated_at?: string | null
+          vin?: string | null
+          weekly_insurance_cost?: number
+          weekly_registration_cost?: number
+          year?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          make?: string
+          model?: string
+          updated_at?: string | null
+          vin?: string | null
+          weekly_insurance_cost?: number
+          weekly_registration_cost?: number
+          year?: number | null
+        }
+        Relationships: []
       }
       users: {
         Row: {

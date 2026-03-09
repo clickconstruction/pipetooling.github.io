@@ -90,7 +90,45 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### April 2026
+
+#### April 8, 2026
+
+**`20260408120000_add_unit_price_override_to_bid_pricing_assignments.sql`**
+- **Purpose**: Per-bid unit price override in Bids Pricing tab Price Model
+- **Changes**: Add `unit_price_override NUMERIC(10,2) NULL` to `bid_pricing_assignments`
+- **Impact**: In Price Model, Unit Cost column is editable when a price book entry is assigned; user can override the book price for this bid; Reset button clears override
+- **Category**: Bids / Pricing
+
 ### March 2026
+
+#### March 31, 2026
+
+**`20260331020000_create_person_offsets.sql`**
+- **Purpose**: Backcharges and damages per person; pending (pay_stub_id null) or applied (linked to pay stub)
+- **Changes**: Create `person_offsets` (person_name, type backcharge|damage, amount, description, occurred_date, pay_stub_id nullable); RLS same as pay_stubs
+- **Impact**: People Offsets tab; offsets shown on pay reports (applied reduce net pay, pending listed for visibility)
+- **Category**: People / Offsets
+
+**`20260331010000_create_vehicle_replacement_value_entries.sql`**
+- **Purpose**: Replacement value entries per vehicle per date (like odometer)
+- **Changes**: Create `vehicle_replacement_value_entries` (vehicle_id, replacement_value, read_date, UNIQUE vehicle_id+read_date); RLS same as vehicles
+- **Impact**: People Vehicles tab shows Replacement value section with add/delete entries
+- **Category**: People / Vehicles
+
+**`20260331000000_create_vehicles.sql`**
+- **Purpose**: Fleet vehicle tracking for People page; vehicle CRUD, odometer entries, possession assignments (user + start/end date)
+- **Changes**: Create `vehicles` (year, make, model, vin, weekly_insurance_cost, weekly_registration_cost); `vehicle_odometer_entries` (vehicle_id, odometer_value, read_date, UNIQUE vehicle_id+read_date); `vehicle_possessions` (vehicle_id, user_id, start_date, end_date). RLS same as pay_stubs: dev, pay-approved master, assistant_of_pay_approved_master, assistant
+- **Impact**: People page gains Vehicles tab (visible when canAccessPay); vehicle info shown on Pay reports for users with possession during pay period
+- **Category**: People / Vehicles
+
+#### March 30, 2026
+
+**`20260330000000_common_jobs_get_job_details_rpc.sql`**
+- **Purpose**: Fix Common Jobs not showing for assistants when a dev (impersonating) adds a job; assistants could not read job details from jobs_ledger due to RLS (master_assistants visibility)
+- **Changes**: Create `get_jobs_ledger_by_ids(p_job_ids uuid[])` SECURITY DEFINER RPC that fetches job details (id, hcp_number, job_name, job_address) for given IDs, bypassing jobs_ledger RLS
+- **Impact**: Assign User to Jobs modal uses this RPC instead of direct jobs_ledger query when loading Common Jobs; assistants now see the same Common Jobs list as devs
+- **Category**: People / Hours / Crew Jobs / RLS
 
 #### March 7, 2026
 

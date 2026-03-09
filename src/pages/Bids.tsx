@@ -28,6 +28,7 @@ type FixtureLaborDefault = Database['public']['Tables']['fixture_labor_defaults'
 type PriceBookVersion = Database['public']['Tables']['price_book_versions']['Row']
 type PriceBookEntry = Database['public']['Tables']['price_book_entries']['Row']
 type BidPricingAssignment = Database['public']['Tables']['bid_pricing_assignments']['Row']
+type BidCountRowCustomPrice = Database['public']['Tables']['bid_count_row_custom_prices']['Row']
 type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions']['Row']
@@ -1179,6 +1180,7 @@ export default function Bids() {
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
+  const [bidCountRowCustomPrices, setBidCountRowCustomPrices] = useState<BidCountRowCustomPrice[]>([])
   const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
   const pricingBidIdRef = useRef<string | null>(null)
   const [pricingCountRows, setPricingCountRows] = useState<BidCountRow[]>([])
@@ -1210,6 +1212,9 @@ export default function Bids() {
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingFixtureMaterialsFromTakeoff, setPricingFixtureMaterialsFromTakeoff] = useState<Record<string, number>>({})
   const [pricingRowBreakdownModalCountRow, setPricingRowBreakdownModalCountRow] = useState<BidCountRow | null>(null)
+  const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
+  const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
+  const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
@@ -2463,19 +2468,21 @@ export default function Bids() {
   async function loadBidPricingAssignments(bidId: string, versionId: string | null) {
     if (versionId == null) {
       setBidPricingAssignments([])
+      setBidCountRowCustomPrices([])
       return
     }
-    const { data, error } = await supabase
-      .from('bid_pricing_assignments')
-      .select('*')
-      .eq('bid_id', bidId)
-      .eq('price_book_version_id', versionId)
-    if (error) {
-      setError(`Failed to load pricing assignments: ${error.message}`)
+    const [assignmentsRes, customPricesRes] = await Promise.all([
+      supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
+      supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
+    ])
+    if (assignmentsRes.error) {
+      setError(`Failed to load pricing assignments: ${assignmentsRes.error.message}`)
       setBidPricingAssignments([])
+      setBidCountRowCustomPrices([])
       return
     }
-    setBidPricingAssignments((data as BidPricingAssignment[]) ?? [])
+    setBidPricingAssignments((assignmentsRes.data as BidPricingAssignment[]) ?? [])
+    setBidCountRowCustomPrices(customPricesRes.error ? [] : ((customPricesRes.data as BidCountRowCustomPrice[]) ?? []))
   }
 
   async function loadPricingDataForBid(bidId: string) {
@@ -2654,6 +2661,61 @@ export default function Bids() {
     
     if (err) setError(err.message)
     else await loadBidPricingAssignments(bidId, versionId)
+  }
+
+  async function updateUnitPriceOverride(countRowId: string, value: number | null) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+    const countRow = pricingCountRows.find((r) => r.id === countRowId)
+    const entry = existing ? entriesById.get(existing.price_book_entry_id) : (countRow ? priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase()) : null)
+    const existingCustom = bidCountRowCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === versionId)
+
+    setSavingUnitPriceOverride(countRowId)
+    let err: { message: string } | null = null
+
+    if (existing) {
+      const res = await supabase.from('bid_pricing_assignments').update({ unit_price_override: value }).eq('id', existing.id)
+      err = res.error
+      if (!err && existingCustom) {
+        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+      }
+    } else if (entry) {
+      const res = await supabase.from('bid_pricing_assignments').insert({
+        bid_id: bidId,
+        count_row_id: countRowId,
+        price_book_entry_id: entry.id,
+        price_book_version_id: versionId,
+        unit_price_override: value,
+      })
+      err = res.error
+      if (!err && existingCustom) {
+        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+      }
+    } else {
+      if (value == null) {
+        if (existingCustom) {
+          const res = await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+          err = res.error
+        }
+      } else {
+        const res = existingCustom
+          ? await supabase.from('bid_count_row_custom_prices').update({ unit_price: value }).eq('id', existingCustom.id)
+          : await supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value })
+        err = res.error
+      }
+    }
+
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+    setSavingUnitPriceOverride(null)
+    setUnitPriceEditValues((prev) => {
+      const next = { ...prev }
+      delete next[countRowId]
+      return next
+    })
   }
 
   function openNewPricingVersion() {
@@ -6089,6 +6151,7 @@ export default function Bids() {
     if ((activeTab !== 'pricing' && activeTab !== 'cover-letter') || !selectedBidForPricing?.id) {
       pricingBidIdRef.current = null
       setBidPricingAssignments([])
+      setBidCountRowCustomPrices([])
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
@@ -9834,6 +9897,7 @@ export default function Bids() {
                 const rows = pricingCountRows.map((countRow) => {
                   const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
                   const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+                  const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
                   const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
                   const count = Number(countRow.count)
                   const laborHrs = laborRow ? laborRowHours(laborRow) : 0
@@ -9847,7 +9911,7 @@ export default function Bids() {
                     : materialsBeforeTax
                   const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
                   const cost = laborCost + materialsWithTax
-                  const unitPrice = entry ? Number(entry.total_price) : 0
+                  const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
                   const isFixedPrice = assignment?.is_fixed_price ?? false
                   const revenue = isFixedPrice ? unitPrice : count * unitPrice
                   totalRevenue += revenue
@@ -9859,10 +9923,12 @@ export default function Bids() {
                     laborRow,
                     count,
                     cost,
+                    unitPrice,
                     revenue,
                     margin,
                     flag,
                     assignment,
+                    customPrice: customPrice ?? null,
                     materialsBeforeTax,
                     materialsWithTax,
                     taxAmount,
@@ -9885,6 +9951,43 @@ export default function Bids() {
                       )}
                       <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
                     </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('cost')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'cost' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'cost' ? 600 : 400,
+                        color: pricingViewModel === 'cost' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none'
+                      }}
+                    >
+                      Cost Model
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('price')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'price' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'price' ? 600 : 400,
+                        color: pricingViewModel === 'price' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none'
+                      }}
+                    >
+                      Price Model
+                    </button>
                   </div>
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -9921,9 +10024,9 @@ export default function Bids() {
                               </button>
                             </span>
                           </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Our cost</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</th>
                           <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin %</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Margin %' : '% of Total'}</th>
                           <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
                         </tr>
                       </thead>
@@ -10100,13 +10203,75 @@ export default function Bids() {
                                 })()}
                               </div>
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.cost)}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                              {pricingViewModel === 'cost' ? (
+                                `$${formatCurrency(row.cost)}`
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={unitPriceEditValues[row.countRow.id] ?? (row.unitPrice > 0 ? formatCurrency(row.unitPrice) : '')}
+                                    onFocus={() => {
+                                      if (unitPriceEditValues[row.countRow.id] == null) {
+                                        setUnitPriceEditValues((prev) => ({ ...prev, [row.countRow.id]: row.unitPrice > 0 ? row.unitPrice.toFixed(2) : '' }))
+                                      }
+                                    }}
+                                    onChange={(e) => setUnitPriceEditValues((prev) => ({ ...prev, [row.countRow.id]: e.target.value }))}
+                                    onBlur={() => {
+                                      const raw = (unitPriceEditValues[row.countRow.id] ?? String(row.unitPrice)).replace(/,/g, '')
+                                      const v = parseFloat(raw)
+                                      const bookPrice = row.entry ? Number(row.entry.total_price) : 0
+                                      if (raw.trim() === '' || isNaN(v)) {
+                                        updateUnitPriceOverride(row.countRow.id, null)
+                                      } else if (row.entry && Math.abs(v - bookPrice) <= 0.001) {
+                                        updateUnitPriceOverride(row.countRow.id, null)
+                                      } else {
+                                        updateUnitPriceOverride(row.countRow.id, v)
+                                      }
+                                    }}
+                                    disabled={savingUnitPriceOverride === row.countRow.id}
+                                    placeholder={row.entry ? `$${formatCurrency(row.entry.total_price)}` : '—'}
+                                    style={{
+                                      width: '7rem',
+                                      padding: '0.35rem 0.5rem',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                      textAlign: 'right',
+                                      background: (row.assignment?.unit_price_override != null || row.customPrice != null) ? '#fef9c3' : 'white',
+                                      fontSize: '0.875rem'
+                                    }}
+                                  />
+                                  {(row.assignment?.unit_price_override != null || row.customPrice != null) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateUnitPriceOverride(row.countRow.id, null)}
+                                      title={row.assignment ? 'Reset to price book' : 'Clear custom price'}
+                                      aria-label={row.assignment ? 'Reset to price book' : 'Clear custom price'}
+                                      disabled={savingUnitPriceOverride === row.countRow.id}
+                                      style={{
+                                        padding: '0.15rem',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: savingUnitPriceOverride === row.countRow.id ? 'not-allowed' : 'pointer',
+                                        color: '#6b7280',
+                                        fontSize: '0.75rem'
+                                      }}
+                                    >
+                                      Reset
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.revenue)}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              {row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}
+                              {pricingViewModel === 'cost'
+                                ? (row.margin != null ? `${row.margin.toFixed(1)}%` : '—')
+                                : (totalRevenue > 0 ? `${((row.revenue / totalRevenue) * 100).toFixed(1)}%` : '—')}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                              {row.flag && (
+                              {pricingViewModel === 'cost' && row.flag && (
                                 <span
                                   title={row.flag === 'red' ? '< 20%' : row.flag === 'yellow' ? '< 40%' : '≥ 40%'}
                                   style={{
@@ -10129,10 +10294,12 @@ export default function Bids() {
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalCost)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'}
+                            {pricingViewModel === 'cost'
+                              ? (totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—')
+                              : '100%'}
                           </td>
                           <td style={{ padding: '0.75rem' }}>
-                            {totalRevenue > 0 && (() => {
+                            {pricingViewModel === 'cost' && totalRevenue > 0 && (() => {
                               const m = ((totalRevenue - totalCost) / totalRevenue) * 100
                               const f = marginFlag(m)
                               return f ? (
@@ -10218,7 +10385,7 @@ export default function Bids() {
                       <dd style={{ margin: 0 }}>${formatCurrency(laborCost)}</dd>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 600, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-                      <dt style={{ margin: 0 }}>Our cost</dt>
+                      <dt style={{ margin: 0 }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</dt>
                       <dd style={{ margin: 0 }}>${formatCurrency(ourCost)}</dd>
                     </div>
                   </dl>

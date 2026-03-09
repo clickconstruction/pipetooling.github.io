@@ -3729,7 +3729,7 @@ export default function Settings() {
     setMergeDuplicatesModalOpen(true)
     setMergeDuplicatesLoading(true)
     try {
-      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r
@@ -3763,7 +3763,7 @@ export default function Settings() {
       userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
     }
     try {
-      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+      const { data } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r

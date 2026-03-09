@@ -1910,7 +1910,7 @@ user_id = auth.uid()
 
 ### 5. People Roster
 - **Page**: `People.tsx`
-- **Tabs**: **Users** (default), **Pay**, **Hours**
+- **Tabs**: **Users** (default), **Pay History**, **Pay**, **Hours**, **Team Costs**, **Vehicles**, **Offsets**
 - **Features**:
   - List people by kind (Assistant, Master Technician, Subcontractor)
   - Add people without user accounts
@@ -1925,6 +1925,8 @@ user_id = auth.uid()
   - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
   - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
   - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
+  - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
+  - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
 - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
@@ -2643,6 +2645,17 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 #### Important Files for Deployment
 - `public/.nojekyll` - Prevents Jekyll from processing `dist/`
 - `CNAME` - Custom domain (if used)
+
+### Sync to Testing Site
+
+A double-clickable macOS script **`Sync to Testing.command`** (in the pipetooling project root) refreshes the testing site:
+
+1. Deletes all contents of `testing-pipetooling.github.io`
+2. Copies everything from `pipetooling.github.io` into it (including hidden files like `.git`)
+
+**Usage**: Double-click in Finder. Terminal opens, runs the sync, and waits for Enter before closing.
+
+**Location**: Project root, alongside `pipetooling.github.io` and `testing-pipetooling.github.io`.
 
 ### Edge Functions Deployment
 Edge Functions are deployed via Supabase CLI or Dashboard:

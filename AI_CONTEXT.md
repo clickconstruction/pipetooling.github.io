@@ -87,6 +87,7 @@ Customer (has master_user_id)
 - **Hosting**: GitHub Pages (static site)
 - **CI/CD**: GitHub Actions (`.github/workflows/deploy.yml`)
 - **Build**: `npm run build` → `dist/` → GitHub Pages
+- **Sync to Testing**: Double-click `Sync to Testing.command` at project root to copy `pipetooling.github.io` → `testing-pipetooling.github.io`
 
 ### Type Safety
 - Types auto-generated from Supabase schema: `src/types/database.ts`
@@ -472,7 +473,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 
 ---
 
-**Last Updated**: 2026-03-05
+**Last Updated**: 2026-03-07
 
 **Maintained By**: Documentation generated during comprehensive documentation update project
 

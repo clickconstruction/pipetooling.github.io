@@ -156,3 +156,12 @@ The project automatically deploys to GitHub Pages when changes are pushed to the
 - `VITE_SUPABASE_ANON_KEY`
 
 See [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
+
+### Sync to Testing Site
+
+To refresh the testing site (`testing-pipetooling.github.io`) with a copy of the main app:
+
+1. Double-click **`Sync to Testing.command`** in the pipetooling project root (parent folder of this repo).
+2. Terminal opens, clears the testing folder, copies everything from `pipetooling.github.io`, and waits for Enter to close.
+
+Use this before deploying or testing changes to ensure the testing site matches production.

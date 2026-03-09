@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -29,7 +29,14 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'team_costs'
+type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'team_costs' | 'vehicles' | 'offsets'
+
+type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
+type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
+type VehicleReplacementValueEntry = { id: string; vehicle_id: string; replacement_value: number; read_date: string; created_at: string | null }
+type VehiclePossession = { id: string; vehicle_id: string; user_id: string; start_date: string; end_date: string | null; created_at: string | null }
+
+type PersonOffset = { id: string; person_name: string; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -63,7 +70,7 @@ export default function People() {
   const [isDev, setIsDev] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
-  type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean }
+  type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
   const [payConfigDraft, setPayConfigDraft] = useState<Record<string, string>>({})
@@ -184,6 +191,48 @@ export default function People() {
   const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(false)
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
+
+  // Vehicles tab state
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehiclesLoading, setVehiclesLoading] = useState(false)
+  const [vehiclesError, setVehiclesError] = useState<string | null>(null)
+  const [vehicleFormOpen, setVehicleFormOpen] = useState(false)
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null)
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
+  const [odometerEntries, setOdometerEntries] = useState<VehicleOdometerEntry[]>([])
+  const [replacementValueEntries, setReplacementValueEntries] = useState<VehicleReplacementValueEntry[]>([])
+  const [possessions, setPossessions] = useState<VehiclePossession[]>([])
+  const [vehicleAssignees, setVehicleAssignees] = useState<Record<string, string>>({})
+  const [vehicleYear, setVehicleYear] = useState('')
+  const [vehicleMake, setVehicleMake] = useState('')
+  const [vehicleModel, setVehicleModel] = useState('')
+  const [vehicleVin, setVehicleVin] = useState('')
+  const [vehicleInsCost, setVehicleInsCost] = useState('')
+  const [vehicleRegCost, setVehicleRegCost] = useState('')
+  const [odometerFormOpen, setOdometerFormOpen] = useState(false)
+  const [odometerDate, setOdometerDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [odometerValue, setOdometerValue] = useState('')
+  const [replacementValueFormOpen, setReplacementValueFormOpen] = useState(false)
+  const [replacementValueDate, setReplacementValueDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [replacementValueValue, setReplacementValueValue] = useState('')
+  const [possessionFormOpen, setPossessionFormOpen] = useState(false)
+  // Offsets tab state
+  const [offsets, setOffsets] = useState<PersonOffset[]>([])
+  const [offsetsLoading, setOffsetsLoading] = useState(false)
+  const [offsetsError, setOffsetsError] = useState<string | null>(null)
+  const [offsetFormOpen, setOffsetFormOpen] = useState(false)
+  const [editingOffset, setEditingOffset] = useState<PersonOffset | null>(null)
+  const [offsetPersonName, setOffsetPersonName] = useState('')
+  const [offsetType, setOffsetType] = useState<'backcharge' | 'damage'>('backcharge')
+  const [offsetAmount, setOffsetAmount] = useState('')
+  const [offsetDescription, setOffsetDescription] = useState('')
+  const [offsetOccurredDate, setOffsetOccurredDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [offsetApplyModalOpen, setOffsetApplyModalOpen] = useState(false)
+  const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
+  const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
+  const [possessionUserId, setPossessionUserId] = useState('')
+  const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [possessionEndDate, setPossessionEndDate] = useState('')
 
   const loadCrewJobsRef = useRef<() => void>()
   const loadPeopleHoursRef = useRef<() => void>()
@@ -315,7 +364,7 @@ export default function People() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'team_costs') {
+    if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'team_costs' || tab === 'vehicles' || tab === 'offsets') {
       setActiveTab(tab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -608,7 +657,7 @@ export default function People() {
 
   async function loadPayConfig() {
     if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
-    const { data, error } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+    const { data, error } = await supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
     if (error) {
       setError(error.message)
       return
@@ -760,6 +809,61 @@ export default function People() {
     })
   }
 
+  async function getVehiclesForPersonInPeriod(
+    personName: string,
+    periodStart: string,
+    periodEnd: string
+  ): Promise<Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }>> {
+    const n = personName.trim()
+    const user = users.find((u) => (u.name ?? '').trim().toLowerCase() === n.toLowerCase())
+    if (!user) return []
+    const { data: possData } = await supabase
+      .from('vehicle_possessions')
+      .select('vehicle_id, start_date')
+      .eq('user_id', user.id)
+      .lte('start_date', periodEnd)
+      .or(`end_date.is.null,end_date.gte.${periodStart}`)
+      .order('start_date', { ascending: false })
+    const poss = (possData ?? []) as { vehicle_id: string; start_date: string }[]
+    const vehicleIds = [...new Set(poss.filter((p) => p.start_date <= periodEnd).map((p) => p.vehicle_id))]
+    const result: Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }> = []
+    for (const vehicleId of vehicleIds) {
+      const { data: vehicleData } = await supabase.from('vehicles').select('year, make, model, vin, weekly_insurance_cost, weekly_registration_cost').eq('id', vehicleId).single()
+      if (!vehicleData) continue
+      const v = vehicleData as { year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }
+      result.push({
+        year: v.year ?? 0,
+        make: v.make ?? '',
+        model: v.model ?? '',
+        vin: v.vin ?? null,
+        weekly_insurance_cost: v.weekly_insurance_cost ?? 0,
+        weekly_registration_cost: v.weekly_registration_cost ?? 0,
+      })
+    }
+    return result
+  }
+
+  async function getOffsetsForPayStub(
+    personName: string,
+    payStubId: string | null,
+    _periodStart: string,
+    _periodEnd: string
+  ): Promise<{ appliedOffsets: Array<{ type: string; amount: number; description: string | null }>; pendingOffsets: Array<{ type: string; amount: number; description: string | null }> }> {
+    const applied: Array<{ type: string; amount: number; description: string | null }> = []
+    const pending: Array<{ type: string; amount: number; description: string | null }> = []
+    if (payStubId) {
+      const { data: appliedData } = await supabase.from('person_offsets').select('type, amount, description').eq('pay_stub_id', payStubId)
+      for (const r of (appliedData ?? []) as { type: string; amount: number; description: string | null }[]) {
+        applied.push({ type: r.type, amount: r.amount, description: r.description })
+      }
+    }
+    const { data: pendingData } = await supabase.from('person_offsets').select('type, amount, description').eq('person_name', personName.trim()).is('pay_stub_id', null)
+    for (const r of (pendingData ?? []) as { type: string; amount: number; description: string | null }[]) {
+      pending.push({ type: r.type, amount: r.amount, description: r.description })
+    }
+    return { appliedOffsets: applied, pendingOffsets: pending }
+  }
+
   function getPersonContact(personName: string): { email: string | null; phone: string | null } {
     const n = personName.trim()
     const p = people.find((x) => x.name?.trim() === n)
@@ -777,7 +881,10 @@ export default function People() {
     hoursRows: Array<{ date: string; hours: number }>,
     hoursTotal: number,
     grossPay: number,
-    rowsWithJobs?: Array<{ date: string; hours: number; jobsText: string }>
+    rowsWithJobs?: Array<{ date: string; hours: number; jobsText: string }>,
+    vehicles?: Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }>,
+    appliedOffsets?: Array<{ type: string; amount: number; description: string | null }>,
+    pendingOffsets?: Array<{ type: string; amount: number; description: string | null }>
   ): string {
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     const dateWithDay = (dateStr: string) => {
@@ -818,6 +925,30 @@ export default function People() {
         ${tableFooter}
       </table>
       <div style="margin-top: 1rem; font-weight: 600;">Gross Pay: $${formatCurrency(grossPay)}</div>
+      ${(appliedOffsets && appliedOffsets.length > 0) || (pendingOffsets && pendingOffsets.length > 0) ? (() => {
+        const applied = appliedOffsets ?? []
+        const pending = pendingOffsets ?? []
+        const appliedTotal = applied.reduce((s, o) => s + o.amount, 0)
+        const netPay = grossPay - appliedTotal
+        let html = '<div style="margin-top: 1rem;">'
+        if (applied.length > 0) {
+          html += '<div style="margin-top: 0.5rem;"><strong>Applied Offsets:</strong></div>'
+          for (const o of applied) {
+            html += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
+          }
+          html += `<div class="meta"><strong>Total Applied: $${formatCurrency(appliedTotal)}</strong></div>`
+          html += `<div class="meta" style="font-weight: 600;">Net Pay: $${formatCurrency(netPay)}</div>`
+        }
+        if (pending.length > 0) {
+          html += '<div style="margin-top: 0.75rem;"><strong>Pending Offsets (not yet applied):</strong></div>'
+          for (const o of pending) {
+            html += `<div class="meta">- ${escapeHtml(o.type === 'backcharge' ? 'Backcharge' : 'Damage')}${o.description ? ` (${escapeHtml(o.description)})` : ''}: $${formatCurrency(o.amount)}</div>`
+          }
+        }
+        html += '</div>'
+        return html
+      })() : ''}
+      ${vehicles && vehicles.length > 0 ? `<div style="margin-top: 1rem;">${vehicles.map((v) => `<div class="meta">Vehicle: ${escapeHtml(String(v.year))} ${escapeHtml(v.make)} ${escapeHtml(v.model)}${v.vin ? ` (VIN: ${escapeHtml(v.vin)})` : ''}</div><div class="meta">Weekly insurance: $${formatCurrency(v.weekly_insurance_cost)} | Weekly registration: $${formatCurrency(v.weekly_registration_cost)}</div>`).join('')}</div>` : ''}
     </body></html>`
     return html
   }
@@ -926,7 +1057,11 @@ export default function People() {
       }
     }
     const rowsWithJobs = computePayReportJobBreakdown(personName, dayRows, crewByDatePerson, jobsMap)
-    const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay, rowsWithJobs)
+    const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
+      getVehiclesForPersonInPeriod(personName, start, end),
+      getOffsetsForPayStub(personName, payStubId, start, end),
+    ])
+    const html = buildPayStubHtml(personName, start, end, wage, dayRows.map((r) => ({ date: r.work_date, hours: r.hours })), hoursTotal, grossPay, rowsWithJobs, vehicles, appliedOffsets, pendingOffsets)
     openPayStubWindow(html, false)
   }
 
@@ -970,7 +1105,11 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs)
+    const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
+      getVehiclesForPersonInPeriod(stub.person_name, start, end),
+      getOffsetsForPayStub(stub.person_name, stub.id, start, end),
+    ])
+    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs, vehicles, appliedOffsets, pendingOffsets)
     openPayStubWindow(html, false)
   }
 
@@ -1014,7 +1153,11 @@ export default function People() {
     }
     const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs)
+    const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
+      getVehiclesForPersonInPeriod(stub.person_name, start, end),
+      getOffsetsForPayStub(stub.person_name, stub.id, start, end),
+    ])
+    const html = buildPayStubHtml(stub.person_name, start, end, wage, hoursRows, stub.hours_total, stub.gross_pay, rowsWithJobs, vehicles, appliedOffsets, pendingOffsets)
     openPayStubWindow(html, true)
   }
 
@@ -1293,11 +1436,318 @@ export default function People() {
     setCrewJobsData(map)
   }
 
+  async function loadVehicles() {
+    setVehiclesLoading(true)
+    setVehiclesError(null)
+    const today = new Date().toISOString().slice(0, 10)
+    const { data: vehiclesData, error: vehiclesErr } = await supabase.from('vehicles').select('*').order('year', { ascending: false })
+    setVehiclesLoading(false)
+    if (vehiclesErr) {
+      setVehiclesError(vehiclesErr.message)
+      return
+    }
+    setVehicles((vehiclesData ?? []) as Vehicle[])
+    const ids = (vehiclesData ?? []).map((v: { id: string }) => v.id)
+    if (ids.length === 0) {
+      setVehicleAssignees({})
+      return
+    }
+    const { data: possData } = await supabase
+      .from('vehicle_possessions')
+      .select('vehicle_id, user_id')
+      .in('vehicle_id', ids)
+      .lte('start_date', today)
+      .or(`end_date.is.null,end_date.gte.${today}`)
+    const possByVehicle: Record<string, string[]> = {}
+    for (const p of (possData ?? []) as { vehicle_id: string; user_id: string }[]) {
+      const arr = possByVehicle[p.vehicle_id] ??= []
+      arr.push(p.user_id)
+    }
+    const userIds = [...new Set((possData ?? []).map((p: { user_id: string }) => p.user_id))]
+    const { data: usersData } = userIds.length > 0
+      ? await supabase.from('users').select('id, name').in('id', userIds)
+      : { data: [] }
+    const userNames: Record<string, string> = {}
+    for (const u of (usersData ?? []) as { id: string; name: string }[]) {
+      userNames[u.id] = u.name ?? ''
+    }
+    const assignees: Record<string, string> = {}
+    for (const [vid, uids] of Object.entries(possByVehicle)) {
+      assignees[vid] = uids.map((uid) => userNames[uid] || uid.slice(0, 8)).join(', ')
+    }
+    setVehicleAssignees(assignees)
+  }
+
+  async function loadOdometerEntries(vehicleId: string) {
+    const { data, error } = await supabase
+      .from('vehicle_odometer_entries')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('read_date', { ascending: false })
+    if (error) return
+    setOdometerEntries((data ?? []) as VehicleOdometerEntry[])
+  }
+
+  async function loadReplacementValueEntries(vehicleId: string) {
+    const { data, error } = await supabase
+      .from('vehicle_replacement_value_entries')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('read_date', { ascending: false })
+    if (error) return
+    setReplacementValueEntries((data ?? []) as VehicleReplacementValueEntry[])
+  }
+
+  async function loadPossessions(vehicleId: string) {
+    const { data, error } = await supabase
+      .from('vehicle_possessions')
+      .select('*')
+      .eq('vehicle_id', vehicleId)
+      .order('start_date', { ascending: false })
+    if (error) return
+    setPossessions((data ?? []) as VehiclePossession[])
+  }
+
+  function openVehicleForm(v?: Vehicle) {
+    setEditingVehicle(v ?? null)
+    setVehicleYear(v?.year?.toString() ?? '')
+    setVehicleMake(v?.make ?? '')
+    setVehicleModel(v?.model ?? '')
+    setVehicleVin(v?.vin ?? '')
+    setVehicleInsCost(v?.weekly_insurance_cost?.toString() ?? '')
+    setVehicleRegCost(v?.weekly_registration_cost?.toString() ?? '')
+    setVehicleFormOpen(true)
+  }
+
+  function closeVehicleForm() {
+    setVehicleFormOpen(false)
+    setEditingVehicle(null)
+    setVehicleYear('')
+    setVehicleMake('')
+    setVehicleModel('')
+    setVehicleVin('')
+    setVehicleInsCost('')
+    setVehicleRegCost('')
+  }
+
+  async function upsertVehicle() {
+    const year = parseInt(vehicleYear, 10)
+    if (isNaN(year) || year < 1900 || year > 2100) {
+      setVehiclesError('Year must be 1900–2100')
+      return
+    }
+    const ins = parseFloat(vehicleInsCost) || 0
+    const reg = parseFloat(vehicleRegCost) || 0
+    if (editingVehicle) {
+      const { error: err } = await supabase.from('vehicles').update({ year, make: vehicleMake.trim(), model: vehicleModel.trim(), vin: vehicleVin.trim() || null, weekly_insurance_cost: ins, weekly_registration_cost: reg, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
+      if (err) setVehiclesError(err.message)
+      else {
+        closeVehicleForm()
+        loadVehicles()
+      }
+    } else {
+      const { error: err } = await supabase.from('vehicles').insert({ year, make: vehicleMake.trim(), model: vehicleModel.trim(), vin: vehicleVin.trim() || null, weekly_insurance_cost: ins, weekly_registration_cost: reg })
+      if (err) setVehiclesError(err.message)
+      else {
+        closeVehicleForm()
+        loadVehicles()
+      }
+    }
+  }
+
+  async function deleteVehicle(v: Vehicle) {
+    if (!window.confirm(`Delete ${v.year} ${v.make} ${v.model}?`)) return
+    const { error: err } = await supabase.from('vehicles').delete().eq('id', v.id)
+    if (err) setVehiclesError(err.message)
+    else {
+      setSelectedVehicleId((prev) => (prev === v.id ? null : prev))
+      loadVehicles()
+    }
+  }
+
+  async function insertOdometerEntry() {
+    if (!selectedVehicleId) return
+    const val = parseFloat(odometerValue)
+    if (isNaN(val) || val < 0) {
+      setVehiclesError('Odometer value must be a non-negative number')
+      return
+    }
+    const { error: err } = await supabase.from('vehicle_odometer_entries').insert({ vehicle_id: selectedVehicleId, odometer_value: val, read_date: odometerDate })
+    if (err) setVehiclesError(err.message)
+    else {
+      setOdometerFormOpen(false)
+      setOdometerDate(new Date().toISOString().slice(0, 10))
+      setOdometerValue('')
+      loadOdometerEntries(selectedVehicleId)
+    }
+  }
+
+  async function deleteOdometerEntry(entry: VehicleOdometerEntry) {
+    const { error: err } = await supabase.from('vehicle_odometer_entries').delete().eq('id', entry.id)
+    if (err) setVehiclesError(err.message)
+    else if (selectedVehicleId) loadOdometerEntries(selectedVehicleId)
+  }
+
+  async function insertReplacementValueEntry() {
+    if (!selectedVehicleId) return
+    const val = parseFloat(replacementValueValue)
+    if (isNaN(val) || val < 0) {
+      setVehiclesError('Replacement value must be a non-negative number')
+      return
+    }
+    const { error: err } = await supabase.from('vehicle_replacement_value_entries').insert({ vehicle_id: selectedVehicleId, replacement_value: val, read_date: replacementValueDate })
+    if (err) setVehiclesError(err.message)
+    else {
+      setReplacementValueFormOpen(false)
+      setReplacementValueDate(new Date().toISOString().slice(0, 10))
+      setReplacementValueValue('')
+      loadReplacementValueEntries(selectedVehicleId)
+    }
+  }
+
+  async function deleteReplacementValueEntry(entry: VehicleReplacementValueEntry) {
+    const { error: err } = await supabase.from('vehicle_replacement_value_entries').delete().eq('id', entry.id)
+    if (err) setVehiclesError(err.message)
+    else if (selectedVehicleId) loadReplacementValueEntries(selectedVehicleId)
+  }
+
+  async function upsertPossession() {
+    if (!selectedVehicleId || !possessionUserId) {
+      setVehiclesError('Select a user')
+      return
+    }
+    const { error: err } = await supabase.from('vehicle_possessions').insert({ vehicle_id: selectedVehicleId, user_id: possessionUserId, start_date: possessionStartDate, end_date: possessionEndDate.trim() || null })
+    if (err) setVehiclesError(err.message)
+    else {
+      setPossessionFormOpen(false)
+      setPossessionUserId('')
+      setPossessionStartDate(new Date().toISOString().slice(0, 10))
+      setPossessionEndDate('')
+      loadPossessions(selectedVehicleId)
+      loadVehicles()
+    }
+  }
+
+  async function deletePossession(p: VehiclePossession) {
+    const { error: err } = await supabase.from('vehicle_possessions').delete().eq('id', p.id)
+    if (err) setVehiclesError(err.message)
+    else {
+      if (selectedVehicleId) loadPossessions(selectedVehicleId)
+      loadVehicles()
+    }
+  }
+
+  async function loadOffsets() {
+    setOffsetsLoading(true)
+    setOffsetsError(null)
+    const { data, error } = await supabase.from('person_offsets').select('*').order('occurred_date', { ascending: false })
+    setOffsetsLoading(false)
+    if (error) setOffsetsError(error.message)
+    else setOffsets((data ?? []) as PersonOffset[])
+  }
+
+  function openOffsetForm(o?: PersonOffset) {
+    setEditingOffset(o ?? null)
+    setOffsetPersonName(o?.person_name ?? '')
+    setOffsetType((o?.type as 'backcharge' | 'damage') ?? 'backcharge')
+    setOffsetAmount(o?.amount?.toString() ?? '')
+    setOffsetDescription(o?.description ?? '')
+    setOffsetOccurredDate(o?.occurred_date ?? new Date().toISOString().slice(0, 10))
+    setOffsetFormOpen(true)
+  }
+
+  function closeOffsetForm() {
+    setOffsetFormOpen(false)
+    setEditingOffset(null)
+    setOffsetPersonName('')
+    setOffsetType('backcharge')
+    setOffsetAmount('')
+    setOffsetDescription('')
+    setOffsetOccurredDate(new Date().toISOString().slice(0, 10))
+  }
+
+  async function upsertOffset() {
+    const amt = parseFloat(offsetAmount)
+    if (isNaN(amt) || amt <= 0) {
+      setOffsetsError('Amount must be a positive number')
+      return
+    }
+    if (!offsetPersonName.trim()) {
+      setOffsetsError('Select a person')
+      return
+    }
+    if (editingOffset) {
+      const { error: err } = await supabase.from('person_offsets').update({ person_name: offsetPersonName.trim(), type: offsetType, amount: amt, description: offsetDescription.trim() || null, occurred_date: offsetOccurredDate }).eq('id', editingOffset.id)
+      if (err) setOffsetsError(err.message)
+      else {
+        closeOffsetForm()
+        loadOffsets()
+      }
+    } else {
+      const { error: err } = await supabase.from('person_offsets').insert({ person_name: offsetPersonName.trim(), type: offsetType, amount: amt, description: offsetDescription.trim() || null, occurred_date: offsetOccurredDate })
+      if (err) setOffsetsError(err.message)
+      else {
+        closeOffsetForm()
+        loadOffsets()
+      }
+    }
+  }
+
+  async function deleteOffset(o: PersonOffset) {
+    if (!window.confirm(`Delete ${o.type} $${formatCurrency(o.amount)} for ${o.person_name}?`)) return
+    const { error: err } = await supabase.from('person_offsets').delete().eq('id', o.id)
+    if (err) setOffsetsError(err.message)
+    else loadOffsets()
+  }
+
+  async function applyOffsetToPayStub() {
+    if (!offsetToApply || !offsetApplyPayStubId) return
+    const { error: err } = await supabase.from('person_offsets').update({ pay_stub_id: offsetApplyPayStubId }).eq('id', offsetToApply.id)
+    if (err) setOffsetsError(err.message)
+    else {
+      setOffsetApplyModalOpen(false)
+      setOffsetToApply(null)
+      setOffsetApplyPayStubId('')
+      loadOffsets()
+    }
+  }
+
+  async function unapplyOffset(o: PersonOffset) {
+    const { error: err } = await supabase.from('person_offsets').update({ pay_stub_id: null }).eq('id', o.id)
+    if (err) setOffsetsError(err.message)
+    else loadOffsets()
+  }
+
   useEffect(() => {
     if (activeTab === 'team_costs' && (canAccessPay || canViewCostMatrixShared)) {
       loadCrewJobs(crewJobsDate)
     }
   }, [activeTab, crewJobsDate, canAccessPay, canViewCostMatrixShared])
+
+  useEffect(() => {
+    if (activeTab === 'vehicles' && canAccessPay) {
+      loadVehicles()
+    }
+  }, [activeTab, canAccessPay])
+
+  useEffect(() => {
+    if (activeTab === 'offsets' && canAccessPay) {
+      loadOffsets()
+      loadPayStubs()
+    }
+  }, [activeTab, canAccessPay])
+
+  useEffect(() => {
+    if (selectedVehicleId) {
+      loadOdometerEntries(selectedVehicleId)
+      loadReplacementValueEntries(selectedVehicleId)
+      loadPossessions(selectedVehicleId)
+    } else {
+      setOdometerEntries([])
+      setReplacementValueEntries([])
+      setPossessions([])
+    }
+  }, [selectedVehicleId])
 
   function loadCrewJobsForHoursRange() {
     const days = getDaysInRange(hoursDateStart, hoursDateEnd)
@@ -1479,8 +1929,9 @@ export default function People() {
     const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
     for (const r of crewRows) {
       const assignments = getEffectiveAssignments(r.person_name, r.work_date)
-      const hours = hoursMap[`${r.person_name}:${r.work_date}`] ?? (configMap[r.person_name]?.is_salary ? 8 : 0)
       const cfg = configMap[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         if (!jobAgg[a.job_id]) jobAgg[a.job_id] = { people: new Set(), hoursByPerson: {}, costByPerson: {} }
@@ -1536,8 +1987,8 @@ export default function People() {
 
   function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return
-    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
-    const full = { person_name: personName, hourly_wage: row.hourly_wage ?? cur.hourly_wage, is_salary: row.is_salary ?? cur.is_salary, show_in_hours: row.show_in_hours ?? cur.show_in_hours, show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix }
+    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
+    const full = { person_name: personName, hourly_wage: row.hourly_wage ?? cur.hourly_wage, is_salary: row.is_salary ?? cur.is_salary, show_in_hours: row.show_in_hours ?? cur.show_in_hours, show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix, record_hours_but_salary: row.record_hours_but_salary ?? cur.record_hours_but_salary }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
     const prevTimeout = payConfigDebounceRef.current[personName]
     if (prevTimeout) clearTimeout(prevTimeout)
@@ -1554,7 +2005,7 @@ export default function People() {
   function updatePayConfigHourlyWage(personName: string, rawValue: string) {
     if (!canAccessPay) return
     setPayConfigDraft((prev) => ({ ...prev, [personName]: rawValue }))
-    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
+    const cur = payConfig[personName] ?? { person_name: personName, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
     const parsed = rawValue === '' ? null : parseFloat(rawValue) || null
     const full = { ...cur, hourly_wage: parsed }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
@@ -1628,6 +2079,17 @@ export default function People() {
       if (day === 0 || day === 6) return 0
       return 8
     }
+    return getHoursForPersonDate(personName, workDate)
+  }
+
+  function canEditHours(personName: string): boolean {
+    const cfg = payConfig[personName]
+    return !(cfg?.is_salary ?? false) || (cfg?.record_hours_but_salary ?? false)
+  }
+
+  function getDisplayHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
     return getHoursForPersonDate(personName, workDate)
   }
 
@@ -1775,7 +2237,7 @@ export default function People() {
   function hasUnassignedCorrectDays(personName: string): boolean {
     return hoursDays.some((d) => {
       if (!hoursDaysCorrect.has(d)) return false
-      const hours = getEffectiveHours(personName, d)
+      const hours = getDisplayHours(personName, d)
       if (hours <= 0) return false
       return !hasAssignmentsForDate(personName, d)
     })
@@ -1864,6 +2326,38 @@ export default function People() {
             style={tabStyle(activeTab === 'team_costs')}
           >
             Team Costs
+          </button>
+        )}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('vehicles')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'vehicles')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'vehicles')}
+          >
+            Vehicles
+          </button>
+        )}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('offsets')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'offsets')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'offsets')}
+          >
+            Offsets
           </button>
         )}
         <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>People</h1>
@@ -3127,7 +3621,7 @@ export default function People() {
                                 </span>
                               ) : null}
                               <span>
-                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}
+                                {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
                               </span>
                             </span>
                             {payEditTags && canAccessPay ? (
@@ -3400,13 +3894,14 @@ export default function People() {
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hourly wage ($)</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Salary</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Hours</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Cost Matrix</th>
                   </tr>
                 </thead>
                 <tbody>
                   {allRosterNames().map((n) => {
-                    const c = payConfig[n] ?? { person_name: n, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false }
+                    const c = payConfig[n] ?? { person_name: n, hourly_wage: null, is_salary: false, show_in_hours: false, show_in_cost_matrix: false, record_hours_but_salary: false }
                     return (
                       <tr key={n} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{n}</td>
@@ -3427,6 +3922,15 @@ export default function People() {
                             checked={c.is_salary}
                             onChange={(e) => upsertPayConfig(n, { is_salary: e.target.checked })}
                             disabled={payConfigSaving}
+                          />
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={c.record_hours_but_salary}
+                            onChange={(e) => upsertPayConfig(n, { record_hours_but_salary: e.target.checked })}
+                            disabled={payConfigSaving || !c.is_salary}
+                            title={!c.is_salary ? 'Only applies when Salary is checked' : undefined}
                           />
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -3709,8 +4213,6 @@ export default function People() {
                 </thead>
                 <tbody>
                   {showPeopleForHours.map((personName, idx) => {
-                    const cfg = payConfig[personName]
-                    const isSalary = cfg?.is_salary ?? false
                     const isUnassigned = hasUnassignedCorrectDays(personName)
                     const isClickable = isUnassigned && canEditCrewJobs
                     return (
@@ -3756,16 +4258,17 @@ export default function People() {
                               ▼
                             </button>
                           </span>
-                          {personName}{isSalary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
+                          {personName}
                         </td>
                         {hoursDays.map((d) => {
                           const dayLocked = hoursDaysCorrect.has(d)
+                          const canEdit = canEditHours(personName)
                           return (
-                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: isSalary ? 'center' : 'right' }}>
-                              {isSalary ? (
-                                <span style={{ color: '#6b7280' }}>{decimalToHms(getEffectiveHours(personName, d)) || '-'}</span>
+                            <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: canEdit ? 'right' : 'center' }}>
+                              {!canEdit ? (
+                                <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
-                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getHoursForPersonDate(personName, d)) || '-'}</span>
+                                <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : (
                                 <input
                                   type="text"
@@ -3791,10 +4294,10 @@ export default function People() {
                           )
                         })}
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {decimalToHms(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)) || '-'}
+                          {decimalToHms(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)) || '-'}
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {(hoursDays.reduce((s, d) => s + getEffectiveHours(personName, d), 0)).toFixed(2)}
+                          {(hoursDays.reduce((s, d) => s + getDisplayHours(personName, d), 0)).toFixed(2)}
                         </td>
                       </tr>
                     )
@@ -3802,13 +4305,13 @@ export default function People() {
                 </tbody>
                 <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
                   {(() => {
-                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getEffectiveHours(p, d), 0), 0)
+                    const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getDisplayHours(p, d), 0), 0)
                     return (
                       <>
                         <tr>
                           <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (HH:MM:SS):</td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
                               <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
                                 {decimalToHms(daySum) || '-'}
@@ -3823,7 +4326,7 @@ export default function People() {
                         <tr>
                           <td style={{ padding: '0.5rem 0.75rem', borderTop: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>Total (Decimal):</td>
                           {hoursDays.map((d) => {
-                            const daySum = showPeopleForHours.reduce((s, p) => s + getEffectiveHours(p, d), 0)
+                            const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
                               <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
                                 {daySum.toFixed(2)}
@@ -4138,6 +4641,411 @@ export default function People() {
         </div>
         )
       })()}
+
+      {activeTab === 'vehicles' && canAccessPay && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Vehicles</h2>
+            <button
+              type="button"
+              onClick={() => openVehicleForm()}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
+            >
+              + Add Vehicle
+            </button>
+          </div>
+          {vehiclesError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{vehiclesError}</p>}
+          {vehiclesLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Year</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Make</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Model</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>VIN</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Ins/wk</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Reg/wk</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned to</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vehicles.map((v) => (
+                    <Fragment key={v.id}>
+                      <tr
+                        key={v.id}
+                        style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer', background: selectedVehicleId === v.id ? '#f0f9ff' : undefined }}
+                        onClick={() => setSelectedVehicleId((prev) => (prev === v.id ? null : v.id))}
+                      >
+                        <td style={{ padding: '0.75rem' }}>{v.year ?? '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{v.make || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{v.model || '—'}</td>
+                        <td style={{ padding: '0.75rem', fontFamily: 'monospace', fontSize: '0.8125rem' }}>{v.vin ? (v.vin.length <= 8 ? v.vin : `${v.vin.slice(0, 4)}...${v.vin.slice(-4)}`) : '—'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(v.weekly_insurance_cost)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(v.weekly_registration_cost)}</td>
+                        <td style={{ padding: '0.75rem' }}>{vehicleAssignees[v.id] || '—'}</td>
+                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                          <button type="button" onClick={() => openVehicleForm(v)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Edit</button>
+                          <button type="button" onClick={() => deleteVehicle(v)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>Delete</button>
+                        </td>
+                      </tr>
+                      {selectedVehicleId === v.id && (
+                        <tr key={`${v.id}-detail`}>
+                          <td colSpan={8} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                              <div>
+                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Odometer entries</h4>
+                                <button type="button" onClick={() => { setOdometerFormOpen(true); setOdometerValue(''); setOdometerDate(new Date().toISOString().slice(0, 10)) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add odometer entry</button>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                  <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
+                                  <tbody>
+                                    {odometerEntries.map((e) => (
+                                      <tr key={e.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                        <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{e.odometer_value.toLocaleString()}</td>
+                                        <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteOdometerEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div>
+                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Replacement value</h4>
+                                <button type="button" onClick={() => { setReplacementValueFormOpen(true); setReplacementValueValue(''); setReplacementValueDate(new Date().toISOString().slice(0, 10)) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add replacement value</button>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                  <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
+                                  <tbody>
+                                    {replacementValueEntries.map((e) => (
+                                      <tr key={e.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                        <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(e.replacement_value)}</td>
+                                        <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteReplacementValueEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div>
+                                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Possessions</h4>
+                                <button type="button" onClick={() => { setPossessionFormOpen(true); setPossessionUserId(''); setPossessionStartDate(new Date().toISOString().slice(0, 10)); setPossessionEndDate('') }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Assign to user</button>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                  <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>User</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Start</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>End</th><th></th></tr></thead>
+                                  <tbody>
+                                    {possessions.map((p) => {
+                                      const u = users.find((x) => x.id === p.user_id)
+                                      return (
+                                        <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                          <td style={{ padding: '0.5rem' }}>{u?.name ?? p.user_id.slice(0, 8)}</td>
+                                          <td style={{ padding: '0.5rem' }}>{p.start_date}</td>
+                                          <td style={{ padding: '0.5rem' }}>{p.end_date ?? '—'}</td>
+                                          <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deletePossession(p)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+                {vehicles.length > 0 && (
+                  <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                    <tr>
+                      <td colSpan={4} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>Total</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0), 0))}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_registration_cost ?? 0), 0))}</td>
+                      <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+              {vehicles.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No vehicles yet. Add one to get started.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'offsets' && canAccessPay && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Offsets</h2>
+            <button
+              type="button"
+              onClick={() => openOffsetForm()}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
+            >
+              + Add Offset
+            </button>
+          </div>
+          {offsetsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{offsetsError}</p>}
+          {offsetsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Description</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {offsets.map((o) => {
+                    const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
+                    return (
+                      <tr key={o.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '0.75rem' }}>{o.person_name}</td>
+                        <td style={{ padding: '0.75rem' }}>{o.type === 'backcharge' ? 'Backcharge' : 'Damage'}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(o.amount)}</td>
+                        <td style={{ padding: '0.75rem' }}>{o.description || '—'}</td>
+                        <td style={{ padding: '0.75rem' }}>{o.occurred_date}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {o.pay_stub_id ? (
+                            stub ? `Applied (${stub.period_start} – ${stub.period_end})` : 'Applied'
+                          ) : (
+                            'Pending'
+                          )}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {o.pay_stub_id ? (
+                              <button
+                                type="button"
+                                onClick={() => unapplyOffset(o)}
+                                title="Unapply"
+                                aria-label="Unapply from pay stub"
+                                style={{ padding: '0.35rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                </svg>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => { setOffsetToApply(o); setOffsetApplyPayStubId(''); setOffsetApplyModalOpen(true) }}
+                                title="Apply to pay stub"
+                                aria-label="Apply to pay stub"
+                                style={{ padding: '0.35rem', cursor: 'pointer', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => openOffsetForm(o)}
+                              title="Edit"
+                              aria-label="Edit"
+                              style={{ padding: '0.35rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
+                                <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteOffset(o)}
+                              title="Delete"
+                              aria-label="Delete"
+                              style={{ padding: '0.35rem', cursor: 'pointer', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
+                                <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {offsets.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No offsets yet. Add backcharges or damages to get started.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {offsetFormOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>{editingOffset ? 'Edit offset' : 'Add offset'}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Person *</label>
+              <select value={offsetPersonName} onChange={(e) => setOffsetPersonName(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {[...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter(Boolean).sort((a, b) => (a ?? '').localeCompare(b ?? '')).map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Type *</label>
+              <select value={offsetType} onChange={(e) => setOffsetType(e.target.value as 'backcharge' | 'damage')} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="backcharge">Backcharge</option>
+                <option value="damage">Damage</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Amount ($) *</label>
+              <input type="number" min={0} step={0.01} value={offsetAmount} onChange={(e) => setOffsetAmount(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Description</label>
+              <input type="text" value={offsetDescription} onChange={(e) => setOffsetDescription(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Occurred date *</label>
+              <input type="date" value={offsetOccurredDate} onChange={(e) => setOffsetOccurredDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={upsertOffset} style={{ padding: '0.5rem 1rem' }}>Save</button>
+              <button type="button" onClick={closeOffsetForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {offsetApplyModalOpen && offsetToApply && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Apply offset to pay stub</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay stub:</p>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Pay stub</label>
+              <select value={offsetApplyPayStubId} onChange={(e) => setOffsetApplyPayStubId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {payStubs.filter((s) => s.person_name === offsetToApply.person_name).sort((a, b) => b.period_start.localeCompare(a.period_start)).map((s) => (
+                  <option key={s.id} value={s.id}>{s.period_start} – {s.period_end} (${formatCurrency(s.gross_pay)})</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={applyOffsetToPayStub} disabled={!offsetApplyPayStubId} style={{ padding: '0.5rem 1rem' }}>Apply</button>
+              <button type="button" onClick={() => { setOffsetApplyModalOpen(false); setOffsetToApply(null); setOffsetApplyPayStubId('') }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {vehicleFormOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>{editingVehicle ? 'Edit vehicle' : 'Add vehicle'}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Year *</label>
+              <input type="number" min={1900} max={2100} value={vehicleYear} onChange={(e) => setVehicleYear(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Make *</label>
+              <input type="text" value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Model *</label>
+              <input type="text" value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>VIN</label>
+              <input type="text" value={vehicleVin} onChange={(e) => setVehicleVin(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Weekly insurance cost</label>
+              <input type="number" min={0} step={0.01} value={vehicleInsCost} onChange={(e) => setVehicleInsCost(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Weekly registration cost</label>
+              <input type="number" min={0} step={0.01} value={vehicleRegCost} onChange={(e) => setVehicleRegCost(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={upsertVehicle} style={{ padding: '0.5rem 1rem' }}>Save</button>
+              <button type="button" onClick={closeVehicleForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {odometerFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+            <h3 style={{ marginTop: 0 }}>Add odometer entry</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
+              <input type="date" value={odometerDate} onChange={(e) => setOdometerDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Value</label>
+              <input type="number" min={0} step={1} value={odometerValue} onChange={(e) => setOdometerValue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={insertOdometerEntry} style={{ padding: '0.5rem 1rem' }}>Add</button>
+              <button type="button" onClick={() => { setOdometerFormOpen(false); setOdometerValue('') }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {replacementValueFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+            <h3 style={{ marginTop: 0 }}>Add replacement value</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
+              <input type="date" value={replacementValueDate} onChange={(e) => setReplacementValueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Value ($)</label>
+              <input type="number" min={0} step={0.01} value={replacementValueValue} onChange={(e) => setReplacementValueValue(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={insertReplacementValueEntry} style={{ padding: '0.5rem 1rem' }}>Add</button>
+              <button type="button" onClick={() => { setReplacementValueFormOpen(false); setReplacementValueValue('') }} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {possessionFormOpen && selectedVehicleId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+            <h3 style={{ marginTop: 0 }}>Assign to user</h3>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>User *</label>
+              <select value={possessionUserId} onChange={(e) => setPossessionUserId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {users.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')).map((u) => (
+                  <option key={u.id} value={u.id}>{u.name ?? u.email ?? u.id.slice(0, 8)}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Start date</label>
+              <input type="date" value={possessionStartDate} onChange={(e) => setPossessionStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>End date (optional)</label>
+              <input type="date" value={possessionEndDate} onChange={(e) => setPossessionEndDate(e.target.value)} placeholder="Leave blank if still in possession" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={upsertPossession} style={{ padding: '0.5rem 1rem' }}>Assign</button>
+              <button type="button" onClick={() => setPossessionFormOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
