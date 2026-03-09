@@ -1095,7 +1095,7 @@ export default function Jobs() {
       setTeamLaborData([])
       return
     }
-    const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', jobIds)
+    const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
     for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
       jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
@@ -2293,7 +2293,8 @@ export default function Jobs() {
       const profit = totalBill - partsCost - laborCost
       return {
         job,
-        laborCost,
+        subLaborCost,
+        teamLaborCost,
         partsCost,
         totalBill,
         profit,
@@ -2302,62 +2303,25 @@ export default function Jobs() {
   }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile])
 
   const combinedLaborRows = useMemo(() => {
-    const laborCostByHcp = new Map<string, number>()
-    const mileageCost = driveMileageCost ?? 0.70
-    const timePerMile = driveTimePerMile ?? 0.02
-    for (const job of laborJobs) {
-      const hcp = (job.job_number ?? '').trim().toLowerCase()
-      if (!hcp) continue
-      const totalHrs = (job.items ?? []).reduce((s, i) => {
-        const hrs = Number(i.hrs_per_unit) || 0
-        return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
-      }, 0)
-      const rate = job.labor_rate ?? 0
-      const miles = Number(job.distance_miles) ?? 0
-      const driveCost = miles > 0 && rate > 0
-        ? miles * mileageCost + miles * timePerMile * rate
-        : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
-      laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
-    }
     const teamLaborCostByJobId = new Map<string, number>()
     for (const r of teamLaborData) {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
     }
-    const jobsHcpSet = new Set(jobs.map((j) => (j.hcp_number ?? '').trim().toLowerCase()).filter(Boolean))
-    type CombinedRow = { hcpNumber: string; jobName: string; jobAddress: string; subLaborCost: number; teamLaborCost: number; totalLabor: number }
+    type CombinedRow = { hcpNumber: string; jobName: string; jobAddress: string; teamLaborCost: number }
     const rows: CombinedRow[] = []
     for (const job of jobs) {
-      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-      const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
-      const totalLabor = subLaborCost + teamLaborCost
-      if (totalLabor > 0) {
+      if (teamLaborCost > 0) {
         rows.push({
           hcpNumber: job.hcp_number ?? '—',
           jobName: job.job_name ?? '—',
           jobAddress: job.job_address ?? '—',
-          subLaborCost,
           teamLaborCost,
-          totalLabor,
         })
       }
     }
-    for (const hcp of laborCostByHcp.keys()) {
-      if (!hcp || jobsHcpSet.has(hcp)) continue
-      const subLaborCost = laborCostByHcp.get(hcp) ?? 0
-      const firstJob = laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcp)
-      rows.push({
-        hcpNumber: firstJob?.job_number ?? hcp,
-        jobName: firstJob?.job_number ?? '—',
-        jobAddress: firstJob?.address ?? '—',
-        subLaborCost,
-        teamLaborCost: 0,
-        totalLabor: subLaborCost,
-      })
-    }
     return rows.sort((a, b) => (a.hcpNumber ?? '').localeCompare(b.hcpNumber ?? ''))
-  }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
+  }, [jobs, teamLaborData])
 
   function openNew() {
     setEditing(null)
@@ -4216,7 +4180,7 @@ export default function Jobs() {
           {(laborJobsLoading || teamLaborLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : combinedLaborRows.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No labor data yet. Add jobs in Sub Labor or People → Team Costs.</p>
+            <p style={{ color: '#6b7280' }}>No team labor data yet. Add jobs in People → Team Costs.</p>
           ) : (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4224,9 +4188,7 @@ export default function Jobs() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job name and Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Sub Labor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Job Labor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Job Labor Cost</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4239,9 +4201,7 @@ export default function Jobs() {
                           <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{row.jobAddress}</div>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{row.subLaborCost > 0 ? `$${formatCurrency(row.subLaborCost)}` : '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{row.teamLaborCost > 0 ? `$${formatCurrency(row.teamLaborCost)}` : '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(row.totalLabor)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{row.teamLaborCost > 0 ? `$${formatCurrency(row.teamLaborCost)}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -4740,19 +4700,21 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor Cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Labor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Sub Labor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue before Overhead</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {jobSummaryData.map(({ job, laborCost, partsCost, totalBill, profit }) => (
+                  {jobSummaryData.map(({ job, subLaborCost, teamLaborCost, partsCost, totalBill, profit }) => (
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem' }}>{job.hcp_number ?? '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{laborCost === 0 ? '—' : `$${formatCurrency(laborCost)}`}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>{subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>{partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: profit >= 0 ? undefined : '#b91c1c' }}>

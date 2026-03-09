@@ -174,7 +174,7 @@ export function CrewJobsSection() {
     }
     const jobIds = Object.keys(jobAgg)
     if (jobIds.length === 0) { setTeamLaborData([]); return }
-    const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', jobIds)
+    const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
     for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
       jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
@@ -222,7 +222,7 @@ export function CrewJobsSection() {
     }
     const missing = [...jobIds].filter((id) => !crewJobDetailsMap[id])
     if (missing.length === 0) return
-    supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', missing).then(({ data }) => {
+    supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: missing }).then(({ data }) => {
       const map: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
       for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }

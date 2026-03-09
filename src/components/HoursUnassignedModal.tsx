@@ -151,7 +151,7 @@ export function HoursUnassignedModal({
       }
       setCrewJobsByDatePerson(crewMap)
       if (jobIds.size > 0) {
-        const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+        const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
         const jobMap: Record<string, JobDetails> = {}
         for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
           jobMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
