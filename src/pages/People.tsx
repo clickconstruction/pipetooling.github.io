@@ -8,6 +8,7 @@ import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -41,6 +42,7 @@ type PersonOffset = { id: string; person_name: string; type: string; amount: num
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
@@ -301,6 +303,7 @@ export default function People() {
   const [reviewJobsWorkedCollapsed, setReviewJobsWorkedCollapsed] = useState(false)
   const [reviewJobExpandedKey, setReviewJobExpandedKey] = useState<string | null>(null)
   const [reviewHoursPayCollapsed, setReviewHoursPayCollapsed] = useState(false)
+  const [reviewOnlyPaidInFull, setReviewOnlyPaidInFull] = useState(false)
   const loadCrewJobsRef = useRef<() => void>()
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => {
@@ -2338,16 +2341,22 @@ export default function People() {
     return hrs * wage
   }
 
-  async function loadReviewData(personName: string) {
+  async function loadReviewData(
+    personName: string,
+    forTeamSummary?: boolean,
+    onlyPaidJobs?: boolean
+  ): Promise<{ allocatedRevenue: number; allocatedProfit: number; hoursRows: Array<{ work_date: string; hours: number }>; totalHoursPaidJobs?: number } | void> {
     const [start, end] = getReviewDateRange()
-    setReviewLoading(true)
-    setReviewLaborJobs([])
-    setReviewCrewJobs([])
-    setReviewAllocatedRevenue(0)
-    setReviewAllocatedProfit(0)
-    setReviewHours([])
-    setReviewReports([])
-    setReviewTasks([])
+    if (!forTeamSummary) {
+      setReviewLoading(true)
+      setReviewLaborJobs([])
+      setReviewCrewJobs([])
+      setReviewAllocatedRevenue(0)
+      setReviewAllocatedProfit(0)
+      setReviewHours([])
+      setReviewReports([])
+      setReviewTasks([])
+    }
 
     const userId = users.find((u) => u.name === personName)?.id ?? null
 
@@ -2469,9 +2478,18 @@ export default function People() {
 
     const allJobIds = [...crewJobIds]
     const laborHcps = [...new Set(laborRows.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
+    const usePaidOnly = onlyPaidJobs ?? reviewOnlyPaidInFull
     const [crewJobsRes, laborJobsRes] = await Promise.all([
-      allJobIds.length > 0 ? supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds }) : { data: [] },
-      laborHcps.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: laborHcps }) : { data: [] },
+      allJobIds.length > 0
+        ? usePaidOnly
+          ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
+          : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+        : { data: [] },
+      laborHcps.length > 0
+        ? usePaidOnly
+          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: laborHcps })
+          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: laborHcps })
+        : { data: [] },
     ])
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
     const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
@@ -2488,7 +2506,13 @@ export default function People() {
       if (hcp) jobIdByHcp.set(hcp, j.id)
     }
 
-    const laborJobs: ReviewLaborJob[] = laborRows.map((r) => {
+    const laborRowsFiltered = usePaidOnly
+      ? laborRows.filter((r) => {
+          const hcp = (r.job_number ?? '').trim().toLowerCase()
+          return hcp && jobIdByHcp.has(hcp)
+        })
+      : laborRows
+    const laborJobs: ReviewLaborJob[] = laborRowsFiltered.map((r) => {
       const items = itemsByJob.get(r.id) ?? []
       const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
       const hoursInfo = items.length > 0 ? `${totalHrs.toFixed(2)} (${items.length} items)` : '—'
@@ -2534,8 +2558,11 @@ export default function People() {
     for (const j of crewJobsLedger) {
       jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue }
     }
+    const crewJobsWithLeadFiltered = usePaidOnly
+      ? crewJobsWithLead.filter((c) => jobsById.has(c.job_id))
+      : crewJobsWithLead
     const cfg = personName ? payConfig[personName] : undefined
-    const crewJobs: ReviewCrewJob[] = crewJobsWithLead.map((c) => {
+    const crewJobs: ReviewCrewJob[] = crewJobsWithLeadFiltered.map((c) => {
       const j = jobsMap[c.job_id] ?? jobsById.get(c.job_id)
       const day = new Date(c.work_date + 'T12:00:00').getDay()
       const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${personName}:${c.work_date}`] ?? 0)
@@ -2764,6 +2791,16 @@ export default function People() {
       j.allocatedPartsCost = j.partsCost * costRatio
     }
 
+    if (forTeamSummary) {
+      return {
+        allocatedRevenue,
+        allocatedProfit,
+        hoursRows: hoursRows.map((r) => ({ work_date: r.work_date, hours: r.hours })),
+        ...(usePaidOnly && {
+          totalHoursPaidJobs: laborJobs.reduce((s, j) => s + j.hours, 0) + crewJobs.reduce((s, j) => s + j.hours, 0),
+        }),
+      }
+    }
     setReviewLaborJobs(laborJobs)
     setReviewCrewJobs(crewJobs)
     setReviewAllocatedRevenue(allocatedRevenue)
@@ -2779,8 +2816,122 @@ export default function People() {
     const idx = Math.max(0, Math.min(selectedReviewPersonIndex, showPeopleForReview.length - 1))
     if (idx !== selectedReviewPersonIndex) setSelectedReviewPersonIndex(idx)
     const personName = showPeopleForReview[idx]
-    if (personName) loadReviewData(personName)
-  }, [activeTab, selectedReviewPersonIndex, reviewPeriod, showPeopleForReview, users])
+    if (personName) void loadReviewData(personName, false, reviewOnlyPaidInFull)
+  }, [activeTab, selectedReviewPersonIndex, reviewPeriod, reviewOnlyPaidInFull, showPeopleForReview, users])
+
+  type TeamSummaryRow = { personName: string; profit: number; revPerHour: number; profitPerHour: number; totalHours: number }
+
+  async function loadTeamSummaryData(): Promise<TeamSummaryRow[]> {
+    const [start, end] = getReviewDateRange()
+    const days = getDaysInRange(start, end)
+    const rows: TeamSummaryRow[] = []
+    for (const personName of showPeopleForReview) {
+      const result = await loadReviewData(personName, true, reviewOnlyPaidInFull)
+      if (!result) continue
+      const cfg = payConfig[personName]
+      const getHoursForDay = (d: string) => {
+        if (!cfg) return 0
+        const dayOfWeek = new Date(d + 'T12:00:00').getDay()
+        return cfg.is_salary
+          ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
+          : (result.hoursRows.find((h) => h.work_date === d)?.hours ?? 0)
+      }
+      const totalHours =
+        reviewOnlyPaidInFull && result.totalHoursPaidJobs !== undefined
+          ? result.totalHoursPaidJobs
+          : days.reduce((s, d) => s + getHoursForDay(d), 0)
+      const revPerHour = totalHours > 0 ? result.allocatedRevenue / totalHours : 0
+      const profitPerHour = totalHours > 0 ? result.allocatedProfit / totalHours : 0
+      rows.push({
+        personName,
+        profit: result.allocatedProfit,
+        revPerHour,
+        profitPerHour,
+        totalHours,
+      })
+    }
+    return rows
+  }
+
+  function getReviewPeriodLabel(): string {
+    const [start, end] = getReviewDateRange()
+    const labels: Record<ReviewPeriod, string> = {
+      today: 'Today',
+      yesterday: 'Yesterday',
+      last_week: 'Last week',
+      last_two_weeks: 'Last two weeks',
+      last_month: 'Last month',
+    }
+    return `${labels[reviewPeriod]} (${start} – ${end})`
+  }
+
+  function openTeamSummaryWindow() {
+    if (showPeopleForReview.length === 0) {
+      showToast('No people in pay config. Add people in Pay tab first.', 'warning')
+      return
+    }
+    const win = window.open('', '_blank')
+    if (!win) {
+      showToast('Popup blocked. Allow popups to open Team Summary.', 'warning')
+      return
+    }
+    const loadingHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary</title></head><body style="font-family:sans-serif;margin:1in;"><p>Loading Team Summary…</p></body></html>'
+    win.document.write(loadingHtml)
+    win.document.close()
+    win.focus()
+    showToast('Loading Team Summary…', 'info')
+    loadTeamSummaryData()
+      .then((rows) => {
+        try {
+          const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+          const tableRows = rows.map(
+            (r) =>
+              `<tr>
+  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml(r.personName)}</td>
+  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">$${Math.round(r.profit).toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">${r.totalHours > 0 ? `$${Math.round(r.revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
+  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">${r.totalHours > 0 ? `$${Math.round(r.profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
+</tr>`
+          )
+          const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary</title><style>
+      body { font-family: sans-serif; margin: 1in; }
+      h1 { margin-bottom: 0.5rem; }
+      .meta { color: #6b7280; margin-bottom: 1rem; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #e5e7eb; }
+      th { padding: 0.5rem 0.75rem; text-align: left; background: #f9fafb; font-weight: 600; }
+      th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: right; }
+      @media print { body { margin: 0.5in; } }
+    </style></head><body>
+      <h1>Team Summary</h1>
+      <div class="meta">${escapeHtml(getReviewPeriodLabel())}</div>
+      <table>
+        <thead><tr><th>Name</th><th>Period Profit</th><th>Rev/MH</th><th>Profit/MH</th></tr></thead>
+        <tbody>${tableRows.join('\n')}</tbody>
+      </table>
+    </body></html>`
+          win.document.open()
+          win.document.write(html)
+          win.document.close()
+          win.focus()
+        } catch (writeErr) {
+          console.error('Team Summary write error:', writeErr)
+          showToast('Failed to display Team Summary. The window may have been closed.', 'error')
+        }
+      })
+      .catch((err) => {
+        console.error('Team Summary load error:', err)
+        const errMsg = err instanceof Error ? err.message : 'Failed to load Team Summary'
+        showToast(errMsg, 'error')
+        try {
+          win.document.open()
+          win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary - Error</title></head><body style="font-family:sans-serif;margin:1in;"><h1>Error</h1><p>${String(errMsg).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></body></html>`)
+          win.document.close()
+        } catch {
+          win.close()
+        }
+      })
+  }
 
   function shiftMatrixWeek(delta: number) {
     const dStart = new Date(matrixStartDate + 'T12:00:00')
@@ -5514,6 +5665,31 @@ export default function People() {
               <option value="last_two_weeks">Last two weeks</option>
               <option value="last_month">Last month</option>
             </select>
+            <button
+              type="button"
+              onClick={openTeamSummaryWindow}
+              disabled={showPeopleForReview.length === 0}
+              style={{
+                padding: '0.5rem 1rem',
+                border: '1px solid #3b82f6',
+                borderRadius: 6,
+                background: '#3b82f6',
+                color: '#fff',
+                fontWeight: 500,
+                cursor: showPeopleForReview.length === 0 ? 'not-allowed' : 'pointer',
+                opacity: showPeopleForReview.length === 0 ? 0.6 : 1,
+              }}
+            >
+              Team Summary
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+              <input
+                type="checkbox"
+                checked={reviewOnlyPaidInFull}
+                onChange={(e) => setReviewOnlyPaidInFull(e.target.checked)}
+              />
+              Only Count Jobs Marked Paid in Full
+            </label>
           </div>
 
           {showPeopleForReview.length === 0 ? (
@@ -5534,7 +5710,9 @@ export default function People() {
                     ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
                     : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
                 }
-                const totalHours = days.reduce((s, d) => s + getHoursForDay(d), 0)
+                const totalHours = reviewOnlyPaidInFull
+                  ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
+                  : days.reduce((s, d) => s + getHoursForDay(d), 0)
                 const totalRevenue = reviewAllocatedRevenue
                 const totalProfit = reviewAllocatedProfit
                 const revPerHour = totalHours > 0 ? totalRevenue / totalHours : 0
@@ -5997,7 +6175,9 @@ export default function People() {
                       ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
                       : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
                   }
-                  const totalHours = days.reduce((s, d) => s + getHoursForDay(d), 0)
+                  const totalHours = reviewOnlyPaidInFull
+                    ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
+                    : days.reduce((s, d) => s + getHoursForDay(d), 0)
                   const totalPay = personName ? getReviewPeriodPay(personName) : 0
                   if (reviewHoursPayCollapsed) {
                     return (

@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-26
+last_updated: 2026-04-08
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through March 26, 2026"
+date_range: "Through April 8, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -36,7 +36,7 @@ key_sections:
     description: "How to revert changes"
 
 quick_navigation:
-  - "[Latest Changes](#recent-migrations) - February 2026"
+  - "[Latest Changes](#recent-migrations) - April 2026"
   - "[By Category](#migrations-by-category) - Grouped by system"
   - "[Best Practices](#migration-best-practices) - How to migrate safely"
   - "[Rollback](#rollback-procedures) - Reverting changes"
@@ -99,6 +99,24 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Add `unit_price_override NUMERIC(10,2) NULL` to `bid_pricing_assignments`
 - **Impact**: In Price Model, Unit Cost column is editable when a price book entry is assigned; user can override the book price for this bid; Reset button clears override
 - **Category**: Bids / Pricing
+
+**`20260408160000_create_get_jobs_ledger_office.sql`**
+- **Purpose**: SECURITY DEFINER RPC to fetch the Office job (HCP 000 or `job_name ILIKE '%Office%'`)
+- **Changes**: Create `get_jobs_ledger_office()` returning single job row
+- **Impact**: HoursUnassignedModal uses this instead of direct `jobs_ledger` access; bypasses RLS for Office job lookup
+- **Category**: Database / RLS Hardening
+
+**`20260408170000_create_get_projects_by_ids.sql`**
+- **Purpose**: SECURITY DEFINER RPC to fetch project id, name, address by IDs
+- **Changes**: Create `get_projects_by_ids(p_ids uuid[])` returning project details
+- **Impact**: AddInspectionModal, NewReportModal use this for selected project instead of direct `projects` access
+- **Category**: Database / RLS Hardening
+
+**`20260408180000_create_get_jobs_ledger_by_status.sql`**
+- **Purpose**: SECURITY DEFINER RPC to fetch jobs by status
+- **Changes**: Create `get_jobs_ledger_by_status(p_status text)` returning jobs matching status
+- **Impact**: Dashboard, BilledAwaitingPaymentSection use this instead of direct `jobs_ledger` fetches
+- **Category**: Database / RLS Hardening
 
 ### March 2026
 

@@ -1,4 +1,4 @@
--- Extend get_jobs_ledger_by_ids to include revenue for Review/Team Summary.
+-- Extend get_jobs_ledger_by_ids to include revenue for People Review.
 -- Must DROP first because return type is changing.
 -- Existing callers (Team Costs, CrewJobsSection, Jobs, HoursUnassignedModal) ignore revenue.
 

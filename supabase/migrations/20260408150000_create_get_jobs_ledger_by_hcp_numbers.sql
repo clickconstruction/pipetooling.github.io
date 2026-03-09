@@ -1,5 +1,5 @@
 -- Fetch job details by HCP numbers. SECURITY DEFINER bypasses jobs_ledger RLS.
--- Used for Review/Team Summary labor job lookups (people_labor_jobs has job_number/HCP, not job_id).
+-- Used for People Review labor job lookups (people_labor_jobs has job_number/HCP, not job_id).
 
 CREATE OR REPLACE FUNCTION public.get_jobs_ledger_by_hcp_numbers(p_hcp_numbers text[])
 RETURNS TABLE (
@@ -20,4 +20,4 @@ AS $$
     SELECT LOWER(TRIM(COALESCE(x, ''))) FROM unnest(p_hcp_numbers) AS x
   );
 $$;
-COMMENT ON FUNCTION public.get_jobs_ledger_by_hcp_numbers(text[]) IS 'Fetch job details by HCP numbers. Bypasses RLS for Review/Team Summary.';
+COMMENT ON FUNCTION public.get_jobs_ledger_by_hcp_numbers(text[]) IS 'Fetch job details by HCP numbers. Bypasses RLS for People Review.';

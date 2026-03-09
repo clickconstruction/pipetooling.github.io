@@ -4612,7 +4612,27 @@ export type Database = {
           revenue: number | null
         }[]
       }
+      get_jobs_ledger_by_ids_paid_only: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          revenue: number | null
+        }[]
+      }
       get_jobs_ledger_by_hcp_numbers: {
+        Args: { p_hcp_numbers: string[] }
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          revenue: number | null
+        }[]
+      }
+      get_jobs_ledger_by_hcp_numbers_paid_only: {
         Args: { p_hcp_numbers: string[] }
         Returns: {
           id: string

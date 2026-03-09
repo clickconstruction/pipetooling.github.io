@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-26
+last_updated: 2026-04-08
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.82)"
-    line: ~186
+  - name: "Latest Version (v2.84)"
+    line: ~240
+    description: "Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs"
+  - name: "v2.83"
+    line: ~256
+    description: "Sync to Testing script, Archive/Restore user flow"
+  - name: "v2.82"
+    line: ~268
     description: "Person/User duplicate merge, Pay tab detection, cascade pay_stubs"
   - name: "v2.81"
     line: ~230
@@ -142,7 +148,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
+1. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
+2. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
 2. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
 3. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
 2. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
@@ -225,6 +232,29 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.84)
+
+**Date**: 2026-04-08
+
+### People – Review Tab
+
+- **Team Summary modal removed**: The Team Summary button and modal (company-wide Profit, Revenue per Man Hour, Profit per Man Hour for the period) have been removed from the Review tab.
+- **Profit for this period**: Added "Profit for this period" above Revenue per Man Hour and Profit per Man Hour in the per-person Review metrics box.
+
+### Jobs – Tab Order
+
+- **Team Labor before Sub Labor**: The Team Labor and Sub Labor tabs have been flipped; Team Labor now appears before Sub Labor in the tab bar.
+
+### Database – SECURITY DEFINER RPC Hardening
+
+- **New RPCs**: `get_jobs_ledger_office()` (Office job lookup), `get_projects_by_ids(p_ids)` (project details by ID), `get_jobs_ledger_by_status(p_status)` (jobs by status).
+- **Replaced direct table access**: People pay stubs, HoursUnassignedModal, AddInspectionModal, NewReportModal, Dashboard, BilledAwaitingPaymentSection now use SECURITY DEFINER RPCs instead of direct `jobs_ledger`/`projects` reads where RLS could block display.
+- **Projects search enrichment**: AddInspectionModal and NewReportModal no longer fetch projects for address enrichment; `search_jobs_for_reports` already returns address.
+- **Migrations**: `20260408160000_create_get_jobs_ledger_office.sql`, `20260408170000_create_get_projects_by_ids.sql`, `20260408180000_create_get_jobs_ledger_by_status.sql`
+- **Types**: `src/types/database.ts` updated with new RPC function signatures.
 
 ---
 

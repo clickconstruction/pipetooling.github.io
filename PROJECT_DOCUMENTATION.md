@@ -1934,7 +1934,7 @@ user_id = auth.uid()
 ### 6. Jobs Page
 - **Page**: `Jobs.tsx`
 - **Header**: "Jobs" title on the right of the tab bar (matches People page pattern)
-- **Tabs** (in order): Reports | **Stages** (default) | Billing | **Sub Labor** | **Team Labor** | Parts | Job Summary | Inspections | Teams Summary
+- **Tabs** (in order): Reports | **Stages** (default) | Billing | **Team Labor** | **Sub Labor** | Parts | Job Summary | Inspections | Teams Summary
 - **Features**:
   - **Sub Labor Tab** (Sub Sheet Ledger): Add labor jobs; form fields: **User** (two lists—**Everyone else** [Masters, Assistants, Estimators, Devs] and **Subcontractors**; radio selection), Address, Job # (max 10 chars), Service type, Labor rate, Date; fixture rows (Fixture, Count, hrs/unit, Fixed); Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal; Delete removes job; date editable inline. Uses same roster (people + users) as People.
   - **Team Labor Tab**: Team Job Labor table—all-time aggregate of jobs from Crew Jobs (People → Team Costs). Columns: HCP, Job name + address, People on job, Man hours (clickable → breakdown modal), Job cost (clickable → breakdown modal). Searchable by HCP, job name, address. Add jobs via Sub Labor or People → Team Costs.
