@@ -65,18 +65,16 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
       let raw = (data as JobSearchResult[] | null) ?? []
       if (raw.length > 0) {
         const jobIds = raw.filter((r) => r.source === 'job_ledger').map((r) => r.id)
-        const projectIds = raw.filter((r) => r.source === 'project').map((r) => r.id)
-        const [jobRes, projectRes] = await Promise.all([
-          jobIds.length > 0 ? supabase.from('jobs_ledger').select('id, job_address').in('id', jobIds) : { data: [] as { id: string; job_address?: string }[] },
-          projectIds.length > 0 ? supabase.from('projects').select('id, address').in('id', projectIds) : { data: [] as { id: string; address?: string }[] },
-        ])
-        const jobRows = (jobRes.data as { id: string; job_address?: string }[]) ?? []
-        const projectRows = (projectRes.data as { id: string; address?: string }[]) ?? []
-        const jobAddrMap = Object.fromEntries(jobRows.map((r) => [r.id, r.job_address ?? '']))
-        const projectAddrMap = Object.fromEntries(projectRows.map((r) => [r.id, r.address ?? '']))
+        const jobAddrMap: Record<string, string> = {}
+        if (jobIds.length > 0) {
+          const { data: jobRows } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds })
+          for (const r of (jobRows ?? []) as { id: string; job_address?: string }[]) {
+            jobAddrMap[r.id] = r.job_address ?? ''
+          }
+        }
         raw = raw.map((r) => ({
           ...r,
-          address: (r.address && r.address.trim()) || (r.source === 'job_ledger' ? jobAddrMap[r.id] : projectAddrMap[r.id]) || '',
+          address: (r.address && r.address.trim()) || (r.source === 'job_ledger' ? jobAddrMap[r.id] : r.address ?? '') || '',
         }))
       }
       setSearchResults(raw)
@@ -87,11 +85,13 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
     if (!open || !selectedJob) return
     const fetchAddress = async () => {
       if (selectedJob.source === 'job_ledger') {
-        const { data } = await supabase.from('jobs_ledger').select('job_address').eq('id', selectedJob.id).maybeSingle()
-        setAddress((data as { job_address?: string } | null)?.job_address ?? '')
+        const { data } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [selectedJob.id] })
+        const row = (data as { job_address?: string }[] | null)?.[0]
+        setAddress(row?.job_address ?? '')
       } else {
-        const { data } = await supabase.from('projects').select('address').eq('id', selectedJob.id).maybeSingle()
-        setAddress((data as { address?: string } | null)?.address ?? '')
+        const { data } = await supabase.rpc('get_projects_by_ids', { p_ids: [selectedJob.id] })
+        const row = (data as { address?: string }[] | null)?.[0]
+        setAddress(row?.address ?? '')
       }
     }
     fetchAddress()

@@ -127,7 +127,7 @@ export function HoursUnassignedModal({
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
         supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').eq('hcp_number', '000').limit(1).maybeSingle(),
+        supabase.rpc('get_jobs_ledger_office'),
       ])
       const correctDays = new Set((correctRes.data ?? []).map((r: { work_date: string }) => r.work_date))
       setHoursDaysCorrect(correctDays)
@@ -158,11 +158,7 @@ export function HoursUnassignedModal({
         }
         setCrewJobDetailsMap((prev) => ({ ...prev, ...jobMap }))
       }
-      let office = (officeRes.data as { id: string; hcp_number: string; job_name: string; job_address: string } | null) ?? null
-      if (!office) {
-        const { data: officeData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').ilike('job_name', '%Office%').limit(1).maybeSingle()
-        office = (officeData as { id: string; hcp_number: string; job_name: string; job_address: string } | null) ?? null
-      }
+      const office = (officeRes.data as { id: string; hcp_number: string; job_name: string; job_address: string }[] | null)?.[0] ?? null
       setOfficeJob(office)
       const commonRows = (await withSupabaseRetry(
         async () => {

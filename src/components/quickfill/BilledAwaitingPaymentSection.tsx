@@ -53,10 +53,7 @@ export function BilledAwaitingPaymentSection() {
         let jobDetailsMap: Record<string, JobsLedgerRow> = {}
         if (jobIds.size > 0) {
           const ids = Array.from(jobIds)
-          const { data: jobDetails } = await supabase
-            .from('jobs_ledger')
-            .select('id, hcp_number, job_name, revenue, payments_made')
-            .in('id', ids)
+          const { data: jobDetails } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: ids })
           jobDetailsMap = Object.fromEntries(
             ((jobDetails ?? []) as JobsLedgerRow[]).map((j) => [j.id, j])
           )

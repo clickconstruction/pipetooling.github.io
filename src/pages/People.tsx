@@ -1126,7 +1126,7 @@ export default function People() {
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
     if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
@@ -1173,7 +1173,7 @@ export default function People() {
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
     if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
@@ -1221,7 +1221,7 @@ export default function People() {
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
     if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', [...jobIds])
+      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
@@ -2478,8 +2478,8 @@ export default function People() {
     const allJobIds = [...crewJobIds]
     const laborHcps = [...new Set(laborRows.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
     const [crewJobsRes, laborJobsRes] = await Promise.all([
-      allJobIds.length > 0 ? supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').in('id', allJobIds) : { data: [] },
-      laborHcps.length > 0 ? supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').in('hcp_number', laborHcps) : { data: [] },
+      allJobIds.length > 0 ? supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds }) : { data: [] },
+      laborHcps.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: laborHcps }) : { data: [] },
     ])
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
     const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
@@ -2882,8 +2882,8 @@ export default function People() {
 
     const laborHcps = [...new Set(laborRows.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
     const [crewJobsRes, laborJobsRes] = await Promise.all([
-      crewJobIds.size > 0 ? supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').in('id', [...crewJobIds]) : { data: [] },
-      laborHcps.length > 0 ? supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, revenue').in('hcp_number', laborHcps) : { data: [] },
+      crewJobIds.size > 0 ? supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...crewJobIds] }) : { data: [] },
+      laborHcps.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: laborHcps }) : { data: [] },
     ])
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
     const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>

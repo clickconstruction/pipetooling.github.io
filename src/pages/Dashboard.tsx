@@ -688,11 +688,7 @@ export default function Dashboard() {
         .select('id, job_id, amount, status, created_at, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at)')
         .eq('status', 'ready_to_bill')
         .order('created_at', { ascending: false }),
-      supabase
-        .from('jobs_ledger')
-        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
-        .eq('status', 'ready_to_bill')
-        .order('created_at', { ascending: false }),
+      supabase.rpc('get_jobs_ledger_by_status', { p_status: 'ready_to_bill' }),
     ]).then(([invRes, jobRes]) => {
       setReadyToBillLoading(false)
       if (!invRes.error) {
@@ -734,11 +730,7 @@ export default function Dashboard() {
         .select('id, job_id, amount, status, created_at, jobs_ledger!inner(hcp_number, job_name, job_address, google_drive_link, job_plans_link, created_at)')
         .eq('status', 'billed')
         .order('created_at', { ascending: false }),
-      supabase
-        .from('jobs_ledger')
-        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
-        .eq('status', 'billed')
-        .order('created_at', { ascending: false }),
+      supabase.rpc('get_jobs_ledger_by_status', { p_status: 'billed' }),
     ]).then(([invRes, jobRes]) => {
       setWaitingForPaymentLoading(false)
       if (!invRes.error) {
@@ -821,11 +813,7 @@ export default function Dashboard() {
       }))
     }
     const fetchJobs = async (status: string) => {
-      const { data } = await supabase
-        .from('jobs_ledger')
-        .select('id, hcp_number, job_name, job_address, revenue, payments_made, google_drive_link, job_plans_link, created_at')
-        .eq('status', status)
-        .order('created_at', { ascending: false })
+      const { data } = await supabase.rpc('get_jobs_ledger_by_status', { p_status: status })
       return (data ?? []) as JobForDashboard[]
     }
     const [readyInv, billedInv, readyJobs, billedJobs] = await Promise.all([
