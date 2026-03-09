@@ -4609,6 +4609,40 @@ export type Database = {
           hcp_number: string
           job_name: string
           job_address: string
+          revenue: number | null
+        }[]
+      }
+      get_jobs_ledger_by_hcp_numbers: {
+        Args: { p_hcp_numbers: string[] }
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          revenue: number | null
+        }[]
+      }
+      get_jobs_ledger_by_status: {
+        Args: { p_status: string }
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
+          revenue: number | null
+          payments_made: number | null
+          google_drive_link: string | null
+          job_plans_link: string | null
+          created_at: string | null
+        }[]
+      }
+      get_jobs_ledger_office: {
+        Args: never
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
         }[]
       }
       get_parts_ordered_by_price_count:
@@ -4626,6 +4660,14 @@ export type Database = {
               price_count: number
             }[]
           }
+      get_projects_by_ids: {
+        Args: { p_ids: string[] }
+        Returns: {
+          id: string
+          name: string
+          address: string
+        }[]
+      }
       get_supply_house_price_counts: {
         Args: never
         Returns: {
