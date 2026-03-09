@@ -2734,20 +2734,6 @@ export default function Jobs() {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('sub_sheet_ledger')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'sub_sheet_ledger')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'sub_sheet_ledger')}
-          >
-            Sub Labor
-          </button>
-          <button
-            type="button"
-            onClick={() => {
               setActiveTab('combined-labor')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
@@ -2758,6 +2744,20 @@ export default function Jobs() {
             style={tabStyle(activeTab === 'combined-labor')}
           >
             Team Labor
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('sub_sheet_ledger')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'sub_sheet_ledger')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'sub_sheet_ledger')}
+          >
+            Sub Labor
           </button>
           <button
             type="button"
