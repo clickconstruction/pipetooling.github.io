@@ -14,7 +14,6 @@ AS $$
     AND role = 'estimator'
   );
 $$;
-
 CREATE POLICY "Estimators can see masters and devs"
 ON public.users
 FOR SELECT

@@ -2,7 +2,6 @@
 -- Fixes: assistants could not delete jobs in Billing when hitting the delete icon
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can delete jobs ledger" ON public.jobs_ledger;
-
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger"
 ON public.jobs_ledger
 FOR DELETE
@@ -28,5 +27,4 @@ USING (
     OR public.assistants_share_master(auth.uid(), master_user_id)
   )
 );
-
 COMMENT ON POLICY "Devs, masters, assistants can delete jobs ledger" ON public.jobs_ledger IS 'Devs: any job. Masters: own jobs. Assistants: master''s jobs (adopted) or shared master.';

@@ -2,7 +2,6 @@
 
 -- 1. Add subject_text to user_prospect_copy_templates
 ALTER TABLE public.user_prospect_copy_templates ADD COLUMN IF NOT EXISTS subject_text TEXT;
-
 -- 2. Add app_settings keys for subject defaults
 INSERT INTO public.app_settings (key, value_text) VALUES
   ('prospect_copy_no_response_email_subject', 'Follow up - [company name]'),

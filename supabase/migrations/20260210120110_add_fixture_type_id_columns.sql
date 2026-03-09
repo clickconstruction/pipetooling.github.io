@@ -9,19 +9,15 @@
 -- Add to material_parts (keep old fixture_type)
 ALTER TABLE public.material_parts
 ADD COLUMN IF NOT EXISTS fixture_type_id UUID REFERENCES public.fixture_types(id);
-
 -- Add to bids_count_rows (keep old fixture)
 ALTER TABLE public.bids_count_rows
 ADD COLUMN IF NOT EXISTS fixture_type_id UUID REFERENCES public.fixture_types(id);
-
 -- Add to labor_book_entries (keep old fixture_name)
 ALTER TABLE public.labor_book_entries
 ADD COLUMN IF NOT EXISTS fixture_type_id UUID REFERENCES public.fixture_types(id);
-
 -- Add to price_book_entries (keep old fixture_name)
 ALTER TABLE public.price_book_entries
 ADD COLUMN IF NOT EXISTS fixture_type_id UUID REFERENCES public.fixture_types(id);
-
 -- ============================================================================
 -- Backfill fixture_type_id values from text columns
 -- ============================================================================
@@ -220,23 +216,18 @@ BEGIN
     AND pbe.fixture_name IS NOT NULL;
   
 END $$;
-
 -- ============================================================================
 -- Add indexes for better query performance
 -- ============================================================================
 
 CREATE INDEX IF NOT EXISTS idx_material_parts_fixture_type_id 
   ON public.material_parts(fixture_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_bids_count_rows_fixture_type_id 
   ON public.bids_count_rows(fixture_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_labor_book_entries_fixture_type_id 
   ON public.labor_book_entries(fixture_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_price_book_entries_fixture_type_id 
   ON public.price_book_entries(fixture_type_id);
-
 -- Add comments
 COMMENT ON COLUMN public.material_parts.fixture_type_id IS 'Foreign key to fixture_types table (service-type-specific)';
 COMMENT ON COLUMN public.bids_count_rows.fixture_type_id IS 'Foreign key to fixture_types table (service-type-specific)';

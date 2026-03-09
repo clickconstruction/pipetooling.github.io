@@ -1,5 +1,5 @@
 -- Allow estimators to delete material parts
--- The previous policy used estimator_can_access_service_type which blocked estimators
+-- The current policy uses estimator_can_access_service_type which can block estimators
 -- with service type restrictions from deleting parts. This migration ensures estimators
 -- can delete any material part (same as assistants).
 
@@ -17,4 +17,4 @@ USING (
 );
 
 COMMENT ON POLICY "Devs, masters, assistants, and estimators can delete material parts" ON public.material_parts IS
-  'Allows devs, masters, assistants, and estimators to delete material parts. No service type restriction on delete.';
+  'Allows devs, masters, assistants, and estimators to delete material parts. No service type restriction on delete.';;

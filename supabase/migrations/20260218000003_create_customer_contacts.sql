@@ -8,12 +8,9 @@ CREATE TABLE public.customer_contacts (
   created_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
   created_at timestamptz DEFAULT now()
 );
-
 CREATE INDEX idx_customer_contacts_customer_id ON public.customer_contacts(customer_id);
 CREATE INDEX idx_customer_contacts_contact_date ON public.customer_contacts(contact_date);
-
 ALTER TABLE public.customer_contacts ENABLE ROW LEVEL SECURITY;
-
 -- RLS: Same pattern as customers - devs, masters, assistants, estimators can access
 -- rows for customers they can access (ownership, adoption, sharing)
 
@@ -54,7 +51,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert customer contacts"
 ON public.customer_contacts
 FOR INSERT
@@ -93,7 +89,6 @@ WITH CHECK (
   )
   AND created_by = auth.uid()
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update customer contacts"
 ON public.customer_contacts
 FOR UPDATE
@@ -138,7 +133,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete customer contacts"
 ON public.customer_contacts
 FOR DELETE

@@ -1,7 +1,6 @@
 -- Add purchase order name to list_tally_parts_with_po for Jobs Parts tab
 
 DROP FUNCTION IF EXISTS public.list_tally_parts_with_po();
-
 CREATE FUNCTION public.list_tally_parts_with_po()
 RETURNS TABLE (
   id UUID,

@@ -5,5 +5,4 @@
 
 ALTER TABLE public.people_hours
   ALTER COLUMN hours TYPE NUMERIC(8, 4) USING hours::numeric(8, 4);
-
 COMMENT ON COLUMN public.people_hours.hours IS 'Hours worked (decimal). NUMERIC(8,4) preserves HH:MM:SS second precision.';

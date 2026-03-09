@@ -23,5 +23,4 @@ AS $$
     AND primary_id = auth.uid()
   );
 $$;
-
 COMMENT ON FUNCTION public.master_adopted_current_user(UUID) IS 'Checks if the given master has adopted the current user (as assistant or primary). Uses SECURITY DEFINER to bypass RLS and avoid recursion.';

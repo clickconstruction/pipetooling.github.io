@@ -71,11 +71,8 @@ BEGIN
   RETURN false;
 END;
 $$;
-
 COMMENT ON FUNCTION public.can_access_project_row(UUID) IS 'Checks if the current user can access a project. Used by projects RLS to avoid expensive inline subqueries. SECURITY DEFINER.';
-
 DROP POLICY IF EXISTS "Users can see projects they own or projects from masters who adopted them or shared with them" ON public.projects;
-
 CREATE POLICY "Users can see projects they have access to"
 ON public.projects
 FOR SELECT

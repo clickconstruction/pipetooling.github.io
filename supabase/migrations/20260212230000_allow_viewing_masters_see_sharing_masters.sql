@@ -27,9 +27,7 @@ AS $$
     )
   );
 $$;
-
 DROP POLICY IF EXISTS "Users can see sharing masters who shared with them or their master" ON public.users;
-
 CREATE POLICY "Users can see sharing masters who shared with them or their master"
 ON public.users
 FOR SELECT

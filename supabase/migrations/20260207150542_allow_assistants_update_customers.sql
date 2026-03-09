@@ -35,5 +35,4 @@ WITH CHECK (
     AND assistant_id = auth.uid()
   )
 );
-
 COMMENT ON POLICY "Assistants can update customers when master has adopted them" ON public.customers IS 'Allows assistants to edit customer information for customers owned by masters who have adopted them. Ensures assistants cannot reassign customers to masters who have not adopted them.';

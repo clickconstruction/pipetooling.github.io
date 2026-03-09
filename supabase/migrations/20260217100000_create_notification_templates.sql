@@ -9,24 +9,18 @@ CREATE TABLE IF NOT EXISTS public.notification_templates (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
-
 CREATE INDEX IF NOT EXISTS idx_notification_templates_type ON public.notification_templates(template_type);
-
 ALTER TABLE public.notification_templates ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs can read notification templates"
 ON public.notification_templates FOR SELECT
 USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev'));
-
 CREATE POLICY "Devs can insert notification templates"
 ON public.notification_templates FOR INSERT
 WITH CHECK (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev'));
-
 CREATE POLICY "Devs can update notification templates"
 ON public.notification_templates FOR UPDATE
 USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev'))
 WITH CHECK (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev'));
-
 -- Seed default templates
 INSERT INTO public.notification_templates (template_type, push_title, push_body) VALUES
   ('checklist_completed', 'Checklist completed', '{{assignee_name}} completed: {{item_title}}'),
@@ -40,7 +34,6 @@ INSERT INTO public.notification_templates (template_type, push_title, push_body)
   ('stage_next_complete_or_approved', 'Your turn: Stage completed', '{{stage_name}} has been completed. You''re up next for {{next_stage_name}}.'),
   ('stage_prior_rejected', 'Stage rejected', '{{stage_name}} was rejected. Reason: {{rejection_reason}}')
 ON CONFLICT (template_type) DO NOTHING;
-
 -- Trigger for updated_at
 DROP TRIGGER IF EXISTS update_notification_templates_updated_at ON public.notification_templates;
 CREATE TRIGGER update_notification_templates_updated_at

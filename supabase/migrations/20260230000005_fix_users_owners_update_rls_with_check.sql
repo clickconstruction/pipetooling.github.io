@@ -3,7 +3,6 @@
 -- The policy allowed unrestricted access via WITH CHECK (true); now restricts to public.is_dev()
 
 DROP POLICY IF EXISTS "Owners can update users" ON public.users;
-
 CREATE POLICY "Owners can update users"
 ON public.users
 FOR UPDATE

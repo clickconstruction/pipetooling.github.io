@@ -34,5 +34,4 @@ BEGIN
   WHERE id = p_step_id;
 END;
 $$;
-
 COMMENT ON FUNCTION public.update_step_assigned_to(uuid, text) IS 'Updates assigned_to_name on a workflow step. Bypasses RLS to avoid timeout.';

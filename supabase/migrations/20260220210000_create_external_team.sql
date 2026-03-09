@@ -11,9 +11,7 @@ CREATE TABLE IF NOT EXISTS public.external_team_sub_managers (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 ALTER TABLE public.external_team_sub_managers ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read external team sub managers"
 ON public.external_team_sub_managers
 FOR SELECT
@@ -24,7 +22,6 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert external team sub managers"
 ON public.external_team_sub_managers
 FOR INSERT
@@ -35,7 +32,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can update external team sub managers"
 ON public.external_team_sub_managers
 FOR UPDATE
@@ -53,7 +49,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete external team sub managers"
 ON public.external_team_sub_managers
 FOR DELETE
@@ -64,15 +59,12 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 DROP TRIGGER IF EXISTS update_external_team_sub_managers_updated_at ON public.external_team_sub_managers;
 CREATE TRIGGER update_external_team_sub_managers_updated_at
   BEFORE UPDATE ON public.external_team_sub_managers
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
 COMMENT ON TABLE public.external_team_sub_managers IS 'Assigns a user as Sub Manager per subcontractor in External Team.';
-
 -- ============================================================================
 -- external_team_job_payments
 -- ============================================================================
@@ -86,12 +78,9 @@ CREATE TABLE IF NOT EXISTS public.external_team_job_payments (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_external_team_job_payments_person_id ON public.external_team_job_payments(person_id);
 CREATE INDEX IF NOT EXISTS idx_external_team_job_payments_is_paid ON public.external_team_job_payments(is_paid);
-
 ALTER TABLE public.external_team_job_payments ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read external team job payments"
 ON public.external_team_job_payments
 FOR SELECT
@@ -102,7 +91,6 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert external team job payments"
 ON public.external_team_job_payments
 FOR INSERT
@@ -113,7 +101,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can update external team job payments"
 ON public.external_team_job_payments
 FOR UPDATE
@@ -131,7 +118,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete external team job payments"
 ON public.external_team_job_payments
 FOR DELETE
@@ -142,11 +128,9 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 DROP TRIGGER IF EXISTS update_external_team_job_payments_updated_at ON public.external_team_job_payments;
 CREATE TRIGGER update_external_team_job_payments_updated_at
   BEFORE UPDATE ON public.external_team_job_payments
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
 COMMENT ON TABLE public.external_team_job_payments IS 'Job payments per subcontractor in External Team. Unpaid contribute to Outstanding.';

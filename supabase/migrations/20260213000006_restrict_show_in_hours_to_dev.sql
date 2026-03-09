@@ -10,7 +10,6 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
 CREATE TRIGGER people_pay_config_show_in_hours_dev_only
   BEFORE UPDATE ON public.people_pay_config
   FOR EACH ROW EXECUTE FUNCTION public.check_show_in_hours_dev_only();

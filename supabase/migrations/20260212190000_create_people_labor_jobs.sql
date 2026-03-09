@@ -12,11 +12,8 @@ CREATE TABLE IF NOT EXISTS public.people_labor_jobs (
   labor_rate NUMERIC(10, 2),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_people_labor_jobs_master_user_id ON public.people_labor_jobs(master_user_id);
-
 ALTER TABLE public.people_labor_jobs ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read own people labor jobs"
 ON public.people_labor_jobs
 FOR SELECT
@@ -31,7 +28,6 @@ USING (
     OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert own people labor jobs"
 ON public.people_labor_jobs
 FOR INSERT
@@ -43,7 +39,6 @@ WITH CHECK (
   )
   AND master_user_id = auth.uid()
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update own people labor jobs"
 ON public.people_labor_jobs
 FOR UPDATE
@@ -65,7 +60,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete own people labor jobs"
 ON public.people_labor_jobs
 FOR DELETE
@@ -80,9 +74,7 @@ USING (
     OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')
   )
 );
-
 COMMENT ON TABLE public.people_labor_jobs IS 'Labor jobs from People Labor tab; owner is master_user_id.';
-
 -- ============================================================================
 -- people_labor_job_items
 -- ============================================================================
@@ -96,11 +88,8 @@ CREATE TABLE IF NOT EXISTS public.people_labor_job_items (
   sequence_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_people_labor_job_items_job_id ON public.people_labor_job_items(job_id);
-
 ALTER TABLE public.people_labor_job_items ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read people labor job items"
 ON public.people_labor_job_items
 FOR SELECT
@@ -119,7 +108,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert people labor job items"
 ON public.people_labor_job_items
 FOR INSERT
@@ -135,7 +123,6 @@ WITH CHECK (
     AND j.master_user_id = auth.uid()
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update people labor job items"
 ON public.people_labor_job_items
 FOR UPDATE
@@ -161,7 +148,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete people labor job items"
 ON public.people_labor_job_items
 FOR DELETE
@@ -180,5 +166,4 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.people_labor_job_items IS 'Fixture rows per labor job; labor hours = count * hrs_per_unit.';

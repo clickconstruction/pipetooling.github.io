@@ -12,12 +12,9 @@ CREATE TABLE public.notification_history (
   checklist_instance_id uuid REFERENCES public.checklist_instances(id) ON DELETE SET NULL,
   sent_at timestamptz DEFAULT now() NOT NULL
 );
-
 CREATE INDEX idx_notification_history_recipient_sent
   ON public.notification_history (recipient_user_id, sent_at DESC);
-
 ALTER TABLE public.notification_history ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can select own notification history"
   ON public.notification_history FOR SELECT
   USING (recipient_user_id = auth.uid());

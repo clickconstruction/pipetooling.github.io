@@ -7,17 +7,13 @@ CREATE TABLE IF NOT EXISTS public.prospect_timer_events (
   timer_seconds INTEGER NOT NULL,
   button_name TEXT NOT NULL CHECK (button_name IN ('no_longer_fit', 'next_prospect', 'cant_reach'))
 );
-
 CREATE INDEX IF NOT EXISTS idx_prospect_timer_events_user_id ON public.prospect_timer_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_prospect_timer_events_created_at ON public.prospect_timer_events(created_at DESC);
-
 ALTER TABLE public.prospect_timer_events ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can see their own prospect timer events"
 ON public.prospect_timer_events
 FOR SELECT
 USING (user_id = auth.uid());
-
 CREATE POLICY "Users can insert their own prospect timer events"
 ON public.prospect_timer_events
 FOR INSERT

@@ -2,7 +2,6 @@
 -- Fixes: Ham mode "edit Assigned" - devs/assistants could not add team members to jobs they don't own
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can insert jobs ledger team members" ON public.jobs_ledger_team_members;
-
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR INSERT
@@ -24,5 +23,4 @@ WITH CHECK (
     )
   )
 );
-
 COMMENT ON POLICY "Devs, masters, assistants can insert jobs ledger team members" ON public.jobs_ledger_team_members IS 'Devs: any job. Masters: own jobs. Assistants: master''s jobs (adopted) or shared master.';

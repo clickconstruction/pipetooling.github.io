@@ -16,15 +16,12 @@ AS $$
     AND ma_b.assistant_id = assistants_share_master.assistant_b
   );
 $$;
-
 COMMENT ON FUNCTION public.assistants_share_master(UUID, UUID) IS 'Returns true if both assistants are adopted by the same master. Uses SECURITY DEFINER to bypass RLS on master_assistants.';
-
 -- ============================================================================
 -- jobs_ledger: use assistants_share_master for assistant-to-assistant visibility
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger" ON public.jobs_ledger;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger"
 ON public.jobs_ledger
 FOR SELECT
@@ -50,13 +47,11 @@ USING (
     OR public.assistants_share_master(auth.uid(), master_user_id)
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_materials
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR SELECT
@@ -86,13 +81,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_team_members
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger team members" ON public.jobs_ledger_team_members;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR SELECT
@@ -122,13 +115,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_fixtures
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger fixtures" ON public.jobs_ledger_fixtures;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR SELECT
@@ -158,5 +149,4 @@ USING (
     )
   )
 );
-
 COMMENT ON POLICY "Devs, masters, assistants can read jobs ledger" ON public.jobs_ledger IS 'Assistants see all jobs from their master and from other assistants adopted by the same master. Uses assistants_share_master() to bypass RLS on master_assistants.';

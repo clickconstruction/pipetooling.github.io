@@ -14,16 +14,12 @@ CREATE TABLE IF NOT EXISTS public.prospects (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_prospects_master_user_id ON public.prospects(master_user_id);
 CREATE INDEX IF NOT EXISTS idx_prospects_created_by ON public.prospects(created_by);
-
 CREATE TRIGGER update_prospects_updated_at
   BEFORE UPDATE ON public.prospects
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 ALTER TABLE public.prospects ENABLE ROW LEVEL SECURITY;
-
 -- RLS: Same pattern as customers - devs, masters, assistants; ownership via master_user_id and adoption
 
 CREATE POLICY "Users can see prospects they own or from masters who adopted them"
@@ -42,7 +38,6 @@ USING (
     AND assistant_id = auth.uid()
   )
 );
-
 CREATE POLICY "Devs, masters, and assistants can insert prospects"
 ON public.prospects
 FOR INSERT
@@ -67,7 +62,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Users can update prospects they own or from masters who adopted them"
 ON public.prospects
 FOR UPDATE
@@ -91,7 +85,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Users can delete prospects they own or from masters who adopted them"
 ON public.prospects
 FOR DELETE

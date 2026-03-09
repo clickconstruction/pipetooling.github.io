@@ -4,7 +4,6 @@
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary can insert jobs ledger invoices"
 ON public.jobs_ledger_invoices;
-
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger invoices"
 ON public.jobs_ledger_invoices
 FOR INSERT
@@ -30,10 +29,8 @@ WITH CHECK (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary can insert jobs ledger payments"
 ON public.jobs_ledger_payments;
-
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger payments"
 ON public.jobs_ledger_payments
 FOR INSERT

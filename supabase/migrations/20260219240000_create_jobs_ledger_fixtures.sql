@@ -8,11 +8,8 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger_fixtures (
   sequence_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_fixtures_job_id ON public.jobs_ledger_fixtures(job_id);
-
 ALTER TABLE public.jobs_ledger_fixtures ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR SELECT
@@ -31,7 +28,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR INSERT
@@ -47,7 +43,6 @@ WITH CHECK (
     AND j.master_user_id = auth.uid()
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can update jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR UPDATE
@@ -73,7 +68,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR DELETE
@@ -92,5 +86,4 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger_fixtures IS 'Fixture/tie-in items per billing job.';

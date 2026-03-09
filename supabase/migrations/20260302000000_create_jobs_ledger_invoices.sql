@@ -10,12 +10,9 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger_invoices (
   sequence_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_invoices_job_id ON public.jobs_ledger_invoices(job_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_invoices_status ON public.jobs_ledger_invoices(status);
-
 ALTER TABLE public.jobs_ledger_invoices ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger invoices"
 ON public.jobs_ledger_invoices
 FOR SELECT
@@ -46,7 +43,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger invoices"
 ON public.jobs_ledger_invoices
 FOR INSERT
@@ -71,7 +67,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger invoices"
 ON public.jobs_ledger_invoices
 FOR UPDATE
@@ -109,7 +104,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'primary')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger invoices"
 ON public.jobs_ledger_invoices
 FOR DELETE
@@ -140,9 +134,7 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger_invoices IS 'Partial invoices per job. Flow: ready_to_bill -> billed -> paid. When paid, amount added to jobs_ledger_payments and jobs_ledger.payments_made.';
-
 -- RPC: mark_invoice_paid - adds payment to job and marks invoice paid
 CREATE OR REPLACE FUNCTION public.mark_invoice_paid(p_invoice_id UUID)
 RETURNS jsonb
@@ -219,5 +211,4 @@ BEGIN
   RETURN jsonb_build_object('ok', true);
 END;
 $$;
-
 COMMENT ON FUNCTION public.mark_invoice_paid(UUID) IS 'Marks invoice as paid: adds amount to jobs_ledger_payments, updates jobs_ledger.payments_made, sets job status to paid if fully paid.';

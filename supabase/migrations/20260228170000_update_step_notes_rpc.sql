@@ -33,7 +33,6 @@ BEGIN
   WHERE id = p_step_id;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION public.update_step_private_notes(p_step_id uuid, p_private_notes text)
 RETURNS void
 LANGUAGE plpgsql
@@ -66,6 +65,5 @@ BEGIN
   WHERE id = p_step_id;
 END;
 $$;
-
 COMMENT ON FUNCTION public.update_step_notes(uuid, text) IS 'Updates notes on a workflow step. Bypasses RLS to avoid timeout.';
 COMMENT ON FUNCTION public.update_step_private_notes(uuid, text) IS 'Updates private_notes on a workflow step. Bypasses RLS to avoid timeout.';

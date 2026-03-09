@@ -6,7 +6,6 @@ DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read cost e
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can insert cost estimates" ON public.cost_estimates;
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can update cost estimates" ON public.cost_estimates;
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can delete cost estimates" ON public.cost_estimates;
-
 -- Create simplified policies matching bids table pattern
 CREATE POLICY "Devs, masters, assistants, and estimators can read cost estimates"
 ON public.cost_estimates
@@ -18,7 +17,6 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert cost estimates"
 ON public.cost_estimates
 FOR INSERT
@@ -29,7 +27,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update cost estimates"
 ON public.cost_estimates
 FOR UPDATE
@@ -47,7 +44,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete cost estimates"
 ON public.cost_estimates
 FOR DELETE
@@ -58,5 +54,4 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 COMMENT ON TABLE public.cost_estimates IS 'Cost estimates for bids; accessible to all dev/master/assistant/estimator users (matches bids access pattern).';

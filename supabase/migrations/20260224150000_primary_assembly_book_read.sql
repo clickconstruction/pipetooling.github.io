@@ -9,7 +9,6 @@ ON public.material_templates FOR SELECT
 USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'primary')
 );
-
 -- material_template_items
 DROP POLICY IF EXISTS "Primaries can read material template items" ON public.material_template_items;
 CREATE POLICY "Primaries can read material template items"
@@ -17,7 +16,6 @@ ON public.material_template_items FOR SELECT
 USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'primary')
 );
-
 COMMENT ON POLICY "Primaries can read material templates" ON public.material_templates IS
   'Allows primaries to read material templates (assemblies) for Assembly Book display.';
 COMMENT ON POLICY "Primaries can read material template items" ON public.material_template_items IS

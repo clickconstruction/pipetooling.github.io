@@ -2,7 +2,6 @@
 -- Trace (primary) adopted by Malachi should see Malachi's projects (e.g. SVP Round Rock New Build)
 
 DROP POLICY IF EXISTS "Users can see projects they own or projects from masters who adopted them or shared with them" ON public.projects;
-
 CREATE POLICY "Users can see projects they own or projects from masters who adopted them or shared with them"
 ON public.projects
 FOR SELECT

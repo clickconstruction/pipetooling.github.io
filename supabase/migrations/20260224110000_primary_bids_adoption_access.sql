@@ -8,7 +8,6 @@
 
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids" ON public.bids;
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids" ON public.bids;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids"
 ON public.bids
 FOR SELECT
@@ -41,14 +40,12 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- bids_gc_builders: adoption for primaries (needed for bid display)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids gc builders" ON public.bids_gc_builders;
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids gc builders" ON public.bids_gc_builders;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids gc builders"
 ON public.bids_gc_builders
 FOR SELECT
@@ -72,14 +69,12 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- bids_submission_entries: adoption for primaries
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids submission entries" ON public.bids_submission_entries;
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids submission entries" ON public.bids_submission_entries;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids submission entries"
 ON public.bids_submission_entries
 FOR SELECT
@@ -115,14 +110,12 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- customers: primaries see only customers from masters who adopted them
 -- (replaces "primaries see all" from 20260224100000)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can see their own customers or customers from masters who adopted them or shared with them" ON public.customers;
-
 CREATE POLICY "Users can see their own customers or customers from masters who adopted them or shared with them"
 ON public.customers
 FOR SELECT

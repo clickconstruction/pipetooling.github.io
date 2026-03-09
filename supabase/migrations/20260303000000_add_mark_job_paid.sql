@@ -73,5 +73,4 @@ BEGIN
   RETURN jsonb_build_object('ok', true);
 END;
 $$;
-
 COMMENT ON FUNCTION public.mark_job_paid(UUID) IS 'Marks whole job as paid: adds remaining (revenue - payments_made) to jobs_ledger_payments, updates payments_made, sets status to paid.';

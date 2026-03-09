@@ -14,14 +14,11 @@ CREATE TABLE IF NOT EXISTS public.service_types (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_service_types_sequence_order ON public.service_types(sequence_order);
 CREATE INDEX IF NOT EXISTS idx_service_types_name ON public.service_types(name);
-
 -- Enable RLS
 ALTER TABLE public.service_types ENABLE ROW LEVEL SECURITY;
-
 -- Policy: All authenticated users can read service types
 CREATE POLICY "All authenticated users can read service types"
 ON public.service_types
@@ -29,7 +26,6 @@ FOR SELECT
 USING (
   auth.uid() IS NOT NULL
 );
-
 -- Policy: Only devs can insert service types
 CREATE POLICY "Only devs can insert service types"
 ON public.service_types
@@ -41,7 +37,6 @@ WITH CHECK (
     AND role = 'dev'
   )
 );
-
 -- Policy: Only devs can update service types
 CREATE POLICY "Only devs can update service types"
 ON public.service_types
@@ -60,7 +55,6 @@ WITH CHECK (
     AND role = 'dev'
   )
 );
-
 -- Policy: Only devs can delete service types
 CREATE POLICY "Only devs can delete service types"
 ON public.service_types
@@ -72,16 +66,13 @@ USING (
     AND role = 'dev'
   )
 );
-
 -- Add updated_at trigger
 CREATE TRIGGER update_service_types_updated_at
   BEFORE UPDATE ON public.service_types
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
 -- Add comment
 COMMENT ON TABLE public.service_types IS 'Service types for categorizing materials and bids by trade (Plumbing, Electrical, HVAC, etc.)';
-
 -- ============================================================================
 -- Seed initial service types
 -- ============================================================================

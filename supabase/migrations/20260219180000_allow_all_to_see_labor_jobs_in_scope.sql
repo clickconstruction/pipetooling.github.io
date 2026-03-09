@@ -8,7 +8,6 @@
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read people labor jobs" ON public.people_labor_jobs;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read people labor jobs"
 ON public.people_labor_jobs
 FOR SELECT
@@ -59,13 +58,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- people_labor_job_items: same visibility as the job (via job's RLS)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read people labor job items" ON public.people_labor_job_items;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read people labor job items"
 ON public.people_labor_job_items
 FOR SELECT

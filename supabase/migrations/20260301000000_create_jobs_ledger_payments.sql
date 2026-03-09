@@ -8,11 +8,8 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger_payments (
   sequence_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_payments_job_id ON public.jobs_ledger_payments(job_id);
-
 ALTER TABLE public.jobs_ledger_payments ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger payments"
 ON public.jobs_ledger_payments
 FOR SELECT
@@ -43,7 +40,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger payments"
 ON public.jobs_ledger_payments
 FOR INSERT
@@ -68,7 +64,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger payments"
 ON public.jobs_ledger_payments
 FOR UPDATE
@@ -106,7 +101,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'primary')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger payments"
 ON public.jobs_ledger_payments
 FOR DELETE
@@ -137,9 +131,7 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger_payments IS 'Individual payments per job. Total payments_made = sum(amount). Remaining = revenue - sum(amount).';
-
 -- Data migration: migrate existing payments_made to jobs_ledger_payments
 INSERT INTO public.jobs_ledger_payments (job_id, amount, sequence_order)
 SELECT id, COALESCE(payments_made, 0), 0

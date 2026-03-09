@@ -2679,6 +2679,7 @@ export type Database = {
           hourly_wage: number | null
           is_salary: boolean
           person_name: string
+          record_hours_but_salary: boolean
           show_in_cost_matrix: boolean
           show_in_hours: boolean
         }
@@ -2686,6 +2687,7 @@ export type Database = {
           hourly_wage?: number | null
           is_salary?: boolean
           person_name: string
+          record_hours_but_salary?: boolean
           show_in_cost_matrix?: boolean
           show_in_hours?: boolean
         }
@@ -2693,6 +2695,7 @@ export type Database = {
           hourly_wage?: number | null
           is_salary?: boolean
           person_name?: string
+          record_hours_but_salary?: boolean
           show_in_cost_matrix?: boolean
           show_in_hours?: boolean
         }
@@ -4597,6 +4600,15 @@ export type Database = {
           hcp_number: string
           id: string
           source: string
+        }[]
+      }
+      get_jobs_ledger_by_ids: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          id: string
+          hcp_number: string
+          job_name: string
+          job_address: string
         }[]
       }
       get_parts_ordered_by_price_count:

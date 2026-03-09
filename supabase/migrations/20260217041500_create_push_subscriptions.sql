@@ -15,3 +15,6 @@ ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users manage own subscriptions" ON public.push_subscriptions
   FOR ALL USING (auth.uid() = user_id);
+
+-- Edge Function needs to read subscriptions by user_id; use service role for that
+-- No additional policy needed - Edge Functions use service_role key;

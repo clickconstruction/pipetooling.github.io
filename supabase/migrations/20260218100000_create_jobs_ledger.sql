@@ -15,13 +15,10 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_master_user_id ON public.jobs_ledger(master_user_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_hcp_number ON public.jobs_ledger(hcp_number);
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_job_name ON public.jobs_ledger(job_name);
-
 ALTER TABLE public.jobs_ledger ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger"
 ON public.jobs_ledger
 FOR SELECT
@@ -36,7 +33,6 @@ USING (
     OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger"
 ON public.jobs_ledger
 FOR INSERT
@@ -48,7 +44,6 @@ WITH CHECK (
   )
   AND master_user_id = auth.uid()
 );
-
 CREATE POLICY "Devs, masters, assistants can update jobs ledger"
 ON public.jobs_ledger
 FOR UPDATE
@@ -70,7 +65,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger"
 ON public.jobs_ledger
 FOR DELETE
@@ -85,9 +79,7 @@ USING (
     OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'dev')
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger IS 'Jobs ledger from Jobs page; HCP #, name, address, materials, team, revenue.';
-
 -- ============================================================================
 -- jobs_ledger_materials
 -- ============================================================================
@@ -100,11 +92,8 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger_materials (
   sequence_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_materials_job_id ON public.jobs_ledger_materials(job_id);
-
 ALTER TABLE public.jobs_ledger_materials ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR SELECT
@@ -123,7 +112,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR INSERT
@@ -139,7 +127,6 @@ WITH CHECK (
     AND j.master_user_id = auth.uid()
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can update jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR UPDATE
@@ -165,7 +152,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR DELETE
@@ -184,9 +170,7 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger_materials IS 'Materials line items per job; description and amount.';
-
 -- ============================================================================
 -- jobs_ledger_team_members
 -- ============================================================================
@@ -198,12 +182,9 @@ CREATE TABLE IF NOT EXISTS public.jobs_ledger_team_members (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(job_id, user_id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_team_members_job_id ON public.jobs_ledger_team_members(job_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_ledger_team_members_user_id ON public.jobs_ledger_team_members(user_id);
-
 ALTER TABLE public.jobs_ledger_team_members ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR SELECT
@@ -222,7 +203,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR INSERT
@@ -238,7 +218,6 @@ WITH CHECK (
     AND j.master_user_id = auth.uid()
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR DELETE
@@ -257,5 +236,4 @@ USING (
     )
   )
 );
-
 COMMENT ON TABLE public.jobs_ledger_team_members IS 'Team members (users) assigned to a job.';

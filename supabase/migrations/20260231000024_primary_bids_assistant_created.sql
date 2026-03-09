@@ -2,7 +2,6 @@
 -- Fix: Trace still saw "No bids yet" - most bids are created by assistants, not masters
 
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids" ON public.bids;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids"
 ON public.bids
 FOR SELECT
@@ -61,10 +60,8 @@ USING (
     )
   )
 );
-
 -- bids_submission_entries: add Path 4
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids submission entries" ON public.bids_submission_entries;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids submission entries"
 ON public.bids_submission_entries
 FOR SELECT

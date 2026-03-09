@@ -98,6 +98,5 @@ BEGIN
   RETURN jsonb_build_object('po_id', v_po_id);
 END;
 $$;
-
 COMMENT ON FUNCTION public.create_po_from_job_tally(uuid, jsonb) IS
   'Creates a Purchase Order from Job Tally entries. Called when user saves on Job Tally. PO name: Job Parts [HCP#] [date time]. SECURITY DEFINER so subs can trigger.';

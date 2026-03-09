@@ -14,5 +14,4 @@ AS $$
     AND role IN ('dev', 'master_technician', 'assistant', 'primary')
   );
 $$;
-
 COMMENT ON FUNCTION public.is_dev_or_master_or_assistant() IS 'Checks if current user can manage checklist items. Includes primary for sending/forwarding tasks.';

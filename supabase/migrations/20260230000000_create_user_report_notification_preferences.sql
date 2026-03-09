@@ -7,12 +7,9 @@ CREATE TABLE IF NOT EXISTS public.user_report_notification_preferences (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (user_id, template_id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_user_report_notification_preferences_user ON public.user_report_notification_preferences(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_report_notification_preferences_template ON public.user_report_notification_preferences(template_id);
-
 ALTER TABLE public.user_report_notification_preferences ENABLE ROW LEVEL SECURITY;
-
 -- Masters, Assistants, Devs: manage own preferences (SELECT, INSERT, DELETE)
 CREATE POLICY "Masters assistants devs can manage own report notification preferences"
 ON public.user_report_notification_preferences

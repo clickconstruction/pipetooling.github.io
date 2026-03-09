@@ -22,13 +22,11 @@ USING (
     AND ms.sharing_master_id = master_user_id
   )
 );
-
 -- ============================================================================
 -- people_labor_jobs: Update SELECT policy to include shared access
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read own people labor jobs" ON public.people_labor_jobs;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read people labor jobs"
 ON public.people_labor_jobs
 FOR SELECT
@@ -54,14 +52,12 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- people_labor_job_items: Update SELECT policy so items are visible when job
 -- is visible via shared access
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read people labor job items" ON public.people_labor_job_items;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read people labor job items"
 ON public.people_labor_job_items
 FOR SELECT

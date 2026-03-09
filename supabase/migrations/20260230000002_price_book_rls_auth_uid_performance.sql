@@ -11,7 +11,6 @@ ON public.price_book_versions FOR SELECT USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can insert price book versions" ON public.price_book_versions;
 CREATE POLICY "Devs, masters, assistants, and estimators can insert price book versions"
 ON public.price_book_versions FOR INSERT WITH CHECK (
@@ -21,7 +20,6 @@ ON public.price_book_versions FOR INSERT WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can update price book versions" ON public.price_book_versions;
 CREATE POLICY "Devs, masters, assistants, and estimators can update price book versions"
 ON public.price_book_versions FOR UPDATE USING (
@@ -37,7 +35,6 @@ ON public.price_book_versions FOR UPDATE USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can delete price book versions" ON public.price_book_versions;
 CREATE POLICY "Devs, masters, assistants, and estimators can delete price book versions"
 ON public.price_book_versions FOR DELETE USING (
@@ -47,7 +44,6 @@ ON public.price_book_versions FOR DELETE USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 -- price_book_entries (same pattern for consistency)
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read price book entries" ON public.price_book_entries;
 CREATE POLICY "Devs, masters, assistants, and estimators can read price book entries"
@@ -58,7 +54,6 @@ ON public.price_book_entries FOR SELECT USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can insert price book entries" ON public.price_book_entries;
 CREATE POLICY "Devs, masters, assistants, and estimators can insert price book entries"
 ON public.price_book_entries FOR INSERT WITH CHECK (
@@ -68,7 +63,6 @@ ON public.price_book_entries FOR INSERT WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can update price book entries" ON public.price_book_entries;
 CREATE POLICY "Devs, masters, assistants, and estimators can update price book entries"
 ON public.price_book_entries FOR UPDATE USING (
@@ -84,7 +78,6 @@ ON public.price_book_entries FOR UPDATE USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can delete price book entries" ON public.price_book_entries;
 CREATE POLICY "Devs, masters, assistants, and estimators can delete price book entries"
 ON public.price_book_entries FOR DELETE USING (

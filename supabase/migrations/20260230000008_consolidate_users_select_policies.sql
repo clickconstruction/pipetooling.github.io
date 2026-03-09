@@ -15,7 +15,6 @@ DROP POLICY IF EXISTS "Users can see masters who adopted them" ON public.users;
 DROP POLICY IF EXISTS "Users can see sharing masters who shared with them or their mas" ON public.users;
 DROP POLICY IF EXISTS "Users can select own row" ON public.users;
 DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
-
 -- Single consolidated policy: OR of all previous conditions
 CREATE POLICY "Users can select users"
 ON public.users

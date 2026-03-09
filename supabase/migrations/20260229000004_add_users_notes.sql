@@ -2,7 +2,6 @@
 -- Masters, Assistants, and Devs can edit these notes from the People > Users page
 
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS notes text;
-
 -- Allow Masters, Assistants, and Devs to update user notes
 DROP POLICY IF EXISTS "Masters assistants devs can update user notes" ON public.users;
 CREATE POLICY "Masters assistants devs can update user notes"

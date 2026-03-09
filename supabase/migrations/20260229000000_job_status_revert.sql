@@ -96,5 +96,4 @@ BEGIN
   RETURN jsonb_build_object('ok', true);
 END;
 $$;
-
 COMMENT ON FUNCTION public.update_job_status(UUID, TEXT) IS 'Updates job status. Forward: working->ready_to_bill (team/office), ready_to_bill->billed, billed->paid (office). Revert: ready_to_bill->working, billed->ready_to_bill (office only).';

@@ -3,7 +3,6 @@
 -- Add columns to prospects
 ALTER TABLE public.prospects ADD COLUMN IF NOT EXISTS warmth_count INTEGER DEFAULT 0;
 ALTER TABLE public.prospects ADD COLUMN IF NOT EXISTS last_contact TIMESTAMPTZ;
-
 -- prospect_comments: all interactions (answered, didnt_answer, no_longer_fit, user_comment)
 CREATE TABLE IF NOT EXISTS public.prospect_comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -13,12 +12,9 @@ CREATE TABLE IF NOT EXISTS public.prospect_comments (
   comment_text TEXT NOT NULL,
   interaction_type TEXT NOT NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_prospect_comments_prospect_id ON public.prospect_comments(prospect_id);
 CREATE INDEX IF NOT EXISTS idx_prospect_comments_created_at ON public.prospect_comments(created_at);
-
 ALTER TABLE public.prospect_comments ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can see prospect comments for prospects they can access"
 ON public.prospect_comments
 FOR SELECT
@@ -33,7 +29,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, and assistants can insert prospect comments"
 ON public.prospect_comments
 FOR INSERT
@@ -54,7 +49,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Users can delete prospect comments for prospects they can access"
 ON public.prospect_comments
 FOR DELETE
@@ -69,7 +63,6 @@ USING (
     )
   )
 );
-
 -- prospect_callbacks: calendar callbacks for prospects
 CREATE TABLE IF NOT EXISTS public.prospect_callbacks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,17 +72,13 @@ CREATE TABLE IF NOT EXISTS public.prospect_callbacks (
   title TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_prospect_callbacks_user_id ON public.prospect_callbacks(user_id);
 CREATE INDEX IF NOT EXISTS idx_prospect_callbacks_callback_date ON public.prospect_callbacks(callback_date);
-
 ALTER TABLE public.prospect_callbacks ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Users can see their own prospect callbacks"
 ON public.prospect_callbacks
 FOR SELECT
 USING (user_id = auth.uid());
-
 CREATE POLICY "Devs, masters, and assistants can insert prospect callbacks"
 ON public.prospect_callbacks
 FOR INSERT
@@ -110,7 +99,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Users can delete their own prospect callbacks"
 ON public.prospect_callbacks
 FOR DELETE

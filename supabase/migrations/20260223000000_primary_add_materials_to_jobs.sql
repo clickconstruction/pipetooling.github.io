@@ -6,7 +6,6 @@
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger" ON public.jobs_ledger;
-
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger"
 ON public.jobs_ledger
 FOR SELECT
@@ -33,13 +32,11 @@ USING (
     OR public.assistants_share_master(auth.uid(), master_user_id)
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_materials: add primary to SELECT, INSERT, UPDATE, DELETE
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR SELECT
@@ -70,9 +67,7 @@ USING (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants can insert jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR INSERT
@@ -97,9 +92,7 @@ WITH CHECK (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants can update jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR UPDATE
@@ -137,9 +130,7 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'primary')
   )
 );
-
 DROP POLICY IF EXISTS "Devs, masters, assistants can delete jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR DELETE
@@ -170,13 +161,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger: add primary to UPDATE (so they can save when adding materials)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can update jobs ledger" ON public.jobs_ledger;
-
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger"
 ON public.jobs_ledger
 FOR UPDATE

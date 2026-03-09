@@ -15,15 +15,11 @@ CREATE TABLE IF NOT EXISTS public.jobs_tally_parts (
   created_by_user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_tally_parts_job_id ON public.jobs_tally_parts(job_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_tally_parts_job_fixture ON public.jobs_tally_parts(job_id, fixture_name);
 CREATE INDEX IF NOT EXISTS idx_jobs_tally_parts_part_id ON public.jobs_tally_parts(part_id);
-
 ALTER TABLE public.jobs_tally_parts ENABLE ROW LEVEL SECURITY;
-
 COMMENT ON TABLE public.jobs_tally_parts IS 'Parts tally per job/fixture from subs; for review on Jobs Parts tab.';
-
 -- Devs, masters, assistants: full CRUD (same pattern as jobs_ledger_materials)
 CREATE POLICY "Devs masters assistants can read jobs tally parts"
 ON public.jobs_tally_parts FOR SELECT USING (
@@ -40,7 +36,6 @@ ON public.jobs_tally_parts FOR SELECT USING (
     )
   )
 );
-
 CREATE POLICY "Devs masters assistants can insert jobs tally parts"
 ON public.jobs_tally_parts FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -56,7 +51,6 @@ ON public.jobs_tally_parts FOR INSERT WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs masters assistants can update jobs tally parts"
 ON public.jobs_tally_parts FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -72,7 +66,6 @@ ON public.jobs_tally_parts FOR UPDATE USING (
     )
   )
 );
-
 CREATE POLICY "Devs masters assistants can delete jobs tally parts"
 ON public.jobs_tally_parts FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -88,7 +81,6 @@ ON public.jobs_tally_parts FOR DELETE USING (
     )
   )
 );
-
 -- Subcontractors: SELECT and INSERT only (for Job Tally flow)
 -- SELECT: jobs where they are team member
 -- INSERT: when created_by_user_id = auth.uid() and they are team member of job
@@ -100,7 +92,6 @@ ON public.jobs_tally_parts FOR SELECT USING (
     WHERE jtm.job_id = jobs_tally_parts.job_id AND jtm.user_id = auth.uid()
   )
 );
-
 CREATE POLICY "Subcontractors can insert jobs tally parts for their jobs"
 ON public.jobs_tally_parts FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role = 'subcontractor')
@@ -110,7 +101,6 @@ ON public.jobs_tally_parts FOR INSERT WITH CHECK (
     WHERE jtm.job_id = jobs_tally_parts.job_id AND jtm.user_id = auth.uid()
   )
 );
-
 -- ============================================================================
 -- RPC: list_jobs_for_tally
 -- Returns jobs_ledger rows where auth.uid() is in jobs_ledger_team_members

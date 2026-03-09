@@ -8,7 +8,6 @@
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger" ON public.jobs_ledger;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger"
 ON public.jobs_ledger
 FOR SELECT
@@ -45,13 +44,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_materials: same visibility as job
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger materials" ON public.jobs_ledger_materials;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger materials"
 ON public.jobs_ledger_materials
 FOR SELECT
@@ -89,13 +86,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_team_members: same visibility as job
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger team members" ON public.jobs_ledger_team_members;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger team members"
 ON public.jobs_ledger_team_members
 FOR SELECT
@@ -133,13 +128,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- jobs_ledger_fixtures: same visibility as job
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants can read jobs ledger fixtures" ON public.jobs_ledger_fixtures;
-
 CREATE POLICY "Devs, masters, assistants can read jobs ledger fixtures"
 ON public.jobs_ledger_fixtures
 FOR SELECT
@@ -177,5 +170,4 @@ USING (
     )
   )
 );
-
 COMMENT ON POLICY "Devs, masters, assistants can read jobs ledger" ON public.jobs_ledger IS 'Assistants see all jobs from their master and from other assistants adopted by the same master.';

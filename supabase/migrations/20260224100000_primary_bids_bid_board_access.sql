@@ -6,7 +6,6 @@
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids gc builders" ON public.bids_gc_builders;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids gc builders"
 ON public.bids_gc_builders
 FOR SELECT
@@ -25,13 +24,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- bids: add primary to SELECT
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids" ON public.bids;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids"
 ON public.bids
 FOR SELECT
@@ -50,13 +47,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- bids_submission_entries: add primary to SELECT (for Last Contact in Bid Board)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, and estimators can read bids submission entries" ON public.bids_submission_entries;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids submission entries"
 ON public.bids_submission_entries
 FOR SELECT
@@ -79,13 +74,11 @@ USING (
     )
   )
 );
-
 -- ============================================================================
 -- customers: add primary to SELECT (for GC/Builder display in Bid Board)
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can see their own customers or customers from masters who adopted them or shared with them" ON public.customers;
-
 CREATE POLICY "Users can see their own customers or customers from masters who adopted them or shared with them"
 ON public.customers
 FOR SELECT

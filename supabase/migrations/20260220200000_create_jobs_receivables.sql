@@ -11,11 +11,8 @@ CREATE TABLE IF NOT EXISTS public.jobs_receivables (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_jobs_receivables_master_user_id ON public.jobs_receivables(master_user_id);
-
 ALTER TABLE public.jobs_receivables ENABLE ROW LEVEL SECURITY;
-
 -- RLS: same visibility as jobs_ledger (dev, master, assistant; assistants_share_master)
 CREATE POLICY "Devs, masters, assistants can read jobs receivables"
 ON public.jobs_receivables
@@ -42,7 +39,6 @@ USING (
     OR public.assistants_share_master(auth.uid(), master_user_id)
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can insert jobs receivables"
 ON public.jobs_receivables
 FOR INSERT
@@ -62,7 +58,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can update jobs receivables"
 ON public.jobs_receivables
 FOR UPDATE
@@ -95,7 +90,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants can delete jobs receivables"
 ON public.jobs_receivables
 FOR DELETE
@@ -121,11 +115,9 @@ USING (
     OR public.assistants_share_master(auth.uid(), master_user_id)
   )
 );
-
 DROP TRIGGER IF EXISTS update_jobs_receivables_updated_at ON public.jobs_receivables;
 CREATE TRIGGER update_jobs_receivables_updated_at
   BEFORE UPDATE ON public.jobs_receivables
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
 COMMENT ON TABLE public.jobs_receivables IS 'Receivables from Jobs page; Payer, Point Of Contact, Account Rep, Amount to Collect.';

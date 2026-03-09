@@ -2,7 +2,6 @@
 -- Update create_po_from_job_tally to skip fixture-only entries (part_id null)
 
 DROP FUNCTION IF EXISTS public.list_tally_parts_with_po();
-
 CREATE FUNCTION public.list_tally_parts_with_po()
 RETURNS TABLE (
   id UUID,
@@ -76,7 +75,6 @@ AS $$
   )
   ORDER BY jtp.created_at DESC;
 $$;
-
 -- create_po_from_job_tally: skip entries where part_id is null (fixture-only)
 CREATE OR REPLACE FUNCTION public.create_po_from_job_tally(p_job_id uuid, p_entries jsonb)
 RETURNS jsonb

@@ -10,15 +10,11 @@ CREATE TABLE public.customer_contact_persons (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
-
 CREATE INDEX idx_customer_contact_persons_customer_id ON public.customer_contact_persons(customer_id);
-
 CREATE TRIGGER update_customer_contact_persons_updated_at
   BEFORE UPDATE ON public.customer_contact_persons
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 ALTER TABLE public.customer_contact_persons ENABLE ROW LEVEL SECURITY;
-
 -- RLS: Same pattern as customer_contacts - devs, masters, assistants, estimators can access
 -- rows for customers they can access (ownership, adoption, sharing)
 
@@ -59,7 +55,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert customer contact persons"
 ON public.customer_contact_persons
 FOR INSERT
@@ -97,7 +92,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update customer contact persons"
 ON public.customer_contact_persons
 FOR UPDATE
@@ -142,7 +136,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete customer contact persons"
 ON public.customer_contact_persons
 FOR DELETE

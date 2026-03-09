@@ -2,7 +2,6 @@
 -- Must DROP first because PostgreSQL does not allow changing return type with CREATE OR REPLACE
 
 DROP FUNCTION IF EXISTS public.list_assigned_jobs_for_dashboard();
-
 CREATE FUNCTION public.list_assigned_jobs_for_dashboard()
 RETURNS TABLE (
   id UUID,

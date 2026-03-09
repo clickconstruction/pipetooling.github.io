@@ -4,11 +4,8 @@
 -- Add purchase_order_id to jobs_tally_parts
 ALTER TABLE public.jobs_tally_parts
   ADD COLUMN IF NOT EXISTS purchase_order_id UUID REFERENCES public.purchase_orders(id) ON DELETE SET NULL;
-
 CREATE INDEX IF NOT EXISTS idx_jobs_tally_parts_purchase_order_id ON public.jobs_tally_parts(purchase_order_id);
-
 COMMENT ON COLUMN public.jobs_tally_parts.purchase_order_id IS 'PO created from this tally save; set by frontend after create_po_from_job_tally returns.';
-
 -- RPC: list_tally_parts_with_po
 -- Returns tally parts with price and purchase_order_id for Jobs Parts tab
 -- Uses same RLS as jobs_tally_parts (SECURITY DEFINER with search_path)
@@ -74,6 +71,5 @@ AS $$
   )
   ORDER BY jtp.created_at DESC;
 $$;
-
 COMMENT ON FUNCTION public.list_tally_parts_with_po() IS
   'Returns tally parts with price and PO link for Jobs Parts tab. Same visibility as jobs_tally_parts.';

@@ -1,7 +1,6 @@
 -- Add job_plans_link to list_assigned_jobs_for_dashboard RPC
 
 DROP FUNCTION IF EXISTS public.list_assigned_jobs_for_dashboard();
-
 CREATE FUNCTION public.list_assigned_jobs_for_dashboard()
 RETURNS TABLE (
   id UUID,

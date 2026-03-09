@@ -6,6 +6,5 @@ CREATE POLICY "Users can see all subcontractors"
 ON public.users
 FOR SELECT
 USING (role = 'subcontractor');
-
 COMMENT ON POLICY "Users can see all subcontractors" ON public.users IS
   'Allows all authenticated users to see subcontractor user records. Enables assistants and shared masters to see subcontractors in the People page.';

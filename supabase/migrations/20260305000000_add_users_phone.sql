@@ -2,7 +2,6 @@
 -- Users can update their own profile (name, email, phone) via "My Profile" in Settings
 
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
-
 CREATE POLICY "Users can update own profile"
 ON public.users
 FOR UPDATE

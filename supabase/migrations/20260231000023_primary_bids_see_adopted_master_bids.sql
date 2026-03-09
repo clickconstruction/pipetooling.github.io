@@ -3,7 +3,6 @@
 -- Adds paths: (1) bids created by adopting master, (2) bids with gc_builder from adopting master
 
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids" ON public.bids;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids"
 ON public.bids
 FOR SELECT
@@ -55,10 +54,8 @@ USING (
     )
   )
 );
-
 -- bids_submission_entries: align with bids policy (add paths 2 and 3)
 DROP POLICY IF EXISTS "Devs masters assistants estimators primaries can read bids submission entries" ON public.bids_submission_entries;
-
 CREATE POLICY "Devs masters assistants estimators primaries can read bids submission entries"
 ON public.bids_submission_entries
 FOR SELECT

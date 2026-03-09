@@ -7,11 +7,8 @@ CREATE TABLE IF NOT EXISTS public.people_pay_config (
   is_salary BOOLEAN NOT NULL DEFAULT false,
   show_in_hours BOOLEAN NOT NULL DEFAULT false
 );
-
 COMMENT ON TABLE public.people_pay_config IS 'Pay config per person: wage, salary flag, show in Hours tab. Global; dev and approved masters only.';
-
 ALTER TABLE public.people_pay_config ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs and approved masters can manage people pay config"
 ON public.people_pay_config
 FOR ALL

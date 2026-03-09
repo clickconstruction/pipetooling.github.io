@@ -7,16 +7,12 @@
 
 ALTER TABLE public.jobs_ledger
 ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'working';
-
 ALTER TABLE public.jobs_ledger
 DROP CONSTRAINT IF EXISTS jobs_ledger_status_check;
-
 ALTER TABLE public.jobs_ledger
 ADD CONSTRAINT jobs_ledger_status_check
 CHECK (status IN ('working', 'ready_to_bill', 'billed', 'paid'));
-
 COMMENT ON COLUMN public.jobs_ledger.status IS 'Job billing status: working, ready_to_bill, billed, paid';
-
 -- ============================================================================
 -- job_status_events: audit trail for status changes
 -- ============================================================================
@@ -29,12 +25,9 @@ CREATE TABLE IF NOT EXISTS public.job_status_events (
   changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   changed_by_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL
 );
-
 CREATE INDEX IF NOT EXISTS idx_job_status_events_job_id ON public.job_status_events(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_status_events_changed_at ON public.job_status_events(changed_at);
-
 ALTER TABLE public.job_status_events ENABLE ROW LEVEL SECURITY;
-
 -- Same visibility as jobs_ledger for dev/master/assistant; subs see only events for jobs they're assigned to
 CREATE POLICY "job_status_events_select"
 ON public.job_status_events
@@ -53,7 +46,6 @@ USING (
     )
   )
 );
-
 -- Insert: user must have permission to update the job (validated by update_job_status RPC)
 CREATE POLICY "job_status_events_insert"
 ON public.job_status_events
@@ -73,9 +65,7 @@ WITH CHECK (
     )
   )
 );
-
 COMMENT ON TABLE public.job_status_events IS 'Audit trail for job status changes (working, ready_to_bill, billed, paid)';
-
 -- ============================================================================
 -- RPC: list_assigned_jobs_for_dashboard
 -- Returns jobs where user is team member and status = 'working'
@@ -110,9 +100,7 @@ AS $$
   WHERE jl.status = 'working'
   ORDER BY jl.hcp_number DESC, jl.job_name;
 $$;
-
 COMMENT ON FUNCTION public.list_assigned_jobs_for_dashboard() IS 'Jobs assigned to current user with status working. For Dashboard Assigned Jobs.';
-
 -- ============================================================================
 -- RPC: update_job_status
 -- Validates transition, updates jobs_ledger, inserts job_status_events
@@ -195,5 +183,4 @@ BEGIN
   RETURN jsonb_build_object('ok', true);
 END;
 $$;
-
 COMMENT ON FUNCTION public.update_job_status(UUID, TEXT) IS 'Updates job status with validation and audit trail. working->ready_to_bill: team member or office; ready_to_bill->billed, billed->paid: office only.';

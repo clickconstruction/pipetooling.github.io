@@ -6,7 +6,6 @@
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Devs masters assistants can read jobs tally parts" ON public.jobs_tally_parts;
-
 CREATE POLICY "Devs masters assistants primary can read jobs tally parts"
 ON public.jobs_tally_parts FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -23,9 +22,7 @@ ON public.jobs_tally_parts FOR SELECT USING (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs masters assistants can insert jobs tally parts" ON public.jobs_tally_parts;
-
 CREATE POLICY "Devs masters assistants primary can insert jobs tally parts"
 ON public.jobs_tally_parts FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -42,9 +39,7 @@ ON public.jobs_tally_parts FOR INSERT WITH CHECK (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs masters assistants can update jobs tally parts" ON public.jobs_tally_parts;
-
 CREATE POLICY "Devs masters assistants primary can update jobs tally parts"
 ON public.jobs_tally_parts FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -61,9 +56,7 @@ ON public.jobs_tally_parts FOR UPDATE USING (
     )
   )
 );
-
 DROP POLICY IF EXISTS "Devs masters assistants can delete jobs tally parts" ON public.jobs_tally_parts;
-
 CREATE POLICY "Devs masters assistants primary can delete jobs tally parts"
 ON public.jobs_tally_parts FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))

@@ -8,19 +8,15 @@
 -- Add to material_parts
 ALTER TABLE public.material_parts
 ADD COLUMN IF NOT EXISTS service_type_id UUID REFERENCES public.service_types(id);
-
 -- Add to material_templates
 ALTER TABLE public.material_templates
 ADD COLUMN IF NOT EXISTS service_type_id UUID REFERENCES public.service_types(id);
-
 -- Add to purchase_orders
 ALTER TABLE public.purchase_orders
 ADD COLUMN IF NOT EXISTS service_type_id UUID REFERENCES public.service_types(id);
-
 -- Add to bids
 ALTER TABLE public.bids
 ADD COLUMN IF NOT EXISTS service_type_id UUID REFERENCES public.service_types(id);
-
 -- ============================================================================
 -- Backfill with Plumbing service type
 -- ============================================================================
@@ -52,7 +48,6 @@ BEGIN
   SET service_type_id = plumbing_id
   WHERE service_type_id IS NULL;
 END $$;
-
 -- ============================================================================
 -- Make columns NOT NULL and add indexes
 -- ============================================================================
@@ -60,29 +55,21 @@ END $$;
 -- Make columns NOT NULL
 ALTER TABLE public.material_parts
 ALTER COLUMN service_type_id SET NOT NULL;
-
 ALTER TABLE public.material_templates
 ALTER COLUMN service_type_id SET NOT NULL;
-
 ALTER TABLE public.purchase_orders
 ALTER COLUMN service_type_id SET NOT NULL;
-
 ALTER TABLE public.bids
 ALTER COLUMN service_type_id SET NOT NULL;
-
 -- Add indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_material_parts_service_type_id 
   ON public.material_parts(service_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_material_templates_service_type_id 
   ON public.material_templates(service_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_purchase_orders_service_type_id 
   ON public.purchase_orders(service_type_id);
-
 CREATE INDEX IF NOT EXISTS idx_bids_service_type_id 
   ON public.bids(service_type_id);
-
 -- Add comments
 COMMENT ON COLUMN public.material_parts.service_type_id IS 'Foreign key to service_types table';
 COMMENT ON COLUMN public.material_templates.service_type_id IS 'Foreign key to service_types table';

@@ -55,7 +55,6 @@ AS $$
   )
   ORDER BY r.created_at DESC;
 $$;
-
 -- reports table: Primary full CRUD (same as devs/masters/assistants)
 CREATE POLICY "Primary can do all on reports"
 ON public.reports

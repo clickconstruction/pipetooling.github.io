@@ -15,15 +15,12 @@ CREATE TABLE IF NOT EXISTS public.fixture_types (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(service_type_id, name)
 );
-
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_fixture_types_service_type_id ON public.fixture_types(service_type_id);
 CREATE INDEX IF NOT EXISTS idx_fixture_types_name ON public.fixture_types(name);
 CREATE INDEX IF NOT EXISTS idx_fixture_types_sequence_order ON public.fixture_types(sequence_order);
-
 -- Enable RLS
 ALTER TABLE public.fixture_types ENABLE ROW LEVEL SECURITY;
-
 -- Policy: All authenticated users can read fixture types
 CREATE POLICY "All authenticated users can read fixture types"
 ON public.fixture_types
@@ -31,7 +28,6 @@ FOR SELECT
 USING (
   auth.uid() IS NOT NULL
 );
-
 -- Policy: Devs, masters, assistants, and estimators can insert fixture types
 CREATE POLICY "Devs, masters, assistants, and estimators can insert fixture types"
 ON public.fixture_types
@@ -43,7 +39,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 -- Policy: Devs, masters, assistants, and estimators can update fixture types
 CREATE POLICY "Devs, masters, assistants, and estimators can update fixture types"
 ON public.fixture_types
@@ -62,7 +57,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 -- Policy: Devs, masters, assistants, and estimators can delete fixture types
 CREATE POLICY "Devs, masters, assistants, and estimators can delete fixture types"
 ON public.fixture_types
@@ -74,16 +68,13 @@ USING (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 -- Add updated_at trigger
 CREATE TRIGGER update_fixture_types_updated_at
   BEFORE UPDATE ON public.fixture_types
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
-
 -- Add comment
 COMMENT ON TABLE public.fixture_types IS 'Fixture types categorized by service type (Plumbing, Electrical, HVAC, etc.)';
-
 -- ============================================================================
 -- Seed Plumbing fixture types
 -- ============================================================================

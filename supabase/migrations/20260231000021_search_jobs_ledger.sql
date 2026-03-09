@@ -19,5 +19,4 @@ AS $$
   ORDER BY (CASE WHEN jl.hcp_number = '' OR jl.hcp_number IS NULL THEN 1 ELSE 0 END), jl.hcp_number DESC
   LIMIT 50;
 $$;
-
 COMMENT ON FUNCTION public.search_jobs_ledger(TEXT) IS 'Search jobs_ledger by HCP, job name, or address. Used by Team Costs Crew Jobs job picker.';

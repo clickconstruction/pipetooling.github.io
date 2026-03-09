@@ -13,10 +13,8 @@ CREATE TABLE IF NOT EXISTS public.counts_fixture_groups (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_counts_fixture_groups_service_type_id
   ON public.counts_fixture_groups(service_type_id);
-
 -- ============================================================================
 -- counts_fixture_group_items table
 -- ============================================================================
@@ -29,23 +27,18 @@ CREATE TABLE IF NOT EXISTS public.counts_fixture_group_items (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
 CREATE INDEX IF NOT EXISTS idx_counts_fixture_group_items_group_id
   ON public.counts_fixture_group_items(group_id);
-
 -- RLS
 ALTER TABLE public.counts_fixture_groups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.counts_fixture_group_items ENABLE ROW LEVEL SECURITY;
-
 -- All authenticated users can read
 CREATE POLICY "All authenticated users can read counts_fixture_groups"
 ON public.counts_fixture_groups FOR SELECT
 USING (auth.uid() IS NOT NULL);
-
 CREATE POLICY "All authenticated users can read counts_fixture_group_items"
 ON public.counts_fixture_group_items FOR SELECT
 USING (auth.uid() IS NOT NULL);
-
 -- Only devs can insert/update/delete
 CREATE POLICY "Devs can manage counts_fixture_groups"
 ON public.counts_fixture_groups FOR ALL
@@ -61,7 +54,6 @@ WITH CHECK (
     WHERE id = auth.uid() AND role = 'dev'
   )
 );
-
 CREATE POLICY "Devs can manage counts_fixture_group_items"
 ON public.counts_fixture_group_items FOR ALL
 USING (
@@ -76,19 +68,15 @@ WITH CHECK (
     WHERE id = auth.uid() AND role = 'dev'
   )
 );
-
 -- Updated_at triggers
 CREATE TRIGGER update_counts_fixture_groups_updated_at
   BEFORE UPDATE ON public.counts_fixture_groups
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 CREATE TRIGGER update_counts_fixture_group_items_updated_at
   BEFORE UPDATE ON public.counts_fixture_group_items
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 COMMENT ON TABLE public.counts_fixture_groups IS 'Quick-select groups for Counts (e.g. Bathrooms, Kitchen). One set per service type.';
 COMMENT ON TABLE public.counts_fixture_group_items IS 'Fixture names within a counts fixture group (e.g. Toilets, Bathroom sinks).';
-
 -- ============================================================================
 -- Seed Plumbing counts fixtures (from hardcoded Bids.tsx fixtureGroups)
 -- ============================================================================

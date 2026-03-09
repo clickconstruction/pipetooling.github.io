@@ -6,7 +6,6 @@ ON public.people
 FOR UPDATE
 USING (public.is_dev())
 WITH CHECK (public.is_dev());
-
 DROP POLICY IF EXISTS "Devs can delete any people" ON public.people;
 CREATE POLICY "Devs can delete any people"
 ON public.people

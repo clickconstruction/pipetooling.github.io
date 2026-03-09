@@ -12,5 +12,4 @@ USING (
     AND role IN ('dev', 'master_technician')
   )
 );
-
 COMMENT ON POLICY "Masters and devs can see other masters" ON public.users IS 'Allows masters and devs to view all master_technician users. Required for master sharing feature.';

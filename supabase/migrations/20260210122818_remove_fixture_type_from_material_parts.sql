@@ -8,7 +8,6 @@
 
 -- Drop index first
 DROP INDEX IF EXISTS public.idx_material_parts_fixture_type_id;
-
 -- Drop column
 ALTER TABLE public.material_parts
 DROP COLUMN IF EXISTS fixture_type_id;

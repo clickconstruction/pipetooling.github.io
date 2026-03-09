@@ -13,21 +13,16 @@ CREATE TABLE IF NOT EXISTS public.bids_takeoff_template_mappings (
   -- Ensure one mapping per count_row + template + stage combination
   UNIQUE(count_row_id, template_id, stage)
 );
-
 -- Index for fast lookups by bid
 CREATE INDEX idx_bids_takeoff_template_mappings_bid_id 
   ON public.bids_takeoff_template_mappings(bid_id);
-
 -- Index for fast lookups by count row
 CREATE INDEX idx_bids_takeoff_template_mappings_count_row_id 
   ON public.bids_takeoff_template_mappings(count_row_id);
-
 COMMENT ON TABLE public.bids_takeoff_template_mappings IS 
   'Persisted template assignments for bid takeoff count rows. Syncs with count rows automatically via CASCADE.';
-
 -- RLS Policies (same access pattern as bids_count_rows)
 ALTER TABLE public.bids_takeoff_template_mappings ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "Devs, masters, assistants, and estimators can read mappings"
 ON public.bids_takeoff_template_mappings
 FOR SELECT
@@ -50,7 +45,6 @@ USING (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can insert mappings"
 ON public.bids_takeoff_template_mappings
 FOR INSERT
@@ -73,7 +67,6 @@ WITH CHECK (
     )
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can update mappings"
 ON public.bids_takeoff_template_mappings
 FOR UPDATE
@@ -103,7 +96,6 @@ WITH CHECK (
     AND role IN ('dev', 'master_technician', 'assistant', 'estimator')
   )
 );
-
 CREATE POLICY "Devs, masters, assistants, and estimators can delete mappings"
 ON public.bids_takeoff_template_mappings
 FOR DELETE
