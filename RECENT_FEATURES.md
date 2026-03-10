@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-10
+last_updated: 2026-04-10
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,7 +15,13 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.90)"
+  - name: "Latest Version (v2.93)"
+    line: ~312
+    description: "Primaries full Bids access (all tabs, create/edit/delete)"
+  - name: "v2.92"
+    line: ~325
+    description: "Bids Counts Group/Tag column"
+  - name: "v2.90"
     line: ~310
     description: "Jobs New Job Labor: labor rate per row, field layout, Add Subcontractor placement, default $20 rate"
   - name: "v2.89"
@@ -166,7 +172,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
+1. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
+2. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
 2. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
 3. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
 2. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
@@ -306,6 +313,28 @@ when_to_read:
 ### People – Review Tab
 
 - **Last Month = last 30 days**: "Last Month" period now uses a rolling 30-day window (today minus 30 days through today) instead of the previous calendar month.
+
+---
+
+## Latest Updates (v2.93)
+
+**Date**: 2026-04-10
+
+### Bids – Primaries Full Access
+
+- **Primaries unrestricted on Bids**: Primaries now have the same access as estimators on the Bids system. They can see all bids, create/edit/delete bids, and access all tabs: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release.
+- **Migration**: `20260410130000_primaries_full_bids_access.sql` updates RLS policies on bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, bids_takeoff_template_mappings, bid_pricing_assignments, bid_count_row_custom_prices, customers; adds primary to all bid-related policies; updates `can_access_bid_for_pricing` helper; primaries see all customers (for New Bid GC picker).
+- **UI**: Removed primary tab redirect, tab button restrictions, and Edit column hiding. Primaries now see Checklist, New Bid, and Edit on Bid Board; Builder Review data loads for primaries.
+
+---
+
+## Latest Updates (v2.92)
+
+**Date**: 2026-04-10
+
+### Bids – Counts Tab
+
+- **Group/Tag column**: New column between Fixture or Tie-in and Plan Page. User can enter optional group or tag (e.g., area label) per count row. Migration `20260410120000_add_group_tag_to_bids_count_rows.sql` adds `group_tag` to `bids_count_rows`. Import supports 4-column format: Fixture, Count, Group/Tag, Plan Page (3-column format remains backward compatible).
 
 ---
 

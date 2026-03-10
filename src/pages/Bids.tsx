@@ -1556,8 +1556,8 @@ export default function Bids() {
     setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
   }
 
-  function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; page: string | null }>; skippedCount: number } {
-    const rows: Array<{ fixture: string; count: number; page: string | null }> = []
+  function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>; skippedCount: number } {
+    const rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }> = []
     let skippedCount = 0
     const lines = text.split(/\r?\n/)
     for (const line of lines) {
@@ -1567,7 +1567,8 @@ export default function Bids() {
       const cells = trimmed.split(delimiter).map((c) => c.trim())
       const fixture = cells[0] ?? ''
       const countStr = cells[1] ?? ''
-      const page = (cells[2] ?? '').trim() || null
+      const groupTag = cells.length >= 4 ? ((cells[2] ?? '').trim() || null) : null
+      const page = (cells.length >= 4 ? (cells[3] ?? '') : (cells[2] ?? '')).trim() || null
       if (!fixture || !countStr) {
         skippedCount++
         continue
@@ -1577,7 +1578,7 @@ export default function Bids() {
         skippedCount++
         continue
       }
-      rows.push({ fixture, count, page })
+      rows.push({ fixture, count, group_tag: groupTag, page })
     }
     return { rows, skippedCount }
   }
@@ -1607,6 +1608,7 @@ export default function Bids() {
         bid_id: bidId,
         fixture: row.fixture,
         count: row.count,
+        group_tag: row.group_tag,
         page: row.page,
         sequence_order: maxSeq + 1 + i,
       })
@@ -1650,6 +1652,7 @@ export default function Bids() {
           bid_id: bidId,
           fixture: row.fixture,
           count: row.count,
+          group_tag: row.group_tag,
           page: row.page,
           sequence_order: maxSeq + 1 + i,
         })
@@ -5669,16 +5672,6 @@ export default function Bids() {
     }
     const bidId = params.get('bidId')
     const tab = params.get('tab')
-    const primaryAllowedTabs = ['bid-board', 'rfi', 'change-order', 'lien-release']
-    if (myRole === 'primary' && tab && !primaryAllowedTabs.includes(tab)) {
-      setActiveTab('bid-board')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      return
-    }
     if (tab === 'builder-review') {
       setActiveTab('builder-review')
       return
@@ -5763,7 +5756,7 @@ export default function Bids() {
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
-    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator')) {
+    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
       const loadForBuilderReview = async () => {
         await Promise.all([
           loadCustomers(),
@@ -7043,8 +7036,6 @@ export default function Bids() {
         >
           Bid Board
         </button>
-        {myRole !== 'primary' && (
-          <>
         <button
           type="button"
           onClick={() => {
@@ -7144,8 +7135,6 @@ export default function Bids() {
         >
           Submission & Followup
         </button>
-          </>
-        )}
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -7202,7 +7191,6 @@ export default function Bids() {
               onChange={(e) => setBidBoardSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            {myRole !== 'primary' && (
             <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
               <button
                 type="button"
@@ -7219,7 +7207,6 @@ export default function Bids() {
                 New Bid
               </button>
             </div>
-            )}
           </div>
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1200 }}>
@@ -7236,13 +7223,13 @@ export default function Bids() {
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last<br />Contact</th>
-                  {myRole !== 'primary' && <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />}
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
                 </tr>
               </thead>
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={myRole === 'primary' ? 11 : 12} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={12} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
@@ -7366,7 +7353,6 @@ export default function Bids() {
                           })() : '+'}
                         </button>
                       </td>
-                      {myRole !== 'primary' && (
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
                         <button
                           type="button"
@@ -7379,7 +7365,6 @@ export default function Bids() {
                           </svg>
                         </button>
                       </td>
-                      )}
                     </tr>
                   ))
                 )}
@@ -7855,6 +7840,7 @@ export default function Bids() {
                     <tr>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count*</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in*</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Group/Tag</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
                     </tr>
@@ -7916,7 +7902,7 @@ export default function Bids() {
                 <textarea
                   value={countsImportText}
                   onChange={(e) => { setCountsImportText(e.target.value); setCountsImportError(null) }}
-                  placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3'}
+                  placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3\n4 columns: Fixture\tCount\tGroup/Tag\tPlan Page'}
                   rows={8}
                   style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', fontFamily: 'monospace', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }}
                 />
@@ -14364,6 +14350,7 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
 }) {
   const [fixture, setFixture] = useState(row.fixture ?? '')
   const [count, setCount] = useState(String(row.count))
+  const [groupTag, setGroupTag] = useState(row.group_tag ?? '')
   const [page, setPage] = useState(row.page ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -14372,7 +14359,7 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
     setSaving(true)
     const num = parseFloat(count)
     if (isNaN(num)) { setSaving(false); return }
-    const { error } = await supabase.from('bids_count_rows').update({ fixture: fixture.trim(), count: num, page: page.trim() || null }).eq('id', row.id)
+    const { error } = await supabase.from('bids_count_rows').update({ fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null }).eq('id', row.id)
     if (error) { setSaving(false); return }
     setEditing(false)
     onUpdate()
@@ -14396,6 +14383,9 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
           <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
+          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        </td>
+        <td style={{ padding: '0.75rem' }}>
           <input type="text" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem' }}>
@@ -14409,6 +14399,7 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
     <tr style={rowStyle}>
       <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
       <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
+      <td style={{ padding: '0.75rem' }}>{row.group_tag ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
         <span style={{ display: 'inline-flex', flexDirection: 'row', gap: 0, marginRight: '0.5rem' }}>
@@ -14433,6 +14424,7 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
 function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void }) {
   const [fixture, setFixture] = useState('')
   const [count, setCount] = useState('')
+  const [groupTag, setGroupTag] = useState('')
   const [page, setPage] = useState('')
   const [saving, setSaving] = useState(false)
   const [countsFixtureGroups, setCountsFixtureGroups] = useState<Array<{ label: string; fixtures: string[] }>>([])
@@ -14479,7 +14471,7 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null, sequence_order: maxSeq + 1 })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
     if (error) { setSaving(false); return }
     onSaved()
   }
@@ -14490,10 +14482,11 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null, sequence_order: maxSeq + 1 })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
     if (error) { setSaving(false); return }
     setFixture('')
     setCount('')
+    setGroupTag('')
     setPage('')
     setSaving(false)
     onSavedAndAddAnother?.()
@@ -14521,6 +14514,9 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
           <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} placeholder="Group/Tag" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        </td>
+        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
           <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
@@ -14535,7 +14531,7 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
       </tr>
       {hasFixtureGroups && (
         <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-          <td colSpan={2} style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+          <td colSpan={3} style={{ padding: '0.75rem', verticalAlign: 'top' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               {countsFixtureGroups.map((group) => (
                 <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>

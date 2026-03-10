@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-09
+last_updated: 2026-04-10
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -90,6 +90,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### April 2026
+
+#### April 10, 2026
+
+**`20260410130000_primaries_full_bids_access.sql`**
+- **Purpose**: Give primaries full, unrestricted access to bids (same as estimators)
+- **Changes**: Update RLS policies on bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, bids_takeoff_template_mappings, bid_pricing_assignments, bid_count_row_custom_prices, customers; add primary to all bid-related policies; update can_access_bid_for_pricing helper; primaries see all customers (for New Bid GC picker)
+- **Impact**: Primaries can see all bids, full CRUD, all Bids tabs (Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
+
 ### March 2025
 
 #### March 10, 2025
@@ -107,6 +116,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Bids / RLS
 
 ### April 2026
+
+#### April 10, 2026
+
+**`20260410120000_add_group_tag_to_bids_count_rows.sql`**
+- **Purpose**: Add optional Group/Tag column to Bids Counts
+- **Changes**: Add `group_tag TEXT` to `bids_count_rows`
+- **Impact**: Counts tab shows Group/Tag column between Fixture and Plan Page; user can enter optional group or tag per row; Import supports 4-column format (Fixture, Count, Group/Tag, Plan Page)
+- **Category**: Bids / Counts
 
 #### April 9, 2026
 

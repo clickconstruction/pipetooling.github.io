@@ -344,6 +344,7 @@ export type Database = {
           count: number
           created_at: string | null
           fixture: string
+          group_tag: string | null
           id: string
           page: string | null
           sequence_order: number
@@ -353,6 +354,7 @@ export type Database = {
           count?: number
           created_at?: string | null
           fixture: string
+          group_tag?: string | null
           id?: string
           page?: string | null
           sequence_order?: number
@@ -362,6 +364,7 @@ export type Database = {
           count?: number
           created_at?: string | null
           fixture?: string
+          group_tag?: string | null
           id?: string
           page?: string | null
           sequence_order?: number

@@ -232,7 +232,7 @@ Enter fixture and tie-in counts for each bid. Counts form the foundation for mat
 **Selected Bid Panel** (at top):
 - Shows currently selected bid details
 - **Edit Bid button** in header (next to Close) opens Edit Bid modal
-- **Import from /Tooling button**: Reads clipboard and imports tab-delimited rows (Fixture, Count, Plan Page). Use with /Tooling app "Copy to /Tooling" export. Format: `WC\t4\t1`, `ft of 4in PVC\t28.29\t1`, etc. One line per count row.
+- **Import from /Tooling button**: Reads clipboard and imports tab-delimited rows (Fixture, Count, Plan Page). Use with /Tooling app "Copy to /Tooling" export. Format: `WC\t4\t1`, `ft of 4in PVC\t28.29\t1`, etc. One line per count row. Supports 4 columns: Fixture, Count, Group/Tag, Plan Page.
 
 **Search Box**:
 - Positioned **below** selected-bid panel, **above** bids list table
@@ -248,6 +248,7 @@ Enter fixture and tie-in counts for each bid. Counts form the foundation for mat
 #### Table Headers
 - **Fixture*** - Fixture or tie-in name (required)
 - **Count*** - Quantity (required)
+- **Group/Tag** - Optional group or tag (e.g., area label)
 - **Plan Page** - Optional reference to plan sheet
 - **Actions** - Edit/Delete buttons
 
@@ -322,9 +323,10 @@ Both Fixture and Count show:
 - **Format**: One line per count row. Columns separated by **tab** or **comma**:
   - Fixture or Tie-in (required)
   - Count (required)
-  - Plan Page (optional)
+  - Plan Page (optional) — or use 4 columns: Fixture, Count, Group/Tag, Plan Page
 - **Examples**:
-  - Tab: `Toilet	5	A-101`
+  - Tab (3 columns): `Toilet	5	A-101`
+  - Tab (4 columns): `Toilet	5	Bathroom	A-101`
   - Comma: `Lavatory Sink,3,` or `Water Heater,1,M-1`
 - **Multiple plan pages**: Use tab delimiter and put the full plan page string in the third column: `Toilet	5	4, 6, 7`
 - **Paste from Excel**: Supports both tab and comma delimiters. Invalid lines are skipped and reported.
