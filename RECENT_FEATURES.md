@@ -313,6 +313,10 @@ when_to_read:
 
 **Date**: 2026-03-10
 
+### Bids – Counts Tab
+
+- **Count row move**: ▲▼ swap the clicked row with its neighbor (above/below). Migration `20250310120000_normalize_bids_count_rows_sequence_order.sql` normalizes `sequence_order`; index-based move with functional state updater; buttons disabled during persist; skip count refetch to avoid overwrite. Tooltips: "Swap with row above/below".
+
 ### Crew Jobs Shared Component
 
 - **CrewJobsBlock**: Extracted Crew Jobs (editing table + Team Job Labor display) into a shared `CrewJobsBlock` component. Used in Quickfill and Jobs (Team Labor tab).

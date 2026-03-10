@@ -193,9 +193,9 @@ const tabStyle = (active: boolean) => ({
 const HIGHLIGHTED_TABS = ['counts', 'pricing', 'cover-letter'] as const
 const SAFETY_ORANGE = '#FF6600' // ANSI/OSHA safety orange
 
-function bidsTabStyle(active: boolean, tabId: string, isOnBidBoard: boolean) {
+function bidsTabStyle(active: boolean, tabId: string) {
   const base = tabStyle(active)
-  if (isOnBidBoard && HIGHLIGHTED_TABS.includes(tabId as (typeof HIGHLIGHTED_TABS)[number])) {
+  if (HIGHLIGHTED_TABS.includes(tabId as (typeof HIGHLIGHTED_TABS)[number])) {
     return { ...base, fontWeight: 600, color: SAFETY_ORANGE, borderBottom: active ? '2px solid #FF6600' : '2px solid transparent' }
   }
   return base
@@ -994,6 +994,8 @@ export default function Bids() {
   const [countsSearchQuery, setCountsSearchQuery] = useState('')
   const [selectedBidForCounts, setSelectedBidForCounts] = useState<BidWithBuilder | null>(null)
   const [countRows, setCountRows] = useState<BidCountRow[]>([])
+  const [movingCountRow, setMovingCountRow] = useState(false)
+  const [lastMovedId, setLastMovedId] = useState<string | null>(null)
   const [addingCountRow, setAddingCountRow] = useState(false)
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
@@ -1027,6 +1029,7 @@ export default function Bids() {
 
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const contactTableRef = useRef<HTMLDivElement | null>(null)
+  const skipNextLoadCountRowsRef = useRef(false)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
   const [submissionEntries, setSubmissionEntries] = useState<BidSubmissionEntry[]>([])
   const [addingSubmissionEntry, setAddingSubmissionEntry] = useState(false)
@@ -1466,24 +1469,91 @@ export default function Bids() {
   }
 
   async function loadCountRows(bidId: string) {
+    // #region agent log
+    console.log('[CountMove] loadCountRows called', { bidId, skip: skipNextLoadCountRowsRef.current })
+    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:loadCountRows',message:'loadCountRows called',data:{bidId},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
     const { data, error } = await supabase
       .from('bids_count_rows')
       .select('*')
       .eq('bid_id', bidId)
       .order('sequence_order', { ascending: true })
+      .order('id', { ascending: true })
     if (error) {
       setError(`Failed to load count rows: ${error.message}`)
       return
     }
-    setCountRows((data as BidCountRow[]) ?? [])
+    if (skipNextLoadCountRowsRef.current) {
+      console.log('[CountMove] loadCountRows SKIPPED (move in progress)')
+      return
+    }
+    const loaded = (data as BidCountRow[]) ?? []
+    console.log('[CountMove] loadCountRows APPLIED', { len: loaded.length, fixtures: loaded.map((r) => r?.fixture?.slice(0, 12)) })
+    setCountRows(loaded)
   }
 
-  function refreshAfterCountsChange() {
+  function refreshAfterCountsChange(opts?: { skipCountRows?: boolean }) {
     const bidId = selectedBidForCounts?.id
     if (!bidId) return
-    loadCountRows(bidId)
+    // #region agent log
+    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:refreshAfterCountsChange',message:'refresh called',data:{skipCountRows:!!opts?.skipCountRows,willLoadCounts:!opts?.skipCountRows},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    if (!opts?.skipCountRows) loadCountRows(bidId)
     if (selectedBidForTakeoff?.id === bidId) loadTakeoffCountRows(bidId)
     if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
+  }
+
+  async function moveCountRowById(rowId: string, direction: 'up' | 'down') {
+    const bidId = selectedBidForCounts?.id
+    if (!bidId || movingCountRow) return
+    skipNextLoadCountRowsRef.current = true
+
+    const idx = countRows.findIndex((r) => r.id === rowId)
+    if (idx === -1) return
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= countRows.length) return
+    const row = countRows[idx]
+    if (!row) return
+
+    // #region agent log
+    const _log = { rowId, idx, direction, targetIdx, rowFixture: row.fixture?.slice(0, 25), total: countRows.length, orderBefore: countRows.map((r) => ({ id: r.id?.slice(0, 8), f: r.fixture?.slice(0, 12) })) }
+    console.log('[CountMove] entry', _log)
+    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'move entry',data:_log,timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    // #endregion
+
+    const newOrder = [...countRows]
+    const [removed] = newOrder.splice(idx, 1)
+    if (removed) newOrder.splice(targetIdx, 0, removed)
+    // #region agent log
+    const _logAfter = { orderAfter: newOrder.map((r) => ({ id: r?.id?.slice(0, 8), f: r?.fixture?.slice(0, 12) })) }
+    console.log('[CountMove] after insert', _logAfter)
+    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'after insert newOrder',data:_logAfter,timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+    // #endregion
+    setLastMovedId(row.id)
+    setTimeout(() => setLastMovedId(null), 800)
+    setMovingCountRow(true)
+    setCountRows(newOrder)
+    for (let seq = 0; seq < newOrder.length; seq++) {
+      const r = newOrder[seq]
+      if (!r) continue
+      const { error } = await supabase.from('bids_count_rows').update({ sequence_order: seq }).eq('id', r.id)
+      if (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'persist failed',data:{seq,rId:r?.id,error:error.message},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        // #endregion
+        setCountRows([...countRows])
+        showToast('Failed to save row order', 'error')
+        setMovingCountRow(false)
+        skipNextLoadCountRowsRef.current = false
+        return
+      }
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'persist ok, calling refresh skipCountRows',data:{},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
+    refreshAfterCountsChange({ skipCountRows: true })
+    setMovingCountRow(false)
+    setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
   }
 
   function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; page: string | null }>; skippedCount: number } {
@@ -7000,7 +7070,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={bidsTabStyle(activeTab === 'counts', 'counts', activeTab === 'bid-board')}
+          style={bidsTabStyle(activeTab === 'counts', 'counts')}
         >
           Counts
         </button>
@@ -7042,7 +7112,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={bidsTabStyle(activeTab === 'pricing', 'pricing', activeTab === 'bid-board')}
+          style={bidsTabStyle(activeTab === 'pricing', 'pricing')}
         >
           Pricing
         </button>
@@ -7056,7 +7126,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={bidsTabStyle(activeTab === 'cover-letter', 'cover-letter', activeTab === 'bid-board')}
+          style={bidsTabStyle(activeTab === 'cover-letter', 'cover-letter')}
         >
           Cover Letter
         </button>
@@ -7790,8 +7860,19 @@ export default function Bids() {
                     </tr>
                   </thead>
                   <tbody>
-                    {countRows.map((row) => (
-                      <CountRow key={row.id} row={row} onUpdate={refreshAfterCountsChange} onDelete={refreshAfterCountsChange} />
+                    {countRows.map((row, index) => (
+                      <CountRow
+                        key={row.id}
+                        row={row}
+                        index={index}
+                        totalCount={countRows.length}
+                        moveDisabled={movingCountRow}
+                        highlight={lastMovedId === row.id}
+                        onUpdate={refreshAfterCountsChange}
+                        onDelete={refreshAfterCountsChange}
+                        onMoveUp={() => moveCountRowById(row.id, 'up')}
+                        onMoveDown={() => moveCountRowById(row.id, 'down')}
+                      />
                     ))}
                     {addingCountRow && (
                       <NewCountRow
@@ -10048,6 +10129,7 @@ export default function Bids() {
                 })
                 return (
                   <>
+                  {pricingViewModel === 'cost' && (
                   <div style={{ marginBottom: '1rem', marginLeft: 'auto', padding: '0.75rem 1rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a', width: 'fit-content' }}>
                     <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Our cost breakdown</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem' }}>
@@ -10062,6 +10144,7 @@ export default function Bids() {
                       <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
                     </div>
                   </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', gap: '0.25rem' }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
                     <button
@@ -10401,7 +10484,7 @@ export default function Bids() {
                           <td style={{ padding: '0.75rem' }}>Total</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                           <td style={{ padding: '0.75rem' }} />
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalCost)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : '—'}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {pricingViewModel === 'cost'
@@ -14268,7 +14351,17 @@ We saw some structural issues with your plans and I wanted to get clarity...
   )
 }
 
-function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () => void; onDelete: () => void }) {
+function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown }: {
+  row: BidCountRow
+  index: number
+  totalCount: number
+  moveDisabled?: boolean
+  highlight?: boolean
+  onUpdate: () => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}) {
   const [fixture, setFixture] = useState(row.fixture ?? '')
   const [count, setCount] = useState(String(row.count))
   const [page, setPage] = useState(row.page ?? '')
@@ -14292,9 +14385,10 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
     onDelete()
   }
 
+  const rowStyle = highlight ? { borderBottom: '1px solid #e5e7eb', background: '#dcfce7' } : { borderBottom: '1px solid #e5e7eb' }
   if (editing) {
     return (
-      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+      <tr style={rowStyle}>
         <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
           <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }} />
         </td>
@@ -14312,13 +14406,25 @@ function CountRow({ row, onUpdate, onDelete }: { row: BidCountRow; onUpdate: () 
     )
   }
   return (
-    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+    <tr style={rowStyle}>
       <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
       <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
-        <button type="button" onClick={() => setEditing(true)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
-        <button type="button" onClick={remove} style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
+        <span style={{ display: 'inline-flex', flexDirection: 'row', gap: 0, marginRight: '0.5rem' }}>
+          <button type="button" onClick={onMoveUp} disabled={index === 0 || moveDisabled} title="Move row up one position" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: index === 0 || moveDisabled ? 'not-allowed' : 'pointer', color: index === 0 || moveDisabled ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
+          <button type="button" onClick={onMoveDown} disabled={index === totalCount - 1 || moveDisabled} title="Move row down one position" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: index === totalCount - 1 || moveDisabled ? 'not-allowed' : 'pointer', color: index === totalCount - 1 || moveDisabled ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
+        </span>
+        <button type="button" onClick={() => setEditing(true)} title="Edit" aria-label="Edit" style={{ marginRight: '0.25rem', padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
+            <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
+          </svg>
+        </button>
+        <button type="button" onClick={remove} title="Delete" aria-label="Delete" style={{ padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#991b1b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
+            <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+          </svg>
+        </button>
       </td>
     </tr>
   )
@@ -14371,7 +14477,9 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     const num = parseFloat(count)
     if (isNaN(num) || !fixture.trim()) return
     setSaving(true)
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null })
+    const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
+    const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null, sequence_order: maxSeq + 1 })
     if (error) { setSaving(false); return }
     onSaved()
   }
@@ -14380,7 +14488,9 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     const num = parseFloat(count)
     if (isNaN(num) || !fixture.trim()) return
     setSaving(true)
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null })
+    const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
+    const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, page: page.trim() || null, sequence_order: maxSeq + 1 })
     if (error) { setSaving(false); return }
     setFixture('')
     setCount('')

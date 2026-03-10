@@ -94,6 +94,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 10, 2025
 
+**`20250310120000_normalize_bids_count_rows_sequence_order.sql`**
+- **Purpose**: Fix non-deterministic ordering when duplicate sequence_order exists; enables correct Count row move up/down
+- **Changes**: Data migration; assign unique sequence_order (0,1,2,...) per bid to all bids_count_rows
+- **Impact**: Counts tab move ▲▼ buttons now swap only the clicked row with its neighbor; refetch returns deterministic order
+- **Category**: Bids / Counts
+
 **`20250310120000_optimize_bid_pricing_rls.sql`**
 - **Purpose**: Mitigate statement timeout (57014) on Pricing tab when loading bid_pricing_assignments and bid_count_row_custom_prices
 - **Changes**: Create `can_access_bid_for_pricing(bid_id UUID)` SECURITY DEFINER helper; recreate RLS policies on both tables to use the helper instead of per-row correlated EXISTS subqueries
