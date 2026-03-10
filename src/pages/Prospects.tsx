@@ -343,16 +343,17 @@ export default function Prospects() {
   const [emailSentTemplateKeys, setEmailSentTemplateKeys] = useState<Set<string>>(new Set())
   const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-  // Team tab state (dev-only) - last 30 days
+  // Team tab state (dev and assistant) - last 30 days
   type TeamRow = { user_id: string; name: string; email: string | null; cards_marked: number; cards_updated: number }
   const [teamDataByDate, setTeamDataByDate] = useState<Record<string, TeamRow[]>>({})
   const [teamLoading, setTeamLoading] = useState(false)
+  const canAccessTeamTab = authRole === 'dev' || authRole === 'assistant'
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
     if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      if (tab === 'team' && authRole !== 'dev') {
+      if (tab === 'team' && !canAccessTeamTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
@@ -369,7 +370,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authRole])
+  }, [location.search, setSearchParams, authRole, canAccessTeamTab])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -934,7 +935,7 @@ export default function Prospects() {
   }, [activeTab, authUser?.id])
 
   const loadTeamActivity = useCallback(async () => {
-    if (authRole !== 'dev') return
+    if (!canAccessTeamTab) return
     setTeamLoading(true)
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -1007,13 +1008,13 @@ export default function Prospects() {
     } finally {
       setTeamLoading(false)
     }
-  }, [authRole])
+  }, [canAccessTeamTab])
 
   useEffect(() => {
-    if (activeTab === 'team' && authRole === 'dev') {
+    if (activeTab === 'team' && canAccessTeamTab) {
       loadTeamActivity()
     }
-  }, [activeTab, authRole, loadTeamActivity])
+  }, [activeTab, canAccessTeamTab, loadTeamActivity])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -1625,7 +1626,7 @@ export default function Prospects() {
         >
           Convert
         </button>
-        {authRole === 'dev' && (
+        {canAccessTeamTab && (
           <>
             <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
             <button
@@ -2671,7 +2672,7 @@ export default function Prospects() {
         </div>
       )}
 
-      {activeTab === 'team' && authRole === 'dev' && (
+      {activeTab === 'team' && canAccessTeamTab && (
         <div style={{ padding: '1rem 0' }}>
           {teamLoading ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
