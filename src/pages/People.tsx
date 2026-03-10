@@ -2318,11 +2318,9 @@ export default function People() {
       return [lastWeekSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
     }
     if (reviewPeriod === 'last_month') {
-      const firstOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-      const lastOfLastMonth = new Date(firstOfThisMonth)
-      lastOfLastMonth.setDate(0)
-      const firstOfLastMonth = new Date(lastOfLastMonth.getFullYear(), lastOfLastMonth.getMonth(), 1)
-      return [firstOfLastMonth.toLocaleDateString('en-CA'), lastOfLastMonth.toLocaleDateString('en-CA')]
+      const start = new Date(today)
+      start.setDate(today.getDate() - 30)
+      return [start.toLocaleDateString('en-CA'), todayStr]
     }
     // last_two_weeks
     const twoWeeksAgoSunday = new Date(thisWeekSunday)
@@ -2557,6 +2555,7 @@ export default function People() {
     }
 
     const personLaborCostByJobId = new Map<string, number>()
+    const personCrewLaborByJobId = new Map<string, number>()
     for (const r of personLaborRowsAllTime) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
@@ -2584,6 +2583,7 @@ export default function People() {
         const pctHrs = hours * (a.pct / 100)
         const cost = pctHrs * rate
         personLaborCostByJobId.set(a.job_id, (personLaborCostByJobId.get(a.job_id) ?? 0) + cost)
+        personCrewLaborByJobId.set(a.job_id, (personCrewLaborByJobId.get(a.job_id) ?? 0) + cost)
       }
     }
 
@@ -2664,7 +2664,7 @@ export default function People() {
         allocatedRevenueBeforeOverhead: 0,
         allocatedPartsCost: 0,
         subLaborCost: Math.max(0, (hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0) - laborCost),
-        otherTeammatesLabor: jobId ? (teamLaborCostByJobId.get(jobId) ?? 0) : 0,
+        otherTeammatesLabor: jobId ? Math.max(0, (teamLaborCostByJobId.get(jobId) ?? 0) - (personCrewLaborByJobId.get(jobId) ?? 0)) : 0,
         totalJobHours: 0,
         userTotalHoursOnJob: 0,
         userTotalContributionToBill: 0,
@@ -5920,8 +5920,7 @@ export default function People() {
                             const totalLaborByJob = new Map<string, number>()
                             for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                               if (j.job_id) {
-                                const total = j.otherTeammatesLabor + j.userTotalLaborOnJob
-                                totalLaborByJob.set(j.job_id, total)
+                                totalLaborByJob.set(j.job_id, j.otherTeammatesLabor)
                               }
                             }
                             const totalLabor = [...totalLaborByJob.values()].reduce((s, v) => s + v, 0)
@@ -5972,7 +5971,7 @@ export default function People() {
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Labor / Labor</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Revenue / Total</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Value / Total</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rev/hr / Profit/hr</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>User on Job Rev/hr / User on Job Profit/hr</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -5993,7 +5992,7 @@ export default function People() {
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                         <span style={{ fontSize: '0.75em', color: '#6b7280' }}>{expanded ? '▾' : '▸'}</span>
-                                        <span style={{ fontWeight: 600 }}>Labor</span>
+                                        <span style={{ fontWeight: 600 }}>Sub Labor</span>
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
@@ -6006,7 +6005,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
@@ -6038,14 +6037,15 @@ export default function People() {
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
                                           <span>{(() => {
-                                            const totalLabor = j.otherTeammatesLabor + j.userTotalLaborOnJob
-                                            const laborStr = totalLabor > 0 ? `$${formatCurrency(totalLabor)}` : null
+                                            const totalLaborDollars = j.otherTeammatesLabor
+                                            const laborStr = totalLaborDollars > 0 ? `$${formatCurrency(totalLaborDollars)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Teams Labor:</span>
+                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor:</span>
                                           <span>{(() => {
-                                            const laborStr = j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : null
+                                            const teamsLaborDollars = Math.max(0, j.otherTeammatesLabor - j.userTotalLaborOnJob)
+                                            const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
@@ -6068,10 +6068,10 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
-                                            return teammatesHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / teammatesHours)}` : '—'
+                                            return teammatesHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor - j.userTotalLaborOnJob) / teammatesHours)}` : '—'
                                           })()}</span>
                                           <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
-                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor + j.userTotalLaborOnJob) / j.totalJobHours)}` : '—'}</span>
+                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
@@ -6086,13 +6086,13 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Users Revenue this Day</span>
                                           <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Rev/hr</span>
+                                          <span style={{ color: '#6b7280' }}>User on Job Rev/hr</span>
                                           <span>{revPerHour != null ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Profit/hr</span>
+                                          <span style={{ color: '#6b7280' }}>User on Job Profit/hr</span>
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             <span style={{ color: profitPerHour != null && profitPerHour < 0 ? '#b91c1c' : undefined }}>{profitPerHour != null ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
                                             <span
-                                              title="Rev/hr < Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. Rev/hr and Profit/hr use different allocation rules (hours vs. cost). Rev/hr can be lower than Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
+                                              title="User on Job Rev/hr < User on Job Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. User on Job Rev/hr and User on Job Profit/hr use different allocation rules (hours vs. cost). User on Job Rev/hr can be lower than User on Job Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
                                               style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
@@ -6142,7 +6142,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
@@ -6174,14 +6174,15 @@ export default function People() {
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
                                           <span>{(() => {
-                                            const totalLabor = j.otherTeammatesLabor + j.userTotalLaborOnJob
-                                            const laborStr = totalLabor > 0 ? `$${formatCurrency(totalLabor)}` : null
+                                            const totalLaborDollars = j.otherTeammatesLabor
+                                            const laborStr = totalLaborDollars > 0 ? `$${formatCurrency(totalLaborDollars)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Teams Labor:</span>
+                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor:</span>
                                           <span>{(() => {
-                                            const laborStr = j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : null
+                                            const teamsLaborDollars = Math.max(0, j.otherTeammatesLabor - j.userTotalLaborOnJob)
+                                            const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
@@ -6204,10 +6205,10 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
-                                            return teammatesHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / teammatesHours)}` : '—'
+                                            return teammatesHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor - j.userTotalLaborOnJob) / teammatesHours)}` : '—'
                                           })()}</span>
                                           <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
-                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor + j.userTotalLaborOnJob) / j.totalJobHours)}` : '—'}</span>
+                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
@@ -6222,13 +6223,13 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Users Revenue this Day</span>
                                           <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Rev/hr</span>
+                                          <span style={{ color: '#6b7280' }}>User on Job Rev/hr</span>
                                           <span>{revPerHour != null ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Profit/hr</span>
+                                          <span style={{ color: '#6b7280' }}>User on Job Profit/hr</span>
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             <span style={{ color: profitPerHour != null && profitPerHour < 0 ? '#b91c1c' : undefined }}>{profitPerHour != null ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
                                             <span
-                                              title="Rev/hr < Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. Rev/hr and Profit/hr use different allocation rules (hours vs. cost). Rev/hr can be lower than Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
+                                              title="User on Job Rev/hr < User on Job Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. User on Job Rev/hr and User on Job Profit/hr use different allocation rules (hours vs. cost). User on Job Rev/hr can be lower than User on Job Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
                                               style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
@@ -6253,7 +6254,7 @@ export default function People() {
                                 <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
                                   const totalLaborByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
-                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.otherTeammatesLabor + j.userTotalLaborOnJob)
+                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.otherTeammatesLabor)
                                   }
                                   const totalLabor = [...totalLaborByJob.values()].reduce((s, v) => s + v, 0)
                                   return totalLabor > 0 ? `$${Math.round(totalLabor).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'

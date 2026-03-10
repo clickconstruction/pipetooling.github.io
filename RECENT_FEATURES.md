@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-09
+last_updated: 2026-03-10
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.86)"
+  - name: "Latest Version (v2.88)"
     line: ~260
+    description: "People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr"
+  - name: "v2.87"
+    line: ~275
+    description: "Timezone fix across app, People mobile tabs, Jobs search bars, Review Last Month = 30 days"
+  - name: "v2.86"
+    line: ~275
     description: "People Review: Profit labels, Formula B, sub labor fix, Team Labor excludes subs; Crew Jobs Hours column"
   - name: "v2.85"
     line: ~240
@@ -154,8 +160,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
-2. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
+1. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
+2. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
+3. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
 2. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
 3. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
 2. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
@@ -267,6 +274,46 @@ when_to_read:
 ### People – Team Costs Tab
 
 - **Crew Jobs Hours column**: Added "Hours" column between Name and Crew in the Crew Jobs table. Shows each person's reported hours from `people_hours` for the selected date. Displays "—" when no hours are logged for that date.
+
+---
+
+## Latest Updates (v2.87)
+
+**Date**: 2026-03-09
+
+### Timezone Fix Across App
+
+- **Local date formatting**: Replaced `toISOString().slice(0, 10)` with `toLocaleDateString('en-CA')` for user-facing dates across the app. Fixes timezone bugs where late-evening users (e.g. CST) saw wrong dates (e.g. Crew Jobs showing today instead of yesterday).
+- **Files updated**: People.tsx, Jobs.tsx, Checklist.tsx, Prospects.tsx, Materials.tsx, Bids.tsx, SupplyHousesSection, ChecklistItemEditModal, HoursUnassignedModal, HoursSection, useCostMatrixTotal, CrewJobsSection. Settings backup filenames remain UTC.
+
+### People Page
+
+- **Mobile tabs**: Tabs now scroll horizontally on narrow screens (overflowX: auto, WebkitOverflowScrolling: touch). Matches Jobs page pattern.
+- **Team Costs – Crew Jobs**: Removed thin grey border between header and content.
+
+### Jobs Page
+
+- **Search bars**: Added search to Team Labor, Sub Labor, and Jobs Summary tabs. Filter by HCP, job name, address (and contractor for Sub Labor).
+- **Team Labor**: Removed "Combined Job Labor" title; search bar full width.
+- **Job Summary**: Search bar full width.
+
+### People – Review Tab
+
+- **Last Month = last 30 days**: "Last Month" period now uses a rolling 30-day window (today minus 30 days through today) instead of the previous calendar month.
+
+---
+
+## Latest Updates (v2.88)
+
+**Date**: 2026-03-10
+
+### People – Review Tab
+
+- **Total Labor double-count fix**: For Sub Labor jobs, "Total Labor on Job" no longer double-counts the user's crew labor. `otherTeammatesLabor` now excludes the current person's crew labor via `personCrewLaborByJobId`.
+- **Labor display reorganization**: "Total Labor on Job" now shows `otherTeammatesLabor` (team crew labor); "Rest of Teams Labor" (renamed from "Teams Labor") shows Total minus User; summary totals use the new Total Labor $ per job.
+- **Sub Labor source label**: Jobs from the Sub Labor tab (Jobs page) now display "Sub Labor" in the Source column instead of "Labor".
+- **Rest of Teams Labor**: Renamed "Teams Labor" to "Rest of Teams Labor" in expanded job details.
+- **User on Job Rev/hr and Profit/hr**: Renamed "Rev/hr" and "Profit/hr" to "User on Job Rev/hr" and "User on Job Profit/hr" in the Jobs Worked table and expanded details to clarify these are per-person, per-job metrics.
 
 ---
 
