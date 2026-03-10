@@ -877,21 +877,23 @@ export default function Bids() {
     return match?.id || null
   }
 
-  // Helper function to get or auto-create fixture type
-  async function getOrCreateFixtureTypeId(name: string): Promise<string | null> {
+  // Helper function to get or auto-create fixture type. Returns { id, error } so callers can surface the real error.
+  // serviceTypeIdOverride: when opening from a bid's Pricing tab, use the bid's service_type_id for robustness.
+  async function getOrCreateFixtureTypeId(name: string, serviceTypeIdOverride?: string): Promise<{ id: string } | { id: null; error?: string }> {
     const trimmedName = name.trim()
-    if (!trimmedName) return null
-    if (!selectedServiceTypeId) return null
-    
+    if (!trimmedName) return { id: null }
+    const serviceTypeId = serviceTypeIdOverride ?? selectedServiceTypeId
+    if (!serviceTypeId) {
+      return { id: null, error: 'No service type selected. Please select Plumbing, Electrical, or HVAC.' }
+    }
     // Check if it already exists (case-insensitive match)
     const existingId = getFixtureTypeIdByName(trimmedName)
-    if (existingId) return existingId
-    
+    if (existingId) return { id: existingId }
     // Auto-create new fixture type
     const maxSeqResult = await supabase
       .from('fixture_types')
       .select('sequence_order')
-      .eq('service_type_id', selectedServiceTypeId)
+      .eq('service_type_id', serviceTypeId)
       .order('sequence_order', { ascending: false })
       .limit(1)
       .single()
@@ -901,7 +903,7 @@ export default function Bids() {
     const { data, error } = await supabase
       .from('fixture_types')
       .insert({
-        service_type_id: selectedServiceTypeId,
+        service_type_id: serviceTypeId,
         name: trimmedName,
         category: 'Other',
         sequence_order: nextSeq
@@ -910,14 +912,13 @@ export default function Bids() {
       .single()
     
     if (error || !data) {
-      console.error('Failed to create fixture type:', error)
-      return null
+      return { id: null, error: error?.message ?? 'Failed to create fixture type' }
     }
     
     // Reload fixture types to update autocomplete suggestions
     await loadFixtureTypes()
     
-    return data.id
+    return { id: data.id }
   }
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
@@ -2997,17 +2998,18 @@ export default function Bids() {
       setError('Please enter a fixture type')
       return
     }
-    
     setSavingPricingEntry(true)
     setError(null)
     
-    // Get or auto-create fixture type
-    const fixtureTypeId = await getOrCreateFixtureTypeId(fixtureName)
-    if (!fixtureTypeId) {
-      setError(`Failed to create or find fixture type "${fixtureName}"`)
+    // Get or auto-create fixture type (use bid's service type when on Pricing tab for robustness)
+    const result = await getOrCreateFixtureTypeId(fixtureName, selectedBidForPricing?.service_type_id)
+    if (!result.id) {
+      const errMsg = ('error' in result ? result.error : null) ?? `Failed to create or find fixture type "${fixtureName}"`
+      setError(errMsg)
       setSavingPricingEntry(false)
       return
     }
+    const fixtureTypeId = result.id
     
     const rough = parseFloat(pricingEntryRoughIn) || 0
     const top = parseFloat(pricingEntryTopOut) || 0
@@ -3155,12 +3157,13 @@ export default function Bids() {
     setError(null)
     
     // Get or auto-create fixture type
-    const fixtureTypeId = await getOrCreateFixtureTypeId(fixtureName)
-    if (!fixtureTypeId) {
-      setError(`Failed to create or find fixture type "${fixtureName}"`)
+    const laborResult = await getOrCreateFixtureTypeId(fixtureName)
+    if (!laborResult.id) {
+      setError(('error' in laborResult ? laborResult.error : null) ?? `Failed to create or find fixture type "${fixtureName}"`)
       setSavingLaborEntry(false)
       return
     }
+    const fixtureTypeId = laborResult.id
     
     const aliasNames = laborEntryAliasNames
       .split(',')
@@ -3648,12 +3651,13 @@ export default function Bids() {
     setSavingMissingFixture(true)
     setError(null)
     
-    const fixtureTypeId = await getOrCreateFixtureTypeId(addMissingFixtureName.trim())
-    if (!fixtureTypeId) {
-      setError(`Failed to create or find fixture type "${addMissingFixtureName.trim()}"`)
+    const addResult = await getOrCreateFixtureTypeId(addMissingFixtureName.trim())
+    if (!addResult.id) {
+      setError(('error' in addResult ? addResult.error : null) ?? `Failed to create or find fixture type "${addMissingFixtureName.trim()}"`)
       setSavingMissingFixture(false)
       return
     }
+    const fixtureTypeId = addResult.id
     
     const rough = parseFloat(addMissingFixtureRoughIn) || 0
     const top = parseFloat(addMissingFixtureTopOut) || 0
