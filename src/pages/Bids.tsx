@@ -1260,6 +1260,27 @@ export default function Bids() {
     setSelectedBidForLienRelease(bid)
   }
 
+  /** Clear bid selection and remove bidId from URL so tab switches don't restore the old bid. */
+  function closeSharedBidAndClearUrl() {
+    setSharedBid(null)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('bidId')
+      return next
+    }, { replace: true })
+  }
+
+  /** Select a bid and sync URL so tab switches show the same bid. */
+  function selectBidAndSyncUrl(bid: BidWithBuilder, tab: typeof activeTab) {
+    setSharedBid(bid)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', tab)
+      next.set('bidId', bid.id)
+      return next
+    }, { replace: true })
+  }
+
   function toggleSubmissionSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
     setSubmissionSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -4757,12 +4778,14 @@ export default function Bids() {
       const entriesRaw = (await supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId)).data as PriceBookEntryWithFixture[] ?? []
       const entries = [...entriesRaw].sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
       const assignments = (await supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidPricingAssignment[] ?? []
+      const customPrices = (await supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId)).data as BidCountRowCustomPrice[] ?? []
       const entriesById = new Map(entries.map((e) => [e.id, e]))
       countRows.forEach((countRow) => {
         const assignment = assignments.find((a) => a.count_row_id === countRow.id)
         const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const customPrice = customPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
         const count = Number(countRow.count)
-        const unitPrice = entry ? Number(entry.total_price) : 0
+        const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
         const isFixedPrice = assignment?.is_fixed_price ?? false
         const revenue = isFixedPrice ? unitPrice : count * unitPrice
         coverLetterRevenue += revenue
@@ -7001,7 +7024,7 @@ export default function Bids() {
               onClick={() => {
                 if (st.id !== selectedServiceTypeId) {
                   setSelectedServiceTypeId(st.id)
-                  setSharedBid(null)
+                  closeSharedBidAndClearUrl()
                 }
               }}
               style={{
@@ -7826,7 +7849,7 @@ export default function Bids() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSharedBid(null)}
+                    onClick={closeSharedBidAndClearUrl}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -7837,8 +7860,8 @@ export default function Bids() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#f9fafb' }}>
                     <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count*</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in*</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Group/Tag</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
                       <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
@@ -7957,7 +7980,7 @@ export default function Bids() {
                   {filteredBidsForCounts.map((bid) => (
                     <tr
                       key={bid.id}
-                      onClick={() => setSharedBid(bid)}
+                      onClick={() => selectBidAndSyncUrl(bid, 'counts')}
                       style={{
                         borderBottom: '1px solid #e5e7eb',
                         cursor: 'pointer',
@@ -8016,7 +8039,7 @@ export default function Bids() {
                   )}
                   <button
                     type="button"
-                    onClick={() => { setSharedBid(null); setTakeoffCreatedPOId(null) }}
+                    onClick={() => { closeSharedBidAndClearUrl(); setTakeoffCreatedPOId(null) }}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -8563,7 +8586,7 @@ export default function Bids() {
                   {filteredBidsForTakeoff.map((bid) => (
                     <tr
                       key={bid.id}
-                      onClick={() => setSharedBid(bid)}
+                      onClick={() => selectBidAndSyncUrl(bid, 'takeoffs')}
                       style={{
                         borderBottom: '1px solid #e5e7eb',
                         cursor: 'pointer',
@@ -8712,7 +8735,7 @@ export default function Bids() {
                   </select>
                   <button
                     type="button"
-                    onClick={() => { setSharedBid(null); setTakeoffCreatedPOId(null) }}
+                    onClick={() => { closeSharedBidAndClearUrl(); setTakeoffCreatedPOId(null) }}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -8891,7 +8914,7 @@ export default function Bids() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSharedBid(null)}
+                    onClick={closeSharedBidAndClearUrl}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -9612,7 +9635,7 @@ export default function Bids() {
                     return (
                       <tr
                         key={bid.id}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'cost-estimate')}
                         style={{
                           cursor: 'pointer',
                           borderBottom: '1px solid #e5e7eb',
@@ -10031,7 +10054,7 @@ export default function Bids() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSharedBid(null)}
+                    onClick={closeSharedBidAndClearUrl}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
@@ -10591,7 +10614,7 @@ export default function Bids() {
                   {filteredBidsForPricing.map((bid) => (
                     <tr
                       key={bid.id}
-                      onClick={() => setSharedBid(bid)}
+                      onClick={() => selectBidAndSyncUrl(bid, 'pricing')}
                       style={{
                         cursor: 'pointer',
                         borderBottom: '1px solid #e5e7eb',
@@ -11025,7 +11048,7 @@ export default function Bids() {
                     .map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'cover-letter')}
                         style={{
                           cursor: 'pointer',
                           borderBottom: '1px solid #e5e7eb',
@@ -11066,8 +11089,9 @@ export default function Bids() {
             pricingCountRows.forEach((countRow) => {
               const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
               const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+              const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
               const count = Number(countRow.count)
-              const unitPrice = entry ? Number(entry.total_price) : 0
+              const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
               const isFixedPrice = assignment?.is_fixed_price ?? false
               const revenue = isFixedPrice ? unitPrice : count * unitPrice
               coverLetterRevenue += revenue
@@ -11154,7 +11178,7 @@ export default function Bids() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSharedBid(null)}
+                      onClick={closeSharedBidAndClearUrl}
                       style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Close
@@ -12141,7 +12165,7 @@ export default function Bids() {
                     .map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'rfi')}
                         style={{
                           cursor: 'pointer',
                           borderBottom: '1px solid #e5e7eb',
@@ -12460,7 +12484,7 @@ export default function Bids() {
                     .map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'change-order')}
                         style={{ cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
@@ -12568,7 +12592,7 @@ export default function Bids() {
                   <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => openEditBid(bid)} title="Edit bid" style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}>Edit bid</button>
-                    <button type="button" onClick={() => setSharedBid(null)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                    <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
                   </div>
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
@@ -12689,7 +12713,7 @@ export default function Bids() {
                     .map((bid) => (
                       <tr
                         key={bid.id}
-                        onClick={() => setSharedBid(bid)}
+                        onClick={() => selectBidAndSyncUrl(bid, 'lien-release')}
                         style={{ cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
@@ -12792,7 +12816,7 @@ export default function Bids() {
                   <h2 style={{ margin: 0 }}>{bidDisplayName(bid) || 'Bid'}</h2>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button type="button" onClick={() => { setBidFormOpen(true); setEditingBid(bid) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
-                    <button type="button" onClick={() => setSharedBid(null)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                    <button type="button" onClick={closeSharedBidAndClearUrl} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
