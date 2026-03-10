@@ -13,7 +13,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toISOString().slice(0, 10))
+    days.push(d.toLocaleDateString('en-CA'))
     d.setDate(d.getDate() + 1)
   }
   return days

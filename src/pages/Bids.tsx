@@ -7417,7 +7417,7 @@ export default function Bids() {
                         type="button"
                         onClick={() => {
                           setAddContactModalCustomer(customer)
-                          setAddContactModalDate(new Date().toISOString().slice(0, 10))
+                          setAddContactModalDate(new Date().toLocaleDateString('en-CA'))
                           setAddContactModalDetails('')
                         }}
                         title="General contact"
@@ -12001,7 +12001,7 @@ export default function Bids() {
             const defaultResponseDate = (() => {
               const d = new Date()
               d.setDate(d.getDate() + 7)
-              return d.toISOString().slice(0, 10)
+              return d.toLocaleDateString('en-CA')
             })()
             const getRfiForm = (): RfiFormData => {
               const existing = rfiFormByBid[bid.id]
@@ -12317,7 +12317,7 @@ export default function Bids() {
             const defaultResponseDate = (() => {
               const d = new Date()
               d.setDate(d.getDate() + 7)
-              return d.toISOString().slice(0, 10)
+              return d.toLocaleDateString('en-CA')
             })()
             const getChangeOrderForm = (): ChangeOrderFormData => {
               const existing = changeOrderFormByBid[bid.id]
@@ -12544,7 +12544,7 @@ export default function Bids() {
             const projectNameVal = bid.project_name ?? '—'
             const projectAddressVal = bid.address ?? '—'
             const defaultBidAmount = bid.agreed_value != null ? String(bid.agreed_value) : bid.bid_value != null ? String(bid.bid_value) : ''
-            const todayStr = new Date().toISOString().slice(0, 10)
+            const todayStr = new Date().toLocaleDateString('en-CA')
             const getLienReleaseForm = (): LienReleaseFormData => {
               const existing = lienReleaseFormByBid[bid.id]
               if (existing) {

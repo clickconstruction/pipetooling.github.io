@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -14,7 +14,11 @@ export function CrewJobsSection() {
   const [error, setError] = useState<string | null>(null)
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
-  const [crewJobsDate, setCrewJobsDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [crewJobsDate, setCrewJobsDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return d.toLocaleDateString('en-CA')
+  })
   const [crewJobsData, setCrewJobsData] = useState<Record<string, CrewJobRow>>({})
   const [crewJobsLoading, setCrewJobsLoading] = useState(false)
   const [crewJobSearchModal, setCrewJobSearchModal] = useState<{ personName: string } | null>(null)
@@ -26,6 +30,8 @@ export function CrewJobsSection() {
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string; job_address: string }>>({})
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
+  const [hideZeroHours, setHideZeroHours] = useState(true)
+  const [crewDateHours, setCrewDateHours] = useState<Record<string, number>>({})
 
   async function loadAccess() {
     if (!authUser?.id) return
@@ -62,20 +68,25 @@ export function CrewJobsSection() {
 
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
-    const { data, error: err } = await supabase
-      .from('people_crew_jobs')
-      .select('person_name, crew_lead_person_name, job_assignments')
-      .eq('work_date', date)
+    const [crewRes, hoursRes] = await Promise.all([
+      supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', date),
+      supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
+    ])
     setCrewJobsLoading(false)
+    const { data: crewData, error: err } = crewRes
     if (err) { setError(err.message); return }
     const map: Record<string, CrewJobRow> = {}
-    for (const r of (data ?? []) as { person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }[]) {
+    for (const r of (crewData ?? []) as { person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }[]) {
       map[r.person_name] = {
         crew_lead_person_name: r.crew_lead_person_name ?? null,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
     setCrewJobsData(map)
+    const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; hours: number }>
+    const hoursMap: Record<string, number> = {}
+    for (const h of hoursRows) hoursMap[h.person_name] = h.hours
+    setCrewDateHours(hoursMap)
   }
 
   async function saveCrewJobRow(personName: string, row: CrewJobRow) {
@@ -93,7 +104,7 @@ export function CrewJobsSection() {
     if (!canAccess) return
     const d = new Date(crewJobsDate + 'T12:00:00')
     d.setDate(d.getDate() - 1)
-    const yesterday = d.toISOString().slice(0, 10)
+    const yesterday = d.toLocaleDateString('en-CA')
     const { data, error: err } = await supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', yesterday)
     if (err) { setError(err.message); return }
     const rows = (data ?? []) as Array<{ person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
@@ -128,7 +139,7 @@ export function CrewJobsSection() {
     setTeamLaborLoading(true)
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const startDate = twoYearsAgo.toISOString().slice(0, 10)
+    const startDate = twoYearsAgo.toLocaleDateString('en-CA')
     const [crewRes, hoursRes, configRes] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
@@ -199,6 +210,15 @@ export function CrewJobsSection() {
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
 
+  const visiblePeopleForCrew = useMemo(() => {
+    const day = new Date(crewJobsDate + 'T12:00:00').getDay()
+    function getEffectiveHours(personName: string): number {
+      const cfg = payConfig[personName]
+      return cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (crewDateHours[personName] ?? 0)
+    }
+    return showPeopleForMatrix.filter((p) => !hideZeroHours || getEffectiveHours(p) > 0)
+  }, [showPeopleForMatrix, hideZeroHours, crewJobsDate, crewDateHours, payConfig])
+
   useEffect(() => { loadAccess() }, [authUser?.id])
 
   useEffect(() => {
@@ -260,10 +280,14 @@ export function CrewJobsSection() {
       ) : (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button type="button" onClick={() => { const d = new Date(crewJobsDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setCrewJobsDate(d.toISOString().slice(0, 10)) }} style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>←</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => { const d = new Date(crewJobsDate + 'T12:00:00'); d.setDate(d.getDate() - 1); setCrewJobsDate(d.toLocaleDateString('en-CA')) }} style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>←</button>
               <input type="date" value={crewJobsDate} onChange={(e) => setCrewJobsDate(e.target.value)} style={{ padding: '0.35rem 0.5rem', fontSize: '0.9375rem', fontWeight: 500, border: '1px solid #d1d5db', borderRadius: 4, minWidth: 140 }} />
-              <button type="button" onClick={() => { const d = new Date(crewJobsDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setCrewJobsDate(d.toISOString().slice(0, 10)) }} style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>→</button>
+              <button type="button" onClick={() => { const d = new Date(crewJobsDate + 'T12:00:00'); d.setDate(d.getDate() + 1); setCrewJobsDate(d.toLocaleDateString('en-CA')) }} style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>→</button>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={hideZeroHours} onChange={(e) => setHideZeroHours(e.target.checked)} />
+                Hide users with zero hours
+              </label>
             </div>
             {!crewJobsLoading && !hasAnyCrewToday && canEdit && (
               <button type="button" onClick={copyCrewFromYesterday} style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}>Same team as yesterday</button>
@@ -279,21 +303,28 @@ export function CrewJobsSection() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Crew</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Jobs</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {showPeopleForMatrix.map((personName) => {
+                  {visiblePeopleForCrew.map((personName) => {
                     const row = crewJobsData[personName] ?? { crew_lead_person_name: null, job_assignments: [] }
-                    const isCrewLeadByOthers = showPeopleForMatrix.some((p) => crewJobsData[p]?.crew_lead_person_name === personName)
-                    const availableCrewLeads = showPeopleForMatrix.filter((p) => p !== personName)
+                    const isCrewLeadByOthers = visiblePeopleForCrew.some((p) => crewJobsData[p]?.crew_lead_person_name === personName)
+                    const availableCrewLeads = visiblePeopleForCrew.filter((p) => p !== personName)
                     const hasCrewLead = !!row.crew_lead_person_name
                     const jobsEditable = canEdit && !hasCrewLead
                     const crewEditable = canEdit && !isCrewLeadByOthers
+                    const day = new Date(crewJobsDate + 'T12:00:00').getDay()
+                    const cfg = payConfig[personName]
+                    const effectiveHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (crewDateHours[personName] ?? 0)
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{personName}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', color: '#6b7280' }}>
+                          {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
+                        </td>
                         <td style={{ padding: '0.75rem', background: !crewEditable ? '#f3f4f6' : undefined }}>
                           {crewEditable ? (
                             <select value={row.crew_lead_person_name ?? ''} onChange={(e) => saveCrewJobRow(personName, { ...row, crew_lead_person_name: e.target.value || null })} style={{ padding: '0.35rem 0.5rem', minWidth: 140, border: '1px solid #d1d5db', borderRadius: 4 }}>

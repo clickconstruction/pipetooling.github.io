@@ -1013,8 +1013,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
   async function loadOutstanding() {
     setLoading(true)
     setError(null)
-    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10)
-    const weekEnd = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10)
+    const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('en-CA')
+    const weekEnd = new Date(Date.now() + 7 * 864e5).toLocaleDateString('en-CA')
 
     let query = supabase
       .from('checklist_instances')
@@ -1023,7 +1023,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
       .order('scheduled_date', { ascending: true })
 
     if (dateRange === 'missed') {
-      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10) // more than 1 day old = scheduled before yesterday
+      const yesterday = new Date(Date.now() - 864e5).toLocaleDateString('en-CA') // more than 1 day old = scheduled before yesterday
       query = query.lt('scheduled_date', yesterday)
     } else if (dateRange !== 'non_repeating') {
       const start = dateRange === 'next_day' ? tomorrow : tomorrow

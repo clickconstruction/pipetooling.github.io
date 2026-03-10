@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-08
+last_updated: 2026-03-09
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.84)"
+  - name: "Latest Version (v2.86)"
+    line: ~260
+    description: "People Review: Profit labels, Formula B, sub labor fix, Team Labor excludes subs; Crew Jobs Hours column"
+  - name: "v2.85"
     line: ~240
+    description: "People Review: Team Summary, Only Count Paid in Full, exclude labor from non-paid"
+  - name: "v2.84"
+    line: ~256
     description: "Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs"
   - name: "v2.83"
     line: ~256
@@ -148,8 +154,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
-2. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
+1. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
+2. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
+2. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
+3. [Latest Updates (v2.83)](#latest-updates-v283) - Sync to Testing script, Archive/Restore user flow
 2. [Latest Updates (v2.82)](#latest-updates-v282) - Person/User duplicate merge, Pay tab detection, cascade pay_stubs
 3. [Latest Updates (v2.81)](#latest-updates-v281) - Bids Counts Import from /Tooling, Pricing partial-fill, Inspections, Reports
 2. [Latest Updates (v2.80)](#latest-updates-v280) - Prospects Address field, Follow Up quick notes
@@ -232,6 +240,46 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.86)
+
+**Date**: 2026-03-09
+
+### People – Review Tab
+
+- **Profit Before Overhead**: Renamed "Total Revenue Before Overhead" to "Profit Before Overhead".
+- **Users Contribution to Profit**: Renamed "Users Contribution to Revenue" to "Users Contribution to Profit".
+- **Users Profit this Day**: Renamed "Users Revenue this Day" to "Users Profit this Day".
+- **Formula B for Profit**: Profit Before Overhead now uses `valueCreated - partsCost - totalJobLabor` (direct formula) instead of the proportional scaling formula.
+- **Sub labor in crew-only jobs**: Fixed allocationJobsMap crew-only branch to include sub labor (`laborCostByHcp`) so Profit Before Overhead correctly subtracts Parts and Subs for all jobs.
+- **Team Labor excludes Subs**: "Total Labor on Job" now shows team labor only (`otherTeammatesLabor + userTotalLaborOnJob`). Subs remain displayed separately under "Subs:" and are still subtracted in the Profit formula.
+
+### Jobs – Job Summary Tab
+
+- **Parts Cost from Total Parts Cost**: Job Summary Parts Cost now matches Total Parts Cost in Jobs Parts tab: Parts from Tally (including `fixture_cost` for fixture-only parts) + Invoices from Supply Houses.
+
+### People – Review Tab (Parts Cost)
+
+- **Parts Cost from Total Parts Cost**: People Review job dropdown "Parts:" now matches Total Parts Cost: Parts from Tally + Invoices from Supply Houses. Uses `get_invoice_amounts_for_jobs` RPC and `fixture_cost` for `part_id == null` tally parts.
+
+### People – Team Costs Tab
+
+- **Crew Jobs Hours column**: Added "Hours" column between Name and Crew in the Crew Jobs table. Shows each person's reported hours from `people_hours` for the selected date. Displays "—" when no hours are logged for that date.
+
+---
+
+## Latest Updates (v2.85)
+
+**Date**: 2026-04-09
+
+### People – Review Tab
+
+- **Team Summary restored**: Team Summary button opens a new window with per-person metrics (Name, Period Profit, Rev/MH, Profit/MH) for the selected period.
+- **Only Count Jobs Marked Paid in Full**: Checkbox next to Team Summary. When checked, revenue and profit include only jobs with `jobs_ledger.status = 'paid'`; labor hours and cost are also excluded from non-paid jobs. Rev/MH and Profit/MH use hours-from-paid-jobs only.
+- **Paid-only RPCs**: `get_jobs_ledger_by_ids_paid_only` and `get_jobs_ledger_by_hcp_numbers_paid_only` filter jobs by status; labor jobs and crew jobs are filtered to paid-only when the checkbox is enabled.
+- **Migration**: `20260409120000_add_get_jobs_ledger_paid_only_rpcs.sql`
 
 ---
 

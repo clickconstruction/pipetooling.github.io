@@ -87,6 +87,10 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function formatCurrencyNoCents(n: number): string {
+  return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
 function formatTimeSince(iso: string | null): string {
   if (!iso) return '—'
   const now = new Date()
@@ -174,7 +178,7 @@ export default function Jobs() {
   const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
   const [laborRate, setLaborRate] = useState('')
-  const [laborDate, setLaborDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
   const [laborSaving, setLaborSaving] = useState(false)
   // Sub Sheet Ledger state
@@ -250,8 +254,12 @@ export default function Jobs() {
   const [quickLinkDeletingId, setQuickLinkDeletingId] = useState<string | null>(null)
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
+  const [invoiceAmountByJob, setInvoiceAmountByJob] = useState<Record<string, number>>({})
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
+  const [subLaborSearch, setSubLaborSearch] = useState('')
+  const [teamLaborSearch, setTeamLaborSearch] = useState('')
+  const [jobSummarySearch, setJobSummarySearch] = useState('')
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
   const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
@@ -297,6 +305,7 @@ export default function Jobs() {
   const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
+  const [pctCompleteSavingId, setPctCompleteSavingId] = useState<string | null>(null)
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
@@ -610,8 +619,8 @@ export default function Jobs() {
     const m = month ?? inspectionsMonth
     const start = new Date(m.getFullYear(), m.getMonth() - 1, 1)
     const end = new Date(m.getFullYear(), m.getMonth() + 2, 0)
-    const startStr = start.toISOString().slice(0, 10)
-    const endStr = end.toISOString().slice(0, 10)
+    const startStr = start.toLocaleDateString('en-CA')
+    const endStr = end.toLocaleDateString('en-CA')
     const { data, error: err } = await supabase
       .from('inspections')
       .select('*')
@@ -1046,7 +1055,7 @@ export default function Jobs() {
     setTeamLaborLoading(true)
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const startDate = twoYearsAgo.toISOString().slice(0, 10)
+    const startDate = twoYearsAgo.toLocaleDateString('en-CA')
     const [crewRes, hoursRes, configRes] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
@@ -1120,8 +1129,21 @@ export default function Jobs() {
     if (err) {
       setError(err.message)
       setTallyParts([])
+      setInvoiceAmountByJob({})
     } else {
-      setTallyParts((data ?? []) as TallyPartRow[])
+      const parts = (data ?? []) as TallyPartRow[]
+      setTallyParts(parts)
+      const jobIds = [...new Set(parts.map((r) => r.job_id))]
+      if (jobIds.length > 0) {
+        const { data: amountsData } = await supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds })
+        const map: Record<string, number> = {}
+        for (const r of (amountsData ?? []) as { job_id: string; invoice_amount: number }[]) {
+          map[r.job_id] = Number(r.invoice_amount ?? 0)
+        }
+        setInvoiceAmountByJob(map)
+      } else {
+        setInvoiceAmountByJob({})
+      }
     }
     setTallyPartsLoading(false)
   }
@@ -1480,7 +1502,7 @@ export default function Jobs() {
     setLaborDistance('0')
     setLaborJobNumber('')
     setLaborRate('')
-    setLaborDate(new Date().toISOString().slice(0, 10))
+    setLaborDate(new Date().toLocaleDateString('en-CA'))
     setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
     setLaborSaving(false)
     setActiveTab('sub_sheet_ledger')
@@ -1528,7 +1550,7 @@ export default function Jobs() {
     setLaborDistance('0')
     setLaborJobNumber('')
     setLaborRate('')
-    setLaborDate(new Date().toISOString().slice(0, 10))
+    setLaborDate(new Date().toLocaleDateString('en-CA'))
     setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
   }
 
@@ -1550,7 +1572,7 @@ export default function Jobs() {
     setLaborAddress(job.address)
     setLaborDistance(job.distance_miles != null ? String(job.distance_miles) : '0')
     setLaborJobNumber(job.job_number ?? '')
-    setLaborDate(job.job_date ?? new Date().toISOString().slice(0, 10))
+    setLaborDate(job.job_date ?? new Date().toLocaleDateString('en-CA'))
     setLaborRate(job.labor_rate != null ? String(job.labor_rate) : '')
     const rows = (job.items ?? []).map((i) => ({
       id: crypto.randomUUID(),
@@ -2258,7 +2280,9 @@ export default function Jobs() {
   const jobSummaryData = useMemo(() => {
     const partsCostByJobId = new Map<string, number>()
     for (const r of tallyParts) {
-      const cost = Number(r.price_at_time ?? 0) * Number(r.quantity)
+      const cost = r.part_id == null
+        ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
+        : Number(r.price_at_time ?? 0) * Number(r.quantity)
       partsCostByJobId.set(r.job_id, (partsCostByJobId.get(r.job_id) ?? 0) + cost)
     }
     const laborCostByHcp = new Map<string, number>()
@@ -2288,7 +2312,9 @@ export default function Jobs() {
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
       const laborCost = subLaborCost + teamLaborCost
-      const partsCost = partsCostByJobId.get(job.id) ?? 0
+      const partsFromTally = partsCostByJobId.get(job.id) ?? 0
+      const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
+      const partsCost = partsFromTally + invoicesFromSupplyHouses
       const totalBill = job.revenue != null ? Number(job.revenue) : 0
       const profit = totalBill - partsCost - laborCost
       return {
@@ -2300,7 +2326,7 @@ export default function Jobs() {
         profit,
       }
     })
-  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile])
+  }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob])
 
   const combinedLaborRows = useMemo(() => {
     const teamLaborCostByJobId = new Map<string, number>()
@@ -2653,6 +2679,20 @@ export default function Jobs() {
       setError(err instanceof Error ? err.message : 'Failed to update assigned')
     } finally {
       setAssignedEditSavingId(null)
+    }
+  }
+
+  async function updateJobPctComplete(jobId: string, value: number | null) {
+    setPctCompleteSavingId(jobId)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+      if (err) throw err
+      await loadJobs()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update % complete')
+    } finally {
+      setPctCompleteSavingId(null)
     }
   }
 
@@ -3198,7 +3238,7 @@ export default function Jobs() {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean) {
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -3207,7 +3247,10 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? 'Remaining' : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
+                        {showPctComplete && (
+                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Value Created<br />/ % Complete</th>
+                        )}
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? <>Remaining<br />/ Total Bill</> : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
                         {(actionLabel || onSendBack || onSendBackSimple) && <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />}
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                         <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
@@ -3216,7 +3259,7 @@ export default function Jobs() {
                     <tbody>
                       {jobList.length === 0 ? (
                         <tr>
-                          <td colSpan={(actionLabel || onSendBack || onSendBackSimple) ? 7 : 6} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={((actionLabel || onSendBack || onSendBackSimple) ? 7 : 6) + (showPctComplete ? 1 : 0)} style={{ padding: '0.75rem', color: '#6b7280' }}>
                             No jobs in this group
                           </td>
                         </tr>
@@ -3341,12 +3384,61 @@ export default function Jobs() {
                                 (j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'
                               )}
                             </td>
+                            {showPctComplete && (
+                              <td style={{ padding: '0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                  <div style={{ fontSize: '0.8125rem' }}>
+                                    {j.pct_complete != null
+                                      ? formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)
+                                      : '—'}
+                                  </div>
+                                  <input
+                                    key={`pct-${j.id}-${j.pct_complete ?? 'null'}`}
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    defaultValue={j.pct_complete != null ? j.pct_complete : ''}
+                                    onBlur={(e) => {
+                                      const v = e.target.value.trim()
+                                      if (v === '') {
+                                        updateJobPctComplete(j.id, null)
+                                        return
+                                      }
+                                      const n = Math.round(Number(v))
+                                      if (!Number.isNaN(n) && n >= 0 && n <= 100) {
+                                        updateJobPctComplete(j.id, n)
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.currentTarget.blur()
+                                      }
+                                    }}
+                                    disabled={pctCompleteSavingId === j.id}
+                                    placeholder="%"
+                                    style={{
+                                      width: '3.5rem',
+                                      padding: '0.25rem 0.35rem',
+                                      fontSize: '0.8125rem',
+                                      textAlign: 'right',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                            )}
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {showRemaining
                                 ? (() => {
                                     const rev = j.revenue != null ? Number(j.revenue) : 0
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                    return rev > 0 || pm > 0 ? formatCurrency(rev - pm) : '—'
+                                    return (
+                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                        <span>{rev > 0 || pm > 0 ? formatCurrencyNoCents(rev - pm) : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—'}</span>
+                                      </div>
+                                    )
                                   })()
                                 : (j.revenue != null ? formatCurrency(Number(j.revenue)) : '—')}
                             </td>
@@ -3493,7 +3585,7 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Remaining</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Remaining<br />/ Total Bill</th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                         <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
@@ -3637,10 +3729,11 @@ export default function Jobs() {
                                         ? (() => {
                                             const rev = j.revenue != null ? Number(j.revenue) : 0
                                             const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                            return rev > 0 || pm > 0 ? formatCurrency(rev - pm) : '—'
+                                            return rev > 0 || pm > 0 ? formatCurrencyNoCents(rev - pm) : '—'
                                           })()
-                                        : (j.revenue != null ? formatCurrency(Number(j.revenue)) : '—')}
+                                        : (j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—')}
                                     </span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—'}</span>
                                     {sendBackBelowRemaining && onJobSendBack && (
                                       <button
                                         type="button"
@@ -3771,7 +3864,8 @@ export default function Jobs() {
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
-                                    <span>{formatCurrency(Number(inv.amount))}</span>
+                                    <span>{formatCurrencyNoCents(Number(inv.amount))}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? formatCurrencyNoCents(Number(job.revenue)) : '—'}</span>
                                     {sendBackBelowRemaining && (
                                       <button
                                         type="button"
@@ -3892,7 +3986,7 @@ export default function Jobs() {
                   working,
                   'Ready to Bill',
                   (j) => stagesHamMode ? updateJobStatus(j.id, 'ready_to_bill') : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
-                  true, undefined, undefined, true
+                  true, undefined, undefined, true, undefined, true
                 )}
 
                 <button
@@ -4015,7 +4109,14 @@ export default function Jobs() {
       {activeTab === 'sub_sheet_ledger' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="search"
+              placeholder="Search contractor, HCP, address…"
+              value={subLaborSearch}
+              onChange={(e) => setSubLaborSearch(e.target.value)}
+              style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            />
             <button
               type="button"
               onClick={openNewLaborJob}
@@ -4063,7 +4164,16 @@ export default function Jobs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {laborJobs.map((job) => {
+                  {laborJobs
+                    .filter((job) => {
+                      const q = subLaborSearch.trim().toLowerCase()
+                      if (!q) return true
+                      const contractor = (job.assigned_to_name ?? '').toLowerCase()
+                      const hcp = (job.job_number ?? '').toLowerCase()
+                      const addr = (job.address ?? '').toLowerCase()
+                      return contractor.includes(q) || hcp.includes(q) || addr.includes(q)
+                    })
+                    .map((job) => {
                     const totalHrs = (job.items ?? []).reduce((s, i) => {
                       const hrs = Number(i.hrs_per_unit) || 0
                       return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
@@ -4176,7 +4286,15 @@ export default function Jobs() {
       {activeTab === 'combined-labor' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <h2 style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 600 }}>Combined Job Labor</h2>
+          <div style={{ marginBottom: '1rem' }}>
+            <input
+              type="search"
+              placeholder="Search HCP, job name, address…"
+              value={teamLaborSearch}
+              onChange={(e) => setTeamLaborSearch(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            />
+          </div>
           {(laborJobsLoading || teamLaborLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : combinedLaborRows.length === 0 ? (
@@ -4192,7 +4310,16 @@ export default function Jobs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {combinedLaborRows.map((row, i) => (
+                  {combinedLaborRows
+                    .filter((row) => {
+                      const q = teamLaborSearch.trim().toLowerCase()
+                      if (!q) return true
+                      const hcp = (row.hcpNumber ?? '').toLowerCase()
+                      const name = (row.jobName ?? '').toLowerCase()
+                      const addr = (row.jobAddress ?? '').toLowerCase()
+                      return hcp.includes(q) || name.includes(q) || addr.includes(q)
+                    })
+                    .map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem' }}>{row.hcpNumber}</td>
                       <td style={{ padding: '0.75rem' }}>
@@ -4487,7 +4614,9 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }}></th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Total</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts from Tally</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Invoices from Supply Houses</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
                   </tr>
                 </thead>
@@ -4522,7 +4651,7 @@ export default function Jobs() {
                     if (jobRows.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={5} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                          <td colSpan={7} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
                             No tally parts yet. Subs can record parts via the Job Parts Tally flow on the Dashboard.
                           </td>
                         </tr>
@@ -4564,12 +4693,14 @@ export default function Jobs() {
                           <td style={{ padding: '0.75rem' }}>{hcpNumber ?? '—'}</td>
                           <td style={{ padding: '0.75rem' }}>{jobName ?? '—'}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(invoiceAmountByJob[jobId] ?? 0)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal + (invoiceAmountByJob[jobId] ?? 0))}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
                         </tr>,
                         ...(expanded
                           ? [
                               <tr key={`${jobId}-parts`}>
-                                <td colSpan={5} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                     <thead>
                                       <tr style={{ background: '#f3f4f6' }}>
@@ -4688,6 +4819,15 @@ export default function Jobs() {
       {activeTab === 'job-summary' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          <div style={{ marginBottom: '1rem' }}>
+            <input
+              type="search"
+              placeholder="Search HCP, job name, address…"
+              value={jobSummarySearch}
+              onChange={(e) => setJobSummarySearch(e.target.value)}
+              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            />
+          </div>
           {(loading || tallyPartsLoading || laborJobsLoading) ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
@@ -4708,7 +4848,16 @@ export default function Jobs() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jobSummaryData.map(({ job, subLaborCost, teamLaborCost, partsCost, totalBill, profit }) => (
+                  {jobSummaryData
+                    .filter(({ job }) => {
+                      const q = jobSummarySearch.trim().toLowerCase()
+                      if (!q) return true
+                      const hcp = (job.hcp_number ?? '').toLowerCase()
+                      const name = (job.job_name ?? '').toLowerCase()
+                      const addr = (job.job_address ?? '').toLowerCase()
+                      return hcp.includes(q) || name.includes(q) || addr.includes(q)
+                    })
+                    .map(({ job, subLaborCost, teamLaborCost, partsCost, totalBill, profit }) => (
                     <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '0.75rem' }}>{job.hcp_number ?? '—'}</td>
                       <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>

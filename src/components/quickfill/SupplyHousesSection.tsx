@@ -231,7 +231,7 @@ export function SupplyHousesSection() {
   function openAddInvoice() {
     setEditingInvoice(null)
     setInvoiceNumber('')
-    setInvoiceDate(new Date().toISOString().slice(0, 10))
+    setInvoiceDate(new Date().toLocaleDateString('en-CA'))
     setInvoiceDueDate('')
     setInvoiceAmount('')
     setInvoiceLink('')

@@ -13,7 +13,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toISOString().slice(0, 10))
+    days.push(d.toLocaleDateString('en-CA'))
     d.setDate(d.getDate() + 1)
   }
   return days
@@ -57,14 +57,14 @@ export function HoursSection() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
@@ -257,8 +257,8 @@ export function HoursSection() {
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setHoursDateStart(dStart.toISOString().slice(0, 10))
-    setHoursDateEnd(dEnd.toISOString().slice(0, 10))
+    setHoursDateStart(dStart.toLocaleDateString('en-CA'))
+    setHoursDateEnd(dEnd.toLocaleDateString('en-CA'))
   }
 
   useEffect(() => {

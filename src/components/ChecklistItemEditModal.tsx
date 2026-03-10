@@ -47,7 +47,7 @@ const initialForm: FormState = {
   repeat_days_of_week: [],
   repeat_days_after: 1,
   repeat_end_date: '',
-  start_date: new Date().toISOString().slice(0, 10),
+  start_date: new Date().toLocaleDateString('en-CA'),
     show_until_completed: true,
   notify_on_complete_user_id: '',
   notify_creator_on_complete: false,

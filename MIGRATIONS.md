@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-08
+last_updated: 2026-04-09
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -92,6 +92,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 9, 2026
+
+**`20260409120000_add_get_jobs_ledger_paid_only_rpcs.sql`**
+- **Purpose**: Paid-only variants for People Review "Only Count Jobs Marked Paid in Full" checkbox
+- **Changes**: Create `get_jobs_ledger_by_ids_paid_only(p_job_ids uuid[])` and `get_jobs_ledger_by_hcp_numbers_paid_only(p_hcp_numbers text[])`; same return types as originals but filter to `jobs_ledger.status = 'paid'` only
+- **Impact**: People Review tab uses these RPCs when checkbox is checked; revenue, profit, labor hours, and labor cost exclude non-paid jobs
+- **Category**: People / Review
+
 #### April 8, 2026
 
 **`20260408120000_add_unit_price_override_to_bid_pricing_assignments.sql`**
@@ -119,6 +127,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Database / RLS Hardening
 
 ### March 2026
+
+#### March 9, 2026
+
+**`20260309120000_add_pct_complete_to_jobs_ledger.sql`**
+- **Purpose**: Job completeness percentage for Jobs Stages Working section; Value Created = Total Bill × (% complete / 100)
+- **Changes**: Add `pct_complete INTEGER CHECK (pct_complete >= 0 AND pct_complete <= 100)` to `jobs_ledger`
+- **Impact**: Jobs → Stages → Working shows new column "Value Created / % Complete"; user can enter 0–100; Value Created displayed above input
+- **Category**: Jobs / Stages
 
 #### March 31, 2026
 

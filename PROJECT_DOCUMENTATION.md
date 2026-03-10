@@ -1910,7 +1910,7 @@ user_id = auth.uid()
 
 ### 5. People Roster
 - **Page**: `People.tsx`
-- **Tabs**: **Users** (default), **Pay History**, **Pay**, **Hours**, **Team Costs**, **Vehicles**, **Offsets**
+- **Tabs**: **Users** (default), **Pay History**, **Pay**, **Hours**, **Team Costs**, **Vehicles**, **Offsets**, **Review** (dev-only)
 - **Features**:
   - List people by kind (Assistant, Master Technician, Subcontractor)
   - Add people without user accounts
@@ -1927,6 +1927,7 @@ user_id = auth.uid()
   - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
   - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
   - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
+  - **Review Tab** (dev-only): Per-person metrics for a selected period (today, yesterday, last week, etc.): Profit for this period, Revenue per Man Hour, Profit per Man Hour; Jobs Worked list; Hours and Pay. **Team Summary** button opens a new window with per-person table (Name, Period Profit, Rev/MH, Profit/MH). **Only Count Jobs Marked Paid in Full** checkbox: when checked, revenue, profit, and labor hours exclude non-paid jobs; uses paid-only RPCs and filters labor/crew jobs to paid jobs only.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
 - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.

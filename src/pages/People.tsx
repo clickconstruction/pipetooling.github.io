@@ -102,14 +102,14 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [matrixEndDate, setMatrixEndDate] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   type PeopleTeam = { id: string; name: string; members: string[] }
   const [teams, setTeams] = useState<PeopleTeam[]>([])
@@ -118,9 +118,9 @@ export default function People() {
     const d = new Date()
     const start = new Date(d)
     start.setDate(d.getDate() - 6)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
-  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toISOString().slice(0, 10))
+  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [showMaxHours, setShowMaxHours] = useState(false)
   const [payEditArrangement, setPayEditArrangement] = useState(false)
   const [payEditTags, setPayEditTags] = useState(false)
@@ -133,7 +133,7 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   // Pay History tab state
   type PayStubRow = { id: string; person_name: string; period_start: string; period_end: string; hours_total: number; gross_pay: number; created_at: string | null; paid_at: string | null; paid_by: string | null }
@@ -145,14 +145,14 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [payStubPeriodEnd, setPayStubPeriodEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [payStubCalendarPerson, setPayStubCalendarPerson] = useState<string | null>(null)
   const [payStubCalendarYear, setPayStubCalendarYear] = useState(() => new Date().getFullYear())
@@ -168,7 +168,7 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toISOString().slice(0, 10)
+    return start.toLocaleDateString('en-CA')
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
@@ -179,8 +179,13 @@ export default function People() {
   // Team Costs tab state
   type CrewJobAssignment = { job_id: string; pct: number }
   type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
-  const [crewJobsDate, setCrewJobsDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [crewJobsDate, setCrewJobsDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return d.toLocaleDateString('en-CA')
+  })
   const [crewJobsData, setCrewJobsData] = useState<Record<string, CrewJobRow>>({})
+  const [crewJobsHoursByPerson, setCrewJobsHoursByPerson] = useState<Record<string, number>>({})
   const [crewJobsLoading, setCrewJobsLoading] = useState(false)
   const [crewJobSearchModal, setCrewJobSearchModal] = useState<{ personName: string } | null>(null)
   const [crewJobSearchText, setCrewJobSearchText] = useState('')
@@ -190,7 +195,8 @@ export default function People() {
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string; job_address: string }>>({})
   const [teamLaborData, setTeamLaborData] = useState<Array<{ jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }>>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
-  const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(false)
+  const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(true)
+  const [crewJobsHideZeroHours, setCrewJobsHideZeroHours] = useState(true)
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
 
@@ -212,10 +218,10 @@ export default function People() {
   const [vehicleInsCost, setVehicleInsCost] = useState('')
   const [vehicleRegCost, setVehicleRegCost] = useState('')
   const [odometerFormOpen, setOdometerFormOpen] = useState(false)
-  const [odometerDate, setOdometerDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [odometerDate, setOdometerDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [odometerValue, setOdometerValue] = useState('')
   const [replacementValueFormOpen, setReplacementValueFormOpen] = useState(false)
-  const [replacementValueDate, setReplacementValueDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [replacementValueDate, setReplacementValueDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [replacementValueValue, setReplacementValueValue] = useState('')
   const [possessionFormOpen, setPossessionFormOpen] = useState(false)
   // Offsets tab state
@@ -228,12 +234,12 @@ export default function People() {
   const [offsetType, setOffsetType] = useState<'backcharge' | 'damage'>('backcharge')
   const [offsetAmount, setOffsetAmount] = useState('')
   const [offsetDescription, setOffsetDescription] = useState('')
-  const [offsetOccurredDate, setOffsetOccurredDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [offsetOccurredDate, setOffsetOccurredDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [offsetApplyModalOpen, setOffsetApplyModalOpen] = useState(false)
   const [offsetToApply, setOffsetToApply] = useState<PersonOffset | null>(null)
   const [offsetApplyPayStubId, setOffsetApplyPayStubId] = useState('')
   const [possessionUserId, setPossessionUserId] = useState('')
-  const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [possessionEndDate, setPossessionEndDate] = useState('')
 
   // Review tab state
@@ -254,6 +260,8 @@ export default function People() {
     laborCost: number
     partsCost: number
     totalBill: number
+    valueCreated: number
+    pctComplete: number | null
     revenueBeforeOverhead: number
     allocatedTotalBill: number
     allocatedRevenueBeforeOverhead: number
@@ -279,6 +287,8 @@ export default function People() {
     laborCost: number
     partsCost: number
     totalBill: number
+    valueCreated: number
+    pctComplete: number | null
     revenueBeforeOverhead: number
     allocatedTotalBill: number
     allocatedRevenueBeforeOverhead: number
@@ -834,7 +844,7 @@ export default function People() {
     const d = new Date(start + 'T12:00:00')
     const endD = new Date(end + 'T12:00:00')
     while (d <= endD) {
-      const key = d.toISOString().slice(0, 10)
+      const key = d.toLocaleDateString('en-CA')
       const hrs = isSalary ? (d.getDay() >= 1 && d.getDay() <= 5 ? 8 : 0) : hoursMap.get(key) ?? 0
       earnedByDate[key] = hrs * wage
       paidByDate[key] = paidMap.get(key) ?? 0
@@ -1487,11 +1497,12 @@ export default function People() {
 
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
-    const { data, error } = await supabase
-      .from('people_crew_jobs')
-      .select('person_name, crew_lead_person_name, job_assignments')
-      .eq('work_date', date)
+    const [crewRes, hoursRes] = await Promise.all([
+      supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', date),
+      supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
+    ])
     setCrewJobsLoading(false)
+    const { data, error } = crewRes
     if (error) {
       setError(error.message)
       return
@@ -1504,12 +1515,17 @@ export default function People() {
       }
     }
     setCrewJobsData(map)
+    const hoursMap: Record<string, number> = {}
+    for (const h of (hoursRes.data ?? []) as { person_name: string; hours: number }[]) {
+      hoursMap[h.person_name] = h.hours
+    }
+    setCrewJobsHoursByPerson(hoursMap)
   }
 
   async function loadVehicles() {
     setVehiclesLoading(true)
     setVehiclesError(null)
-    const today = new Date().toISOString().slice(0, 10)
+    const today = new Date().toLocaleDateString('en-CA')
     const { data: vehiclesData, error: vehiclesErr } = await supabase.from('vehicles').select('*').order('year', { ascending: false })
     setVehiclesLoading(false)
     if (vehiclesErr) {
@@ -1646,7 +1662,7 @@ export default function People() {
     if (err) setVehiclesError(err.message)
     else {
       setOdometerFormOpen(false)
-      setOdometerDate(new Date().toISOString().slice(0, 10))
+      setOdometerDate(new Date().toLocaleDateString('en-CA'))
       setOdometerValue('')
       loadOdometerEntries(selectedVehicleId)
     }
@@ -1669,7 +1685,7 @@ export default function People() {
     if (err) setVehiclesError(err.message)
     else {
       setReplacementValueFormOpen(false)
-      setReplacementValueDate(new Date().toISOString().slice(0, 10))
+      setReplacementValueDate(new Date().toLocaleDateString('en-CA'))
       setReplacementValueValue('')
       loadReplacementValueEntries(selectedVehicleId)
     }
@@ -1691,7 +1707,7 @@ export default function People() {
     else {
       setPossessionFormOpen(false)
       setPossessionUserId('')
-      setPossessionStartDate(new Date().toISOString().slice(0, 10))
+      setPossessionStartDate(new Date().toLocaleDateString('en-CA'))
       setPossessionEndDate('')
       loadPossessions(selectedVehicleId)
       loadVehicles()
@@ -1722,7 +1738,7 @@ export default function People() {
     setOffsetType((o?.type as 'backcharge' | 'damage') ?? 'backcharge')
     setOffsetAmount(o?.amount?.toString() ?? '')
     setOffsetDescription(o?.description ?? '')
-    setOffsetOccurredDate(o?.occurred_date ?? new Date().toISOString().slice(0, 10))
+    setOffsetOccurredDate(o?.occurred_date ?? new Date().toLocaleDateString('en-CA'))
     setOffsetFormOpen(true)
   }
 
@@ -1733,7 +1749,7 @@ export default function People() {
     setOffsetType('backcharge')
     setOffsetAmount('')
     setOffsetDescription('')
-    setOffsetOccurredDate(new Date().toISOString().slice(0, 10))
+    setOffsetOccurredDate(new Date().toLocaleDateString('en-CA'))
   }
 
   async function upsertOffset() {
@@ -1871,7 +1887,7 @@ export default function People() {
     if (!canAccessPay) return
     const d = new Date(crewJobsDate + 'T12:00:00')
     d.setDate(d.getDate() - 1)
-    const yesterday = d.toISOString().slice(0, 10)
+    const yesterday = d.toLocaleDateString('en-CA')
     const { data, error } = await supabase
       .from('people_crew_jobs')
       .select('person_name, crew_lead_person_name, job_assignments')
@@ -1962,7 +1978,7 @@ export default function People() {
     setTeamLaborLoading(true)
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const startDate = twoYearsAgo.toISOString().slice(0, 10)
+    const startDate = twoYearsAgo.toLocaleDateString('en-CA')
     const [crewRes, hoursRes, configRes] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
@@ -2205,7 +2221,7 @@ export default function People() {
     const d = new Date(start + 'T12:00:00')
     const endD = new Date(end + 'T12:00:00')
     while (d <= endD) {
-      days.push(d.toISOString().slice(0, 10))
+      days.push(d.toLocaleDateString('en-CA'))
       d.setDate(d.getDate() + 1)
     }
     return days
@@ -2269,16 +2285,25 @@ export default function People() {
           })
         : [...showPeopleForMatrixBase].sort((a, b) => a.localeCompare(b))
 
+  const visiblePeopleForCrewJobs = useMemo(() => {
+    const day = new Date(crewJobsDate + 'T12:00:00').getDay()
+    function getEffectiveHoursForCrewDate(personName: string): number {
+      const cfg = payConfig[personName]
+      return cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (crewJobsHoursByPerson[personName] ?? 0)
+    }
+    return showPeopleForMatrix.filter((p) => !crewJobsHideZeroHours || getEffectiveHoursForCrewDate(p) > 0)
+  }, [showPeopleForMatrix, crewJobsHideZeroHours, crewJobsDate, crewJobsHoursByPerson, payConfig])
+
   const showPeopleForReview = useMemo(() => [...Object.keys(payConfig)].sort((a, b) => a.localeCompare(b)), [payConfig])
 
   function getReviewDateRange(): [string, string] {
     const today = new Date()
-    const todayStr = today.toISOString().slice(0, 10)
+    const todayStr = today.toLocaleDateString('en-CA')
     if (reviewPeriod === 'today') return [todayStr, todayStr]
     if (reviewPeriod === 'yesterday') {
       const d = new Date(today)
       d.setDate(d.getDate() - 1)
-      const y = d.toISOString().slice(0, 10)
+      const y = d.toLocaleDateString('en-CA')
       return [y, y]
     }
     // Current week's Sunday (start of this week)
@@ -2290,21 +2315,21 @@ export default function People() {
       lastWeekSunday.setDate(thisWeekSunday.getDate() - 7)
       const lastWeekSaturday = new Date(lastWeekSunday)
       lastWeekSaturday.setDate(lastWeekSunday.getDate() + 6)
-      return [lastWeekSunday.toISOString().slice(0, 10), lastWeekSaturday.toISOString().slice(0, 10)]
+      return [lastWeekSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
     }
     if (reviewPeriod === 'last_month') {
       const firstOfThisMonth = new Date(today.getFullYear(), today.getMonth(), 1)
       const lastOfLastMonth = new Date(firstOfThisMonth)
       lastOfLastMonth.setDate(0)
       const firstOfLastMonth = new Date(lastOfLastMonth.getFullYear(), lastOfLastMonth.getMonth(), 1)
-      return [firstOfLastMonth.toISOString().slice(0, 10), lastOfLastMonth.toISOString().slice(0, 10)]
+      return [firstOfLastMonth.toLocaleDateString('en-CA'), lastOfLastMonth.toLocaleDateString('en-CA')]
     }
     // last_two_weeks
     const twoWeeksAgoSunday = new Date(thisWeekSunday)
     twoWeeksAgoSunday.setDate(thisWeekSunday.getDate() - 14)
     const lastWeekSaturday = new Date(thisWeekSunday)
     lastWeekSaturday.setDate(thisWeekSunday.getDate() - 1)
-    return [twoWeeksAgoSunday.toISOString().slice(0, 10), lastWeekSaturday.toISOString().slice(0, 10)]
+    return [twoWeeksAgoSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
   }
 
   function stripAddressZipState(addr: string): string {
@@ -2360,10 +2385,16 @@ export default function People() {
 
     const userId = users.find((u) => u.name === personName)?.id ?? null
 
-    const [laborRes, allLaborResForCost, crewRes, hoursRes, reportsRes, tasksRes, settingsRes, tallyRes, allHoursRes] = await Promise.all([
+    const twoYearsAgo = new Date()
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+    const lookbackStart = twoYearsAgo.toLocaleDateString('en-CA')
+
+    const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').gte('job_date', start).lte('job_date', end),
+      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').gte('job_date', lookbackStart),
+      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
       supabase.rpc('list_reports_with_job_info'),
       userId
@@ -2378,24 +2409,30 @@ export default function People() {
       supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
       supabase.rpc('list_tally_parts_with_po'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
     ])
 
     const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
-    const allLaborRowsForCost = (allLaborResForCost.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
+    const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
+    const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
     const allReports = (reportsRes.data ?? []) as Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>
     const taskInstances = (tasksRes.data ?? []) as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string } | null }>
     const settingsRows = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
-    const tallyParts = (tallyRes.data ?? []) as Array<{ job_id: string; price_at_time: number | null; quantity: number }>
+    const tallyParts = (tallyRes.data ?? []) as Array<{ job_id: string; part_id: string | null; price_at_time: number | null; fixture_cost: number | null; quantity: number }>
     const allHoursRows = (allHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
+    const allHoursRowsAllTime = (allHoursResAllTime.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
 
     const mileageCost = settingsRows.find((r) => r.key === 'drive_mileage_cost')?.value_num ?? 0.70
     const timePerMile = settingsRows.find((r) => r.key === 'drive_time_per_mile')?.value_num ?? 0.02
 
     const partsCostByJobId = new Map<string, number>()
     for (const r of tallyParts) {
-      const cost = Number(r.price_at_time ?? 0) * Number(r.quantity)
+      const cost = r.part_id == null
+        ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
+        : Number(r.price_at_time ?? 0) * Number(r.quantity)
       partsCostByJobId.set(r.job_id, (partsCostByJobId.get(r.job_id) ?? 0) + cost)
     }
 
@@ -2403,8 +2440,12 @@ export default function People() {
     for (const h of allHoursRows) {
       hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
     }
+    const hoursMapAllTime: Record<string, number> = {}
+    for (const h of allHoursRowsAllTime) {
+      hoursMapAllTime[`${h.person_name}:${h.work_date}`] = h.hours
+    }
 
-    const allLaborJobIdsForCost = allLaborRowsForCost.map((r) => r.id)
+    const allLaborJobIdsForCost = allLaborRowsForCostAllTime.map((r) => r.id)
     const laborItemsRes =
       allLaborJobIdsForCost.length > 0
         ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allLaborJobIdsForCost)
@@ -2418,7 +2459,7 @@ export default function People() {
     }
 
     const laborCostByHcp = new Map<string, number>()
-    for (const r of allLaborRowsForCost) {
+    for (const r of allLaborRowsForCostAllTime) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
       const items = itemsByJob.get(r.id) ?? []
@@ -2433,6 +2474,13 @@ export default function People() {
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
+        crew_lead_person_name: r.crew_lead_person_name,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+    const crewByDatePersonAllTime: Record<string, CrewJobRow> = {}
+    for (const r of allCrewRowsForCostAllTime) {
+      crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`] = {
         crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
@@ -2460,14 +2508,14 @@ export default function People() {
     }
 
     const teamLaborCostByJobId = new Map<string, number>()
-    for (const r of crewRows) {
-      const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
+    for (const r of allCrewRowsForCostAllTime) {
+      const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
         : []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         const pctHrs = hours * (a.pct / 100)
@@ -2478,6 +2526,8 @@ export default function People() {
 
     const allJobIds = [...crewJobIds]
     const laborHcps = [...new Set(laborRows.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
+    const personLaborHcps = [...new Set(personLaborRowsAllTime.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
+    const allLaborHcps = [...new Set([...laborHcps, ...personLaborHcps])]
     const usePaidOnly = onlyPaidJobs ?? reviewOnlyPaidInFull
     const [crewJobsRes, laborJobsRes] = await Promise.all([
       allJobIds.length > 0
@@ -2485,14 +2535,14 @@ export default function People() {
           ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
           : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
         : { data: [] },
-      laborHcps.length > 0
+      allLaborHcps.length > 0
         ? usePaidOnly
-          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: laborHcps })
-          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: laborHcps })
+          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: allLaborHcps })
+          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
         : { data: [] },
     ])
-    const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
-    const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null }>
+    const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }>
+    const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }>
     const jobsById = new Map<string, (typeof crewJobsLedger)[0]>()
     const jobIdByHcp = new Map<string, string>()
     for (const j of crewJobsLedger) {
@@ -2504,6 +2554,71 @@ export default function People() {
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
       const hcp = (j.hcp_number ?? '').trim().toLowerCase()
       if (hcp) jobIdByHcp.set(hcp, j.id)
+    }
+
+    const personLaborCostByJobId = new Map<string, number>()
+    for (const r of personLaborRowsAllTime) {
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const jobId = jobIdByHcp.get(hcp)
+      if (!jobId) continue
+      const items = itemsByJob.get(r.id) ?? []
+      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      const rate = r.labor_rate ?? 0
+      const miles = Number(r.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
+      personLaborCostByJobId.set(jobId, (personLaborCostByJobId.get(jobId) ?? 0) + laborCost)
+    }
+    for (const r of allCrewRowsForCostAllTime) {
+      if (r.person_name !== personName) continue
+      const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      const cfg = payConfig[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const rate = cfg?.hourly_wage ?? 0
+      for (const a of assignments) {
+        const pctHrs = hours * (a.pct / 100)
+        const cost = pctHrs * rate
+        personLaborCostByJobId.set(a.job_id, (personLaborCostByJobId.get(a.job_id) ?? 0) + cost)
+      }
+    }
+
+    const personHoursOnJobAllTime = new Map<string, number>()
+    for (const r of personLaborRowsAllTime) {
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const jobId = jobIdByHcp.get(hcp)
+      if (!jobId) continue
+      const items = itemsByJob.get(r.id) ?? []
+      const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      personHoursOnJobAllTime.set(jobId, (personHoursOnJobAllTime.get(jobId) ?? 0) + hrs)
+    }
+    for (const r of allCrewRowsForCostAllTime) {
+      if (r.person_name !== personName) continue
+      const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      const cfg = payConfig[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      for (const a of assignments) {
+        const pctHrs = hours * (a.pct / 100)
+        personHoursOnJobAllTime.set(a.job_id, (personHoursOnJobAllTime.get(a.job_id) ?? 0) + pctHrs)
+      }
+    }
+
+    const jobIds = Array.from(jobsById.keys())
+    const invoiceRes = jobIds.length > 0
+      ? await supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds })
+      : { data: [] }
+    const invoiceAmountByJob: Record<string, number> = {}
+    for (const row of (invoiceRes.data ?? []) as Array<{ job_id: string; invoice_amount: number | null }>) {
+      invoiceAmountByJob[row.job_id] = Number(row.invoice_amount ?? 0)
     }
 
     const laborRowsFiltered = usePaidOnly
@@ -2523,10 +2638,12 @@ export default function People() {
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
-      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) : 0
+      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) : 0
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
+      const pctComplete = job?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
       const totalJobLabor = (hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0) + (jobId ? (teamLaborCostByJobId.get(jobId) ?? 0) : 0)
-      const revenueBeforeOverhead = totalBill - partsCost - totalJobLabor
+      const revenueBeforeOverhead = valueCreated - partsCost - totalJobLabor
       return {
         source: 'labor',
         id: r.id,
@@ -2540,6 +2657,8 @@ export default function People() {
         laborCost,
         partsCost,
         totalBill,
+        valueCreated,
+        pctComplete,
         revenueBeforeOverhead,
         allocatedTotalBill: 0,
         allocatedRevenueBeforeOverhead: 0,
@@ -2554,9 +2673,9 @@ export default function People() {
       }
     })
 
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string; revenue: number | null }> = {}
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }> = {}
     for (const j of crewJobsLedger) {
-      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue }
+      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete }
     }
     const crewJobsWithLeadFiltered = usePaidOnly
       ? crewJobsWithLead.filter((c) => jobsById.has(c.job_id))
@@ -2568,11 +2687,13 @@ export default function People() {
       const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${personName}:${c.work_date}`] ?? 0)
       const hours = dayHours * (c.pct / 100)
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
-      const partsCost = partsCostByJobId.get(c.job_id) ?? 0
+      const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
+      const pctComplete = j?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
       const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
       const totalJobLabor = (hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0) + (teamLaborCostByJobId.get(c.job_id) ?? 0)
-      const revenueBeforeOverhead = totalBill - partsCost - totalJobLabor
+      const revenueBeforeOverhead = valueCreated - partsCost - totalJobLabor
       return {
         source: 'crew',
         job_id: c.job_id,
@@ -2586,6 +2707,8 @@ export default function People() {
         laborCost,
         partsCost,
         totalBill,
+        valueCreated,
+        pctComplete,
         revenueBeforeOverhead,
         allocatedTotalBill: 0,
         allocatedRevenueBeforeOverhead: 0,
@@ -2619,21 +2742,21 @@ export default function People() {
       hoursOnJobInPeriod.set(j.job_id, (hoursOnJobInPeriod.get(j.job_id) ?? 0) + j.hours)
     }
 
-    const lookbackStart = (() => {
+    const lookbackStart2Y = (() => {
       const d = new Date(start + 'T12:00:00')
-      d.setFullYear(d.getFullYear() - 5)
-      return d.toISOString().slice(0, 10)
+      d.setFullYear(d.getFullYear() - 2)
+      return d.toLocaleDateString('en-CA')
     })()
     const lookbackEnd = (() => {
       const d = new Date(end + 'T12:00:00')
       d.setFullYear(d.getFullYear() + 1)
-      return d.toISOString().slice(0, 10)
+      return d.toLocaleDateString('en-CA')
     })()
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
-      (laborHcps.length > 0 || crewJobIds.size > 0) ? supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart).lte('job_date', lookbackEnd) : { data: [] },
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart).lte('work_date', lookbackEnd),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart).lte('work_date', lookbackEnd),
+      (laborHcps.length > 0 || crewJobIds.size > 0) ? supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd) : { data: [] },
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
+      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
     ])
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
     const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
@@ -2704,7 +2827,7 @@ export default function People() {
       }
     }
 
-    const allocationJobsMap = new Map<string, { totalBill: number; revenueBeforeOverhead: number }>()
+    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number }>()
     const laborJobIdsSeen = new Set<string>()
     for (const r of laborRows) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
@@ -2715,19 +2838,25 @@ export default function People() {
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const teamLaborCost = teamLaborCostByJobId.get(jobId) ?? 0
       const laborCost = subLaborCost + teamLaborCost
-      const partsCost = partsCostByJobId.get(jobId) ?? 0
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0)
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
-      const revenueBeforeOverhead = totalBill - partsCost - laborCost
-      allocationJobsMap.set(jobId, { totalBill, revenueBeforeOverhead })
+      const pctComplete = job?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const revenueBeforeOverhead = valueCreated - partsCost - laborCost
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead })
     }
     for (const jobId of crewJobIds) {
       if (allocationJobsMap.has(jobId)) continue
       const j = jobsById.get(jobId)
-      const laborCost = teamLaborCostByJobId.get(jobId) ?? 0
-      const partsCost = partsCostByJobId.get(jobId) ?? 0
+      const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
+      const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+      const laborCost = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
-      const revenueBeforeOverhead = totalBill - partsCost - laborCost
-      allocationJobsMap.set(jobId, { totalBill, revenueBeforeOverhead })
+      const pctComplete = j?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const revenueBeforeOverhead = valueCreated - partsCost - laborCost
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead })
     }
 
     const costOnJobInPeriod = new Map<string, number>()
@@ -2752,41 +2881,41 @@ export default function People() {
 
     let allocatedRevenue = 0
     let allocatedProfit = 0
-    for (const [jobId, { totalBill, revenueBeforeOverhead }] of allocationJobsMap) {
+    for (const [jobId, { valueCreated, revenueBeforeOverhead }] of allocationJobsMap) {
       const allocationLabor = allocationLaborByJobId.get(jobId) ?? 0
       const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
       const ratio = allocationLabor > 0 ? costInPeriod / allocationLabor : (costInPeriod > 0 ? 1 : 0)
-      allocatedRevenue += totalBill * ratio
+      allocatedRevenue += valueCreated * ratio
       allocatedProfit += revenueBeforeOverhead * ratio
     }
 
     for (const j of laborJobs) {
-      const totalHrs = j.job_id ? ((totalHoursOnJobInPeriod.get(j.job_id) ?? 0) || (totalHoursOnJob.get(j.job_id) ?? 0)) : 0
-      j.totalJobHours = totalHrs
-      j.userTotalHoursOnJob = j.job_id ? (hoursOnJobInPeriod.get(j.job_id) ?? 0) : 0
-      j.userTotalContributionToBill = totalHrs > 0 ? j.totalBill * (j.userTotalHoursOnJob / totalHrs) : (j.userTotalHoursOnJob > 0 ? j.totalBill : 0)
-      j.userTotalLaborOnJob = j.job_id ? (costOnJobInPeriod.get(j.job_id) ?? 0) : 0
-      const hoursRatio = totalHrs > 0 ? j.hours / totalHrs : (j.hours > 0 ? 1 : 0)
+      j.totalJobHours = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
+      j.userTotalHoursOnJob = j.job_id ? (personHoursOnJobAllTime.get(j.job_id) ?? 0) : 0
+      const totalHrsAllTime = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
+      j.userTotalContributionToBill = totalHrsAllTime > 0 ? j.valueCreated * (j.userTotalHoursOnJob / totalHrsAllTime) : (j.userTotalHoursOnJob > 0 ? j.valueCreated : 0)
+      j.userTotalLaborOnJob = j.job_id ? (personLaborCostByJobId.get(j.job_id) ?? 0) : 0
+      const hoursRatio = totalHrsAllTime > 0 ? j.hours / totalHrsAllTime : (j.hours > 0 ? 1 : 0)
       const allocationLabor = j.job_id ? (allocationLaborByJobId.get(j.job_id) ?? 0) : 0
       const costRatio = allocationLabor > 0 ? j.laborCost / allocationLabor : (j.laborCost > 0 ? 1 : 0)
       const revenueCostRatio = allocationLabor > 0 ? j.userTotalLaborOnJob / allocationLabor : (j.userTotalLaborOnJob > 0 ? 1 : 0)
       j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
-      j.allocatedTotalBill = j.totalBill * hoursRatio
+      j.allocatedTotalBill = j.valueCreated * hoursRatio
       j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
       j.allocatedPartsCost = j.partsCost * costRatio
     }
     for (const j of crewJobs) {
-      const totalHrs = (totalHoursOnJobInPeriod.get(j.job_id) ?? 0) || (totalHoursOnJob.get(j.job_id) ?? 0)
-      j.totalJobHours = totalHrs
-      j.userTotalHoursOnJob = hoursOnJobInPeriod.get(j.job_id) ?? 0
-      j.userTotalContributionToBill = totalHrs > 0 ? j.totalBill * (j.userTotalHoursOnJob / totalHrs) : (j.userTotalHoursOnJob > 0 ? j.totalBill : 0)
-      j.userTotalLaborOnJob = costOnJobInPeriod.get(j.job_id) ?? 0
-      const hoursRatio = totalHrs > 0 ? j.hours / totalHrs : (j.hours > 0 ? 1 : 0)
+      j.totalJobHours = totalHoursOnJob.get(j.job_id) ?? 0
+      j.userTotalHoursOnJob = personHoursOnJobAllTime.get(j.job_id) ?? 0
+      const totalHrsAllTime = totalHoursOnJob.get(j.job_id) ?? 0
+      j.userTotalContributionToBill = totalHrsAllTime > 0 ? j.valueCreated * (j.userTotalHoursOnJob / totalHrsAllTime) : (j.userTotalHoursOnJob > 0 ? j.valueCreated : 0)
+      j.userTotalLaborOnJob = personLaborCostByJobId.get(j.job_id) ?? 0
+      const hoursRatio = totalHrsAllTime > 0 ? j.hours / totalHrsAllTime : (j.hours > 0 ? 1 : 0)
       const allocationLabor = allocationLaborByJobId.get(j.job_id) ?? 0
       const costRatio = allocationLabor > 0 ? j.laborCost / allocationLabor : (j.laborCost > 0 ? 1 : 0)
       const revenueCostRatio = allocationLabor > 0 ? j.userTotalLaborOnJob / allocationLabor : (j.userTotalLaborOnJob > 0 ? 1 : 0)
       j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
-      j.allocatedTotalBill = j.totalBill * hoursRatio
+      j.allocatedTotalBill = j.valueCreated * hoursRatio
       j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
       j.allocatedPartsCost = j.partsCost * costRatio
     }
@@ -2938,8 +3067,8 @@ export default function People() {
     const dEnd = new Date(matrixEndDate + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setMatrixStartDate(dStart.toISOString().slice(0, 10))
-    setMatrixEndDate(dEnd.toISOString().slice(0, 10))
+    setMatrixStartDate(dStart.toLocaleDateString('en-CA'))
+    setMatrixEndDate(dEnd.toLocaleDateString('en-CA'))
   }
 
   function shiftHoursWeek(delta: number) {
@@ -2947,8 +3076,8 @@ export default function People() {
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setHoursDateStart(dStart.toISOString().slice(0, 10))
-    setHoursDateEnd(dEnd.toISOString().slice(0, 10))
+    setHoursDateStart(dStart.toLocaleDateString('en-CA'))
+    setHoursDateEnd(dEnd.toLocaleDateString('en-CA'))
   }
 
   function shiftPayStubWeek(delta: number) {
@@ -2956,8 +3085,8 @@ export default function People() {
     const dEnd = new Date(payStubPeriodEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setPayStubPeriodStart(dStart.toISOString().slice(0, 10))
-    setPayStubPeriodEnd(dEnd.toISOString().slice(0, 10))
+    setPayStubPeriodStart(dStart.toLocaleDateString('en-CA'))
+    setPayStubPeriodEnd(dEnd.toLocaleDateString('en-CA'))
   }
 
   const matrixDays = getDaysInRange(matrixStartDate, matrixEndDate)
@@ -2985,7 +3114,9 @@ export default function People() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
         <button
           type="button"
           onClick={() => {
@@ -3112,7 +3243,9 @@ export default function People() {
             Review
           </button>
         )}
-        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>People</h1>
+          </div>
+        </div>
+        <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>People</h1>
       </div>
       {activeTab === 'users' && (
         <>
@@ -4467,21 +4600,21 @@ export default function People() {
                 const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
                 const costForRange = (start: string, end: string) =>
                   team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
-                const today = new Date().toISOString().slice(0, 10)
+                const today = new Date().toLocaleDateString('en-CA')
                 const yesterday = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 1)
-                  return d.toISOString().slice(0, 10)
+                  return d.toLocaleDateString('en-CA')
                 })()
                 const last7Start = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 6)
-                  return d.toISOString().slice(0, 10)
+                  return d.toLocaleDateString('en-CA')
                 })()
                 const last3Start = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 2)
-                  return d.toISOString().slice(0, 10)
+                  return d.toLocaleDateString('en-CA')
                 })()
                 const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
                 const last7Cost = costForRange(last7Start, today)
@@ -5150,7 +5283,7 @@ export default function People() {
               Crew Jobs
             </button>
             {crewJobsSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '0 1rem 1rem 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <button
@@ -5158,7 +5291,7 @@ export default function People() {
                 onClick={() => {
                   const d = new Date(crewJobsDate + 'T12:00:00')
                   d.setDate(d.getDate() - 1)
-                  setCrewJobsDate(d.toISOString().slice(0, 10))
+                  setCrewJobsDate(d.toLocaleDateString('en-CA'))
                 }}
                 style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
               >
@@ -5173,12 +5306,16 @@ export default function People() {
               <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.25rem' }}>
                 ({new Date(crewJobsDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })})
               </span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', marginLeft: '0.5rem' }}>
+                <input type="checkbox" checked={crewJobsHideZeroHours} onChange={(e) => setCrewJobsHideZeroHours(e.target.checked)} />
+                Hide users with zero hours
+              </label>
               <button
                 type="button"
                 onClick={() => {
                   const d = new Date(crewJobsDate + 'T12:00:00')
                   d.setDate(d.getDate() + 1)
-                  setCrewJobsDate(d.toISOString().slice(0, 10))
+                  setCrewJobsDate(d.toLocaleDateString('en-CA'))
                 }}
                 style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
               >
@@ -5205,24 +5342,31 @@ export default function People() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Crew</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Jobs</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {showPeopleForMatrix.map((personName) => {
+                  {visiblePeopleForCrewJobs.map((personName) => {
                     const row = crewJobsData[personName] ?? { crew_lead_person_name: null, job_assignments: [] }
-                    const isCrewLeadByOthers = showPeopleForMatrix.some((p) => {
+                    const isCrewLeadByOthers = visiblePeopleForCrewJobs.some((p) => {
                       const r = crewJobsData[p]
                       return r?.crew_lead_person_name === personName
                     })
-                    const availableCrewLeads = showPeopleForMatrix.filter((p) => p !== personName)
+                    const availableCrewLeads = visiblePeopleForCrewJobs.filter((p) => p !== personName)
                     const hasCrewLead = !!row.crew_lead_person_name
                     const jobsEditable = canAccessPay && !hasCrewLead
                     const crewEditable = canAccessPay && !isCrewLeadByOthers
+                    const day = new Date(crewJobsDate + 'T12:00:00').getDay()
+                    const cfg = payConfig[personName]
+                    const effectiveHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (crewJobsHoursByPerson[personName] ?? 0)
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                         <td style={{ padding: '0.75rem' }}>{personName}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', color: '#6b7280' }}>
+                          {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
+                        </td>
                         <td style={{ padding: '0.75rem', background: !crewEditable ? '#f3f4f6' : undefined }}>
                           {crewEditable ? (
                             <select
@@ -5450,7 +5594,7 @@ export default function People() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                               <div>
                                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Odometer entries</h4>
-                                <button type="button" onClick={() => { setOdometerFormOpen(true); setOdometerValue(''); setOdometerDate(new Date().toISOString().slice(0, 10)) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add odometer entry</button>
+                                <button type="button" onClick={() => { setOdometerFormOpen(true); setOdometerValue(''); setOdometerDate(new Date().toLocaleDateString('en-CA')) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add odometer entry</button>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                   <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
                                   <tbody>
@@ -5466,7 +5610,7 @@ export default function People() {
                               </div>
                               <div>
                                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Replacement value</h4>
-                                <button type="button" onClick={() => { setReplacementValueFormOpen(true); setReplacementValueValue(''); setReplacementValueDate(new Date().toISOString().slice(0, 10)) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add replacement value</button>
+                                <button type="button" onClick={() => { setReplacementValueFormOpen(true); setReplacementValueValue(''); setReplacementValueDate(new Date().toLocaleDateString('en-CA')) }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Add replacement value</button>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                   <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
                                   <tbody>
@@ -5482,7 +5626,7 @@ export default function People() {
                               </div>
                               <div>
                                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Possessions</h4>
-                                <button type="button" onClick={() => { setPossessionFormOpen(true); setPossessionUserId(''); setPossessionStartDate(new Date().toISOString().slice(0, 10)); setPossessionEndDate('') }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Assign to user</button>
+                                <button type="button" onClick={() => { setPossessionFormOpen(true); setPossessionUserId(''); setPossessionStartDate(new Date().toLocaleDateString('en-CA')); setPossessionEndDate('') }} style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>+ Assign to user</button>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                   <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>User</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Start</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>End</th><th></th></tr></thead>
                                   <tbody>
@@ -5713,7 +5857,7 @@ export default function People() {
                 const totalHours = reviewOnlyPaidInFull
                   ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
                   : days.reduce((s, d) => s + getHoursForDay(d), 0)
-                const totalRevenue = reviewAllocatedRevenue
+                const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                 const totalProfit = reviewAllocatedProfit
                 const revPerHour = totalHours > 0 ? totalRevenue / totalHours : 0
                 const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0
@@ -5776,7 +5920,7 @@ export default function People() {
                             const totalLaborByJob = new Map<string, number>()
                             for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                               if (j.job_id) {
-                                const total = j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob
+                                const total = j.otherTeammatesLabor + j.userTotalLaborOnJob
                                 totalLaborByJob.set(j.job_id, total)
                               }
                             }
@@ -5802,16 +5946,16 @@ export default function People() {
                           })()}
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Bill / Total:</span>
+                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Value / Total:</span>
                           {(() => {
-                            const totalThisBill = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
-                            const totalBillByJob = new Map<string, number>()
+                            const totalThisValue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
+                            const totalValueByJob = new Map<string, number>()
                             for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
-                              if (j.job_id) totalBillByJob.set(j.job_id, j.totalBill)
+                              if (j.job_id) totalValueByJob.set(j.job_id, j.valueCreated)
                             }
-                            const totalBill = [...totalBillByJob.values()].reduce((s, v) => s + v, 0)
-                            const thisStr = totalThisBill > 0 ? `$${Math.round(totalThisBill).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
-                            const totalStr = totalBill > 0 ? `$${Math.round(totalBill).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
+                            const totalValue = [...totalValueByJob.values()].reduce((s, v) => s + v, 0)
+                            const thisStr = totalThisValue > 0 ? `$${Math.round(totalThisValue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
+                            const totalStr = totalValue > 0 ? `$${Math.round(totalValue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
                             const text = [thisStr, totalStr].filter(Boolean).join(' / ') || '—'
                             return <span style={{ fontWeight: 600 }}>{text}</span>
                           })()}
@@ -5827,7 +5971,7 @@ export default function People() {
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP# / Date</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Labor / Labor</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Revenue / Total</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Bill / Total</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Value / Total</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rev/hr / Profit/hr</th>
                             </tr>
                           </thead>
@@ -5862,7 +6006,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
@@ -5870,7 +6014,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>
@@ -5880,16 +6024,21 @@ export default function People() {
                                     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                       <td colSpan={7} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>Total Bill to Customer</span>
+                                          <span style={{ color: '#6b7280' }}>Total Bill</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }}>Job Progress</span>
+                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (null)'}</span>
+                                          <span style={{ color: '#6b7280' }}>Progress Revenue</span>
+                                          <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution to Bill</span>
-                                          <span>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
+                                          <span style={{ color: '#b91c1c' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution this Day</span>
-                                          <span style={{ textDecoration: 'underline' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
+                                          <span style={{ textDecoration: 'underline', color: '#b91c1c' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
                                           <span>{(() => {
-                                            const totalLabor = j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob
+                                            const totalLabor = j.otherTeammatesLabor + j.userTotalLaborOnJob
                                             const laborStr = totalLabor > 0 ? `$${formatCurrency(totalLabor)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
@@ -5913,14 +6062,15 @@ export default function People() {
                                             const hoursStr = j.hours > 0 ? `${j.hours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Cost Per Hour (this entry)</span>
+                                          <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ color: '#6b7280' }}>Users Labor Rate</span>
                                           <span>{j.hours > 0 ? `$${formatCurrency(j.laborCost / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Teammates Cost Per Hour (job avg)</span>
+                                          <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             return teammatesHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Teams Avg Cost Per Hour for this job</span>
+                                          <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
                                           <span>{j.totalJobHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor + j.userTotalLaborOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
@@ -5928,6 +6078,7 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
                                           <span style={{ color: '#6b7280' }}>Total Revenue Before Overhead</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution to Revenue</span>
@@ -5991,7 +6142,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(j.otherTeammatesLabor + j.userTotalLaborOnJob) > 0 ? `$${formatCurrency(j.otherTeammatesLabor + j.userTotalLaborOnJob)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
@@ -5999,7 +6150,7 @@ export default function People() {
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>
@@ -6009,16 +6160,21 @@ export default function People() {
                                     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                                       <td colSpan={7} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>Total Bill to Customer</span>
+                                          <span style={{ color: '#6b7280' }}>Total Bill</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }}>Job Progress</span>
+                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (null)'}</span>
+                                          <span style={{ color: '#6b7280' }}>Progress Revenue</span>
+                                          <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution to Bill</span>
-                                          <span>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
+                                          <span style={{ color: '#b91c1c' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution this Day</span>
-                                          <span style={{ textDecoration: 'underline' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
+                                          <span style={{ textDecoration: 'underline', color: '#b91c1c' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
                                           <span>{(() => {
-                                            const totalLabor = j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob
+                                            const totalLabor = j.otherTeammatesLabor + j.userTotalLaborOnJob
                                             const laborStr = totalLabor > 0 ? `$${formatCurrency(totalLabor)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
@@ -6042,14 +6198,15 @@ export default function People() {
                                             const hoursStr = j.hours > 0 ? `${j.hours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Cost Per Hour (this entry)</span>
+                                          <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ color: '#6b7280' }}>Users Labor Rate</span>
                                           <span>{j.hours > 0 ? `$${formatCurrency(j.laborCost / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Teammates Cost Per Hour (job avg)</span>
+                                          <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             return teammatesHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Teams Avg Cost Per Hour for this job</span>
+                                          <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
                                           <span>{j.totalJobHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor + j.userTotalLaborOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
@@ -6057,6 +6214,7 @@ export default function People() {
                                           <span style={{ color: '#6b7280' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
                                           <span style={{ color: '#6b7280' }}>Total Revenue Before Overhead</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Users Contribution to Revenue</span>
@@ -6095,7 +6253,7 @@ export default function People() {
                                 <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
                                   const totalLaborByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
-                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.subLaborCost + j.otherTeammatesLabor + j.userTotalLaborOnJob)
+                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.otherTeammatesLabor + j.userTotalLaborOnJob)
                                   }
                                   const totalLabor = [...totalLaborByJob.values()].reduce((s, v) => s + v, 0)
                                   return totalLabor > 0 ? `$${Math.round(totalLabor).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
@@ -6123,12 +6281,12 @@ export default function People() {
                                   return totalThisBill > 0 ? `$${Math.round(totalThisBill).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
                                 <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
-                                  const totalBillByJob = new Map<string, number>()
+                                  const totalValueByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
-                                    if (j.job_id) totalBillByJob.set(j.job_id, j.totalBill)
+                                    if (j.job_id) totalValueByJob.set(j.job_id, j.valueCreated)
                                   }
-                                  const totalBill = [...totalBillByJob.values()].reduce((s, v) => s + v, 0)
-                                  return totalBill > 0 ? `$${Math.round(totalBill).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
+                                  const totalValue = [...totalValueByJob.values()].reduce((s, v) => s + v, 0)
+                                  return totalValue > 0 ? `$${Math.round(totalValue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
                               </td>
                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
@@ -6654,7 +6812,7 @@ export default function People() {
                     const cells: Array<{ date: string; earned: number; paid: number } | null> = []
                     const d = new Date(firstSunday)
                     while (d <= lastSunday) {
-                      const key = d.toISOString().slice(0, 10)
+                      const key = d.toLocaleDateString('en-CA')
                       const inYear = d.getFullYear() === payStubCalendarYear
                       if (inYear && payStubCalendarData) {
                         const earned = payStubCalendarData.earnedByDate[key] ?? 0

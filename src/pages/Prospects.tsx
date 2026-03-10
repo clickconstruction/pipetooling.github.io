@@ -821,7 +821,7 @@ export default function Prospects() {
         if (cancelled) return
         if (data?.created_at) {
           const d = new Date(data.created_at)
-          setConvertFirstInteractionDate(d.toISOString().slice(0, 10))
+          setConvertFirstInteractionDate(d.toLocaleDateString('en-CA'))
         } else {
           setConvertFirstInteractionDate('')
         }
@@ -1207,7 +1207,7 @@ export default function Prospects() {
 
   function openCallbackModal() {
     const now = new Date()
-    setCallbackDate(now.toISOString().slice(0, 10))
+    setCallbackDate(now.toLocaleDateString('en-CA'))
     setCallbackTime(now.toTimeString().slice(0, 5))
     setCallbackNote('')
     setCallbackModalOpen(true)

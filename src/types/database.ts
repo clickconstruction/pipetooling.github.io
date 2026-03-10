@@ -1401,6 +1401,7 @@ export type Database = {
           job_plans_link: string | null
           master_user_id: string
           payments_made: number | null
+          pct_complete: number | null
           revenue: number | null
           status: string
           updated_at: string | null
@@ -1415,6 +1416,7 @@ export type Database = {
           job_plans_link?: string | null
           master_user_id: string
           payments_made?: number | null
+          pct_complete?: number | null
           revenue?: number | null
           status?: string
           updated_at?: string | null
@@ -1429,6 +1431,7 @@ export type Database = {
           job_plans_link?: string | null
           master_user_id?: string
           payments_made?: number | null
+          pct_complete?: number | null
           revenue?: number | null
           status?: string
           updated_at?: string | null
@@ -3795,6 +3798,7 @@ export type Database = {
           invoice_number: string
           is_paid: boolean
           link: string | null
+          purchase_order_number: string | null
           supply_house_id: string
           updated_at: string | null
         }
@@ -3807,6 +3811,7 @@ export type Database = {
           invoice_number: string
           is_paid?: boolean
           link?: string | null
+          purchase_order_number?: string | null
           supply_house_id: string
           updated_at?: string | null
         }
@@ -3819,6 +3824,7 @@ export type Database = {
           invoice_number?: string
           is_paid?: boolean
           link?: string | null
+          purchase_order_number?: string | null
           supply_house_id?: string
           updated_at?: string | null
         }
@@ -3828,6 +3834,39 @@ export type Database = {
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_invoice_job_allocations: {
+        Row: {
+          invoice_id: string
+          job_id: string
+          pct: number
+        }
+        Insert: {
+          invoice_id: string
+          job_id: string
+          pct: number
+        }
+        Update: {
+          invoice_id?: string
+          job_id?: string
+          pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_invoice_job_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_job_allocations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -4600,6 +4639,13 @@ export type Database = {
           hcp_number: string
           id: string
           source: string
+        }[]
+      }
+      get_invoice_amounts_for_jobs: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_id: string
+          invoice_amount: number
         }[]
       }
       get_jobs_ledger_by_ids: {
