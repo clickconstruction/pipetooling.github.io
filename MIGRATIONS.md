@@ -273,7 +273,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 20, 2026
 
-**`20260320000000_search_jobs_for_reports_add_address.sql`**
+**`20260320000001_search_jobs_for_reports_add_address.sql`**
 - **Purpose**: Add address to job search results for Add Inspection and New Report modals
 - **Changes**: Alter `search_jobs_for_reports` RPC to return `address` column; jobs_ledger uses `job_address`, projects uses `address`
 - **Impact**: Add Inspection job search displays "Suzy Wilson (HCP: 612) - 8201 Wilke Rd. Kingsbury Tx 78638"; New Report modal also receives address in results
@@ -347,6 +347,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Estimators can now submit Job Reports from Dashboard/Jobs; previously INSERT was blocked
 - **Category**: Reports / RLS
 
+**`20260313000001_drop_claim_dev_with_code.sql`**
+- **Purpose**: Remove deprecated claim_dev_with_code function (dev promotion now via Settings)
+- **Changes**: DROP FUNCTION IF EXISTS public.claim_dev_with_code(text)
+- **Category**: Database / Cleanup
+
 #### March 12, 2026
 
 **`20260312000000_add_bids_count_tooling_link.sql`**
@@ -383,7 +388,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Assistants with assistants_share_master access can now create invoices; INSERT matches SELECT/UPDATE/DELETE
 - **Category**: Jobs / RLS
 
-**`20260307000000_prospect_email_sent.sql`**
+**`20260307000002_prospect_email_sent.sql`**
 - **Purpose**: Track when user has sent an email to a prospect for a given template
 - **Changes**: Create `prospect_email_sent` (prospect_id, user_id, template_key, created_at); RLS for users to see/insert own rows
 - **Impact**: Prospects Follow Up mail icon shows envelope-check (green) after user clicks mail icon for that template+prospect

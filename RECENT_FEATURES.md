@@ -652,7 +652,7 @@ when_to_read:
 - **Checkbox label**: "Automatically move to the next prospect when I click Didn't Answer" (clearer than previous text).
 - **Icons**: Mail and edit buttons use Font Awesome SVG icons (envelope, envelope-check, pen-to-square).
 
-**Files**: `src/pages/Prospects.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260304000000_prospect_copy_templates.sql`, `20260305000000_add_users_phone.sql`, `20260306000000_prospect_copy_subject.sql`, `20260307000000_prospect_email_sent.sql`
+**Files**: `src/pages/Prospects.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260304000000_prospect_copy_templates.sql`, `20260305000000_add_users_phone.sql`, `20260306000000_prospect_copy_subject.sql`, `20260307000002_prospect_email_sent.sql`
 
 ---
 
