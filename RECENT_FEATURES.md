@@ -309,6 +309,20 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.91)
+
+**Date**: 2026-03-10
+
+### Crew Jobs Shared Component
+
+- **CrewJobsBlock**: Extracted Crew Jobs (editing table + Team Job Labor display) into a shared `CrewJobsBlock` component. Used in Quickfill and Jobs (Team Labor tab).
+- **teamLabor.ts**: Added `src/utils/teamLabor.ts` with `loadTeamLaborData()` for reusable team labor aggregation.
+- **Quickfill**: `CrewJobsSection` is now a thin wrapper around `CrewJobsBlock`.
+- **People Team Costs tab** (removed): Previously used `CrewJobsBlock`; functionality moved to Jobs Team Labor tab and Quickfill Crew Jobs. Kept `crewJobsByDatePerson` and `loadCrewJobsRef` in People for Hours tab.
+- **Jobs → Team Labor**: Replaced custom expandable table with `CrewJobsBlock`; uses `jobIdsFilter` to show only ledger jobs. Removed `teamLaborSearch`, `expandedCombinedLaborJobId`, `combinedLaborRows`.
+
+---
+
 ## Latest Updates (v2.90)
 
 **Date**: 2026-03-10
@@ -790,7 +804,7 @@ when_to_read:
 
 ### Quick Fill – Crew Jobs section
 
-- **CrewJobsSection**: Mirrors People → Team Costs. Placed below Hours, above Receivables. Crew Jobs table (date picker, prev/next, Same team as yesterday, Name, Crew, Jobs with % and remove). Team Job Labor table (HCP, Job, People, Man hours with clickable breakdown; Job Cost column hidden). Link to full Team Costs in People. Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
+- **CrewJobsSection**: Same as Jobs Team Labor tab. Placed below Hours, above Receivables. Crew Jobs table (date picker, prev/next, Same team as yesterday, Name, Crew, Jobs with % and remove). Team Job Labor table (HCP, Job, People, Man hours with clickable breakdown; Job Cost column hidden). Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
 
 **Files**: `src/components/quickfill/CrewJobsSection.tsx`, `src/pages/Quickfill.tsx`
 

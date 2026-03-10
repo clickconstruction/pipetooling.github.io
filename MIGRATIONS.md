@@ -421,16 +421,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Prospects
 
 **`20260231000021_search_jobs_ledger.sql`**
-- **Purpose**: Search jobs_ledger for Team Costs job picker
+- **Purpose**: Search jobs_ledger for Crew Jobs job picker
 - **Changes**: Create `search_jobs_ledger(search_text)` RPC; returns id, hcp_number, job_name, job_address from jobs_ledger filtered by HCP, name, address
-- **Impact**: Team Costs Crew Jobs table uses this for job search modal
-- **Category**: People / Team Costs
+- **Impact**: Crew Jobs (Jobs Team Labor, Quickfill) use this for job search modal
+- **Category**: Jobs / Quickfill / Crew Jobs
 
 **`20260231000020_create_people_crew_jobs.sql`**
-- **Purpose**: Store crew lead and job/percentage assignments per person per day for Team Costs tab
+- **Purpose**: Store crew lead and job/percentage assignments per person per day for Crew Jobs
 - **Changes**: Create `people_crew_jobs` (work_date, person_name, crew_lead_person_name, job_assignments JSONB); RLS same as people_hours
-- **Impact**: People → Team Costs tab; Crew Jobs table; crew members inherit crew lead job breakdown
-- **Category**: People / Team Costs
+- **Impact**: Jobs Team Labor tab; Quickfill Crew Jobs; crew members inherit crew lead job breakdown
+- **Category**: Jobs / Quickfill / Crew Jobs
 
 **`20260231000011_fixture_cost_list_and_po.sql`**
 - **Purpose**: Support fixture-only entries sent to office for pricing

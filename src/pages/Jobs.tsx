@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -7,6 +7,7 @@ import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
@@ -257,8 +258,6 @@ export default function Jobs() {
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [subLaborSearch, setSubLaborSearch] = useState('')
-  const [teamLaborSearch, setTeamLaborSearch] = useState('')
-  const [expandedCombinedLaborJobId, setExpandedCombinedLaborJobId] = useState<string | null>(null)
   const [jobSummarySearch, setJobSummarySearch] = useState('')
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
   const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
@@ -2359,32 +2358,6 @@ export default function Jobs() {
     })
   }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob])
 
-  const combinedLaborRows = useMemo(() => {
-    const teamLaborCostByJobId = new Map<string, number>()
-    const teamLaborByJobId = new Map<string, TeamLaborRow>()
-    for (const r of teamLaborData) {
-      teamLaborCostByJobId.set(r.jobId, r.jobCost)
-      teamLaborByJobId.set(r.jobId, r)
-    }
-    type CombinedRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; teamLaborCost: number }
-    const rows: CombinedRow[] = []
-    for (const job of jobs) {
-      const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
-      if (teamLaborCost > 0) {
-        const td = teamLaborByJobId.get(job.id)
-        rows.push({
-          jobId: job.id,
-          hcpNumber: job.hcp_number ?? '—',
-          jobName: job.job_name ?? '—',
-          jobAddress: job.job_address ?? '—',
-          people: td?.people ?? [],
-          teamLaborCost,
-        })
-      }
-    }
-    return rows.sort((a, b) => (a.hcpNumber ?? '').localeCompare(b.hcpNumber ?? ''))
-  }, [jobs, teamLaborData])
-
   function openNew() {
     setEditing(null)
     setHcpNumber('')
@@ -4325,102 +4298,13 @@ export default function Jobs() {
       {activeTab === 'combined-labor' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem' }}>
-            <input
-              type="search"
-              placeholder="Search HCP, job name, address…"
-              value={teamLaborSearch}
-              onChange={(e) => setTeamLaborSearch(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-            />
-          </div>
-          {(laborJobsLoading || teamLaborLoading) ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
-          ) : combinedLaborRows.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No team labor data yet. Add jobs in People → Team Costs.</p>
-          ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job name and Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Job Labor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {combinedLaborRows
-                    .filter((row) => {
-                      const q = teamLaborSearch.trim().toLowerCase()
-                      if (!q) return true
-                      const hcp = (row.hcpNumber ?? '').toLowerCase()
-                      const name = (row.jobName ?? '').toLowerCase()
-                      const addr = (row.jobAddress ?? '').toLowerCase()
-                      return hcp.includes(q) || name.includes(q) || addr.includes(q)
-                    })
-                    .map((row) => {
-                      const expanded = expandedCombinedLaborJobId === row.jobId
-                      const breakdown = teamLaborData.find((r) => r.jobId === row.jobId)?.breakdown ?? []
-                      return (
-                        <Fragment key={row.jobId}>
-                          <tr
-                            onClick={() => setExpandedCombinedLaborJobId((prev) => (prev === row.jobId ? null : row.jobId))}
-                            style={{
-                              borderBottom: '1px solid #e5e7eb',
-                              cursor: 'pointer',
-                              background: expanded ? '#f9fafb' : undefined,
-                            }}
-                          >
-                            <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
-                            <td style={{ padding: '0.75rem' }}>{row.hcpNumber}</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <div>{row.jobName}</div>
-                              {(row.jobAddress ?? '').trim() && (
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{row.jobAddress}</div>
-                              )}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>{row.people?.length ? row.people.join(', ') : '—'}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{row.teamLaborCost > 0 ? `$${formatCurrency(row.teamLaborCost)}` : '—'}</td>
-                          </tr>
-                          {expanded && (
-                            <tr>
-                              <td colSpan={5} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
-                                <div style={{ padding: '0.75rem 0.75rem 0.75rem 2.5rem', background: '#f9fafb' }}>
-                                  {breakdown.length === 0 ? (
-                                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No crew data</p>
-                                  ) : (
-                                    <table style={{ width: '100%', maxWidth: 400, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                      <thead>
-                                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Crew Job Costs</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Crew Man Hours</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {breakdown.map((b) => (
-                                          <tr key={b.personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                            <td style={{ padding: '0.5rem 0.75rem' }}>{b.personName}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(b.cost)}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{b.hours.toFixed(2)}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      )
-                    })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <CrewJobsBlock
+            showCrewJobsSection
+            showTeamLabor
+            jobIdsFilter={jobs.map((j) => j.id)}
+            showTitle={false}
+            collapsibleCrewJobs
+          />
         </div>
       )}
 

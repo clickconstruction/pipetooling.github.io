@@ -393,7 +393,7 @@ export function HoursSection() {
                           }),
                           ...(isUnassigned && canEditCrewJobs && { cursor: 'pointer' }),
                         }}
-                        title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs' : 'Assign jobs in Crew Jobs section or People page') : undefined}
+                        title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs' : 'Assign jobs in Crew Jobs section above') : undefined}
                         {...(isUnassigned && canEditCrewJobs && {
                           role: 'button',
                           tabIndex: 0,

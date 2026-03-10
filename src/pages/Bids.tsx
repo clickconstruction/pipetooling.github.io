@@ -190,6 +190,17 @@ const tabStyle = (active: boolean) => ({
   fontSize: '0.9375rem',
 })
 
+const HIGHLIGHTED_TABS = ['counts', 'pricing', 'cover-letter'] as const
+const SAFETY_ORANGE = '#FF6600' // ANSI/OSHA safety orange
+
+function bidsTabStyle(active: boolean, tabId: string, isOnBidBoard: boolean) {
+  const base = tabStyle(active)
+  if (isOnBidBoard && HIGHLIGHTED_TABS.includes(tabId as (typeof HIGHLIGHTED_TABS)[number])) {
+    return { ...base, fontWeight: 600, color: SAFETY_ORANGE, borderBottom: active ? '2px solid #FF6600' : '2px solid transparent' }
+  }
+  return base
+}
+
 function formatTimeSinceLastContact(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso).getTime()
@@ -6989,7 +7000,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={tabStyle(activeTab === 'counts')}
+          style={bidsTabStyle(activeTab === 'counts', 'counts', activeTab === 'bid-board')}
         >
           Counts
         </button>
@@ -7031,7 +7042,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={tabStyle(activeTab === 'pricing')}
+          style={bidsTabStyle(activeTab === 'pricing', 'pricing', activeTab === 'bid-board')}
         >
           Pricing
         </button>
@@ -7045,7 +7056,7 @@ export default function Bids() {
               return next
             })
           }}
-          style={tabStyle(activeTab === 'cover-letter')}
+          style={bidsTabStyle(activeTab === 'cover-letter', 'cover-letter', activeTab === 'bid-board')}
         >
           Cover Letter
         </button>
