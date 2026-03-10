@@ -969,6 +969,7 @@ export default function Bids() {
   const [gcContactName, setGcContactName] = useState('')
   const [gcContactPhone, setGcContactPhone] = useState('')
   const [gcContactEmail, setGcContactEmail] = useState('')
+  const [projectContactExpanded, setProjectContactExpanded] = useState(true)
   const [estimatorId, setEstimatorId] = useState('')
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
   const [accountManagerId, setAccountManagerId] = useState('')
@@ -6368,6 +6369,7 @@ export default function Bids() {
     setLastContact('')
     setNotes('')
     setFormServiceTypeId(selectedServiceTypeId)
+    setProjectContactExpanded(true)
     setBidFormOpen(true)
     setError(null)
   }
@@ -6400,6 +6402,7 @@ export default function Bids() {
     setLastContact('')
     setNotes('')
     setFormServiceTypeId(selectedServiceTypeId)
+    setProjectContactExpanded(true)
     setBidFormOpen(true)
     setError(null)
   }
@@ -6442,6 +6445,7 @@ export default function Bids() {
     setNotes(bid.notes ?? '')
     setFormServiceTypeId((bid as any).service_type_id ?? selectedServiceTypeId)
     setDeleteConfirmProjectName('')
+    setProjectContactExpanded(true)
     setBidFormOpen(true)
     setError(null)
   }
@@ -12958,28 +12962,30 @@ export default function Bids() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
                 <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
-                <select
-                  value={formServiceTypeId}
-                  onChange={(e) => setFormServiceTypeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  required
-                >
-                  <option value="">Select service type...</option>
-                  {visibleServiceTypes.map(st => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/ Loss</label>
-                <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                  <option value="">—</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
-                  <option value="started_or_complete">Started or Complete</option>
-                </select>
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Service Type *</label>
+                  <select
+                    value={formServiceTypeId}
+                    onChange={(e) => setFormServiceTypeId(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    required
+                  >
+                    <option value="">Select service type...</option>
+                    {visibleServiceTypes.map(st => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win/Loss</label>
+                  <select value={outcome} onChange={(e) => setOutcome(e.target.value as OutcomeOption)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                    <option value="">—</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                    <option value="started_or_complete">Started or Complete</option>
+                  </select>
+                </div>
               </div>
               {outcome === 'lost' && (
                 <div style={{ marginBottom: '1rem' }}>
@@ -12999,9 +13005,40 @@ export default function Bids() {
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address [street, town, state zip]</label>
-                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
+                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <label style={{ fontWeight: 500, margin: 0 }}>Distance to Office<br />(miles)</label>
+                    {address && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color: '#2563eb',
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                        }}
+                        title={`View ${address} on map`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          style={{ width: '16px', height: '16px', fill: 'currentColor' }}
+                        >
+                          <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                  <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -13033,73 +13070,77 @@ export default function Bids() {
                     }}
                     style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
                   >
-                    paste<br />clipboard
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M448 96L439.4 96C428.4 76.9 407.7 64 384 64L256 64C232.3 64 211.6 76.9 200.6 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96zM264 176C250.7 176 240 165.3 240 152C240 138.7 250.7 128 264 128L376 128C389.3 128 400 138.7 400 152C400 165.3 389.3 176 376 176L264 176z"/></svg>
                   </button>
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setPlansLink(text)
-                      } catch (err) {
-                        console.error('Failed to read clipboard:', err)
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
-                  >
-                    paste<br />clipboard
-                  </button>
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText()
+                          setPlansLink(text)
+                        } catch (err) {
+                          console.error('Failed to read clipboard:', err)
+                        }
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M448 96L439.4 96C428.4 76.9 407.7 64 384 64L256 64C232.3 64 211.6 76.9 200.6 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96zM264 176C250.7 176 240 165.3 240 152C240 138.7 250.7 128 264 128L376 128C389.3 128 400 138.7 400 152C400 165.3 389.3 176 376 176L264 176z"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
+                  <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Count Tooling</label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://counttooling.com/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setCountToolingLink(text)
-                      } catch (err) {
-                        console.error('Failed to read clipboard:', err)
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
-                  >
-                    paste<br />clipboard
-                  </button>
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Count Tooling</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://counttooling.com/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText()
+                          setCountToolingLink(text)
+                        } catch (err) {
+                          console.error('Failed to read clipboard:', err)
+                        }
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M448 96L439.4 96C428.4 76.9 407.7 64 384 64L256 64C232.3 64 211.6 76.9 200.6 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96zM264 176C250.7 176 240 165.3 240 152C240 138.7 250.7 128 264 128L376 128C389.3 128 400 138.7 400 152C400 165.3 389.3 176 376 176L264 176z"/></svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        const text = await navigator.clipboard.readText()
-                        setBidSubmissionLink(text)
-                      } catch (err) {
-                        console.error('Failed to read clipboard:', err)
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
-                  >
-                    paste<br />clipboard
-                  </button>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const text = await navigator.clipboard.readText()
+                          setBidSubmissionLink(text)
+                        } catch (err) {
+                          console.error('Failed to read clipboard:', err)
+                        }
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', lineHeight: '1.2', textAlign: 'center' }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M448 96L439.4 96C428.4 76.9 407.7 64 384 64L256 64C232.3 64 211.6 76.9 200.6 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96zM264 176C250.7 176 240 165.3 240 152C240 138.7 250.7 128 264 128L376 128C389.3 128 400 138.7 400 152C400 165.3 389.3 176 376 176L264 176z"/></svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
-                <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem', position: 'relative' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
@@ -13253,34 +13294,65 @@ export default function Bids() {
                 </>
               )}
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Contact Name</label>
-                <input type="text" value={gcContactName} onChange={(e) => setGcContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <button
+                  type="button"
+                  aria-expanded={projectContactExpanded}
+                  onClick={() => setProjectContactExpanded((p) => !p)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: 0,
+                    marginBottom: projectContactExpanded ? '0.5rem' : 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: 'inherit',
+                    color: 'inherit',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span aria-hidden>{projectContactExpanded ? '\u25BC' : '\u25B6'}</span>
+                  Project Contact: {gcContactName.trim() || gcContactPhone.trim() || gcContactEmail.trim() ? (gcContactName.trim() || '—') : '—'}
+                </button>
+                {projectContactExpanded && (
+                  <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Name</label>
+                      <input type="text" value={gcContactName} onChange={(e) => setGcContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Phone</label>
+                      <input type="tel" value={gcContactPhone} onChange={(e) => setGcContactPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: 0 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Email</label>
+                      <input type="email" value={gcContactEmail} onChange={(e) => setGcContactEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Contact Phone</label>
-                <input type="tel" value={gcContactPhone} onChange={(e) => setGcContactPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Contact Email</label>
-                <input type="email" value={gcContactEmail} onChange={(e) => setGcContactEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
-                <select value={estimatorId} onChange={(e) => setEstimatorId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                  <option value="">—</option>
-                  {estimatorUsers.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
-                <select value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
-                  <option value="">—</option>
-                  {estimatorUsers.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
-                  ))}
-                </select>
+              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Estimator</label>
+                  <select value={estimatorId} onChange={(e) => setEstimatorId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                    <option value="">—</option>
+                    {estimatorUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Account Man</label>
+                  <select value={accountManagerId} onChange={(e) => setAccountManagerId(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                    <option value="">—</option>
+                    {estimatorUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
@@ -13309,35 +13381,6 @@ export default function Bids() {
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Maximum Profit</label>
                   <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <label style={{ fontWeight: 500, margin: 0 }}>Distance to Office (miles)</label>
-                  {address && (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        color: '#2563eb',
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                      }}
-                      title={`View ${address} on map`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 640 640"
-                        style={{ width: '16px', height: '16px', fill: 'currentColor' }}
-                      >
-                        <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-                <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
