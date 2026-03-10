@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.88)"
-    line: ~260
+  - name: "Latest Version (v2.90)"
+    line: ~310
+    description: "Jobs New Job Labor: labor rate per row, field layout, Add Subcontractor placement, default $20 rate"
+  - name: "v2.89"
+    line: ~325
+    description: "Jobs Team Labor expandable rows, hidden from assistants; Job Summary Team Labor fix; Prospects Team tab for assistants"
+  - name: "v2.88"
+    line: ~305
     description: "People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr"
   - name: "v2.87"
     line: ~275
@@ -303,6 +309,44 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.90)
+
+**Date**: 2026-03-10
+
+### Jobs – Sub Sheet Ledger / New Job Labor Modal
+
+- **Labor rate per row**: Moved Labor rate ($/hr) from the top flex row into the Specific Work (Line Items) table. Each line item now has its own Rate ($/hr) input and Cost column (hours × rate). New rows prefill with the app default labor rate when available.
+- **Migration**: `20260310180000_add_labor_rate_to_people_labor_job_items.sql` adds `labor_rate` to `people_labor_job_items` and backfills from `people_labor_jobs`. Job-level `labor_rate` remains for Sub Labor table display and is set from the first row when saving.
+- **Rate ($/hr) empty when 0**: When rate is 0, the field shows empty (placeholder "0") so the user can type immediately without clearing.
+- **Add Subcontractor button**: Moved to the left of the External Subs list; same height as the list.
+- **Field layout**: Date of Labor and Service type moved after Distance (mi) in the top row.
+- **Service type dropdown**: Width of longest option, height matches Date of Labor.
+- **Top-row input heights**: HCP, Address, Distance (mi), Date of Labor, and Service type all use height 38px.
+- **Date of Labor input**: Sized to fit date text (11ch width).
+- **Default Rate ($/hr) $20**: New rows default to $20 when no app default is set.
+
+---
+
+## Latest Updates (v2.89)
+
+**Date**: 2026-03-10
+
+### Jobs – Team Labor Tab
+
+- **Expandable rows**: Click a job row to expand and see per-person breakdown: Person | Crew Job Costs | Crew Man Hours. Consolidates data from People Team Costs for eventual deprecation.
+- **Hidden from assistants**: Team Labor tab is not visible to assistants; direct URL redirects to Stages.
+
+### Jobs – Job Summary Tab
+
+- **Team Labor column fix**: Team Labor data now loads when Job Summary tab is active. Previously, the column showed "—" until the user had visited Team Labor or another tab that triggered the load.
+
+### Prospects – Team Tab
+
+- **Assistants can access**: Team tab is now visible to dev and assistant roles (was dev-only). Shows last 30 days of prospect activity: User | Cards Marked | Cards Updated.
+- **Migration**: `20260310120000_assistants_see_prospect_timer_events.sql` adds RLS policy for assistants to SELECT all `prospect_timer_events`.
+
+---
+
 ## Latest Updates (v2.88)
 
 **Date**: 2026-03-10
@@ -474,10 +518,10 @@ when_to_read:
 - **quickfill_section_marks** table: `section_id`, `marked_at`, `marked_by`. RLS: dev, master_technician, assistant can SELECT and UPSERT.
 - **useUnpricedFixturesCount** hook: Fetches unpriced fixtures count for conditional Unpriced Fixtures visibility.
 
-### Prospects – Team Tab (Dev-Only)
+### Prospects – Team Tab (Dev and Assistant)
 
-- **Team tab**: Shows last 30 days of prospect activity on one scrollable page. Each day: User | Cards Marked | Cards Updated. Rows with 0/0 hidden; days with no activity hidden.
-- **Migration**: `prospect_devs_see_timer_events` allows devs to SELECT all `prospect_timer_events` for Team activity tracking.
+- **Team tab**: Shows last 30 days of prospect activity on one scrollable page. Each day: User | Cards Marked | Cards Updated. Rows with 0/0 hidden; days with no activity hidden. Visible to dev and assistant (v2.89).
+- **Migrations**: `prospect_devs_see_timer_events` allows devs to SELECT all `prospect_timer_events`; `20260310120000_assistants_see_prospect_timer_events` extends access to assistants.
 
 ### Prospects – Other Updates
 

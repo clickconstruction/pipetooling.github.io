@@ -66,8 +66,8 @@ type ServiceType = { id: string; name: string; description: string | null; color
 type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
 type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 type LaborBookEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
-type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean }
-type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }> }
+type LaborFixtureRow = { id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed: boolean; labor_rate: number }
+type LaborJob = { id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date: string | null; created_at: string | null; distance_miles?: number | null; items?: Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }> }
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
 type TeamLaborRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; manHours: number; jobCost: number; breakdown: Array<{ personName: string; hours: number; cost: number }> }
@@ -177,9 +177,8 @@ export default function Jobs() {
   const [laborAddress, setLaborAddress] = useState('')
   const [laborDistance, setLaborDistance] = useState('0')
   const [laborJobNumber, setLaborJobNumber] = useState('')
-  const [laborRate, setLaborRate] = useState('')
   const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+  const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: 20 }])
   const [laborSaving, setLaborSaving] = useState(false)
   // Sub Sheet Ledger state
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
@@ -950,6 +949,26 @@ export default function Jobs() {
     return [...new Set([...fromSubs, ...fromPrimaries])].sort((a, b) => a.localeCompare(b))
   }
 
+  function rosterSubcontractorsWithAccount(): string[] {
+    const fromSubs = byKind('sub')
+      .filter((item) => item.source === 'user')
+      .map((item) => item.name?.trim())
+      .filter((n): n is string => !!n)
+    const fromPrimaries = users
+      .filter((u) => u.role === 'primary')
+      .map((u) => u.name?.trim())
+      .filter((n): n is string => !!n)
+    return [...new Set([...fromSubs, ...fromPrimaries])].sort((a, b) => a.localeCompare(b))
+  }
+
+  function rosterSubcontractorsWithoutAccount(): string[] {
+    return byKind('sub')
+      .filter((item) => item.source === 'people')
+      .map((item) => item.name?.trim())
+      .filter((n): n is string => !!n)
+      .sort((a, b) => a.localeCompare(b))
+  }
+
   function rosterNamesEveryoneElse(): string[] {
     const result: string[] = []
     const seen = new Set<string>()
@@ -1035,13 +1054,13 @@ export default function Jobs() {
       const jobIds = jobs.map((j) => j.id)
       const { data: items } = await supabase
         .from('people_labor_job_items')
-        .select('job_id, fixture, count, hrs_per_unit, is_fixed')
+        .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
         .in('job_id', jobIds)
         .order('sequence_order', { ascending: true })
-      const itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }>>()
-      for (const it of (items ?? []) as Array<{ job_id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean }>) {
+      const itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>>()
+      for (const it of (items ?? []) as Array<{ job_id: string; fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null }>) {
         if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-        itemsByJob.get(it.job_id)!.push({ fixture: it.fixture, count: it.count, hrs_per_unit: it.hrs_per_unit, is_fixed: it.is_fixed })
+        itemsByJob.get(it.job_id)!.push({ fixture: it.fixture, count: it.count, hrs_per_unit: it.hrs_per_unit, is_fixed: it.is_fixed, labor_rate: it.labor_rate })
       }
       setLaborJobs(
         (jobs as LaborJob[]).map((j) => ({ ...j, items: itemsByJob.get(j.id) ?? [] }))
@@ -1404,7 +1423,8 @@ export default function Jobs() {
   }
 
   function addLaborFixtureRow() {
-    setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
+    setLaborFixtureRows((prev) => [...prev, { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
   }
 
   function removeLaborFixtureRow(id: string) {
@@ -1463,7 +1483,7 @@ export default function Jobs() {
     }
     setLaborSaving(true)
     setError(null)
-    const laborRateNum = laborRate.trim() === '' ? null : parseFloat(laborRate) || null
+    const firstRowRate = validRows[0]?.labor_rate != null ? Number(validRows[0].labor_rate) : null
     const { data: job, error: jobErr } = await supabase
       .from('people_labor_jobs')
       .insert({
@@ -1471,7 +1491,7 @@ export default function Jobs() {
         assigned_to_name: assigned,
         address,
         job_number: laborJobNumber.trim().slice(0, 10) || null,
-        labor_rate: laborRateNum,
+        labor_rate: firstRowRate,
         job_date: laborDate.trim() ? laborDate.trim() : null,
         distance_miles: parseFloat(laborDistance) || 0,
       })
@@ -1490,6 +1510,7 @@ export default function Jobs() {
         count: Number(r.count) || 1,
         hrs_per_unit: Number(r.hrs_per_unit) || 0,
         is_fixed: r.is_fixed ?? false,
+        labor_rate: r.labor_rate != null ? Number(r.labor_rate) : null,
         sequence_order: i + 1,
       })
       if (itemErr) {
@@ -1502,9 +1523,9 @@ export default function Jobs() {
     setLaborAddress('')
     setLaborDistance('0')
     setLaborJobNumber('')
-    setLaborRate('')
     setLaborDate(new Date().toLocaleDateString('en-CA'))
-    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
+    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
     setLaborSaving(false)
     setActiveTab('sub_sheet_ledger')
     await loadLaborJobs()
@@ -1550,9 +1571,9 @@ export default function Jobs() {
     setLaborAddress('')
     setLaborDistance('0')
     setLaborJobNumber('')
-    setLaborRate('')
     setLaborDate(new Date().toLocaleDateString('en-CA'))
-    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
+    setLaborFixtureRows([{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
   }
 
   function closeLaborModal() {
@@ -1574,15 +1595,17 @@ export default function Jobs() {
     setLaborDistance(job.distance_miles != null ? String(job.distance_miles) : '0')
     setLaborJobNumber(job.job_number ?? '')
     setLaborDate(job.job_date ?? new Date().toLocaleDateString('en-CA'))
-    setLaborRate(job.labor_rate != null ? String(job.labor_rate) : '')
+    const jobRate = job.labor_rate ?? 0
     const rows = (job.items ?? []).map((i) => ({
       id: crypto.randomUUID(),
       fixture: i.fixture ?? '',
       count: Number(i.count) || 1,
       hrs_per_unit: Number(i.hrs_per_unit) || 0,
       is_fixed: i.is_fixed ?? false,
+      labor_rate: i.labor_rate != null ? Number(i.labor_rate) : jobRate,
     }))
-    setLaborFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false }])
+    const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
+    setLaborFixtureRows(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate }])
     setError(null)
   }
 
@@ -1642,14 +1665,14 @@ export default function Jobs() {
     }
     setLaborSaving(true)
     setError(null)
-    const laborRateNum = laborRate.trim() === '' ? null : parseFloat(laborRate) || null
+    const firstRowRate = validRows[0]?.labor_rate != null ? Number(validRows[0].labor_rate) : null
     const { error: jobErr } = await supabase
       .from('people_labor_jobs')
       .update({
         assigned_to_name: assigned,
         address,
         job_number: laborJobNumber.trim().slice(0, 10) || null,
-        labor_rate: laborRateNum,
+        labor_rate: firstRowRate,
         job_date: laborDate.trim() ? laborDate.trim() : null,
         distance_miles: parseFloat(laborDistance) || 0,
       })
@@ -1673,6 +1696,7 @@ export default function Jobs() {
         count: Number(r.count) || 1,
         hrs_per_unit: Number(r.hrs_per_unit) || 0,
         is_fixed: r.is_fixed ?? false,
+        labor_rate: r.labor_rate != null ? Number(r.labor_rate) : null,
         sequence_order: i + 1,
       })
       if (itemErr) {
@@ -1691,18 +1715,18 @@ export default function Jobs() {
     const dateStr = new Date().toLocaleDateString()
     const assignedLabel = laborAssignedTo.length > 0 ? laborAssignedTo.join(', ') : 'Labor'
     const title = escapeHtml(assignedLabel) + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
-    const rate = laborRate.trim() === '' ? 0 : parseFloat(laborRate) || 0
 
     const validRows = laborFixtureRows.filter((r) => (r.fixture ?? '').trim())
     const laborRowsHtml =
       validRows.length === 0
-        ? '<tr><td colspan="4" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
         : validRows
             .map((row) => {
               const hrs = Number(row.hrs_per_unit) || 0
               const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
+              const rate = row.labor_rate ?? 0
               const totalCost = rate * laborHrs
-              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
             })
             .join('')
 
@@ -1711,6 +1735,7 @@ export default function Jobs() {
       totalCost = validRows.reduce((sum, row) => {
         const hrs = Number(row.hrs_per_unit) || 0
         const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
+        const rate = row.labor_rate ?? 0
         return sum + rate * laborHrs
       }, 0)
     }
@@ -1725,8 +1750,8 @@ export default function Jobs() {
 </style></head><body>
   <h1>${title}</h1>
   <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate ($/hr)</th><th style="text-align:right">Cost</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="4" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
   </table>
 </body></html>`
     const win = window.open('', '_blank')
@@ -1743,18 +1768,19 @@ export default function Jobs() {
     const dateStr = job.job_date ? new Date(job.job_date + 'T12:00:00').toLocaleDateString() : (job.created_at ? new Date(job.created_at).toLocaleDateString() : new Date().toLocaleDateString())
     const jobNumPart = job.job_number ? escapeHtml(job.job_number) + ' — ' : ''
     const title = escapeHtml(job.assigned_to_name) + ' — ' + jobNumPart + escapeHtml(job.address) + ' — ' + dateStr
-    const rate = job.labor_rate ?? 0
+    const jobRate = job.labor_rate ?? 0
 
     const items = job.items ?? []
     const laborRowsHtml =
       items.length === 0
-        ? '<tr><td colspan="4" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
+        ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
         : items
             .map((i) => {
               const hrs = Number(i.hrs_per_unit) || 0
               const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+              const rate = i.labor_rate ?? jobRate
               const totalCost = rate * laborHrs
-              return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">${Number(i.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
+              return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">${Number(i.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
             })
             .join('')
 
@@ -1763,6 +1789,7 @@ export default function Jobs() {
       totalCost = items.reduce((sum, i) => {
         const hrs = Number(i.hrs_per_unit) || 0
         const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+        const rate = i.labor_rate ?? jobRate
         return sum + rate * laborHrs
       }, 0)
     }
@@ -1777,8 +1804,8 @@ export default function Jobs() {
 </style></head><body>
   <h1>${title}</h1>
   <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="3" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
+    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate ($/hr)</th><th style="text-align:right">Cost</th></tr></thead>
+    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="4" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
   </table>
 </body></html>`
     const win = window.open('', '_blank')
@@ -2143,14 +2170,6 @@ export default function Jobs() {
     }
   }, [activeTab, authUser?.id])
 
-  useEffect(() => {
-    if ((laborModalOpen || editingLaborJob) && !editingLaborJob && authUser?.id && laborRate === '') {
-      supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle().then(({ data }) => {
-        const val = (data as { value_num: number | null } | null)?.value_num
-        if (val != null) setLaborRate(String(val))
-      })
-    }
-  }, [laborModalOpen, editingLaborJob, authUser?.id, laborRate])
 
   const laborJobHcps = useMemo(
     () => new Set(laborJobs.map((j) => (j.job_number ?? '').trim().toLowerCase()).filter(Boolean)),
@@ -2342,19 +2361,23 @@ export default function Jobs() {
 
   const combinedLaborRows = useMemo(() => {
     const teamLaborCostByJobId = new Map<string, number>()
+    const teamLaborByJobId = new Map<string, TeamLaborRow>()
     for (const r of teamLaborData) {
       teamLaborCostByJobId.set(r.jobId, r.jobCost)
+      teamLaborByJobId.set(r.jobId, r)
     }
-    type CombinedRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; teamLaborCost: number }
+    type CombinedRow = { jobId: string; hcpNumber: string; jobName: string; jobAddress: string; people: string[]; teamLaborCost: number }
     const rows: CombinedRow[] = []
     for (const job of jobs) {
       const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
       if (teamLaborCost > 0) {
+        const td = teamLaborByJobId.get(job.id)
         rows.push({
           jobId: job.id,
           hcpNumber: job.hcp_number ?? '—',
           jobName: job.job_name ?? '—',
           jobAddress: job.job_address ?? '—',
+          people: td?.people ?? [],
           teamLaborCost,
         })
       }
@@ -4323,6 +4346,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job name and Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Job Labor</th>
                   </tr>
                 </thead>
@@ -4357,11 +4381,12 @@ export default function Jobs() {
                                 <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{row.jobAddress}</div>
                               )}
                             </td>
+                            <td style={{ padding: '0.75rem' }}>{row.people?.length ? row.people.join(', ') : '—'}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{row.teamLaborCost > 0 ? `$${formatCurrency(row.teamLaborCost)}` : '—'}</td>
                           </tr>
                           {expanded && (
                             <tr>
-                              <td colSpan={4} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                              <td colSpan={5} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
                                 <div style={{ padding: '0.75rem 0.75rem 0.75rem 2.5rem', background: '#f9fafb' }}>
                                   {breakdown.length === 0 ? (
                                     <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No crew data</p>
@@ -5263,7 +5288,7 @@ export default function Jobs() {
               }}
             >
               {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
-              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>Required: Address, Distance (mi), at least one contractor (Subcontractors or Everyone else), and at least one fixture with a name and count &gt; 0 (or hrs/unit for fixed items).</p>
+              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count &gt; 0 (or hrs/unit for fixed items).</p>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 120px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
@@ -5293,7 +5318,7 @@ export default function Jobs() {
                     onChange={(e) => setLaborJobNumber(e.target.value)}
                     maxLength={10}
                     placeholder="Optional"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
@@ -5303,7 +5328,7 @@ export default function Jobs() {
                     value={laborAddress}
                     onChange={(e) => setLaborAddress(e.target.value)}
                     placeholder="Job address"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '0 0 110px', minWidth: 110 }}>
@@ -5316,16 +5341,64 @@ export default function Jobs() {
                     value={laborDistance}
                     onChange={(e) => setLaborDistance(e.target.value)}
                     placeholder="0"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
+                <div style={{ flex: '0 0 auto' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date of Labor</label>
+                  <input
+                    type="date"
+                    value={laborDate}
+                    onChange={(e) => setLaborDate(e.target.value)}
+                    style={{ width: '11ch', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                  />
+                </div>
+                {serviceTypes.length > 1 && (
+                  <div style={{ flex: '0 0 auto' }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
+                    <select
+                      value={selectedServiceTypeId}
+                      onChange={(e) => setSelectedServiceTypeId(e.target.value)}
+                      style={{ width: 'max-content', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    >
+                      {serviceTypes.map((st) => (
+                        <option key={st.id} value={st.id}>{st.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: '#b91c1c' }}>*</span></div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddSubcontractorModal(true)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
+                      >
+                        Add Subcontractor
+                      </button>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
+                        {rosterSubcontractorsWithoutAccount().map((n) => (
+                          <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            <input
+                              type="checkbox"
+                              checked={laborAssignedTo.includes(n)}
+                              onChange={() => setLaborAssignedTo((prev) => (prev.includes(n) ? prev.filter((x) => x !== n) : [...prev, n]))}
+                              style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
+                            />
+                            <span>{n}</span>
+                          </label>
+                        ))}
+                        {rosterSubcontractorsWithoutAccount().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>Internal Subs</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
-                      {rosterNamesSubcontractors().map((n) => (
+                      {rosterSubcontractorsWithAccount().map((n) => (
                         <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <input
                             type="checkbox"
@@ -5336,18 +5409,11 @@ export default function Jobs() {
                           <span>{n}</span>
                         </label>
                       ))}
-                      {rosterNamesSubcontractors().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                      {rosterSubcontractorsWithAccount().length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddSubcontractorModal(true)}
-                      style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Add Subcontractor
-                    </button>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Everyone else</div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Office Team</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
                       {rosterNamesEveryoneElse().map((n) => (
                         <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -5365,43 +5431,6 @@ export default function Jobs() {
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Date of Labor</label>
-                  <input
-                    type="date"
-                    value={laborDate}
-                    onChange={(e) => setLaborDate(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Labor rate ($/hr)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={laborRate}
-                    onChange={(e) => setLaborRate(e.target.value)}
-                    placeholder="Optional"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  />
-                </div>
-              </div>
-              {serviceTypes.length > 1 && (
-                <div style={{ marginTop: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Service type</label>
-                  <select
-                    value={selectedServiceTypeId}
-                    onChange={(e) => setSelectedServiceTypeId(e.target.value)}
-                    style={{ width: '100%', maxWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                  >
-                    {serviceTypes.map((st) => (
-                      <option key={st.id} value={st.id}>{st.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               <div style={{ marginTop: '1rem' }}>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5412,6 +5441,8 @@ export default function Jobs() {
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rate ($/hr)</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
                         <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
                     </thead>
@@ -5462,6 +5493,20 @@ export default function Jobs() {
                               </label>
                             </td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={row.labor_rate != null && row.labor_rate !== 0 ? row.labor_rate : ''}
+                                onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
+                                placeholder="0"
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>
+                              ${formatCurrency(laborHrs * (row.labor_rate ?? 0))}
+                            </td>
                             <td style={{ padding: '0.5rem' }}>
                               <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
                                 Remove
@@ -5480,6 +5525,16 @@ export default function Jobs() {
                             const hrs = Number(r.hrs_per_unit) || 0
                             return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
                           }, 0).toFixed(2)} hrs
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                          ${formatCurrency(
+                            laborFixtureRows.reduce((s, r) => {
+                              const hrs = Number(r.hrs_per_unit) || 0
+                              const laborHrs = (r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs
+                              return s + laborHrs * (r.labor_rate ?? 0)
+                            }, 0)
+                          )}
                         </td>
                         <td style={{ padding: '0.5rem' }} />
                       </tr>
@@ -5522,13 +5577,15 @@ export default function Jobs() {
                     Add additional fixture or tie-in
                   </button>
                 </div>
-                {laborRate.trim() !== '' && !isNaN(parseFloat(laborRate)) && (
+                {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && (
                   <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                     Total labor cost: ${formatCurrency(
                       laborFixtureRows.reduce((s, r) => {
                         const hrs = Number(r.hrs_per_unit) || 0
-                        return s + ((r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs)
-                      }, 0) * (parseFloat(laborRate) || 0)
+                        const laborHrs = (r.is_fixed ?? false) ? hrs : (Number(r.count) || 0) * hrs
+                        const rate = r.labor_rate ?? 0
+                        return s + laborHrs * rate
+                      }, 0)
                     )}
                   </p>
                 )}

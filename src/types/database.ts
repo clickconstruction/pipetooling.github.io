@@ -2601,6 +2601,7 @@ export type Database = {
           id: string
           is_fixed: boolean
           job_id: string
+          labor_rate: number | null
           sequence_order: number
         }
         Insert: {
@@ -2611,6 +2612,7 @@ export type Database = {
           id?: string
           is_fixed?: boolean
           job_id: string
+          labor_rate?: number | null
           sequence_order?: number
         }
         Update: {
@@ -2621,6 +2623,7 @@ export type Database = {
           id?: string
           is_fixed?: boolean
           job_id?: string
+          labor_rate?: number | null
           sequence_order?: number
         }
         Relationships: [

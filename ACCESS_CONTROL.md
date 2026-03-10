@@ -188,7 +188,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 **Purpose**: Support masters with customer and project work
 
 **Access**:
-- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials
+- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
 - **Blocked**: Settings (except viewing adoptions), Templates
 
 **Permissions**:
@@ -241,6 +241,12 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 **Special Features**:
 - Can be shared with by masters (receives access to shared masters' data)
 - Shared access is assistant-level (view-only, no private notes/financials)
+
+**Jobs**:
+- Team Labor tab: Hidden from assistants (dev and master only)
+
+**Prospects**:
+- Team tab: Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
 
 ---
 

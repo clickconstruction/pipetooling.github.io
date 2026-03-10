@@ -126,7 +126,7 @@ pipetooling.github.io/
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Inspections, Teams Summary tabs)
-- **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab)
+- **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app

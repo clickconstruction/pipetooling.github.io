@@ -90,6 +90,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
+### March 2025
+
+#### March 10, 2025
+
+**`20250310120000_optimize_bid_pricing_rls.sql`**
+- **Purpose**: Mitigate statement timeout (57014) on Pricing tab when loading bid_pricing_assignments and bid_count_row_custom_prices
+- **Changes**: Create `can_access_bid_for_pricing(bid_id UUID)` SECURITY DEFINER helper; recreate RLS policies on both tables to use the helper instead of per-row correlated EXISTS subqueries
+- **Impact**: Reduces RLS evaluation cost for bids with many count rows; Pricing tab loads faster without timeout
+- **Category**: Bids / RLS
+
 ### April 2026
 
 #### April 9, 2026
@@ -127,6 +137,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Database / RLS Hardening
 
 ### March 2026
+
+#### March 10, 2026
+
+**`20260310120000_assistants_see_prospect_timer_events.sql`**
+- **Purpose**: Allow assistants to see all prospect_timer_events for Prospects Team tab
+- **Changes**: Create policy "Assistants can see all prospect timer events" on `prospect_timer_events` FOR SELECT USING (public.is_assistant())
+- **Impact**: Assistants can access Prospects Team tab and view per-user cards marked/updated activity
+- **Category**: Prospects / Team Tab / RLS
+
+**`20260310180000_add_labor_rate_to_people_labor_job_items.sql`**
+- **Purpose**: Per-row labor rate in New Job Labor Specific Work table
+- **Changes**: Add `labor_rate NUMERIC(10, 2) NULL` to `people_labor_job_items`; backfill from `people_labor_jobs.labor_rate`
+- **Impact**: Each line item in the Specific Work table has its own Rate ($/hr) and Cost; job-level labor_rate kept for Sub Labor table display (set from first row when saving)
+- **Category**: Jobs / Sub Sheet Ledger
 
 #### March 9, 2026
 
@@ -1287,6 +1311,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_master_shares.sql` - Master-to-master sharing
 
 **RLS Optimizations**:
+- `20250310120000_optimize_bid_pricing_rls.sql` - can_access_bid_for_pricing for bid_pricing_assignments and bid_count_row_custom_prices
 - `optimize_rls_for_master_sharing.sql` - Helper function pattern to prevent timeouts
 - `optimize_workflow_step_line_items_rls.sql` - Can access project via step
 - `fix_project_workflow_step_actions_rls.sql` - Can access step for action

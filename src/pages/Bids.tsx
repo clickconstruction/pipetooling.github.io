@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../lib/supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
@@ -2171,11 +2172,13 @@ export default function Bids() {
     setPurchaseOrdersForCostEstimate((data as CostEstimatePO[]) ?? [])
   }
 
-  async function loadPOTotal(poId: string): Promise<number> {
-    const { data, error } = await supabase
+  async function loadPOTotal(poId: string, signal?: AbortSignal): Promise<number> {
+    let q: ReturnType<typeof supabase.from> = supabase
       .from('purchase_order_items')
       .select('price_at_time, quantity')
       .eq('purchase_order_id', poId)
+    if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+    const { data, error } = await q
     if (error) return 0
     const items = (data as { price_at_time: number; quantity: number }[]) ?? []
     return items.reduce((sum, i) => sum + Number(i.price_at_time) * Number(i.quantity), 0)
@@ -2465,27 +2468,53 @@ export default function Bids() {
     setPriceBookEntries(entries)
   }
 
-  async function loadBidPricingAssignments(bidId: string, versionId: string | null) {
+  async function loadBidPricingAssignments(bidId: string, versionId: string | null, signal?: AbortSignal) {
     if (versionId == null) {
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
       return
     }
-    const [assignmentsRes, customPricesRes] = await Promise.all([
-      supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
-      supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', versionId),
-    ])
-    if (assignmentsRes.error) {
-      setError(`Failed to load pricing assignments: ${assignmentsRes.error.message}`)
+    try {
+      const [assignmentsData, customPricesData] = await Promise.all([
+        withSupabaseRetry(
+          async () => {
+            let q = supabase
+              .from('bid_pricing_assignments')
+              .select('*')
+              .eq('bid_id', bidId)
+              .eq('price_book_version_id', versionId)
+            if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+            return await q
+          },
+          'fetch bid pricing assignments'
+        ),
+        withSupabaseRetry(
+          async () => {
+            let q = supabase
+              .from('bid_count_row_custom_prices')
+              .select('*')
+              .eq('bid_id', bidId)
+              .eq('price_book_version_id', versionId)
+            if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+            return await q
+          },
+          'fetch bid count row custom prices'
+        ),
+      ])
+      setBidPricingAssignments((assignmentsData as BidPricingAssignment[]) ?? [])
+      setBidCountRowCustomPrices((customPricesData as BidCountRowCustomPrice[]) ?? [])
+    } catch (e) {
+      const isAbort = (x: unknown) =>
+        (x && typeof x === 'object' && 'name' in x && (x as { name: string }).name === 'AbortError') ||
+        (x instanceof Error && /abort/i.test(x.message))
+      if (isAbort(e)) return
+      setError(`Failed to load pricing assignments: ${e instanceof Error ? e.message : String(e)}`)
       setBidPricingAssignments([])
       setBidCountRowCustomPrices([])
-      return
     }
-    setBidPricingAssignments((assignmentsRes.data as BidPricingAssignment[]) ?? [])
-    setBidCountRowCustomPrices(customPricesRes.error ? [] : ((customPricesRes.data as BidCountRowCustomPrice[]) ?? []))
   }
 
-  async function loadPricingDataForBid(bidId: string) {
+  async function loadPricingDataForBid(bidId: string, signal?: AbortSignal) {
     const clearPricingState = () => {
       setPricingCountRows([])
       setPricingCostEstimate(null)
@@ -2497,11 +2526,24 @@ export default function Bids() {
       setPricingFixtureMaterialsFromTakeoff({})
     }
 
+    try {
     // Phase 1: parallel fetches (all need only bidId)
     const [countRes, estRes, mappingsRes] = await Promise.all([
-      supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true }),
-      supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle(),
-      supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId),
+      (() => {
+        let q: ReturnType<typeof supabase.from> = supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        return q
+      })(),
+      (() => {
+        let q: ReturnType<typeof supabase.from> = supabase.from('cost_estimates').select('*').eq('bid_id', bidId)
+        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        return q.maybeSingle()
+      })(),
+      (() => {
+        let q: ReturnType<typeof supabase.from> = supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId)
+        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        return q
+      })(),
     ])
 
     if (countRes.error) {
@@ -2522,18 +2564,24 @@ export default function Bids() {
     // Phase 2: parallel fetches (all need est)
     const loadPOItems = async (poId: string | null) => {
       if (!poId) return []
-      const { data, error } = await supabase
+      let q: ReturnType<typeof supabase.from> = supabase
         .from('purchase_order_items')
         .select('part_id, quantity, price_at_time')
         .eq('purchase_order_id', poId)
+      if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+      const { data, error } = await q
       if (error) return []
       return (data as Array<{ part_id: string; quantity: number; price_at_time: number }>) ?? []
     }
     const [roughTotal, topTotal, trimTotal, laborRes, roughItems, topItems, trimItems] = await Promise.all([
-      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
-      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
-      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
-      supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+      est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in, signal) : Promise.resolve(0),
+      est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out, signal) : Promise.resolve(0),
+      est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set, signal) : Promise.resolve(0),
+      (() => {
+        let q: ReturnType<typeof supabase.from> = supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true })
+        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        return q
+      })(),
       loadPOItems(est.purchase_order_id_rough_in),
       loadPOItems(est.purchase_order_id_top_out),
       loadPOItems(est.purchase_order_id_trim_set),
@@ -2595,6 +2643,13 @@ export default function Bids() {
           setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)
         }
       })()
+    }
+    } catch (e) {
+      const isAbort = (x: unknown) =>
+        (x && typeof x === 'object' && 'name' in x && (x as { name: string }).name === 'AbortError') ||
+        (x instanceof Error && /abort/i.test(x.message))
+      if (isAbort(e)) return
+      throw e
     }
   }
 
@@ -6161,6 +6216,8 @@ export default function Bids() {
       setPricingLaborRate(null)
       return
     }
+    const controller = new AbortController()
+    const signal = controller.signal
     const bidId = selectedBidForPricing.id
     const bidJustChanged = pricingBidIdRef.current !== bidId
     let versionId: string | null
@@ -6183,8 +6240,9 @@ export default function Bids() {
     } else {
       versionId = selectedPricingVersionId
     }
-    loadBidPricingAssignments(bidId, versionId)
-    loadPricingDataForBid(bidId)
+    loadBidPricingAssignments(bidId, versionId, signal)
+    loadPricingDataForBid(bidId, signal)
+    return () => controller.abort()
   }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
 
   useEffect(() => {
@@ -6219,6 +6277,38 @@ export default function Bids() {
     setGcCustomerSearch('')
     setProjectName('')
     setAddress('')
+    setGcContactName('')
+    setGcContactPhone('')
+    setGcContactEmail('')
+    setEstimatorId('')
+    setAccountManagerId(authUser?.id ?? '')
+    setBidDueDate('')
+    setEstimatedJobStartDate('')
+    setBidDateSent('')
+    setSubmittedTo('')
+    setOutcome('')
+    setBidValue('')
+    setAgreedValue('')
+    setProfit('')
+    setDistanceFromOffice('')
+    setLastContact('')
+    setNotes('')
+    setFormServiceTypeId(selectedServiceTypeId)
+    setBidFormOpen(true)
+    setError(null)
+  }
+
+  function openNewBidWithCustomer(customer: Customer) {
+    setEditingBid(null)
+    setDriveLink('')
+    setPlansLink('')
+    setCountToolingLink('')
+    setBidSubmissionLink('')
+    setDesignDrawingPlanDate('')
+    setGcCustomerId(customer.id)
+    setGcCustomerSearch(getCustomerDisplay(customer))
+    setProjectName('')
+    setAddress(customer.address ?? '')
     setGcContactName('')
     setGcContactPhone('')
     setGcContactEmail('')
@@ -7045,7 +7135,7 @@ export default function Bids() {
                 onClick={openNewBid}
                 style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
-                New
+                New Bid
               </button>
             </div>
             )}
@@ -7073,7 +7163,7 @@ export default function Bids() {
                   <tr>
                     <td colSpan={myRole === 'primary' ? 11 : 12} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
-                        ? (bids.length === 0 ? 'No bids yet. Click New to add one.' : 'No bids match your search.')
+                        ? (bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
                     </td>
                   </tr>
@@ -7426,6 +7516,15 @@ export default function Bids() {
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                           <path d="M160 544C124.7 544 96 515.3 96 480L96 160C96 124.7 124.7 96 160 96L480 96C515.3 96 544 124.7 544 160L544 373.5C544 390.5 537.3 406.8 525.3 418.8L418.7 525.3C406.7 537.3 390.4 544 373.4 544L160 544zM485.5 368L392 368C378.7 368 368 378.7 368 392L368 485.5L485.5 368z" />
                         </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openNewBidWithCustomer(customer) }}
+                        title="New Bid"
+                        style={{ padding: '0.375rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8125rem', fontWeight: 500 }}
+                      >
+                        <span style={{ lineHeight: 1 }}>+</span>
+                        New Bid
                       </button>
                     </div>
                   </div>
