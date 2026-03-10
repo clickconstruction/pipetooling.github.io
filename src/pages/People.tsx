@@ -303,7 +303,7 @@ export default function People() {
   }
   const [reviewLaborJobs, setReviewLaborJobs] = useState<ReviewLaborJob[]>([])
   const [reviewCrewJobs, setReviewCrewJobs] = useState<ReviewCrewJob[]>([])
-  const [reviewAllocatedRevenue, setReviewAllocatedRevenue] = useState(0)
+  const [, setReviewAllocatedRevenue] = useState(0)
   const [reviewAllocatedProfit, setReviewAllocatedProfit] = useState(0)
   const [reviewHours, setReviewHours] = useState<Array<{ work_date: string; hours: number }>>([])
   type ReviewReport = { id: string; template_name: string; job_display_name: string; created_at: string }
