@@ -4,11 +4,21 @@ export function UpdatePrompt() {
   const ctx = useUpdatePrompt()
   if (!ctx?.needRefresh) return null
 
-  const handleReload = () => {
-    if (ctx.updateSW) {
-      ctx.dismiss()
-      ctx.updateSW()
+  const handleReload = async () => {
+    ctx.dismiss()
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        for (const reg of regs) await reg.unregister()
+      }
+      if ('caches' in window) {
+        const names = await caches.keys()
+        await Promise.all(names.map((n) => caches.delete(n)))
+      }
+    } catch {
+      /* best effort */
     }
+    window.location.reload()
   }
 
   return (
