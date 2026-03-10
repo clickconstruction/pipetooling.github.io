@@ -1470,10 +1470,6 @@ export default function Bids() {
   }
 
   async function loadCountRows(bidId: string) {
-    // #region agent log
-    console.log('[CountMove] loadCountRows called', { bidId, skip: skipNextLoadCountRowsRef.current })
-    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:loadCountRows',message:'loadCountRows called',data:{bidId},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     const { data, error } = await supabase
       .from('bids_count_rows')
       .select('*')
@@ -1496,9 +1492,6 @@ export default function Bids() {
   function refreshAfterCountsChange(opts?: { skipCountRows?: boolean }) {
     const bidId = selectedBidForCounts?.id
     if (!bidId) return
-    // #region agent log
-    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:refreshAfterCountsChange',message:'refresh called',data:{skipCountRows:!!opts?.skipCountRows,willLoadCounts:!opts?.skipCountRows},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     if (!opts?.skipCountRows) loadCountRows(bidId)
     if (selectedBidForTakeoff?.id === bidId) loadTakeoffCountRows(bidId)
     if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
@@ -1516,20 +1509,9 @@ export default function Bids() {
     const row = countRows[idx]
     if (!row) return
 
-    // #region agent log
-    const _log = { rowId, idx, direction, targetIdx, rowFixture: row.fixture?.slice(0, 25), total: countRows.length, orderBefore: countRows.map((r) => ({ id: r.id?.slice(0, 8), f: r.fixture?.slice(0, 12) })) }
-    console.log('[CountMove] entry', _log)
-    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'move entry',data:_log,timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
-
     const newOrder = [...countRows]
     const [removed] = newOrder.splice(idx, 1)
     if (removed) newOrder.splice(targetIdx, 0, removed)
-    // #region agent log
-    const _logAfter = { orderAfter: newOrder.map((r) => ({ id: r?.id?.slice(0, 8), f: r?.fixture?.slice(0, 12) })) }
-    console.log('[CountMove] after insert', _logAfter)
-    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'after insert newOrder',data:_logAfter,timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
     setLastMovedId(row.id)
     setTimeout(() => setLastMovedId(null), 800)
     setMovingCountRow(true)
@@ -1539,9 +1521,6 @@ export default function Bids() {
       if (!r) continue
       const { error } = await supabase.from('bids_count_rows').update({ sequence_order: seq }).eq('id', r.id)
       if (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'persist failed',data:{seq,rId:r?.id,error:error.message},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         setCountRows([...countRows])
         showToast('Failed to save row order', 'error')
         setMovingCountRow(false)
@@ -1549,9 +1528,6 @@ export default function Bids() {
         return
       }
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7692/ingest/99b8dd03-6772-47ea-b15c-a5ccda00f274',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'73e398'},body:JSON.stringify({sessionId:'73e398',location:'Bids.tsx:moveCountRowById',message:'persist ok, calling refresh skipCountRows',data:{},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-    // #endregion
     refreshAfterCountsChange({ skipCountRows: true })
     setMovingCountRow(false)
     setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
