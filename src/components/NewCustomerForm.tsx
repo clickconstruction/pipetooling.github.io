@@ -247,6 +247,10 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
 
   const title = mode === 'modal' ? 'Add customer' : 'New customer'
 
+  const missingFields: string[] = []
+  if ((myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && !masterUserId) missingFields.push('Master')
+  const canSubmit = missingFields.length === 0
+
   return (
     <div>
       {showQuickFill && (
@@ -423,23 +427,32 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
         )}
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
         {!onSubmitForConvert && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="submit"
-              disabled={loading}
+              disabled={!canSubmit || loading}
+              title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                cursor: canSubmit && !loading ? 'pointer' : 'not-allowed',
                 fontWeight: 500,
-                opacity: loading ? 0.7 : 1,
+                opacity: canSubmit && !loading ? 1 : 0.7,
               }}
             >
               {loading ? 'Saving…' : 'Save'}
             </button>
+            {!canSubmit && !loading && missingFields.length > 0 && (
+              <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {missingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+            )}
             {mode === 'page' && <Link to="/customers" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>}
             {mode === 'modal' && onCancel && (
               <button

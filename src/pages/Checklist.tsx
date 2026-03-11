@@ -180,6 +180,11 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
 
+  const fwdMissingFields: string[] = []
+  if (!fwdTitle.trim()) fwdMissingFields.push('Title')
+  if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
+  const fwdCanSubmit = fwdMissingFields.length === 0
+
   useEffect(() => {
     if (!authUserId) {
       setLoading(false)
@@ -599,23 +604,32 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                 </select>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={saveFwd}
-                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                disabled={!fwdCanSubmit || fwdSaving}
+                title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
                 style={{
                   padding: '0.5rem 1rem',
                   background: '#3b82f6',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  cursor: fwdCanSubmit && !fwdSaving ? 'pointer' : 'not-allowed',
                   fontWeight: 500,
                 }}
               >
                 {fwdSaving ? 'Saving…' : 'Forward'}
               </button>
+              {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {fwdMissingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+              )}
               <button
                 type="button"
                 onClick={() => setFwdInstance(null)}
@@ -896,6 +910,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
+
+  const fwdMissingFields: string[] = []
+  if (!fwdTitle.trim()) fwdMissingFields.push('Title')
+  if (!fwdAssigneeId) fwdMissingFields.push('Assignee')
+  const fwdCanSubmit = fwdMissingFields.length === 0
 
   useEffect(() => {
     loadOutstanding()
@@ -1283,23 +1302,32 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                 </select>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={saveFwd}
-                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                disabled={!fwdCanSubmit || fwdSaving}
+                title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
                 style={{
                   padding: '0.5rem 1rem',
                   background: '#3b82f6',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  cursor: fwdCanSubmit && !fwdSaving ? 'pointer' : 'not-allowed',
                   fontWeight: 500,
                 }}
               >
                 {fwdSaving ? 'Saving…' : 'Forward'}
               </button>
+              {!fwdCanSubmit && !fwdSaving && fwdMissingFields.length > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {fwdMissingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+              )}
               <button
                 type="button"
                 onClick={() => setFwdInstance(null)}

@@ -55,7 +55,7 @@ type TallyPartRow = {
   created_by_name: string | null
 }
 
-type JobsTab = 'reports' | 'stages' | 'ledger' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
 
 // Roster (for Labor / Sub Sheet Ledger)
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -115,7 +115,7 @@ type MaterialRow = { id: string; description: string; amount: number }
 type PaymentRow = { id: string; amount: number }
 type FixtureRow = { id: string; name: string; count: number }
 
-const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'ledger', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
+const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
@@ -130,12 +130,16 @@ export default function Jobs() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [billingSortAsc, setBillingSortAsc] = useState(true) // true = lowest HCP first (asc)
+  const [billingSortAsc, setBillingSortAsc] = useState(false) // false = highest HCP first (desc, largest to smallest)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
+  const jobFormMissingFields: string[] = []
+  if (!jobName.trim()) jobFormMissingFields.push('Job Name')
+  if (!jobAddress.trim()) jobFormMissingFields.push('Job Address')
+  const jobFormCanSubmit = jobFormMissingFields.length === 0
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
   const [revenue, setRevenue] = useState('')
@@ -199,6 +203,17 @@ export default function Jobs() {
   const [addSubcontractorError, setAddSubcontractorError] = useState<string | null>(null)
   const [savingAddSubcontractor, setSavingAddSubcontractor] = useState(false)
   const [myRole, setMyRole] = useState<string | null>(null)
+
+  const laborMissingFields: string[] = []
+  if (laborAssignedTo.length === 0) laborMissingFields.push('Assigned')
+  if (!laborAddress.trim()) laborMissingFields.push('Address')
+  if (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) laborMissingFields.push('Distance')
+  if (laborFixtureRows.every((r) => {
+    const hasFixture = (r.fixture ?? '').trim()
+    const isFixed = r.is_fixed ?? false
+    return !hasFixture || (!isFixed && Number(r.count) <= 0)
+  })) laborMissingFields.push('Fixtures')
+  const laborCanSubmit = laborMissingFields.length === 0
 
   // Combined Labor tab (Team Job Labor) state
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
@@ -1152,7 +1167,14 @@ export default function Jobs() {
     } else {
       const parts = (data ?? []) as TallyPartRow[]
       setTallyParts(parts)
-      const jobIds = [...new Set(parts.map((r) => r.job_id))]
+      const tallyJobIds = new Set(parts.map((r) => r.job_id))
+      const { data: allocData } = await supabase
+        .from('supply_house_invoice_job_allocations')
+        .select('job_id')
+      for (const row of allocData ?? []) {
+        tallyJobIds.add(row.job_id)
+      }
+      const jobIds = [...tallyJobIds]
       if (jobIds.length > 0) {
         const { data: amountsData } = await supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds })
         const map: Record<string, number> = {}
@@ -1874,6 +1896,16 @@ export default function Jobs() {
       }, { replace: true })
       return
     }
+    // Redirect old ledger URLs to billing
+    if (tab === 'ledger') {
+      setActiveTab('billing')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'billing')
+        return next
+      }, { replace: true })
+      return
+    }
     // Redirect assistants away from Team Labor tab
     const isAssistant = authRole === 'assistant' || myRole === 'assistant'
     if (isAssistant && tab === 'combined-labor') {
@@ -1950,8 +1982,8 @@ export default function Jobs() {
         if (tab === 'labor') next.set('tab', 'sub_sheet_ledger')
         return next
       }, { replace: true })
-    } else if (newJob && tab === 'ledger') {
-      setActiveTab('ledger')
+    } else if (newJob && tab === 'billing') {
+      setActiveTab('billing')
       setEditing(null)
       setHcpNumber('')
       setJobName('')
@@ -2054,7 +2086,8 @@ export default function Jobs() {
   }, [laborBookEntriesVersionId])
 
   useEffect(() => {
-    if (authLoading || !authUser?.id || activeTab !== 'stages') return
+    if (authLoading || !authUser?.id) return
+    if (activeTab !== 'stages' && activeTab !== 'billing') return
     loadJobs()
   }, [activeTab, authUser?.id, authLoading])
 
@@ -2070,11 +2103,11 @@ export default function Jobs() {
   }, [activeTab, searchParams, setSearchParams])
 
   useEffect(() => {
-    if ((activeTab === 'ledger' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
+    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if ((activeTab === 'combined-labor' || activeTab === 'ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadTeamLaborData()
+    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadTeamLaborData()
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
@@ -2344,7 +2377,8 @@ export default function Jobs() {
       const laborCost = subLaborCost + teamLaborCost
       const partsFromTally = partsCostByJobId.get(job.id) ?? 0
       const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
-      const partsCost = partsFromTally + invoicesFromSupplyHouses
+      const billedMaterialsSum = (job.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
+      const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum
       const totalBill = job.revenue != null ? Number(job.revenue) : 0
       const profit = totalBill - partsCost - laborCost
       return {
@@ -2770,14 +2804,14 @@ export default function Jobs() {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('ledger')
+              setActiveTab('billing')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
-                next.set('tab', 'ledger')
+                next.set('tab', 'billing')
                 return next
               })
             }}
-            style={tabStyle(activeTab === 'ledger')}
+            style={tabStyle(activeTab === 'billing')}
           >
             Billing
           </button>
@@ -4308,7 +4342,7 @@ export default function Jobs() {
         </div>
       )}
 
-      {activeTab === 'ledger' && (
+      {activeTab === 'billing' && (
         <div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
             <button
@@ -4585,6 +4619,7 @@ export default function Jobs() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts from Tally</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Billed Materials</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Invoices from Supply Houses</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
@@ -4613,15 +4648,52 @@ export default function Jobs() {
                       list.push(r)
                       byJob.set(r.job_id, list)
                     }
-                    const jobRows = Array.from(byJob.entries()).map(([jobId, parts]) => {
+                    const jobRowsFromTally = Array.from(byJob.entries()).map(([jobId, parts]) => {
                       const first = parts[0]
                       if (!first) return null
                       return { jobId, hcpNumber: first.hcp_number, jobName: first.job_name, parts }
                     }).filter((r): r is NonNullable<typeof r> => r != null)
+                    const jobIdsFromTally = new Set(jobRowsFromTally.map((r) => r.jobId))
+                    const materialsOnlyJobs = jobs.filter(
+                      (j) =>
+                        (j.materials?.length ?? 0) > 0 &&
+                        !jobIdsFromTally.has(j.id) &&
+                        (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
+                        (!q ||
+                          (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                          (j.job_name ?? '').toLowerCase().includes(q))
+                    )
+                    const invoicesOnlyJobs = jobs.filter(
+                      (j) =>
+                        (invoiceAmountByJob[j.id] ?? 0) > 0 &&
+                        !jobIdsFromTally.has(j.id) &&
+                        (j.materials?.length ?? 0) === 0 &&
+                        (!showMyJobsOnly || !myJobIds || myJobIds.has(j.id)) &&
+                        (!q ||
+                          (j.hcp_number ?? '').toLowerCase().includes(q) ||
+                          (j.job_name ?? '').toLowerCase().includes(q))
+                    )
+                    const materialsOnlyRows = materialsOnlyJobs.map((j) => ({
+                      jobId: j.id,
+                      hcpNumber: j.hcp_number ?? null,
+                      jobName: j.job_name ?? null,
+                      parts: [] as TallyPartRow[],
+                    }))
+                    const invoicesOnlyRows = invoicesOnlyJobs.map((j) => ({
+                      jobId: j.id,
+                      hcpNumber: j.hcp_number ?? null,
+                      jobName: j.job_name ?? null,
+                      parts: [] as TallyPartRow[],
+                    }))
+                    const jobRows = [...jobRowsFromTally, ...materialsOnlyRows, ...invoicesOnlyRows].sort((a, b) => {
+                      const ha = (a.hcpNumber ?? '').trim()
+                      const hb = (b.hcpNumber ?? '').trim()
+                      return -ha.localeCompare(hb, undefined, { numeric: true })
+                    })
                     if (jobRows.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={7} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                          <td colSpan={8} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
                             No tally parts yet. Subs can record parts via the Job Parts Tally flow on the Dashboard.
                           </td>
                         </tr>
@@ -4629,6 +4701,8 @@ export default function Jobs() {
                     }
                     return jobRows.flatMap(({ jobId, hcpNumber, jobName, parts }) => {
                       const expanded = expandedPartsJobIds.has(jobId)
+                      const job = jobs.find((j) => j.id === jobId)
+                      const billedMaterialsSum = (job?.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
                       const partsTotal = parts.reduce((sum, r) => {
                         if (r.part_id == null) {
                           return sum + (Number(r.fixture_cost ?? 0) * Number(r.quantity))
@@ -4663,14 +4737,16 @@ export default function Jobs() {
                           <td style={{ padding: '0.75rem' }}>{hcpNumber ?? '—'}</td>
                           <td style={{ padding: '0.75rem' }}>{jobName ?? '—'}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal)}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(billedMaterialsSum)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatCurrency(invoiceAmountByJob[jobId] ?? 0)}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal + (invoiceAmountByJob[jobId] ?? 0))}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500 }}>{formatCurrency(partsTotal + billedMaterialsSum + (invoiceAmountByJob[jobId] ?? 0))}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{parts.length}</td>
                         </tr>,
                         ...(expanded
                           ? [
                               <tr key={`${jobId}-parts`}>
-                                <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                                  {parts.length > 0 && (
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                     <thead>
                                       <tr style={{ background: '#f3f4f6' }}>
@@ -4772,6 +4848,30 @@ export default function Jobs() {
                                       ))}
                                     </tbody>
                                   </table>
+                                  )}
+                                  {job && job.materials.length > 0 && (
+                                    <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                                      <div style={{ fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Billed Materials</div>
+                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                        <thead>
+                                          <tr style={{ background: '#f3f4f6' }}>
+                                            <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Description</th>
+                                            <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Amount ($)</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {job.materials
+                                            .filter((m) => (m.description ?? '').trim() || Number(m.amount) !== 0)
+                                            .map((m) => (
+                                              <tr key={m.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                <td style={{ padding: '0.35rem 0.5rem' }}>{m.description?.trim() || 'Item'}</td>
+                                                <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(Number(m.amount ?? 0))}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </td>
                               </tr>,
                             ]
@@ -5596,18 +5696,23 @@ export default function Jobs() {
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem', alignItems: 'center' }}>
                 <button
                   type="submit"
-                  disabled={laborSaving || laborAssignedTo.length === 0 || !laborAddress.trim() || (laborDistance.trim() === '' || isNaN(parseFloat(laborDistance)) || parseFloat(laborDistance) < 0) || laborFixtureRows.every((r) => {
-                    const hasFixture = (r.fixture ?? '').trim()
-                    const isFixed = r.is_fixed ?? false
-                    return !hasFixture || (!isFixed && Number(r.count) <= 0)
-                  })}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: laborSaving ? 'not-allowed' : 'pointer' }}
+                  disabled={!laborCanSubmit || laborSaving}
+                  title={!laborCanSubmit ? `Required: ${laborMissingFields.join(', ')}` : undefined}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: laborCanSubmit && !laborSaving ? 'pointer' : 'not-allowed' }}
                 >
                   {laborSaving ? 'Saving…' : (editingLaborJob ? 'Save' : 'Save Job')}
                 </button>
+                {!laborCanSubmit && !laborSaving && laborMissingFields.length > 0 && (
+                  <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                  <span style={{ display: 'block' }}>Required:</span>
+                  {laborMissingFields.map((f) => (
+                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                  ))}
+                </span>
+                )}
                 <button
                   type="button"
                   onClick={() => editingLaborJob ? printJobSubSheet(editingLaborJob) : printLaborSubSheet()}
@@ -5903,47 +6008,49 @@ export default function Jobs() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
-            <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0 0 1rem 0' }}>Required: Job Name, Job Address</p>
             {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
-                <input
-                  type="text"
-                  value={hcpNumber}
-                  onChange={(e) => setHcpNumber(e.target.value)}
-                  placeholder="HCP number"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
                   <input
-                    ref={jobNameInputRef}
                     type="text"
-                    value={jobName}
-                    onChange={(e) => setJobName(e.target.value)}
-                    placeholder="Job name"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    value={hcpNumber}
+                    onChange={(e) => setHcpNumber(e.target.value)}
+                    placeholder="HCP number"
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                   />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      jobNameInputRef.current?.focus()
-                      if (!document.execCommand('paste')) {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setJobName(text)
-                        } catch {
-                          /* clipboard not available */
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                      ref={jobNameInputRef}
+                      type="text"
+                      value={jobName}
+                      onChange={(e) => setJobName(e.target.value)}
+                      placeholder="Job name"
+                      style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        jobNameInputRef.current?.focus()
+                        if (!document.execCommand('paste')) {
+                          try {
+                            const text = await navigator.clipboard.readText()
+                            setJobName(text)
+                          } catch {
+                            /* clipboard not available */
+                          }
                         }
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
-                  >
-                    Paste from Clipboard
-                  </button>
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Paste from clipboard"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
               <div>
@@ -5970,40 +6077,43 @@ export default function Jobs() {
                         }
                       }
                     }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                    style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Paste from clipboard"
                   >
-                    Paste from Clipboard
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
                   </button>
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Google Drive</label>
-                <input
-                  type="url"
-                  value={googleDriveLink}
-                  onChange={(e) => setGoogleDriveLink(e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-                <a
-                  href="https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1nKEuhuXRmRaA3lrullCAoHq6JvYuc-BW?usp=sharing') }}
-                  style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
-                >
-                  job folders
-                </a>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Plans</label>
-                <input
-                  type="url"
-                  value={jobPlansLink}
-                  onChange={(e) => setJobPlansLink(e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Files</label>
+                  <input
+                    type="url"
+                    value={googleDriveLink}
+                    onChange={(e) => setGoogleDriveLink(e.target.value)}
+                    placeholder="https://drive.google.com/..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  />
+                  <a
+                    href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link') }}
+                    style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                  >
+                    job folders
+                  </a>
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Plans</label>
+                  <input
+                    type="url"
+                    value={jobPlansLink}
+                    onChange={(e) => setJobPlansLink(e.target.value)}
+                    placeholder="https://drive.google.com/..."
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  />
+                </div>
               </div>
               <div>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
@@ -6286,23 +6396,32 @@ export default function Jobs() {
                 </>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 type="button"
                 onClick={saveJob}
-                disabled={saving || !jobName.trim() || !jobAddress.trim()}
+                disabled={!jobFormCanSubmit || saving}
+                title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
                 style={{
                   padding: '0.5rem 1rem',
                   background: '#3b82f6',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: saving ? 'not-allowed' : 'pointer',
+                  cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
                   fontWeight: 500,
                 }}
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
+              {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                  <span style={{ display: 'block' }}>Required:</span>
+                  {jobFormMissingFields.map((f) => (
+                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                  ))}
+                </span>
+              )}
               <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>

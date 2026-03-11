@@ -1526,6 +1526,7 @@ export type Database = {
           description: string
           id: string
           job_id: string
+          part_id: string | null
           sequence_order: number
         }
         Insert: {
@@ -1534,6 +1535,7 @@ export type Database = {
           description?: string
           id?: string
           job_id: string
+          part_id?: string | null
           sequence_order?: number
         }
         Update: {
@@ -1542,6 +1544,7 @@ export type Database = {
           description?: string
           id?: string
           job_id?: string
+          part_id?: string | null
           sequence_order?: number
         }
         Relationships: [
@@ -1550,6 +1553,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_materials_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
             referencedColumns: ["id"]
           },
         ]

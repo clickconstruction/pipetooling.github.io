@@ -119,7 +119,7 @@ export function JobsBillingReminderSection() {
         Materials, {counts?.totalBill ?? 0} Total Bill need filling
       </span>
       <Link
-        to="/jobs?tab=ledger"
+        to="/jobs?tab=billing"
         style={{
           padding: '0.35rem 0.75rem',
           background: '#f59e0b',

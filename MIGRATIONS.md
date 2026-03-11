@@ -492,7 +492,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260230000017_add_job_plans_link_to_jobs_ledger.sql`**
 - **Purpose**: Add Job Plans link field below Google Drive in New/Edit Job form
 - **Changes**: Add `job_plans_link TEXT` column to `public.jobs_ledger`
-- **Impact**: Jobs Ledger New Job and Edit Job modals now include a "Job Plans" URL input
+- **Impact**: Jobs Billing tab New Job and Edit Job modals now include a "Job Plans" URL input
 - **Category**: Jobs
 
 **`20260230000014_add_notes_to_prospects.sql`**
@@ -593,7 +593,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260223000000_primary_add_materials_to_jobs.sql`**
 - **Purpose**: Allow primaries to view jobs and add materials to jobs_ledger
 - **Changes**: RLS policies for jobs_ledger and jobs_ledger_materials (SELECT, INSERT, UPDATE, DELETE for primaries)
-- **Impact**: Primaries can add materials to jobs in Jobs Ledger (Billing) tab; Edit/Delete hidden in UI
+- **Impact**: Primaries can add materials to jobs in Jobs Billing tab; Edit/Delete hidden in UI
 - **Category**: Jobs / Primary / RLS
 
 **`20260221210002_primary_materials_access.sql`**

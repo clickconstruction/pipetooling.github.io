@@ -1524,7 +1524,7 @@ export default function Dashboard() {
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           {[
-            { key: 'job', label: 'Job', to: '/jobs?tab=ledger&newJob=true' },
+            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
             { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
             { key: 'bid', label: 'Bid', to: '/bids?new=true' },
             { key: 'project', label: 'Project', to: '/projects/new' },
@@ -2139,7 +2139,7 @@ export default function Dashboard() {
                       )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
-                          <Link to={`/jobs?tab=ledger`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                          <Link to={`/jobs?tab=billing`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                             View
                           </Link>
                           <button

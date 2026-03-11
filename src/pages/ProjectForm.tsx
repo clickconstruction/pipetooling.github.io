@@ -308,6 +308,11 @@ export default function ProjectForm() {
   if (customersLoading) return <p>Loading…</p>
   if (!isNew && fetching) return <p>Loading…</p>
 
+  const missingFields: string[] = []
+  if (isNew && !customerId) missingFields.push('Customer')
+  if (!name.trim()) missingFields.push('Project Name')
+  const canSubmit = missingFields.length === 0
+
   return (
     <div>
       <h1 style={{ marginBottom: '1rem' }}>{isNew ? 'New project' : 'Edit project'}</h1>
@@ -497,10 +502,23 @@ export default function ProjectForm() {
           </div>
         )}
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button type="submit" disabled={loading} style={{ padding: '0.5rem 1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="submit"
+            disabled={!canSubmit || loading}
+            title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined}
+            style={{ padding: '0.5rem 1rem' }}
+          >
             {loading ? 'Saving…' : 'Save'}
           </button>
+          {!canSubmit && !loading && missingFields.length > 0 && (
+            <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {missingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+          )}
           <Link to="/projects" style={{ padding: '0.5rem 1rem' }}>Cancel</Link>
         </div>
       </form>

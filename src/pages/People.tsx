@@ -2362,12 +2362,17 @@ export default function People() {
     }
 
     const jobIds = Array.from(jobsById.keys())
-    const invoiceRes = jobIds.length > 0
-      ? await supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds })
-      : { data: [] }
+    const [invoiceRes, materialsRes] = await Promise.all([
+      jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
+      jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
+    ])
     const invoiceAmountByJob: Record<string, number> = {}
     for (const row of (invoiceRes.data ?? []) as Array<{ job_id: string; invoice_amount: number | null }>) {
       invoiceAmountByJob[row.job_id] = Number(row.invoice_amount ?? 0)
+    }
+    const billedMaterialsByJobId = new Map<string, number>()
+    for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
+      billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
     }
 
     const laborRowsFiltered = usePaidOnly
@@ -2387,7 +2392,7 @@ export default function People() {
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
-      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) : 0
+      const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) : 0
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
       const pctComplete = job?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -2436,7 +2441,7 @@ export default function People() {
       const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${personName}:${c.work_date}`] ?? 0)
       const hours = dayHours * (c.pct / 100)
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
-      const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0)
+      const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0) + (billedMaterialsByJobId.get(c.job_id) ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
       const pctComplete = j?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -2587,7 +2592,7 @@ export default function People() {
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const teamLaborCost = teamLaborCostByJobId.get(jobId) ?? 0
       const laborCost = subLaborCost + teamLaborCost
-      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0)
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
       const pctComplete = job?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
@@ -2600,7 +2605,7 @@ export default function People() {
       const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const laborCost = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
-      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0)
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
       const pctComplete = j?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)

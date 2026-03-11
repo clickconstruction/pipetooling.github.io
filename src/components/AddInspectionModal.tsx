@@ -149,6 +149,12 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
 
   const canSubmit = selectedJob && address.trim() && inspectionType && scheduledDate && authUserId
 
+  const missingFields: string[] = []
+  if (!selectedJob) missingFields.push('Job')
+  if (!address.trim()) missingFields.push('Address')
+  if (!inspectionType) missingFields.push('Inspection type')
+  if (!scheduledDate) missingFields.push('Date')
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
@@ -248,9 +254,17 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
 
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Add inspection'}</button>
+            <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Add inspection'}</button>
+            {!canSubmit && !saving && missingFields.length > 0 && (
+              <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {missingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+            )}
           </div>
         </form>
       </div>

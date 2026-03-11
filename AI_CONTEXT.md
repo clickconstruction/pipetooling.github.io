@@ -125,7 +125,7 @@ pipetooling.github.io/
 - **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
-- **`src/pages/Jobs.tsx`** - Jobs (Labor, HCP Jobs, Sub Sheet Ledger, Upcoming, Inspections, Teams Summary tabs)
+- **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard

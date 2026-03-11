@@ -974,6 +974,9 @@ export default function Bids() {
   const [countToolingLink, setCountToolingLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
+  const bidFormMissingFields: string[] = []
+  if (!projectName.trim()) bidFormMissingFields.push('Project Name')
+  const bidFormCanSubmit = bidFormMissingFields.length === 0
   const [address, setAddress] = useState('')
   const [gcContactName, setGcContactName] = useState('')
   const [gcContactPhone, setGcContactPhone] = useState('')
@@ -7973,7 +7976,7 @@ export default function Bids() {
                 {countsImportError && (
                   <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>{countsImportError}</p>
                 )}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => { setCountsImportOpen(false); setCountsImportText(''); setCountsImportError(null) }}
@@ -7985,6 +7988,7 @@ export default function Bids() {
                     type="button"
                     onClick={handleCountsImport}
                     disabled={!countsImportText.trim()}
+                    title={!countsImportText.trim() ? 'Paste fixture/count data to import' : undefined}
                     style={{
                       padding: '0.5rem 1rem',
                       background: countsImportText.trim() ? '#059669' : '#d1d5db',
@@ -7996,6 +8000,9 @@ export default function Bids() {
                   >
                     Import
                   </button>
+                  {!countsImportText.trim() && (
+                    <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Paste data to import</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -13491,11 +13498,12 @@ export default function Bids() {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes</label>
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={saveBidAndOpenCounts}
-                  disabled={savingBid}
+                  disabled={!bidFormCanSubmit || savingBid}
+                  title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
                   style={{ marginRight: 'auto', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Save and Open Counts
@@ -13509,9 +13517,17 @@ export default function Bids() {
                     Delete bid
                   </button>
                 )}
-                <button type="submit" disabled={savingBid} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                <button type="submit" disabled={!bidFormCanSubmit || savingBid} title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                   {savingBid ? 'Saving…' : 'Save'}
                 </button>
+                {!bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 && (
+                  <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                  <span style={{ display: 'block' }}>Required:</span>
+                  {bidFormMissingFields.map((f) => (
+                    <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                  ))}
+                </span>
+                )}
               </div>
             </form>
           </div>
@@ -14639,6 +14655,11 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
 
   const calcWidth = 132
   const hasFixtureGroups = countsFixtureGroups.length > 0
+  const missingFields: string[] = []
+  if (!fixture.trim()) missingFields.push('Fixture')
+  if (isNaN(parseFloat(count))) missingFields.push('Count')
+  const canSubmit = missingFields.length === 0
+
   return (
     <>
       <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid #e5e7eb' }}>
@@ -14666,11 +14687,21 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
         </td>
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button type="button" onClick={submit} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
+              <button type="button" onClick={submit} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
               <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             </div>
-            <button type="button" onClick={submitAndAdd} disabled={saving || !fixture.trim() || isNaN(parseFloat(count))} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save and Add</button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+              <button type="button" onClick={submitAndAdd} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save and Add</button>
+              {!canSubmit && !saving && missingFields.length > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {missingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+              )}
+            </div>
           </div>
         </td>
       </tr>

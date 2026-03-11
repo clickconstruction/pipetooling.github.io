@@ -267,6 +267,23 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.95)
+
+**Date**: 2026-03-11
+
+### Jobs – Billed Materials Reflect in Parts
+
+- **Parts Cost includes Billed Materials**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Billed Materials (line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
+- **Parts tab Billed Materials column**: New "Billed Materials" column in Jobs Parts tab shows the billed materials sum per job.
+- **Parts tab Billed Materials section**: When expanding a job row in Parts tab, a "Billed Materials" section appears below the tally parts table when the job has billed materials, listing each line item with Description and Amount.
+- **Link Billed Materials to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120000_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Billed Materials now uses description + amount only.
+
+### People – Review Tab (Parts Cost)
+
+- **Parts Cost includes Billed Materials**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Billed Materials from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
+
+---
+
 ## Latest Updates (v2.94)
 
 **Date**: 2026-03-10

@@ -1935,10 +1935,14 @@ export default function Workflow() {
                         type="button"
                         onClick={createFromTemplate}
                         disabled={!selectedTemplateId || creatingFromTemplate}
+                        title={!selectedTemplateId ? 'Select a template' : undefined}
                         style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}
                       >
                         {creatingFromTemplate ? 'Creating...' : 'Create from template'}
                       </button>
+                      {!selectedTemplateId && !creatingFromTemplate && (
+                        <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Select a template</span>
+                      )}
                     </div>
                   </div>
                 )}

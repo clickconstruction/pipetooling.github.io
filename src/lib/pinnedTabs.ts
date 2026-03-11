@@ -44,7 +44,7 @@ export const PATH_TO_LABEL: Record<string, string> = {
 /** Tab param values per path (for validation and storing tab when pinning). */
 export const PATH_TABS: Record<string, readonly string[]> = {
   '/people': ['users', 'pay', 'hours'],
-  '/jobs': ['labor', 'ledger', 'sub_sheet_ledger', 'combined-labor', 'upcoming', 'teams-summary', 'billed'],
+  '/jobs': ['labor', 'billing', 'sub_sheet_ledger', 'combined-labor', 'upcoming', 'teams-summary', 'billed'],
   '/bids': [
     'bid-board',
     'builder-review',
@@ -73,13 +73,18 @@ export function getPinned(userId: string | undefined): PinnedItem[] {
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(
-      (x): x is PinnedItem =>
-        typeof x === 'object' &&
-        x !== null &&
-        typeof (x as PinnedItem).path === 'string' &&
-        typeof (x as PinnedItem).label === 'string'
-    )
+    return parsed
+      .filter(
+        (x): x is PinnedItem =>
+          typeof x === 'object' &&
+          x !== null &&
+          typeof (x as PinnedItem).path === 'string' &&
+          typeof (x as PinnedItem).label === 'string'
+      )
+      .map((p) => {
+        if (p.path === '/jobs' && p.tab === 'ledger') return { ...p, tab: 'billing' }
+        return p
+      })
   } catch {
     return []
   }

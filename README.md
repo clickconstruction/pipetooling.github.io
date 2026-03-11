@@ -114,7 +114,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - **Role-based access control** (Dev, Master, Assistant, Subcontractor, Estimator, Primary)
   - Assistants/subcontractors only see assigned stages
   - Estimators: Materials and Bids only; can see and add customers from Bids (no access to /customers or /projects)
-  - Primaries: Materials and Jobs (Reports + Ledger); can add materials to jobs
+  - Primaries: Materials and Jobs (Reports + Billing); can add materials to jobs
 - **Private notes and line items** (owners/masters only)
 - **Projections and Ledger** (financial tracking)
 - **Action Ledger** (complete stage history)

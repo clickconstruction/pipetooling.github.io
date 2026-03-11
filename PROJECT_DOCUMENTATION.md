@@ -1617,7 +1617,7 @@ counts_fixture_groups (id)
 
 ##### Pages Blocked
 - Customers, Projects, People, Templates
-- **Jobs tabs other than Reports**: Ledger, Sub Sheet Ledger, Teams Summary
+- **Jobs tabs other than Reports**: Billing, Sub Sheet Ledger, Teams Summary
 - **Layout redirects**: Attempts to access blocked pages redirect to `/dashboard`
 
 ##### Materials Capabilities
@@ -1633,7 +1633,7 @@ counts_fixture_groups (id)
 
 - **Reports tab only**: View all reports via `list_reports_with_job_info` RPC
 - **Full CRUD on reports**: Create, edit, and delete reports (RLS policy grants Primary same access as dev/masters/assistants)
-- Other Jobs tabs (Ledger, Sub Sheet Ledger, Teams Summary) are hidden
+- Other Jobs tabs (Billing, Sub Sheet Ledger, Teams Summary) are hidden
 
 ##### Dashboard Capabilities
 
@@ -1940,7 +1940,7 @@ user_id = auth.uid()
 - **Features**:
   - **Sub Labor Tab** (Sub Sheet Ledger): Add labor jobs; form fields: **Top row** HCP, Address, Distance (mi), Date of Labor, Service type (all same height). **Subcontractors** (External Subs with Add Subcontractor button left of list; Internal Subs; Office Team). **Specific Work** fixture rows: Fixture, Count, hrs/unit, Fixed, Labor Hours, Rate ($/hr) per row, Cost per row; default rate $20. Save Job, Print for sub. Collapsible **Labor book** section: select version, apply matching labor hours to form rows; manage versions and entries (Rough In, Top Out, Trim Set hrs). Table of all labor jobs (User, Job #, Address, Distance, Labor rate, Total hrs, Drive, Total cost, Print for sub, Date); Distance has inline Edit button; Edit opens modal; Delete removes job; date editable inline. Uses same roster (people + users) as People.
   - **Team Labor Tab** (dev, master; hidden from assistants): Team Job Labor table—all-time aggregate of jobs from Crew Jobs (Jobs Team Labor tab or Quickfill). Columns: HCP, Job name + address, Team Job Labor total. Click a row to expand per-person breakdown: Person | Crew Job Costs | Crew Man Hours. Searchable by HCP, job name, address. Add jobs via Sub Labor or Jobs Team Labor or Quickfill Crew Jobs.
-  - **HCP Jobs Tab**: Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically. New/Edit Job modals include Total Bill ($), Payments Made ($) as multiple payment rows, Remaining ($) = Total Bill - sum of payments, and **Create partial invoice** section (amount input, Create invoice button; lists open invoices with View in Stages).
+  - **Billing Tab** (HCP Jobs): Jobs ledger (HCP #, Job Name, Address, materials, team members, revenue); New Job, search; **Edit** and **Delete** per row, vertically centered in the row. Google Drive and Job Plans icons shown when links are filled; stacked vertically. New/Edit Job modals include Total Bill ($), Payments Made ($) as multiple payment rows, Remaining ($) = Total Bill - sum of payments, and **Create partial invoice** section (amount input, Create invoice button; lists open invoices with View in Stages).
   - **Stages Tab**: **Working** shows jobs with "Ready to Bill" button and green Create Partial Invoice icon (to left of Edit); **Ready to Bill** and **Billed Awaiting Payment** show both **jobs** (status-based) and **invoices** in a **unified table** (jobs use blue buttons, invoices use green). **Paid in Full** shows jobs where payments_made ≥ revenue; stage title shows count only (no total). Job actions: Ready to Bill, Mark as Billed, Mark Paid, Send back. Invoice actions: Mark as Billed, Mark Paid, Send back. **Total by Name** button next to Billed Awaiting Payment header opens modal with job-name breakdown; modal includes "take me to Job: Stages: Billed" link. Create Partial Invoice icon (Working, Ready to Bill) opens modal to create partial invoice. Edit pencil opens Edit Job modal. "Open X hours" centered in Actions column. Stages opens by default (not Reports) for non-primary users. **Checkbox confirmation modals** (when Ham mode OFF): Ready to Bill, Mark as Billed, Mark Paid, and Send back each require checkbox confirmation before proceeding.
   - **Job Summary Tab**: HCP, Name, Address, Team Labor, Sub Labor, Parts Cost, Total Bill, Revenue before Overhead. Team Labor column loads when Job Summary tab is active.
   - **Parts Tab**: Tally parts from Job Parts Tally; search and "Show my jobs only" (hidden for subcontractors). Fixture-only entries (sent to office) have editable cost; jobs with unpriced fixtures highlighted in red. Parts total includes fixture cost.

@@ -218,6 +218,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const fields = templateFields[selectedTemplateId] ?? []
   const canSubmit = selectedJob && selectedTemplateId && authUserId
 
+  const missingFields: string[] = []
+  if (!selectedJob) missingFields.push('Job')
+  if (!selectedTemplateId) missingFields.push('Report type')
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
@@ -229,7 +233,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <p style={{ margin: 0, fontWeight: 500 }}>Select job</p>
+              <p style={{ margin: 0, fontWeight: 500 }}>Select job *</p>
               {lastReportJob && (
                 <button
                   type="button"
@@ -355,9 +359,17 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
             >
               {copyJustClicked ? 'Copied!' : 'Copy to Text'}
             </button>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+              <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+              {!canSubmit && !saving && missingFields.length > 0 && (
+                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
+                <span style={{ display: 'block' }}>Required:</span>
+                {missingFields.map((f) => (
+                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
+                ))}
+              </span>
+              )}
             </div>
           </div>
         </form>

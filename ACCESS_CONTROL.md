@@ -78,7 +78,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
-6. **primary** - Materials and job reports specialist (Reports and Ledger tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
+6. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
 
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
@@ -352,10 +352,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ### primary (Primary)
 
-**Purpose**: Materials and job reports specialist with access to Reports and Ledger (Billing) tabs on Jobs, full Bids access (same as estimators), plus Dashboard with Recent Reports and Send task.
+**Purpose**: Materials and job reports specialist with access to Reports and Billing tabs on Jobs, full Bids access (same as estimators), plus Dashboard with Recent Reports and Send task.
 
 **Access**:
-- Dashboard, Materials, Jobs (Reports and Ledger tabs), Bids (full access: all tabs, create/edit/delete bids), Calendar, Checklist, Settings
+- Dashboard, Materials, Jobs (Reports and Billing tabs), Bids (full access: all tabs, create/edit/delete bids), Calendar, Checklist, Settings
 - **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Teams Summary)
 
 **Service Type Filtering**:
@@ -365,7 +365,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Master-Primaries Adoption**:
 - Masters can adopt primaries via `master_primaries` table (Settings → Adopt primaries)
-- Adopted primaries can add materials to jobs in Jobs Ledger (Billing) tab
+- Adopted primaries can add materials to jobs in Jobs Billing tab
 - Primaries appear in task assignee dropdown when adopted by the viewing user's master
 
 **Permissions**:
@@ -377,9 +377,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Purchase order management
 - Price history viewing
 
-**Jobs - Reports and Ledger Tabs**:
+**Jobs - Reports and Billing Tabs**:
 - **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only)
-- **Ledger (Billing) tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
+- **Billing tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
 - Other Jobs tabs hidden (Sub Sheet Ledger, Teams Summary)
 
 **Dashboard**:
@@ -389,7 +389,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **What They Cannot Do**:
 - Cannot access Customers, Projects, People
-- Cannot access Jobs tabs other than Reports and Ledger (no Edit/Delete on Ledger)
+- Cannot access Jobs tabs other than Reports and Billing (no Edit/Delete on Billing)
 - No Quickfill
 - No user management (can change own password via Settings)
 
@@ -412,7 +412,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Ledger |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing |
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
@@ -425,7 +425,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Ledger tabs only; Bids full access (all tabs); Projects hidden
+**Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
 **Assistants**: Can access most pages but see filtered data
 
