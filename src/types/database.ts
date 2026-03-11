@@ -70,6 +70,55 @@ export type Database = {
           },
         ]
       }
+      bid_count_row_custom_prices: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string | null
+          id: string
+          price_book_version_id: string
+          unit_price: number
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string | null
+          id?: string
+          price_book_version_id: string
+          unit_price: number
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string | null
+          id?: string
+          price_book_version_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_count_row_custom_prices_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_custom_prices_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_custom_prices_price_book_version_id_fkey"
+            columns: ["price_book_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -130,37 +179,6 @@ export type Database = {
             referencedRelation: "price_book_versions"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      bid_count_row_custom_prices: {
-        Row: {
-          id: string
-          bid_id: string
-          count_row_id: string
-          price_book_version_id: string
-          unit_price: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          bid_id: string
-          count_row_id: string
-          price_book_version_id: string
-          unit_price: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          bid_id?: string
-          count_row_id?: string
-          price_book_version_id?: string
-          unit_price?: number
-          created_at?: string | null
-        }
-        Relationships: [
-          { foreignKeyName: "bid_count_row_custom_prices_bid_id_fkey", columns: ["bid_id"], referencedRelation: "bids", referencedColumns: ["id"] },
-          { foreignKeyName: "bid_count_row_custom_prices_count_row_id_fkey", columns: ["count_row_id"], referencedRelation: "bids_count_rows", referencedColumns: ["id"] },
-          { foreignKeyName: "bid_count_row_custom_prices_price_book_version_id_fkey", columns: ["price_book_version_id"], referencedRelation: "price_book_versions", referencedColumns: ["id"] },
         ]
       }
       bids: {
@@ -796,21 +814,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       cost_matrix_teams_shares: {
         Row: {
@@ -1526,7 +1529,6 @@ export type Database = {
           description: string
           id: string
           job_id: string
-          part_id: string | null
           sequence_order: number
         }
         Insert: {
@@ -1535,7 +1537,6 @@ export type Database = {
           description?: string
           id?: string
           job_id: string
-          part_id?: string | null
           sequence_order?: number
         }
         Update: {
@@ -1544,7 +1545,6 @@ export type Database = {
           description?: string
           id?: string
           job_id?: string
-          part_id?: string | null
           sequence_order?: number
         }
         Relationships: [
@@ -1553,13 +1553,6 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_ledger_materials_part_id_fkey"
-            columns: ["part_id"]
-            isOneToOne: false
-            referencedRelation: "material_parts"
             referencedColumns: ["id"]
           },
         ]
@@ -2434,47 +2427,6 @@ export type Database = {
           },
         ]
       }
-      person_offsets: {
-        Row: {
-          amount: number
-          created_at: string | null
-          description: string | null
-          id: string
-          occurred_date: string
-          pay_stub_id: string | null
-          person_name: string
-          type: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          occurred_date: string
-          pay_stub_id?: string | null
-          person_name: string
-          type: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          description?: string | null
-          id?: string
-          occurred_date?: string
-          pay_stub_id?: string | null
-          person_name?: string
-          type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_offsets_pay_stub_id_fkey"
-            columns: ["pay_stub_id"]
-            isOneToOne: false
-            referencedRelation: "pay_stubs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       people: {
         Row: {
           created_at: string | null
@@ -2649,6 +2601,41 @@ export type Database = {
           },
         ]
       }
+      people_labor_job_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          job_id: string
+          memo: string | null
+          sequence_order: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          job_id: string
+          memo?: string | null
+          sequence_order?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          memo?: string | null
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labor_job_payments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_labor_jobs: {
         Row: {
           address: string
@@ -2660,6 +2647,7 @@ export type Database = {
           job_number: string | null
           labor_rate: number | null
           master_user_id: string
+          paid_at: string | null
         }
         Insert: {
           address?: string
@@ -2671,6 +2659,7 @@ export type Database = {
           job_number?: string | null
           labor_rate?: number | null
           master_user_id: string
+          paid_at?: string | null
         }
         Update: {
           address?: string
@@ -2682,6 +2671,7 @@ export type Database = {
           job_number?: string | null
           labor_rate?: number | null
           master_user_id?: string
+          paid_at?: string | null
         }
         Relationships: [
           {
@@ -2763,6 +2753,47 @@ export type Database = {
           sequence_order?: number
         }
         Relationships: []
+      }
+      person_offsets: {
+        Row: {
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          occurred_date: string
+          pay_stub_id: string | null
+          person_name: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occurred_date: string
+          pay_stub_id?: string | null
+          person_name: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          occurred_date?: string
+          pay_stub_id?: string | null
+          person_name?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_offsets_pay_stub_id_fkey"
+            columns: ["pay_stub_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stubs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       price_book_entries: {
         Row: {
@@ -3804,6 +3835,39 @@ export type Database = {
           },
         ]
       }
+      supply_house_invoice_job_allocations: {
+        Row: {
+          invoice_id: string
+          job_id: string
+          pct: number
+        }
+        Insert: {
+          invoice_id: string
+          job_id: string
+          pct: number
+        }
+        Update: {
+          invoice_id?: string
+          job_id?: string
+          pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_invoice_job_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_job_allocations_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_house_invoices: {
         Row: {
           amount: number
@@ -3850,39 +3914,6 @@ export type Database = {
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      supply_house_invoice_job_allocations: {
-        Row: {
-          invoice_id: string
-          job_id: string
-          pct: number
-        }
-        Insert: {
-          invoice_id: string
-          job_id: string
-          pct: number
-        }
-        Update: {
-          invoice_id?: string
-          job_id?: string
-          pct?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "supply_house_invoice_job_allocations_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "supply_house_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supply_house_invoice_job_allocations_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -4184,6 +4215,51 @@ export type Database = {
           },
         ]
       }
+      users: {
+        Row: {
+          archived_at: string | null
+          created_at: string | null
+          email: string
+          estimator_service_type_ids: string[] | null
+          id: string
+          last_sign_in_at: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          primary_service_type_ids: string[] | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string | null
+          email: string
+          estimator_service_type_ids?: string[] | null
+          id: string
+          last_sign_in_at?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          primary_service_type_ids?: string[] | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string | null
+          email?: string
+          estimator_service_type_ids?: string[] | null
+          id?: string
+          last_sign_in_at?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          primary_service_type_ids?: string[] | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       vehicle_odometer_entries: {
         Row: {
           created_at: string | null
@@ -4323,51 +4399,6 @@ export type Database = {
           weekly_insurance_cost?: number
           weekly_registration_cost?: number
           year?: number | null
-        }
-        Relationships: []
-      }
-      users: {
-        Row: {
-          archived_at: string | null
-          created_at: string | null
-          email: string
-          estimator_service_type_ids: string[] | null
-          id: string
-          last_sign_in_at: string | null
-          name: string
-          notes: string | null
-          phone: string | null
-          primary_service_type_ids: string[] | null
-          role: Database["public"]["Enums"]["user_role"]
-          updated_at: string | null
-        }
-        Insert: {
-          archived_at?: string | null
-          created_at?: string | null
-          email: string
-          estimator_service_type_ids?: string[] | null
-          id: string
-          last_sign_in_at?: string | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          primary_service_type_ids?: string[] | null
-          role?: Database["public"]["Enums"]["user_role"]
-          updated_at?: string | null
-        }
-        Update: {
-          archived_at?: string | null
-          created_at?: string | null
-          email?: string
-          estimator_service_type_ids?: string[] | null
-          id?: string
-          last_sign_in_at?: string | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          primary_service_type_ids?: string[] | null
-          role?: Database["public"]["Enums"]["user_role"]
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -4587,6 +4618,10 @@ export type Database = {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
       }
+      can_access_bid_for_pricing: {
+        Args: { bid_id_param: string }
+        Returns: boolean
+      }
       can_access_project: {
         Args: { project_id_param: string }
         Returns: boolean
@@ -4648,6 +4683,13 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: boolean
       }
+      get_invoice_amounts_for_jobs: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          invoice_amount: number
+          job_id: string
+        }[]
+      }
       get_job_display_for_report: {
         Args: { p_id: string; p_source: string }
         Returns: {
@@ -4657,74 +4699,67 @@ export type Database = {
           source: string
         }[]
       }
-      get_invoice_amounts_for_jobs: {
-        Args: { p_job_ids: string[] }
-        Returns: {
-          job_id: string
-          invoice_amount: number
-        }[]
-      }
-      get_jobs_ledger_by_ids: {
-        Args: { p_job_ids: string[] }
-        Returns: {
-          id: string
-          hcp_number: string
-          job_name: string
-          job_address: string
-          revenue: number | null
-        }[]
-      }
-      get_jobs_ledger_by_ids_paid_only: {
-        Args: { p_job_ids: string[] }
-        Returns: {
-          id: string
-          hcp_number: string
-          job_name: string
-          job_address: string
-          revenue: number | null
-        }[]
-      }
       get_jobs_ledger_by_hcp_numbers: {
         Args: { p_hcp_numbers: string[] }
         Returns: {
-          id: string
           hcp_number: string
-          job_name: string
+          id: string
           job_address: string
-          revenue: number | null
+          job_name: string
+          revenue: number
         }[]
       }
       get_jobs_ledger_by_hcp_numbers_paid_only: {
         Args: { p_hcp_numbers: string[] }
         Returns: {
-          id: string
           hcp_number: string
-          job_name: string
+          id: string
           job_address: string
-          revenue: number | null
+          job_name: string
+          revenue: number
+        }[]
+      }
+      get_jobs_ledger_by_ids: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          revenue: number
+        }[]
+      }
+      get_jobs_ledger_by_ids_paid_only: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+          revenue: number
         }[]
       }
       get_jobs_ledger_by_status: {
         Args: { p_status: string }
         Returns: {
-          id: string
+          created_at: string
+          google_drive_link: string
           hcp_number: string
-          job_name: string
+          id: string
           job_address: string
-          revenue: number | null
-          payments_made: number | null
-          google_drive_link: string | null
-          job_plans_link: string | null
-          created_at: string | null
+          job_name: string
+          job_plans_link: string
+          payments_made: number
+          revenue: number
         }[]
       }
       get_jobs_ledger_office: {
         Args: never
         Returns: {
-          id: string
           hcp_number: string
-          job_name: string
+          id: string
           job_address: string
+          job_name: string
         }[]
       }
       get_parts_ordered_by_price_count:
@@ -4745,9 +4780,9 @@ export type Database = {
       get_projects_by_ids: {
         Args: { p_ids: string[] }
         Returns: {
+          address: string
           id: string
           name: string
-          address: string
         }[]
       }
       get_supply_house_price_counts: {
@@ -4774,8 +4809,8 @@ export type Database = {
       insert_report: {
         Args: {
           p_field_values: Json
-          p_job_ledger_id: string | null
-          p_project_id: string | null
+          p_job_ledger_id: string
+          p_project_id: string
           p_template_id: string
         }
         Returns: string

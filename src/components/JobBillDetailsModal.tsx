@@ -191,7 +191,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
                   cursor: 'pointer',
                 }}
               >
-                Edit Job Labor
+                Edit Sub Labor
               </button>
             )}
             {onEditParts && hasParts && (
