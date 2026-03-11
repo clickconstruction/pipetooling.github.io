@@ -199,6 +199,16 @@ export default function Jobs() {
   const [backchargeAmount, setBackchargeAmount] = useState('')
   const [backchargeMemo, setBackchargeMemo] = useState('')
   const [backchargeSaving, setBackchargeSaving] = useState(false)
+  const [editingPayment, setEditingPayment] = useState<{
+    id: string
+    jobId: string
+    amount: number
+    memo: string | null
+    isBackcharge: boolean
+  } | null>(null)
+  const [editPaymentAmount, setEditPaymentAmount] = useState('')
+  const [editPaymentMemo, setEditPaymentMemo] = useState('')
+  const [editPaymentSaving, setEditPaymentSaving] = useState(false)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
   const [laborModalOpen, setLaborModalOpen] = useState(false)
   const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
@@ -1657,6 +1667,22 @@ export default function Jobs() {
     else await loadLaborJobs()
   }
 
+  async function updateLaborJobPayment(
+    paymentId: string,
+    amount: number,
+    memo: string | null,
+    isBackcharge: boolean
+  ) {
+    setError(null)
+    const amt = isBackcharge ? -Math.abs(amount) : Math.abs(amount)
+    const { error: err } = await supabase
+      .from('people_labor_job_payments')
+      .update({ amount: amt, memo: memo?.trim() || null })
+      .eq('id', paymentId)
+    if (err) setError(err.message)
+    else await loadLaborJobs()
+  }
+
   function resetLaborForm() {
     setLaborAssignedTo([])
     setLaborAddress('')
@@ -1669,6 +1695,7 @@ export default function Jobs() {
 
   function closeLaborModal() {
     setEditingLaborJob(null)
+    setEditingPayment(null)
     setLaborModalOpen(false)
     setShowAddSubcontractorModal(false)
     setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
@@ -4310,20 +4337,28 @@ export default function Jobs() {
                       return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
                     })
                     .map((job) => {
-                    const totalHrs = (job.items ?? []).reduce((s, i) => {
+                    const jobRate = job.labor_rate ?? 0
+                    const laborTotal = (job.items ?? []).reduce((s, i) => {
                       const hrs = Number(i.hrs_per_unit) || 0
-                      return s + ((i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs)
+                      const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+                      const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
+                      return s + laborHrs * rate
                     }, 0)
-                    const rate = job.labor_rate ?? 0
+                    const rate = jobRate
                     const miles = Number(job.distance_miles) || 0
                     const mileageCost = driveMileageCost ?? 0.70
                     const timePerMile = driveTimePerMile ?? 0.02
                     const driveCost = miles > 0 && rate > 0
                       ? miles * mileageCost + miles * timePerMile * rate
                       : miles > 0 ? miles * mileageCost : 0
-                    const totalCost = totalHrs * rate + driveCost
-                    const paid = (job.payments ?? []).reduce((s, p) => s + Number(p.amount), 0)
-                    const balance = totalCost - paid
+                    let totalCost = laborTotal + driveCost
+                    const jobPayments = job.payments ?? []
+                    const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
+                    const backcharges = jobPayments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
+                    if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
+                      totalCost = paid + backcharges
+                    }
+                    const balance = totalCost - paid - backcharges
                     const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                     return (
                       <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -5572,6 +5607,7 @@ export default function Jobs() {
                                 step={1}
                                 value={row.count || ''}
                                 onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
+                                onWheel={(e) => e.currentTarget.blur()}
                                 style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                               />
                             </td>
@@ -5582,6 +5618,7 @@ export default function Jobs() {
                                 step={0.25}
                                 value={row.hrs_per_unit || ''}
                                 onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                onWheel={(e) => e.currentTarget.blur()}
                                 style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                               />
                             </td>
@@ -5604,6 +5641,7 @@ export default function Jobs() {
                                 step={0.01}
                                 value={row.labor_rate != null && row.labor_rate !== 0 ? row.labor_rate : ''}
                                 onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
+                                onWheel={(e) => e.currentTarget.blur()}
                                 placeholder="0"
                                 style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
                               />
@@ -5690,17 +5728,23 @@ export default function Jobs() {
                     const mileageCost = driveMileageCost ?? 0.70
                     const timePerMile = driveTimePerMile ?? 0.02
                     const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-                    const totalCost = laborTotal + driveCost
-                    const paid = (editingLaborJob.payments ?? []).reduce((s, p) => s + Number(p.amount), 0)
-                    const balance = totalCost - paid
+                    let totalCost = laborTotal + driveCost
+                    const payments = editingLaborJob.payments ?? []
+                    const paid = payments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
+                    const backcharges = payments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
+                    if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
+                      totalCost = paid + backcharges
+                    }
+                    const balance = totalCost - paid - backcharges
                     return (
                       <>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · {balance > 0 ? `$${formatCurrency(balance)} due` : balance < 0 ? `Over $${formatCurrency(-balance)}` : 'Paid'}</p>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)} · {balance > 0 ? `$${formatCurrency(balance)} due` : balance < 0 ? `Over $${formatCurrency(-balance)}` : '$0.00 due'}</p>
                         <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '0.5rem' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead style={{ background: '#f9fafb' }}>
                               <tr>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Memo</th>
                                 <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
@@ -5710,15 +5754,16 @@ export default function Jobs() {
                               {(editingLaborJob.payments ?? []).map((p) => (
                                 <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
                                   <td style={{ padding: '0.5rem' }}>
-                                    <button type="button" onClick={() => deleteLaborJobPayment(p.id)} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Remove</button>
+                                    <button type="button" onClick={() => { setEditPaymentAmount(String(Math.abs(Number(p.amount)))); setEditPaymentMemo(p.memo ?? ''); setEditingPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }) }} style={{ padding: '0.25rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
                                   </td>
                                 </tr>
                               ))}
                               {(editingLaborJob.payments ?? []).length === 0 && (
-                                <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No payments yet</td></tr>
+                                <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No payments yet</td></tr>
                               )}
                             </tbody>
                           </table>
@@ -6893,6 +6938,42 @@ export default function Jobs() {
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="button" disabled={backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim()} onClick={async () => { if (!backchargeLaborJob) return; const amt = parseFloat(backchargeAmount); if (!(amt > 0) || !backchargeMemo.trim()) return; setBackchargeSaving(true); await recordLaborJobBackcharge(backchargeLaborJob.id, amt, backchargeMemo); setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeSaving(false) }} style={{ padding: '0.5rem 1rem', background: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? 'not-allowed' : 'pointer' }}>{backchargeSaving ? '…' : 'Record Backcharge'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingPayment && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{editingPayment.isBackcharge ? 'Edit Backcharge' : 'Edit Payment'}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={editPaymentAmount}
+                onChange={(e) => setEditPaymentAmount(e.target.value)}
+                placeholder="0"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo {editingPayment.isBackcharge ? <span style={{ color: '#b91c1c' }}>*</span> : '(optional)'}</label>
+              <textarea
+                value={editPaymentMemo}
+                onChange={(e) => setEditPaymentMemo(e.target.value)}
+                placeholder={editingPayment.isBackcharge ? 'Required for backcharges' : 'Optional note'}
+                rows={2}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !confirm('Remove this payment?')) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
+              </div>
             </div>
           </div>
         </div>

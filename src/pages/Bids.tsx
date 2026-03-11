@@ -7034,6 +7034,8 @@ export default function Bids() {
       {visibleServiceTypes.length > 0 && (
         <div style={{
           display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           gap: '0.5rem',
           marginBottom: '1rem',
           flexWrap: 'wrap',
@@ -7041,29 +7043,38 @@ export default function Bids() {
           pointerEvents: activeTab === 'builder-review' ? 'none' : 'auto',
           cursor: activeTab === 'builder-review' ? 'not-allowed' : 'default'
         }}>
-          {visibleServiceTypes.map(st => (
-            <button
-              key={st.id}
-              type="button"
-              onClick={() => {
-                if (st.id !== selectedServiceTypeId) {
-                  setSelectedServiceTypeId(st.id)
-                  closeSharedBidAndClearUrl()
-                }
-              }}
-              style={{
-                padding: '0.5rem 1rem',
-                border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
-                color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
-                borderRadius: 6,
-                fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
-                cursor: 'pointer'
-              }}
-            >
-              {st.name}
-            </button>
-          ))}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {visibleServiceTypes.map(st => (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => {
+                  if (st.id !== selectedServiceTypeId) {
+                    setSelectedServiceTypeId(st.id)
+                    closeSharedBidAndClearUrl()
+                  }
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                  background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
+                  color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
+                  borderRadius: 6,
+                  fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
+                  cursor: 'pointer'
+                }}
+              >
+                {st.name}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={openNewBid}
+            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+          >
+            New Bid
+          </button>
         </div>
       )}
 
@@ -7244,13 +7255,6 @@ export default function Bids() {
                 style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
               >
                 Checklist
-              </button>
-              <button
-                type="button"
-                onClick={openNewBid}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                New Bid
               </button>
             </div>
           </div>
