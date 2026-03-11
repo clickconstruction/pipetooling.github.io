@@ -5766,17 +5766,17 @@ export default function Bids() {
   // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
     if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
-      const loadForServiceType = async () => {
+      const t = setTimeout(async () => {
         await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
-      }
-      loadForServiceType()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [selectedServiceTypeId, activeTab, myRole])
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
     if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
-      const loadForBuilderReview = async () => {
+      const t = setTimeout(async () => {
         await Promise.all([
           loadCustomers(),
           loadBids(null), // load all bids (no service type filter)
@@ -5791,8 +5791,8 @@ export default function Bids() {
           loadPriceBookVersions(),
           loadMaterialTemplates()
         ])
-      }
-      loadForBuilderReview()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, myRole])
 
@@ -6097,14 +6097,17 @@ export default function Bids() {
   }
 
   useEffect(() => {
-    if (activeTab === 'takeoffs') {
-      loadMaterialTemplates()
-      loadDraftPOs()
-      loadTakeoffBookVersions()
-    }
-    if (activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submission-followup') {
-      loadPriceBookVersions()
-    }
+    const t = setTimeout(() => {
+      if (activeTab === 'takeoffs') {
+        loadMaterialTemplates()
+        loadDraftPOs()
+        loadTakeoffBookVersions()
+      }
+      if (activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submission-followup') {
+        loadPriceBookVersions()
+      }
+    }, 80)
+    return () => clearTimeout(t)
   }, [activeTab])
 
   useEffect(() => {
@@ -6146,8 +6149,11 @@ export default function Bids() {
 
   useEffect(() => {
     if (activeTab === 'cost-estimate') {
-      loadPurchaseOrdersForCostEstimate()
-      loadLaborBookVersions()
+      const t = setTimeout(() => {
+        loadPurchaseOrdersForCostEstimate()
+        loadLaborBookVersions()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab])
 

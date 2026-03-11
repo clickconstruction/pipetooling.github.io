@@ -1338,15 +1338,18 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'pay' && (canAccessPay || canViewCostMatrixShared)) {
-      setPayTabLoading(true)
-      Promise.all([
-        loadPayConfig(),
-        loadPeopleHours(matrixStartDate, matrixEndDate),
-        loadTeams(),
-        loadHoursDisplayOrder(),
-        loadCostMatrixTags(),
-        loadCostMatrixTagColors(),
-      ]).finally(() => setPayTabLoading(false))
+      const t = setTimeout(() => {
+        setPayTabLoading(true)
+        Promise.all([
+          loadPayConfig(),
+          loadPeopleHours(matrixStartDate, matrixEndDate),
+          loadTeams(),
+          loadHoursDisplayOrder(),
+          loadCostMatrixTags(),
+          loadCostMatrixTagColors(),
+        ]).finally(() => setPayTabLoading(false))
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay, canViewCostMatrixShared, matrixStartDate, matrixEndDate])
 
@@ -1361,7 +1364,8 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'pay' && isDev) {
-      loadCostMatrixShares()
+      const t = setTimeout(() => loadCostMatrixShares(), 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, isDev])
 
@@ -1445,27 +1449,36 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'hours' && canAccessHours) {
-      setHoursTabLoading(true)
-      Promise.all([
-        loadPayConfig(),
-        loadPeopleHours(hoursDateStart, hoursDateEnd),
-        loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
-        loadHoursDisplayOrder(),
-      ]).finally(() => setHoursTabLoading(false))
+      const t = setTimeout(() => {
+        setHoursTabLoading(true)
+        Promise.all([
+          loadPayConfig(),
+          loadPeopleHours(hoursDateStart, hoursDateEnd),
+          loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
+          loadHoursDisplayOrder(),
+        ]).finally(() => setHoursTabLoading(false))
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
 
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay) {
-      setPayStubsLoading(true)
-      Promise.all([loadPayConfig(), loadPayStubs()]).finally(() => setPayStubsLoading(false))
+      const t = setTimeout(() => {
+        setPayStubsLoading(true)
+        Promise.all([loadPayConfig(), loadPayStubs()]).finally(() => setPayStubsLoading(false))
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay])
 
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
-      loadPeopleHours(payStubPeriodStart, payStubPeriodEnd)
-      loadHoursDaysCorrect(payStubPeriodStart, payStubPeriodEnd)
+      const t = setTimeout(() => {
+        loadPeopleHours(payStubPeriodStart, payStubPeriodEnd)
+        loadHoursDaysCorrect(payStubPeriodStart, payStubPeriodEnd)
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
 
@@ -1761,20 +1774,25 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'vehicles' && canAccessPay) {
-      loadVehicles()
+      const t = setTimeout(() => loadVehicles(), 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay])
 
   useEffect(() => {
     if (activeTab === 'offsets' && canAccessPay) {
-      loadOffsets()
-      loadPayStubs()
+      const t = setTimeout(() => {
+        loadOffsets()
+        loadPayStubs()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay])
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
-      loadPayConfig()
+      const t = setTimeout(() => loadPayConfig(), 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, isDev])
 
@@ -1813,7 +1831,8 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab !== 'hours' || !canAccessHours) return
-    loadCrewJobsForHoursRange()
+    const t = setTimeout(() => loadCrewJobsForHoursRange(), 80)
+    return () => clearTimeout(t)
   }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
 
   useEffect(() => {
