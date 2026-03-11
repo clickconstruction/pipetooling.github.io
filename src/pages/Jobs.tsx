@@ -2065,7 +2065,10 @@ export default function Jobs() {
   }, [pendingScrollToPartsJobId, expandedPartsJobIds])
 
   useEffect(() => {
-    if (activeTab === 'sub_sheet_ledger') loadRoster()
+    if (activeTab === 'sub_sheet_ledger') {
+      const t = setTimeout(() => loadRoster(), 80)
+      return () => clearTimeout(t)
+    }
   }, [authUser?.id, activeTab])
 
   useEffect(() => {
@@ -2088,7 +2091,8 @@ export default function Jobs() {
   useEffect(() => {
     if (authLoading || !authUser?.id) return
     if (activeTab !== 'stages' && activeTab !== 'billing') return
-    loadJobs()
+    const t = setTimeout(() => loadJobs(), 80)
+    return () => clearTimeout(t)
   }, [activeTab, authUser?.id, authLoading])
 
   useEffect(() => {
@@ -2103,21 +2107,33 @@ export default function Jobs() {
   }, [activeTab, searchParams, setSearchParams])
 
   useEffect(() => {
-    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadLaborJobs()
+    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+      const t = setTimeout(() => loadLaborJobs(), 80)
+      return () => clearTimeout(t)
+    }
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadTeamLaborData()
+    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+      const t = setTimeout(() => loadTeamLaborData(), 80)
+      return () => clearTimeout(t)
+    }
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
-    if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) loadTallyParts()
+    if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) {
+      const t = setTimeout(() => loadTallyParts(), 80)
+      return () => clearTimeout(t)
+    }
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
     if (activeTab === 'inspections' && authUser?.id) {
-      loadInspections()
-      loadQuickLinks()
+      const t = setTimeout(() => {
+        loadInspections()
+        loadQuickLinks()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, authUser?.id, inspectionsMonth])
 
@@ -2153,7 +2169,10 @@ export default function Jobs() {
   }
 
   useEffect(() => {
-    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) loadDriveSettings()
+    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+      const t = setTimeout(() => loadDriveSettings(), 80)
+      return () => clearTimeout(t)
+    }
   }, [activeTab, authUser?.id])
 
   async function saveDriveSettings(e: React.FormEvent) {
@@ -2197,8 +2216,11 @@ export default function Jobs() {
 
   useEffect(() => {
     if (activeTab === 'reports' && authUser?.id) {
-      loadReports()
-      loadReportTemplates()
+      const t = setTimeout(() => {
+        loadReports()
+        loadReportTemplates()
+      }, 80)
+      return () => clearTimeout(t)
     }
   }, [activeTab, authUser?.id])
 

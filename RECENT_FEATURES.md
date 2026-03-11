@@ -282,6 +282,11 @@ when_to_read:
 
 - **Parts Cost includes Billed Materials**: People Review Parts Cost (labor jobs, crew jobs, allocation) now includes Billed Materials from `jobs_ledger_materials` in addition to tally parts and supply house invoice amounts.
 
+### Jobs – Parts Tab: Materials-Only and Invoice-Only Jobs
+
+- **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
+- **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
 ---
 
 ## Latest Updates (v2.94)
