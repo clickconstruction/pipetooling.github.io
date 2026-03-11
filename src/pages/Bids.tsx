@@ -4802,7 +4802,7 @@ export default function Bids() {
     const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
     const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
     const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
-    const inclusions = coverLetterInclusionsByBid[b.id] ?? ''
+    const inclusions = coverLetterInclusionsByBid[b.id] ?? DEFAULT_INCLUSIONS
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
     const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
@@ -7250,13 +7250,14 @@ export default function Bids() {
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Date</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Distance<br />to Office</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Last<br />Contact</th>
+                  <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Counts</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Edit" aria-label="Edit" />
                 </tr>
               </thead>
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={13} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={14} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
@@ -7389,6 +7390,20 @@ export default function Bids() {
                             if (spaceIdx < 0) return s
                             return <>{s.slice(0, spaceIdx)}<br />{s.slice(spaceIdx + 1)}</>
                           })() : '+'}
+                        </button>
+                      </td>
+                      <td style={{ padding: 0, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => selectBidAndSyncUrl(bid, 'counts')}
+                          title="Open in Counts"
+                          style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
+                            <path d="M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z"/>
+                          </svg>
                         </button>
                       </td>
                       <td style={{ padding: '0.0625rem', textAlign: 'center' }}>
@@ -11116,10 +11131,11 @@ export default function Bids() {
             const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
             const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
             const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
+            const isBidValueSynced = bid.bid_value != null && bid.bid_value === effectiveRevenue
             const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
             const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
             const fixtureRows = pricingCountRows.map((r) => ({ fixture: r.fixture ?? '', count: Number(r.count) }))
-            const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
+            const inclusions = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
             const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? DEFAULT_INCLUSIONS
             const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
             const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
@@ -11219,31 +11235,33 @@ export default function Bids() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                     <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
-                          disabled={applyingBidValue || coverLetterRevenue === 0}
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
-                            fontSize: '0.875rem'
-                          }}
-                          title="Apply proposed amount to Bid Value"
-                        >
-                          {applyingBidValue ? 'Applying...' : 'Apply Proposed amount to Bid Value'}
-                        </button>
-                        {bidValueAppliedSuccess && (
-                          <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
-                            ✓ Applied successfully
-                          </span>
-                        )}
-                      </div>
-                      {coverLetterUseCustomAmountByBid[bid.id] === true && (() => {
+                      {!isBidValueSynced && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => applyProposedAmountToBidValue(bid.id, coverLetterRevenue)}
+                            disabled={applyingBidValue || coverLetterRevenue === 0}
+                            style={{
+                              padding: '0.25rem 0.75rem',
+                              background: applyingBidValue || coverLetterRevenue === 0 ? '#d1d5db' : '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: applyingBidValue || coverLetterRevenue === 0 ? 'not-allowed' : 'pointer',
+                              fontSize: '0.875rem'
+                            }}
+                            title="Apply proposed amount to Bid Value"
+                          >
+                            {applyingBidValue ? 'Applying...' : 'Apply Proposed amount to Bid Value'}
+                          </button>
+                          {bidValueAppliedSuccess && (
+                            <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                              ✓ Applied successfully
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {coverLetterUseCustomAmountByBid[bid.id] === true && !isBidValueSynced && (() => {
                         const customStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
                         const customNum = customStr ? parseFloat(customStr) : NaN
                         const isValid = !isNaN(customNum) && customNum >= 0

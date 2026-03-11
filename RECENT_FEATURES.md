@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-10
+last_updated: 2026-03-10
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.93)"
+  - name: "Latest Version (v2.94)"
     line: ~312
+    description: "Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced"
+  - name: "v2.93"
+    line: ~325
     description: "Primaries full Bids access (all tabs, create/edit/delete)"
   - name: "v2.92"
     line: ~325
@@ -172,8 +175,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
-2. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
+1. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
+2. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
+3. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
 2. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
 3. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
 2. [Latest Updates (v2.84)](#latest-updates-v284) - Team Summary removed, Jobs tab order, Review Profit, SECURITY DEFINER RPCs
@@ -260,6 +264,21 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.94)
+
+**Date**: 2026-03-10
+
+### Bids – Bid Board
+
+- **Counts column**: New column with hexagon icon between Last Contact and Edit. Clicking the icon opens that bid in the Counts tab (same as `selectBidAndSyncUrl(bid, 'counts')`). Tooltip: "Open in Counts".
+
+### Bids – Cover Letter Tab
+
+- **Additional Inclusions default in combined document**: When the user has not modified the Additional Inclusions field, the default "Permits" now appears in both the textarea and the Combined document (copy to send). Previously, "Permits" showed in the textarea but only appeared in the combined document after the user edited the field. Fix: use `DEFAULT_INCLUSIONS` as fallback for `inclusions` when building the combined document and PDF/print output, matching the textarea display.
+- **Apply Proposed amount / Apply custom amount hidden when synced**: When `bid.bid_value` already matches the effective amount (proposed from Pricing or custom amount when "Use custom amount in document" is checked), both "Apply Proposed amount to Bid Value" and "Apply custom amount to Bid Value" buttons are hidden. The "✓ Applied successfully" toast is also hidden in that state. Buttons reappear when the proposed or custom amount changes and no longer matches the stored bid value.
 
 ---
 

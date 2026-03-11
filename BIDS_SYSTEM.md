@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-03-26
+last_updated: 2026-03-10
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -170,7 +170,8 @@ Column order (left to right):
 8. **Bid Date** - Bid due date (date and bracket on separate lines)
 9. **Distance to Office** - Miles (rounded)
 10. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
-11. **Edit** - Gear icon button (header hidden, only icon visible)
+11. **Counts** - Hexagon icon button; clicking opens that bid in the Counts tab
+12. **Edit** - Gear icon button (header hidden, only icon visible)
 
 **Note**: Removed columns from earlier versions:
 - Notes (removed)
@@ -1036,11 +1037,12 @@ The Cover Letter provides sensible defaults that can be customized per bid.
 
 #### Additional Inclusions
 
+**Constant**: `DEFAULT_INCLUSIONS` ("Permits")
+
 **Behavior**:
-- User enters custom inclusions (one per line, shown as bullets)
-- **When blank**: No default text (e.g., "Permits") is shown in the combined document
-- Inclusions section displays "(none)" when both fixtures and inclusions are empty
-- User can add any text; each line becomes a bullet in the document
+- **Default**: When the user has not modified the field, "Permits" appears in both the textarea and the combined document
+- User can edit, add lines, or clear; each line becomes a bullet in the document
+- When user clears the field, nothing appears in the document; inclusions section shows "(none)" when both fixtures and inclusions are empty
 
 #### Default Exclusions
 
@@ -1096,9 +1098,8 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 
 **Additional Inclusions** (textarea):
 - Label: "Additional Inclusions (one per line, shown as bullets)"
-- Editable per bid
-- When blank, nothing appears in document (no default "Permits")
-- Appears prominently in document when entered
+- Default "Permits" when user has not modified; appears in both textarea and combined document
+- Editable per bid; user can add lines or clear
 
 **Exclusions and Scope** (textarea):
 - Label: "Exclusions and Scope (one per line, shown as bullets)"
@@ -1119,6 +1120,16 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 - Includes all sections with proper formatting
 - Uses defaults where user hasn't customized
 - Professional layout suitable for customer presentation
+
+### Apply Proposed amount to Bid Value
+
+**Location**: Below "Proposed amount (from Pricing)", above the amount display
+
+**Buttons**:
+- **Apply Proposed amount to Bid Value**: Writes the proposed amount (from Pricing) to the bid's `bid_value`. Disabled when proposed amount is 0 or during save.
+- **Apply custom amount to Bid Value**: Shown when "Use custom amount in document" is checked. Writes the custom amount to the bid's `bid_value`.
+
+**Synced state**: When `bid.bid_value` already matches the effective amount (proposed or custom), both buttons are hidden. They reappear when the proposed or custom amount changes and no longer matches the stored bid value.
 
 ### Edit Bid Button
 
