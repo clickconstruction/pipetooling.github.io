@@ -12,9 +12,9 @@ import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-hours', sectionId: 'hours', label: 'Hours' },
+  { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
-  { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses and Subs' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
@@ -161,6 +161,17 @@ export default function Quickfill() {
         <HoursSection />
       </QuickfillSectionWrapper>
       <QuickfillSectionWrapper
+        id="quickfill-crew-jobs"
+        label="Crew Jobs"
+        color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
+        collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
+        mark={sectionMarks['crew-jobs']}
+        onMarkUpToDate={() => markSectionUpToDate('crew-jobs')}
+        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'crew-jobs']))}
+      >
+        <CrewJobsSection />
+      </QuickfillSectionWrapper>
+      <QuickfillSectionWrapper
         id="quickfill-billed-awaiting"
         label="Billing Awaiting Payments"
         color={getButtonColor(sectionMarks['billed-awaiting']?.marked_at ?? null)}
@@ -184,17 +195,6 @@ export default function Quickfill() {
           <UnpricedFixturesSection />
         </QuickfillSectionWrapper>
       )}
-      <QuickfillSectionWrapper
-        id="quickfill-crew-jobs"
-        label="Crew Jobs"
-        color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
-        collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
-        mark={sectionMarks['crew-jobs']}
-        onMarkUpToDate={() => markSectionUpToDate('crew-jobs')}
-        onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'crew-jobs']))}
-      >
-        <CrewJobsSection />
-      </QuickfillSectionWrapper>
       <QuickfillSectionWrapper
         id="quickfill-cant-reach"
         label="Unreachable Prospects"
