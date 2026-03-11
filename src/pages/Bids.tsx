@@ -422,7 +422,9 @@ function buildCoverLetterHtml(
   exclusions: string,
   terms: string,
   designDrawingPlanDateFormatted: string | null,
-  serviceTypeName: string
+  serviceTypeName: string,
+  includeSignature = true,
+  includeFixturesPerPlan = true
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -431,7 +433,7 @@ function buildCoverLetterHtml(
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
   const fixtureBlock =
-    fixtureRows.length > 0
+    fixtureRows.length > 0 && includeFixturesPerPlan
       ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
@@ -468,15 +470,17 @@ function buildCoverLetterHtml(
   paragraphs.push(escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.'))
   paragraphs.push(escapeHtml('Respectfully submitted by Click Plumbing and Electrical'))
   paragraphs.push('')
-  paragraphs.push(escapeHtml('_______________________________'))
-  paragraphs.push(escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'))
-  paragraphs.push('')
-  paragraphs.push('<strong>' + escapeHtml('Acceptance of estimate') + '</strong>')
-  paragraphs.push(escapeHtml('General Contractor / Builder Signature:'))
-  paragraphs.push('')
-  paragraphs.push(escapeHtml('____________________________________'))
-  paragraphs.push('')
-  paragraphs.push(escapeHtml('Date: ____________________________________'))
+  if (includeSignature) {
+    paragraphs.push(escapeHtml('_______________________________'))
+    paragraphs.push(escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.'))
+    paragraphs.push('')
+    paragraphs.push('<strong>' + escapeHtml('Acceptance of estimate') + '</strong>')
+    paragraphs.push(escapeHtml('General Contractor / Builder Signature:'))
+    paragraphs.push('')
+    paragraphs.push(escapeHtml('____________________________________'))
+    paragraphs.push('')
+    paragraphs.push(escapeHtml('Date: ____________________________________'))
+  }
   return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
 }
 
@@ -546,7 +550,9 @@ function buildCoverLetterText(
   exclusions: string,
   terms: string,
   designDrawingPlanDateFormatted: string | null,
-  serviceTypeName: string
+  serviceTypeName: string,
+  includeSignature = true,
+  includeFixturesPerPlan = true
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -555,7 +561,7 @@ function buildCoverLetterText(
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
   const fixtureBlock =
-    fixtureRows.length > 0
+    fixtureRows.length > 0 && includeFixturesPerPlan
       ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
@@ -581,15 +587,17 @@ function buildCoverLetterText(
     'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
     'Respectfully submitted by Click Plumbing and Electrical',
     '',
-    '_______________________________',
-    'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
-    '',
-    'Acceptance of estimate',
-    'General Contractor / Builder Signature:',
-    '',
-    '____________________________________',
-    '',
-    'Date: ____________________________________',
+    ...(includeSignature ? [
+      '_______________________________',
+      'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
+      '',
+      'Acceptance of estimate',
+      'General Contractor / Builder Signature:',
+      '',
+      '____________________________________',
+      '',
+      'Date: ____________________________________',
+    ] : []),
   ]
   return lines.join('\n')
 }
@@ -1240,6 +1248,8 @@ export default function Bids() {
   const [coverLetterIncludeDesignDrawingPlanDateByBid, setCoverLetterIncludeDesignDrawingPlanDateByBid] = useState<Record<string, boolean>>({})
   const [coverLetterCustomAmountByBid, setCoverLetterCustomAmountByBid] = useState<Record<string, string>>({})
   const [coverLetterUseCustomAmountByBid, setCoverLetterUseCustomAmountByBid] = useState<Record<string, boolean>>({})
+  const [coverLetterIncludeSignatureByBid, setCoverLetterIncludeSignatureByBid] = useState<Record<string, boolean>>({})
+  const [coverLetterIncludeFixturesPerPlanByBid, setCoverLetterIncludeFixturesPerPlanByBid] = useState<Record<string, boolean>>({})
   const [coverLetterTermsCollapsed, setCoverLetterTermsCollapsed] = useState(true)
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterCopySuccess, setCoverLetterCopySuccess] = useState(false)
@@ -1445,7 +1455,7 @@ export default function Bids() {
       .from('bids')
       .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)')
     if (sid) q = q.eq('service_type_id', sid)
-    const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: false })
+    const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: true })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
       return []
@@ -4806,9 +4816,10 @@ export default function Bids() {
     const exclusions = coverLetterExclusionsByBid[b.id] ?? DEFAULT_EXCLUSIONS
     const terms = coverLetterTermsByBid[b.id] ?? DEFAULT_TERMS_AND_WARRANTY
     const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[b.id] !== false && b.design_drawing_plan_date) ? formatDesignDrawingPlanDate(b.design_drawing_plan_date) : null
+    const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || (coverLetterIncludeFixturesPerPlanByBid[b.id] !== false)
     const bidServiceType = serviceTypes.find((st) => st.id === b.service_type_id)
     const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
+    const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[b.id] !== false, effectiveIncludeFixtures)
     const coverLines = coverLetterText.split('\n')
     for (const line of coverLines) {
       if (y > pageH - margin) { doc.addPage(); y = margin }
@@ -11142,10 +11153,11 @@ export default function Bids() {
             const terms = coverLetterTermsByBid[bid.id] ?? ''
             const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
             const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
+            const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || (coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false)
             const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
             const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
-            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName)
+            const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] !== false, effectiveIncludeFixtures)
+            const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] !== false, effectiveIncludeFixtures)
             const now = new Date()
             const yy = now.getFullYear() % 100
             const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -11326,6 +11338,29 @@ export default function Bids() {
                       : 'Design Drawings Plan Date: [not set]'}
                   </label>
                 </div>
+                {pricingCountRows.length > 0 && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? 'pointer' : 'default', opacity: (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? 1 : 0.7 }}>
+                      <input
+                        type="checkbox"
+                        checked={(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? (coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false) : true}
+                        disabled={!(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date)}
+                        onChange={() => (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) && setCoverLetterIncludeFixturesPerPlanByBid((prev) => ({
+                          ...prev,
+                          [bid.id]: prev[bid.id] === false
+                        }))}
+                      />
+                      Include Fixtures provided and installed by us per plan
+                      {!(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) && (
+                        <span style={{ fontSize: '0.8em', color: '#6b7280' }}>
+                          {!bid.design_drawing_plan_date
+                            ? '(Set Design Drawing Plan Date in Edit bid to toggle)'
+                            : '(Check Design Drawings Plan Date above to toggle)'}
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                )}
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Additional Inclusions (one per line, shown as bullets)</label>
                   <textarea
@@ -11365,9 +11400,22 @@ export default function Bids() {
                   )}
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.5rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={coverLetterIncludeSignatureByBid[bid.id] !== false}
+                      onChange={() => setCoverLetterIncludeSignatureByBid((prev) => ({
+                        ...prev,
+                        [bid.id]: prev[bid.id] === false
+                      }))}
+                    />
+                    Include Signature block in Cover Letter and Approval PDF
+                  </label>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
                   <div
-                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
+                    key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] !== false}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
                     style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                     dangerouslySetInnerHTML={{ __html: combinedHtml }}
                   />
