@@ -304,7 +304,7 @@ The add-row form uses `colSpan={3}` to merge cells:
 - Refreshes count list
 - Blue button styling
 
-**Save and Add**:
+**Save & Add** (displays as two lines: "Save" / "& Add"):
 - Saves the count row
 - **Clears form fields**
 - **Keeps form open** for next entry
@@ -788,6 +788,10 @@ Opens print-friendly PDF view with comprehensive cost breakdown:
 
 ### Purpose
 Compare estimated costs to price book revenue and analyze profit margins. Helps ensure bids are profitable.
+
+### Header Layout
+
+When a bid is selected, the header uses a three-column layout: **Bid name** (left), **Price book** label and version dropdown (center), **Print / Review / Close** buttons (right). The Price book dropdown is centered on the page.
 
 ### Price Book System
 

@@ -15,11 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.96)"
+  - name: "Latest Version (v2.97)"
     line: ~312
+    description: "Bids Counts: Save & Add label, Cancel styling; Bids Pricing: Price book centered, total row cleanup"
+  - name: "v2.96"
+    line: ~318
     description: "PWA auto-update: removed New version available banner, app reloads automatically on deploy"
   - name: "v2.95"
-    line: ~318
+    line: ~335
     description: "Edit Sub Labor: Remove in Edit Payment modal, number inputs blur on scroll; Bids persistent New Bid button"
   - name: "v2.94"
     line: ~320
@@ -181,7 +184,7 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.96)](#latest-updates-v296) - PWA auto-update: removed New version available banner
+1. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
 2. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
 3. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
 3. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
@@ -293,6 +296,22 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.97)
+
+**Date**: 2026-03-12
+
+### Bids – Counts Tab
+
+- **Save & Add label**: The "Save and Add" button now displays as two lines: "Save" and "& Add" for a more compact layout.
+- **Cancel button styling**: Cancel button now matches Save and Save & Add styling (filled, no border): `background: #e5e7eb`, `color: #374151`, `border: none`.
+
+### Bids – Pricing Tab
+
+- **Price book dropdown centered**: The Price book label and version dropdown are now centered on the page, in a three-column layout: Bid name (left), Price book + dropdown (center), Print / Review / Close buttons (right).
+- **Total row in price view**: The Unit Cost column in the total row no longer shows "—" when in Price Model view; the cell is empty since unit costs are not summed.
 
 ---
 

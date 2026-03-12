@@ -2271,7 +2271,7 @@ user_id = auth.uid()
 **Counts Tab**:
 - **Search** box is **below** the selected-bid panel, **full width**; column header is **"Project Name"**. **"Edit Bid"** button in tab header (next to Close) opens Edit Bid modal for the selected bid.
 - Selecting a bid shows an inline panel with **Add row**, **Import**, and its fixture/count rows. **Import** opens a modal to paste tab- or comma-separated text (Fixture, Count, Plan Page per line) for bulk import. Table columns: **Fixture\***, **Count\***, **Plan Page**, **Actions** (centered headers).
-- **NewCountRow (add row)**: Fixture, Count, and Plan Page in a **combined** cell; **Fixture quick-select** buttons (Bathrooms, Kitchen, Laundry, etc.) below Fixture input; **number pad** below Count (1–9, C, 0, Delete). **Save** and **Save and Add** (Save and Add keeps form open for another row). Fixture and Count required.
+- **NewCountRow (add row)**: Fixture, Count, and Plan Page in a **combined** cell; **Fixture quick-select** buttons (Bathrooms, Kitchen, Laundry, etc.) below Fixture input; **number pad** below Count (1–9, C, 0, Delete). **Save** and **Save & Add** (Save & Add keeps form open for another row). Fixture and Count required.
 
 **Takeoffs Tab**:
 - Select a bid; table maps fixture counts to **material assemblies** and quantities. **Assembly search** above table ("only show assemblies with these words"); dropdowns use filtered options and always include selected. **Multiple assemblies per fixture** (Add assembly / Remove per mapping). Delete entries only from within the edit modal (no in-row delete).
