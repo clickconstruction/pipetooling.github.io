@@ -143,6 +143,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **Required field**: All bids must have a service type assigned
 - **Management**: Devs can add/edit/reorder service types in Settings
 - **Price book modals close**: When switching service types, any open price book modals (version form, entry form, delete modal) are automatically closed
+- **Persistent New Bid button**: A New Bid button is always visible on the right side of the service type filter row (in line with Plumbing, Electrical, HVAC). Opens the New Bid modal. Grayed out on Builder Review tab.
 
 #### Search Functionality
 - **Full-width search input** filters bids in real-time

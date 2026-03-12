@@ -10080,9 +10080,9 @@ export default function Bids() {
           )}
           {selectedBidForPricing && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForPricing) || 'Bid'}</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0, flex: '0 0 auto' }}>{bidDisplayName(selectedBidForPricing) || 'Bid'}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 auto', justifyContent: 'center', minWidth: 0 }}>
                   <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Price book</label>
                   <select
                     value={selectedPricingVersionId ?? ''}
@@ -10097,6 +10097,8 @@ export default function Bids() {
                       <option key={v.id} value={v.id}>{v.name}</option>
                     ))}
                   </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
                   <button
                     type="button"
                     onClick={() => printPricingPage()}
@@ -10551,7 +10553,7 @@ export default function Bids() {
                           <td style={{ padding: '0.75rem' }}>Total</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                           <td style={{ padding: '0.75rem' }} />
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : '—'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : ''}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                             {pricingViewModel === 'cost'
@@ -14699,10 +14701,10 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
               <button type="button" onClick={submit} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-              <button type="button" onClick={submitAndAdd} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save and Add</button>
+              <button type="button" onClick={submitAndAdd} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save<br />& Add</button>
               {!canSubmit && !saving && missingFields.length > 0 && (
                 <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>

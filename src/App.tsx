@@ -25,8 +25,7 @@ import Duplicates from './pages/Duplicates'
 import Checklist from './pages/Checklist'
 import JobTally from './pages/JobTally'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
-import { UpdatePrompt } from './components/UpdatePrompt'
-import { UpdatePromptProvider } from './contexts/UpdatePromptContext'
+import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
@@ -101,6 +100,10 @@ function AppContent() {
   const { showToast } = useToastContext()
 
   useEffect(() => {
+    registerSW({ immediate: true })
+  }, [])
+
+  useEffect(() => {
     const handleSessionExpiring = ((event: CustomEvent) => {
       const minutes = event.detail.minutesRemaining
       showToast(
@@ -114,8 +117,7 @@ function AppContent() {
   }, [showToast])
 
   return (
-    <UpdatePromptProvider>
-      <UpdatePrompt />
+    <>
       <AuthHandler />
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
@@ -162,7 +164,7 @@ function AppContent() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </UpdatePromptProvider>
+    </>
   )
 }
 

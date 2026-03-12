@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-10
+last_updated: 2026-03-12
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.94)"
+  - name: "Latest Version (v2.96)"
     line: ~312
+    description: "PWA auto-update: removed New version available banner, app reloads automatically on deploy"
+  - name: "v2.95"
+    line: ~318
+    description: "Edit Sub Labor: Remove in Edit Payment modal, number inputs blur on scroll; Bids persistent New Bid button"
+  - name: "v2.94"
+    line: ~320
     description: "Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced"
   - name: "v2.93"
     line: ~325
@@ -175,8 +181,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
-2. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
+1. [Latest Updates (v2.96)](#latest-updates-v296) - PWA auto-update: removed New version available banner
+2. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
+3. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
 3. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
 2. [Latest Updates (v2.86)](#latest-updates-v286) - People Review: Profit labels, Formula B, sub labor fix; Crew Jobs Hours
 3. [Latest Updates (v2.85)](#latest-updates-v285) - People Review: Team Summary, Only Count Paid in Full, exclude labor
@@ -286,6 +293,34 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.96)
+
+**Date**: 2026-03-11
+
+### PWA – Auto-Update
+
+- **Removed "New version available" banner**: The update prompt (orange banner with Later/Reload) has been removed. The app now uses `registerType: 'autoUpdate'` so when a new service worker is detected, the page reloads automatically to load the latest version.
+- **Removed UpdatePromptContext and UpdatePrompt component**: Deleted `src/contexts/UpdatePromptContext.tsx` and `src/components/UpdatePrompt.tsx`. App.tsx now calls `registerSW({ immediate: true })` from `virtual:pwa-register` directly.
+- **Removed "Reload to update" from Settings**: The conditional button in Settings header is gone.
+- **Trade-off**: Users may lose unsaved form data if the app reloads while they have the app open during a deploy.
+
+---
+
+## Latest Updates (v2.95)
+
+**Date**: 2026-03-11
+
+### Jobs – Edit Sub Labor
+
+- **Remove button in Edit Payment modal**: The Remove button has been moved from each payment row into the Edit Payment modal. Click Edit on a payment, then use Remove (with confirmation) in the modal footer. Cancel and Save remain on the right; Remove is on the left.
+- **Number inputs blur on scroll**: Count, hrs/unit, and Rate inputs in the line-items table now blur when the user scrolls over them. This prevents the browser from incrementing/decrementing values when scrolling the modal content with the mouse wheel.
+
+### Bids – Service Type Filter Row
+
+- **Persistent New Bid button**: A New Bid button is now always visible on the right side of the service type filter row (in line with Plumbing, Electrical, HVAC). It uses the same `openNewBid` handler and styling as before. The duplicate New Bid button was removed from the Bid Board tab toolbar. On Builder Review tab, the button is grayed out (inherits parent opacity and pointer-events).
 
 ---
 

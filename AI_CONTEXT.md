@@ -103,7 +103,7 @@ pipetooling.github.io/
 ├── src/
 │   ├── pages/              # Main UI pages (Customers, Projects, Workflow, People, Jobs, Bids, Materials, Checklist, etc.)
 │   ├── components/         # Reusable UI components
-│   ├── contexts/           # React contexts (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
+│   ├── contexts/           # React contexts (ToastContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
 │   ├── hooks/              # Custom hooks (useAuth, usePushNotifications, etc.)
 │   ├── lib/                # Utilities (supabaseClient, etc.)
 │   ├── utils/              # Utilities (errorHandling, authErrorHandler)
@@ -132,7 +132,6 @@ pipetooling.github.io/
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
-- **`src/contexts/UpdatePromptContext.tsx`** - PWA update prompt (service worker refresh)
 - **`src/lib/supabase.ts`** - Supabase client configuration
 - **`src/utils/errorHandling.ts`** - Retry wrappers and error utilities
 
@@ -235,7 +234,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### State Management
-- **Global**: React Context (ToastContext, UpdatePromptContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
+- **Global**: React Context (ToastContext, ForceReloadContext, ChecklistAddModalContext, EditCustomerModalContext, NewCustomerModalContext)
 - **Page-level**: `useState`, `useEffect` hooks
 - **No global state library**: No Redux, MobX, or Zustand
 - **Server state**: Direct Supabase queries (no React Query)
