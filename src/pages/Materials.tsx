@@ -2714,7 +2714,35 @@ export default function Materials() {
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ display: 'flex', gap: '1rem', width: 'max-content' }}>
+          <div style={{ display: 'flex', gap: '1rem', width: 'max-content', alignItems: 'center' }}>
+        {myRole !== 'estimator' && myRole !== 'primary' && (
+          <>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('supply-houses')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'supply-houses')
+                return next
+              })
+            }}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'supply-houses' ? '2px solid #3b82f6' : '2px solid transparent',
+              color: activeTab === 'supply-houses' ? '#3b82f6' : '#6b7280',
+              fontWeight: activeTab === 'supply-houses' ? 600 : 400,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            Supply Houses
+          </button>
+          <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+          </>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -2810,31 +2838,6 @@ export default function Materials() {
             Purchase Orders
           </button>
           </>
-        )}
-        {myRole !== 'estimator' && myRole !== 'primary' && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('supply-houses')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'supply-houses')
-                return next
-              })
-            }}
-            style={{
-              padding: '0.75rem 1.5rem',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'supply-houses' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'supply-houses' ? '#3b82f6' : '#6b7280',
-              fontWeight: activeTab === 'supply-houses' ? 600 : 400,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            Supply Houses & External Subs
-          </button>
         )}
           </div>
         </div>

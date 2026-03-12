@@ -550,7 +550,7 @@ export function SupplyHousesTab({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         {showTitle && (
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, textAlign: 'center', flex: 1 }}>
-            Materials Supply Houses & External Subs
+            Supply Houses
           </h2>
         )}
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', marginLeft: showTitle ? 0 : 'auto' }}>
