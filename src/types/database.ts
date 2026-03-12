@@ -3940,6 +3940,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          monthly_payment_day: number | null
           name: string
           notes: string | null
           phone: string | null
@@ -3951,6 +3952,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          monthly_payment_day?: number | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -3962,6 +3964,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          monthly_payment_day?: number | null
           name?: string
           notes?: string | null
           phone?: string | null

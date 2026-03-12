@@ -24,7 +24,7 @@ type POItemWithDetails = PurchaseOrderItem & {
 }
 type PurchaseOrderWithItems = PurchaseOrder & { items: POItemWithDetails[] }
 
-type SupplyHouseSummaryRow = { supply_house_id: string; name: string; outstanding: number; dueDate: string | null }
+type SupplyHouseSummaryRow = { supply_house_id: string; name: string; outstanding: number; monthlyPaymentDay: number | null }
 type ExternalTeamSummaryRow = { person_id: string; name: string; outstanding: number; subManagerName: string | null }
 
 interface SupplyHousesTabProps {
@@ -60,6 +60,7 @@ export function SupplyHousesTab({
   const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
   const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
   const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
+  const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
@@ -91,6 +92,7 @@ export function SupplyHousesTab({
   const [savingApplyPayment, setSavingApplyPayment] = useState(false)
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
+  const [showPaidInvoices, setShowPaidInvoices] = useState(false)
 
   const [externalTeamSummary, setExternalTeamSummary] = useState<ExternalTeamSummaryRow[]>([])
   const [externalTeamSummaryLoading, setExternalTeamSummaryLoading] = useState(false)
@@ -119,8 +121,13 @@ export function SupplyHousesTab({
 
   async function loadSupplyHousesInternal() {
     const { data, error: err } = await supabase.from('supply_houses').select('*').order('name')
-    if (err) setError(`Failed to load supply houses: ${err.message}`)
-    else setSupplyHousesState((data as SupplyHouse[]) ?? [])
+    if (err) {
+      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').order('name')
+      if (fallback.error) setError(`Failed to load supply houses: ${err.message}`)
+      else setSupplyHousesState((fallback.data ?? []).map((h) => ({ ...h, monthly_payment_day: null })) as SupplyHouse[])
+    } else {
+      setSupplyHousesState((data as SupplyHouse[]) ?? [])
+    }
   }
 
   async function loadSupplyHouses() {
@@ -137,28 +144,41 @@ export function SupplyHousesTab({
     setFirstServiceTypeId(first?.id ?? null)
   }
 
+  function formatOrdinal(n: number): string {
+    const s = ['th', 'st', 'nd', 'rd'] as const
+    const v = n % 100
+    const ord = v >= 11 && v <= 13 ? 'th' : (s[v % 10] ?? 'th')
+    return n + ord
+  }
+
   async function loadSupplyHouseSummary() {
     setSupplyHouseSummaryLoading(true)
-    const { data: houses } = await supabase.from('supply_houses').select('id, name').order('name')
+    let housesList: { id: string; name: string; monthly_payment_day: number | null }[]
+    const housesRes = await supabase.from('supply_houses').select('id, name, monthly_payment_day').order('name')
+    if (housesRes.error) {
+      const fallbackRes = await supabase.from('supply_houses').select('id, name').order('name')
+      const fallback = (fallbackRes.data ?? []) as { id: string; name: string }[]
+      housesList = fallback.map((h) => ({ ...h, monthly_payment_day: null }))
+    } else {
+      housesList = (housesRes.data ?? []) as { id: string; name: string; monthly_payment_day: number | null }[]
+    }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('supply_house_id, amount, due_date, is_paid')
-    const housesList = (houses ?? []) as { id: string; name: string }[]
-    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; due_date: string | null; is_paid: boolean }[]
-    const byHouse = new Map<string, { outstanding: number; dueDate: string | null }>()
-    for (const h of housesList) byHouse.set(h.id, { outstanding: 0, dueDate: null })
+      .select('supply_house_id, amount, is_paid')
+    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean }[]
+    const byHouse = new Map<string, number>()
+    for (const h of housesList) byHouse.set(h.id, 0)
     for (const inv of invoicesList) {
       if (inv.is_paid) continue
       const cur = byHouse.get(inv.supply_house_id)
-      if (cur) {
-        cur.outstanding += inv.amount
-        if (inv.due_date && (!cur.dueDate || inv.due_date < cur.dueDate)) cur.dueDate = inv.due_date
-      }
+      if (cur !== undefined) byHouse.set(inv.supply_house_id, cur + inv.amount)
     }
-    const rows: SupplyHouseSummaryRow[] = housesList.map((h) => {
-      const c = byHouse.get(h.id) ?? { outstanding: 0, dueDate: null }
-      return { supply_house_id: h.id, name: h.name, outstanding: c.outstanding, dueDate: c.dueDate }
-    })
+    const rows: SupplyHouseSummaryRow[] = housesList.map((h) => ({
+      supply_house_id: h.id,
+      name: h.name,
+      outstanding: byHouse.get(h.id) ?? 0,
+      monthlyPaymentDay: h.monthly_payment_day,
+    }))
     rows.sort((a, b) => b.outstanding - a.outstanding)
     setSupplyHouseSummary(rows)
     setSupplyHouseSummaryLoading(false)
@@ -166,7 +186,10 @@ export function SupplyHousesTab({
 
   async function loadSupplyHouseDetail(sh: SupplyHouse) {
     setSupplyHouseDetailLoading(true)
-    const { data: shData } = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
+    const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
+    const shData = shRes.error
+      ? (await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').eq('id', sh.id).single()).data
+      : shRes.data
     setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
     const [invRes, poRes, allocRes] = await Promise.all([
       supabase.from('supply_house_invoices').select('*').eq('supply_house_id', sh.id).order('invoice_date', { ascending: false }),
@@ -318,10 +341,11 @@ export function SupplyHousesTab({
       case 'email': setSupplyHouseEmail(value); break
       case 'address': setSupplyHouseAddress(value); break
       case 'notes': setSupplyHouseNotes(value); break
+      case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
     }
   }
 
-  async function handleSupplyHouseSubmit(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string }) {
+  async function handleSupplyHouseSubmit(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string; monthly_payment_day: number | null }) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -339,6 +363,7 @@ export function SupplyHousesTab({
           email: data.email.trim() || null,
           address: data.address.trim() || null,
           notes: data.notes.trim() || null,
+          monthly_payment_day: data.monthly_payment_day,
         })
         .eq('id', editingSupplyHouse.id)
       if (e) setError(e.message)
@@ -357,6 +382,7 @@ export function SupplyHousesTab({
           email: data.email.trim() || null,
           address: data.address.trim() || null,
           notes: data.notes.trim() || null,
+          monthly_payment_day: data.monthly_payment_day,
         })
       if (e) setError(e.message)
       else {
@@ -395,6 +421,7 @@ export function SupplyHousesTab({
     setSupplyHouseEmail('')
     setSupplyHouseAddress('')
     setSupplyHouseNotes('')
+    setSupplyHouseMonthlyPaymentDay('')
     setSupplyHouseFormOpen(true)
     setError(null)
   }
@@ -407,6 +434,7 @@ export function SupplyHousesTab({
     setSupplyHouseEmail(sh.email ?? '')
     setSupplyHouseAddress(sh.address ?? '')
     setSupplyHouseNotes(sh.notes ?? '')
+    setSupplyHouseMonthlyPaymentDay(sh.monthly_payment_day != null ? String(sh.monthly_payment_day) : '')
     setSupplyHouseFormOpen(true)
   }
 
@@ -742,11 +770,21 @@ export function SupplyHousesTab({
 
   return (
     <div>
-      {showTitle && (
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>
-          Materials Supply Houses & External Subs
-        </h2>
-      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        {showTitle && (
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, textAlign: 'center', flex: 1 }}>
+            Materials Supply Houses & External Subs
+          </h2>
+        )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', marginLeft: showTitle ? 0 : 'auto' }}>
+          <input
+            type="checkbox"
+            checked={showPaidInvoices}
+            onChange={(e) => setShowPaidInvoices(e.target.checked)}
+          />
+          Show paid invoices
+        </label>
+      </div>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
       <section style={{ marginBottom: '2rem' }}>
@@ -789,7 +827,7 @@ export function SupplyHousesTab({
                           ${formatCurrency(row.outstanding)}
                         </td>
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
-                          {row.dueDate ? new Date(row.dueDate).toLocaleDateString() : '—'}
+                          {row.monthlyPaymentDay ? formatOrdinal(row.monthlyPaymentDay) : '—'}
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {isExpanded && selectedSupplyHouseForDetail && (
@@ -865,10 +903,14 @@ export function SupplyHousesTab({
                                           </tr>
                                         </thead>
                                         <tbody>
-                                          {supplyHouseInvoices.length === 0 ? (
-                                            <tr><td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
-                                          ) : (
-                                            supplyHouseInvoices.map((inv) => (
+                                          {(() => {
+                                            const invoicesToShow = showPaidInvoices
+                                              ? supplyHouseInvoices
+                                              : supplyHouseInvoices.filter((inv) => !inv.is_paid)
+                                            return invoicesToShow.length === 0 ? (
+                                              <tr><td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
+                                            ) : (
+                                              invoicesToShow.map((inv) => (
                                               <tr key={inv.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{inv.invoice_number}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{inv.purchase_order_number ?? '—'}</td>
@@ -908,7 +950,8 @@ export function SupplyHousesTab({
                                                 </td>
                                               </tr>
                                             ))
-                                          )}
+                                            )
+                                          })()}
                                         </tbody>
                                       </table>
                                     </div>
@@ -1117,26 +1160,31 @@ export function SupplyHousesTab({
                                             </tr>
                                           </thead>
                                           <tbody>
-                                            {externalTeamPayments.length === 0 ? (
-                                              <tr><td colSpan={4} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No job payments yet.</td></tr>
-                                            ) : (
-                                              externalTeamPayments.map((pay) => (
-                                                <tr key={pay.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                                  <td style={{ padding: '0.5rem 0.75rem' }}>{pay.note}</td>
-                                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(pay.amount)}</td>
-                                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
-                                                      <input type="checkbox" checked={pay.is_paid} onChange={() => togglePaymentPaid(pay)} />
-                                                      {pay.is_paid ? 'Paid' : 'Unpaid'}
-                                                    </label>
-                                                  </td>
-                                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                    <button type="button" onClick={() => openEditPayment(pay)} style={{ marginRight: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}>Edit</button>
-                                                    <button type="button" onClick={() => deletePayment(pay.id)} disabled={deletingPaymentId === pay.id} title="Delete" aria-label="Delete" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: deletingPaymentId === pay.id ? 'not-allowed' : 'pointer', color: '#dc2626' }}>Delete</button>
-                                                  </td>
-                                                </tr>
-                                              ))
-                                            )}
+                                            {(() => {
+                                              const paymentsToShow = showPaidInvoices
+                                                ? externalTeamPayments
+                                                : externalTeamPayments.filter((pay) => !pay.is_paid)
+                                              return paymentsToShow.length === 0 ? (
+                                                <tr><td colSpan={4} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No job payments yet.</td></tr>
+                                              ) : (
+                                                paymentsToShow.map((pay) => (
+                                                  <tr key={pay.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{pay.note}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(pay.amount)}</td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                                                        <input type="checkbox" checked={pay.is_paid} onChange={() => togglePaymentPaid(pay)} />
+                                                        {pay.is_paid ? 'Paid' : 'Unpaid'}
+                                                      </label>
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                      <button type="button" onClick={() => openEditPayment(pay)} style={{ marginRight: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}>Edit</button>
+                                                      <button type="button" onClick={() => deletePayment(pay.id)} disabled={deletingPaymentId === pay.id} title="Delete" aria-label="Delete" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: deletingPaymentId === pay.id ? 'not-allowed' : 'pointer', color: '#dc2626' }}>Delete</button>
+                                                    </td>
+                                                  </tr>
+                                                ))
+                                              )
+                                            })()}
                                           </tbody>
                                         </table>
                                       </div>
@@ -1175,6 +1223,7 @@ export function SupplyHousesTab({
           email={supplyHouseEmail}
           address={supplyHouseAddress}
           notes={supplyHouseNotes}
+          monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
           onChange={handleSupplyHouseChange}
           onSubmit={handleSupplyHouseSubmit}
           onClose={closeSupplyHouseForm}

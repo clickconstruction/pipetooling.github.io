@@ -179,6 +179,7 @@ export default function Materials() {
   const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
   const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
   const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
+  const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
 
   // Templates & PO Builder state
@@ -379,10 +380,15 @@ export default function Materials() {
       .select('*')
       .order('name')
     if (error) {
-      setError(`Failed to load supply houses: ${error.message}`)
-      return
+      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, created_at, updated_at').order('name')
+      if (fallback.error) {
+        setError(`Failed to load supply houses: ${error.message}`)
+        return
+      }
+      setSupplyHouses((fallback.data ?? []).map((h) => ({ ...h, monthly_payment_day: null })) as SupplyHouse[])
+    } else {
+      setSupplyHouses((data as SupplyHouse[]) ?? [])
     }
-    setSupplyHouses((data as SupplyHouse[]) ?? [])
   }
 
   async function loadParts(page = 0, options?: {
@@ -1378,6 +1384,7 @@ export default function Materials() {
     setSupplyHouseEmail('')
     setSupplyHouseAddress('')
     setSupplyHouseNotes('')
+    setSupplyHouseMonthlyPaymentDay('')
     setSupplyHouseFormOpen(true)
     setError(null)
   }
@@ -1390,6 +1397,7 @@ export default function Materials() {
     setSupplyHouseEmail(supplyHouse.email || '')
     setSupplyHouseAddress(supplyHouse.address || '')
     setSupplyHouseNotes(supplyHouse.notes || '')
+    setSupplyHouseMonthlyPaymentDay(supplyHouse.monthly_payment_day != null ? String(supplyHouse.monthly_payment_day) : '')
     setSupplyHouseFormOpen(true)
     setError(null)
   }
@@ -1399,7 +1407,7 @@ export default function Materials() {
     setEditingSupplyHouse(null)
   }
 
-  async function saveSupplyHouseFromFormData(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string }) {
+  async function saveSupplyHouseFromFormData(data: { name: string; contact_name: string; phone: string; email: string; address: string; notes: string; monthly_payment_day: number | null }) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -1417,6 +1425,7 @@ export default function Materials() {
           email: data.email.trim() || null,
           address: data.address.trim() || null,
           notes: data.notes.trim() || null,
+          monthly_payment_day: data.monthly_payment_day,
         })
         .eq('id', editingSupplyHouse.id)
       if (err) {
@@ -1435,6 +1444,7 @@ export default function Materials() {
           email: data.email.trim() || null,
           address: data.address.trim() || null,
           notes: data.notes.trim() || null,
+          monthly_payment_day: data.monthly_payment_day,
         })
       if (err) {
         setError(err.message)
@@ -3230,6 +3240,7 @@ export default function Materials() {
                 email={supplyHouseEmail}
                 address={supplyHouseAddress}
                 notes={supplyHouseNotes}
+                monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
                 onChange={(field, value) => {
                   switch (field) {
                     case 'name': setSupplyHouseName(value); break
@@ -3238,6 +3249,7 @@ export default function Materials() {
                     case 'email': setSupplyHouseEmail(value); break
                     case 'address': setSupplyHouseAddress(value); break
                     case 'notes': setSupplyHouseNotes(value); break
+                    case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
                   }
                 }}
                 onSubmit={saveSupplyHouseFromFormData}

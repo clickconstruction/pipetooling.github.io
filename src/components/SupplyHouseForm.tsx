@@ -10,6 +10,7 @@ export interface SupplyHouseFormData {
   email: string
   address: string
   notes: string
+  monthly_payment_day: number | null
 }
 
 interface SupplyHouseFormProps {
@@ -20,6 +21,7 @@ interface SupplyHouseFormProps {
   email: string
   address: string
   notes: string
+  monthlyPaymentDay: string
   onChange: (field: keyof SupplyHouseFormData, value: string) => void
   onSubmit: (data: SupplyHouseFormData) => Promise<void>
   onClose: () => void
@@ -41,6 +43,7 @@ export function SupplyHouseForm({
   email,
   address,
   notes,
+  monthlyPaymentDay,
   onChange,
   onSubmit,
   onClose,
@@ -51,6 +54,13 @@ export function SupplyHouseForm({
 }: SupplyHouseFormProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const dayStr = monthlyPaymentDay.trim()
+    let day: number | null = null
+    if (dayStr) {
+      const n = parseInt(dayStr, 10)
+      if (isNaN(n) || n < 1 || n > 31) return
+      day = n
+    }
     await onSubmit({
       name: name.trim(),
       contact_name: contactName.trim() || '',
@@ -58,6 +68,7 @@ export function SupplyHouseForm({
       email: email.trim() || '',
       address: address.trim() || '',
       notes: notes.trim() || '',
+      monthly_payment_day: day,
     })
   }
 
@@ -89,6 +100,18 @@ export function SupplyHouseForm({
       <div style={rowStyles}>
         <label style={labelStyles}>Address</label>
         <textarea value={address} onChange={(e) => onChange('address', e.target.value)} rows={2} style={fieldStyles} />
+      </div>
+      <div style={rowStyles}>
+        <label style={labelStyles}>Monthly payment date</label>
+        <input
+          type="number"
+          min={1}
+          max={31}
+          placeholder="Day of month (1–31)"
+          value={monthlyPaymentDay}
+          onChange={(e) => onChange('monthly_payment_day', e.target.value)}
+          style={fieldStyles}
+        />
       </div>
       <div style={{ marginBottom: '1rem' }}>
         <label style={labelStyles}>Notes</label>
