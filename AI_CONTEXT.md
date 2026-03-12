@@ -15,7 +15,7 @@
 - **4 Major Systems** (+ significant subsystems):
   1. Projects/Workflows (ongoing work tracking)
   2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
-  3. Materials (price book, templates, purchase orders, Supply Houses & External Subs with invoices and job payments)
+  3. Materials (Supply Houses with invoices, price book, templates, purchase orders)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
   - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, Crew Jobs, Receivables) are major subsystems
 

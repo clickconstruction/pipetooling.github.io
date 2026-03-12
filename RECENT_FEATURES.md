@@ -311,6 +311,8 @@ when_to_read:
 
 ### Materials – Supply Houses Tab
 
+- **Tab order**: Supply Houses tab moved to first position (before Price Book). A vertical-bar separator (`|`) appears between Supply Houses and Price Book, matching the Bids Builder Review | Counts pattern.
+- **Tab title**: Renamed from "Supply Houses & External Subs" to "Supply Houses". Section header in SupplyHousesTab also simplified to "Supply Houses".
 - **External Team section removed**: The External Team table (External Subcontractor, Sub Manager, Outstanding, Add Job Payment, Add External Subcontractor) has been removed from the Materials Supply Houses tab. Sub Labor Due data lives in Jobs Sub Labor tab (`people_labor_jobs` + `people_labor_job_payments`).
 - **Dashboard pin**: "Pin Sub Labor Due to Dashboard" in Settings pins to Jobs Sub Labor tab instead. The pin shows "Sub Labor Due: $X" and links to `/jobs?tab=sub_sheet_ledger`.
 - **Backup exports**: Removed `external_team_sub_managers` and `external_team_job_payments` from Jobs backup and Full backup exports.

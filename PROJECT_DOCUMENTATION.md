@@ -2129,7 +2129,8 @@ user_id = auth.uid()
     - Maps IDs back to names using `supply_houses`, defaulting to "Unknown supply house" when unresolved.
     - Renders a list like `Home Depot – 42 prices`, sorted alphabetically by supply house name and omitting supply houses with zero prices.
 - **Layout**:
-  - The page-level `Materials` heading has been removed so the Price Book/Template/PO tabs appear at the top of the content area.
+  - The page-level `Materials` heading has been removed so the tabs appear at the top of the content area.
+  - **Tab order** (dev, master, assistant): Supply Houses | Price Book | Assembly Book | Assemblies & Purchase Orders | Purchase Orders. Supply Houses is first with a vertical-bar separator before Price Book (like Bids Builder Review | Counts). Supply Houses tab hidden from estimators and primaries.
 - **Parts Management**:
   - Create/edit/delete parts with name, manufacturer, fixture type, notes (SKU numbers)
   - Fixture type dropdown with predefined options (Fitting, Pipe, Drain, Sink, Faucet, Toilet, Shower, Bathtub, Valve, Water Heater, Vent, Trap, Elbow, Tee, Coupling, Other)

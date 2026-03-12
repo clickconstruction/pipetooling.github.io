@@ -165,7 +165,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- Supply Houses & External Subs tab: supply house invoices (AP), external subcontractors with job payments, sub managers
+- Supply Houses tab: supply house invoices (AP)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
