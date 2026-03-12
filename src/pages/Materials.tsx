@@ -900,9 +900,7 @@ export default function Materials() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'external-team') {
-      setActiveTab('supply-houses')
-    } else if (myRole === 'primary' && (tab === 'supply-houses' || tab === 'templates-po' || tab === 'purchase-orders')) {
+    if (myRole === 'primary' && (tab === 'supply-houses' || tab === 'templates-po' || tab === 'purchase-orders')) {
       setActiveTab('price-book')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)

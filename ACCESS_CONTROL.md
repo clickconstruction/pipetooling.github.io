@@ -176,7 +176,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - View adopted assistants and shared masters
 - Change own password
 - No user management
-- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, External Team, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
+- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Cost matrix to masters/devs dashboards; Share Cost Matrix and Teams
 
 **Edge Functions**:
 - Can call `login-as-user` (impersonate assistants/subs; cannot impersonate devs)

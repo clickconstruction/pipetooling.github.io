@@ -10,8 +10,6 @@ type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
 type InvoiceJobAllocation = { job_id: string; pct: number }
 type SupplyHouseInvoiceWithAllocations = SupplyHouseInvoice & { job_allocations?: InvoiceJobAllocation[] }
-type ExternalTeamJobPayment = Database['public']['Tables']['external_team_job_payments']['Row']
-type PersonRow = Database['public']['Tables']['people']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
@@ -25,7 +23,6 @@ type POItemWithDetails = PurchaseOrderItem & {
 type PurchaseOrderWithItems = PurchaseOrder & { items: POItemWithDetails[] }
 
 type SupplyHouseSummaryRow = { supply_house_id: string; name: string; outstanding: number; monthlyPaymentDay: number | null }
-type ExternalTeamSummaryRow = { person_id: string; name: string; outstanding: number; subManagerName: string | null }
 
 interface SupplyHousesTabProps {
   supplyHouses?: SupplyHouse[]
@@ -93,29 +90,6 @@ export function SupplyHousesTab({
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   const [showPaidInvoices, setShowPaidInvoices] = useState(false)
-
-  const [externalTeamSummary, setExternalTeamSummary] = useState<ExternalTeamSummaryRow[]>([])
-  const [externalTeamSummaryLoading, setExternalTeamSummaryLoading] = useState(false)
-  const [selectedSubForDetail, setSelectedSubForDetail] = useState<PersonRow | null>(null)
-  const [externalTeamPayments, setExternalTeamPayments] = useState<ExternalTeamJobPayment[]>([])
-  const [externalTeamDetailLoading, setExternalTeamDetailLoading] = useState(false)
-  const [externalTeamManagerCandidates, setExternalTeamManagerCandidates] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false)
-  const [editingPayment, setEditingPayment] = useState<ExternalTeamJobPayment | null>(null)
-  const [paymentNote, setPaymentNote] = useState('')
-  const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentIsPaid, setPaymentIsPaid] = useState(false)
-  const [savingPayment, setSavingPayment] = useState(false)
-  const [paymentForPersonId, setPaymentForPersonId] = useState<string | null>(null)
-  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null)
-  const [subManagerForPersonId, setSubManagerForPersonId] = useState<string | null>(null)
-  const [savingSubManager, setSavingSubManager] = useState(false)
-  const [subFormOpen, setSubFormOpen] = useState(false)
-  const [subName, setSubName] = useState('')
-  const [subEmail, setSubEmail] = useState('')
-  const [subPhone, setSubPhone] = useState('')
-  const [subNotes, setSubNotes] = useState('')
-  const [savingSub, setSavingSub] = useState(false)
 
   const serviceTypeId = selectedServiceTypeIdProp ?? firstServiceTypeId
 
@@ -243,58 +217,12 @@ export function SupplyHousesTab({
     setSupplyHouseDetailLoading(false)
   }
 
-  async function loadExternalTeamSummary() {
-    setExternalTeamSummaryLoading(true)
-    const [peopleRes, paymentsRes, managersRes, usersRes] = await Promise.all([
-      supabase.from('people').select('id, name').eq('kind', 'sub').order('name'),
-      supabase.from('external_team_job_payments').select('person_id, amount, is_paid'),
-      supabase.from('external_team_sub_managers').select('person_id, user_id'),
-      supabase.from('users').select('id, name, email').in('role', ['dev', 'master_technician', 'assistant']).order('name'),
-    ])
-    const subs = (peopleRes.data ?? []) as { id: string; name: string }[]
-    const payments = (paymentsRes.data ?? []) as { person_id: string; amount: number; is_paid: boolean }[]
-    const managers = (managersRes.data ?? []) as { person_id: string; user_id: string }[]
-    const users = (usersRes.data ?? []) as { id: string; name: string | null; email: string | null }[]
-    setExternalTeamManagerCandidates(users)
-    const userMap = new Map(users.map((u) => [u.id, u.name || u.email || 'Unknown']))
-    const byPerson = new Map<string, number>()
-    for (const p of subs) byPerson.set(p.id, 0)
-    for (const pay of payments) {
-      if (pay.is_paid) continue
-      const cur = byPerson.get(pay.person_id) ?? 0
-      byPerson.set(pay.person_id, cur + pay.amount)
-    }
-    const managerMap = new Map(managers.map((m) => [m.person_id, userMap.get(m.user_id) ?? null]))
-    const rows: ExternalTeamSummaryRow[] = subs.map((p) => ({
-      person_id: p.id,
-      name: p.name,
-      outstanding: byPerson.get(p.id) ?? 0,
-      subManagerName: managerMap.get(p.id) ?? null,
-    }))
-    rows.sort((a, b) => b.outstanding - a.outstanding)
-    setExternalTeamSummary(rows)
-    setExternalTeamSummaryLoading(false)
-  }
-
-  async function loadExternalTeamDetail(person: PersonRow) {
-    setExternalTeamDetailLoading(true)
-    setSelectedSubForDetail(person)
-    const { data } = await supabase
-      .from('external_team_job_payments')
-      .select('*')
-      .eq('person_id', person.id)
-      .order('created_at', { ascending: false })
-    setExternalTeamPayments((data as ExternalTeamJobPayment[]) ?? [])
-    setExternalTeamDetailLoading(false)
-  }
-
   useEffect(() => {
     if (!selectedServiceTypeIdProp) loadFirstServiceType()
   }, [selectedServiceTypeIdProp])
 
   useEffect(() => {
     loadSupplyHouseSummary()
-    loadExternalTeamSummary()
     if (!supplyHousesProp) loadSupplyHousesInternal()
   }, [])
 
@@ -368,7 +296,7 @@ export function SupplyHousesTab({
         .eq('id', editingSupplyHouse.id)
       if (e) setError(e.message)
       else {
-        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary(), loadExternalTeamSummary()])
+        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
         if (selectedSupplyHouseForDetail?.id === editingSupplyHouse.id) await loadSupplyHouseDetail(editingSupplyHouse)
         closeSupplyHouseForm()
       }
@@ -386,7 +314,7 @@ export function SupplyHousesTab({
         })
       if (e) setError(e.message)
       else {
-        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary(), loadExternalTeamSummary()])
+        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
         closeSupplyHouseForm()
       }
     }
@@ -408,7 +336,7 @@ export function SupplyHousesTab({
     const { error } = await supabase.from('supply_houses').delete().eq('id', supplyHouseId)
     if (error) setError(error.message)
     else {
-      await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary(), loadExternalTeamSummary()])
+      await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
       closeSupplyHouseForm()
     }
   }
@@ -614,157 +542,6 @@ export function SupplyHousesTab({
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
       await loadSupplyHouseSummary()
       closeInvoiceForm()
-    }
-  }
-
-  function openAddPayment(personId: string) {
-    setPaymentForPersonId(personId)
-    setEditingPayment(null)
-    setPaymentNote('')
-    setPaymentAmount('')
-    setPaymentIsPaid(false)
-    setPaymentFormOpen(true)
-    setError(null)
-  }
-
-  function openEditPayment(pay: ExternalTeamJobPayment) {
-    setPaymentForPersonId(pay.person_id)
-    setEditingPayment(pay)
-    setPaymentNote(pay.note)
-    setPaymentAmount(String(pay.amount))
-    setPaymentIsPaid(pay.is_paid)
-    setPaymentFormOpen(true)
-    setError(null)
-  }
-
-  function closePaymentForm() {
-    setPaymentFormOpen(false)
-    setPaymentForPersonId(null)
-    setEditingPayment(null)
-    setPaymentNote('')
-    setPaymentAmount('')
-    setPaymentIsPaid(false)
-  }
-
-  async function savePayment(e: React.FormEvent) {
-    e.preventDefault()
-    if (!paymentForPersonId) return
-    const amountNum = parseFloat(paymentAmount) || 0
-    setSavingPayment(true)
-    setError(null)
-    if (editingPayment) {
-      const { error: err } = await supabase
-        .from('external_team_job_payments')
-        .update({ note: paymentNote.trim(), amount: amountNum, is_paid: paymentIsPaid })
-        .eq('id', editingPayment.id)
-      if (err) setError(err.message)
-      else {
-        await loadExternalTeamSummary()
-        if (selectedSubForDetail?.id === paymentForPersonId) await loadExternalTeamDetail(selectedSubForDetail)
-        closePaymentForm()
-      }
-    } else {
-      const { error: err } = await supabase.from('external_team_job_payments').insert({
-        person_id: paymentForPersonId,
-        note: paymentNote.trim(),
-        amount: amountNum,
-        is_paid: paymentIsPaid,
-      })
-      if (err) setError(err.message)
-      else {
-        await loadExternalTeamSummary()
-        if (selectedSubForDetail?.id === paymentForPersonId) await loadExternalTeamDetail(selectedSubForDetail)
-        closePaymentForm()
-      }
-    }
-    setSavingPayment(false)
-  }
-
-  async function deletePayment(id: string) {
-    if (!confirm('Delete this job payment?')) return
-    setDeletingPaymentId(id)
-    setError(null)
-    const { error } = await supabase.from('external_team_job_payments').delete().eq('id', id)
-    setDeletingPaymentId(null)
-    if (error) setError(error.message)
-    else {
-      await loadExternalTeamSummary()
-      if (selectedSubForDetail) await loadExternalTeamDetail(selectedSubForDetail)
-    }
-  }
-
-  async function togglePaymentPaid(pay: ExternalTeamJobPayment) {
-    const { error } = await supabase
-      .from('external_team_job_payments')
-      .update({ is_paid: !pay.is_paid })
-      .eq('id', pay.id)
-    if (error) setError(error.message)
-    else {
-      await loadExternalTeamSummary()
-      if (selectedSubForDetail?.id === pay.person_id) await loadExternalTeamDetail(selectedSubForDetail)
-    }
-  }
-
-  async function saveSubManager(personId: string, userId: string) {
-    setSavingSubManager(true)
-    setError(null)
-    const { error } = await supabase
-      .from('external_team_sub_managers')
-      .upsert({ person_id: personId, user_id: userId }, { onConflict: 'person_id' })
-    setSavingSubManager(false)
-    if (error) setError(error.message)
-    else {
-      await loadExternalTeamSummary()
-      setSubManagerForPersonId(null)
-    }
-  }
-
-  async function removeSubManager(personId: string) {
-    setError(null)
-    const { error } = await supabase.from('external_team_sub_managers').delete().eq('person_id', personId)
-    if (error) setError(error.message)
-    else {
-      await loadExternalTeamSummary()
-      setSubManagerForPersonId(null)
-    }
-  }
-
-  function openAddExternalSub() {
-    setSubName('')
-    setSubEmail('')
-    setSubPhone('')
-    setSubNotes('')
-    setSubFormOpen(true)
-    setError(null)
-  }
-
-  function closeSubForm() {
-    setSubFormOpen(false)
-  }
-
-  async function saveExternalSub(e: React.FormEvent) {
-    e.preventDefault()
-    if (!authUser?.id) return
-    const trimmedName = subName.trim()
-    if (!trimmedName) {
-      setError('Name is required.')
-      return
-    }
-    setSavingSub(true)
-    setError(null)
-    const { error } = await supabase.from('people').insert({
-      master_user_id: authUser.id,
-      kind: 'sub',
-      name: trimmedName,
-      email: subEmail.trim() || null,
-      phone: subPhone.trim() || null,
-      notes: subNotes.trim() || null,
-    })
-    setSavingSub(false)
-    if (error) setError(error.message)
-    else {
-      await loadExternalTeamSummary()
-      closeSubForm()
     }
   }
 
@@ -1038,182 +815,6 @@ export function SupplyHousesTab({
         </button>
       </div>
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <section style={{ marginBottom: '2rem' }}>
-          {externalTeamSummaryLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <div style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
-                External Team: ${formatCurrency(externalTeamSummary.reduce((sum, row) => sum + row.outstanding, 0))}
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>External Subcontractor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Sub Manager (User)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right' }}>Outstanding</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', width: 140 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {externalTeamSummary.map((row) => {
-                    const isExpanded = selectedSubForDetail?.id === row.person_id
-                    const person = { id: row.person_id, name: row.name } as PersonRow
-                    return (
-                      <Fragment key={row.person_id}>
-                        <tr
-                          onClick={() => {
-                            if (isExpanded) setSelectedSubForDetail(null)
-                            else loadExternalTeamDetail(person)
-                          }}
-                          style={{
-                            borderBottom: '1px solid #e5e7eb',
-                            cursor: 'pointer',
-                            background: isExpanded ? '#f0f9ff' : undefined,
-                          }}
-                        >
-                          <td style={{ padding: '0.75rem', fontWeight: 500 }}>{row.name}</td>
-                          <td style={{ padding: '0.75rem', color: '#6b7280' }}>{row.subManagerName ?? '—'}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: row.outstanding > 0 ? 600 : 400 }}>
-                            ${formatCurrency(row.outstanding)}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => openAddPayment(row.person_id)}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                              Add Job Payment
-                            </button>
-                          </td>
-                        </tr>
-                        {isExpanded && selectedSubForDetail && (
-                          <tr>
-                            <td colSpan={4} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-                              <div style={{ padding: '1rem 1.5rem', background: '#f9fafb', borderLeft: '3px solid #3b82f6' }}>
-                                {externalTeamDetailLoading ? (
-                                  <p>Loading…</p>
-                                ) : (
-                                  <>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center', marginBottom: '1rem' }}>
-                                      <span style={{ marginRight: '0.5rem', fontWeight: 500 }}>Sub Manager:</span>
-                                      {subManagerForPersonId === row.person_id ? (
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                          <select
-                                            value=""
-                                            onChange={(e) => {
-                                              const uid = e.target.value
-                                              if (uid) saveSubManager(row.person_id, uid)
-                                            }}
-                                            disabled={savingSubManager}
-                                            style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                                          >
-                                            <option value="">Select…</option>
-                                            {externalTeamManagerCandidates.map((u) => (
-                                              <option key={u.id} value={u.id}>{u.name || u.email || 'Unknown'}</option>
-                                            ))}
-                                          </select>
-                                          <button type="button" onClick={() => setSubManagerForPersonId(null)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}>Cancel</button>
-                                        </span>
-                                      ) : (
-                                        <>
-                                          <span style={{ marginRight: '0.5rem' }}>{row.subManagerName ?? '—'}</span>
-                                          <button
-                                            type="button"
-                                            onClick={() => setSubManagerForPersonId(row.person_id)}
-                                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}
-                                          >
-                                            {row.subManagerName ? 'Change' : 'Assign'}
-                                          </button>
-                                          {row.subManagerName && (
-                                            <button
-                                              type="button"
-                                              onClick={() => removeSubManager(row.person_id)}
-                                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', color: '#dc2626' }}
-                                            >
-                                              Remove
-                                            </button>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
-                                    <section style={{ marginBottom: '1rem' }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <h4 style={{ margin: 0, fontSize: '1rem' }}>Job Payments</h4>
-                                        <button
-                                          type="button"
-                                          onClick={() => openAddPayment(row.person_id)}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                        >
-                                          Add Job Payment
-                                        </button>
-                                      </div>
-                                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                          <thead style={{ background: '#f9fafb' }}>
-                                            <tr>
-                                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Note</th>
-                                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
-                                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
-                                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {(() => {
-                                              const paymentsToShow = showPaidInvoices
-                                                ? externalTeamPayments
-                                                : externalTeamPayments.filter((pay) => !pay.is_paid)
-                                              return paymentsToShow.length === 0 ? (
-                                                <tr><td colSpan={4} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No job payments yet.</td></tr>
-                                              ) : (
-                                                paymentsToShow.map((pay) => (
-                                                  <tr key={pay.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                                    <td style={{ padding: '0.5rem 0.75rem' }}>{pay.note}</td>
-                                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(pay.amount)}</td>
-                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
-                                                        <input type="checkbox" checked={pay.is_paid} onChange={() => togglePaymentPaid(pay)} />
-                                                        {pay.is_paid ? 'Paid' : 'Unpaid'}
-                                                      </label>
-                                                    </td>
-                                                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                      <button type="button" onClick={() => openEditPayment(pay)} style={{ marginRight: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer' }}>Edit</button>
-                                                      <button type="button" onClick={() => deletePayment(pay.id)} disabled={deletingPaymentId === pay.id} title="Delete" aria-label="Delete" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: deletingPaymentId === pay.id ? 'not-allowed' : 'pointer', color: '#dc2626' }}>Delete</button>
-                                                    </td>
-                                                  </tr>
-                                                ))
-                                              )
-                                            })()}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </section>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button
-              type="button"
-              onClick={openAddExternalSub}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Add External Subcontractor
-            </button>
-          </div>
-        </section>
-      )}
-
       {supplyHouseFormOpen && (
         <SupplyHouseForm
           editingSupplyHouse={editingSupplyHouse}
@@ -1476,63 +1077,6 @@ export function SupplyHousesTab({
         </div>
       )}
 
-      {paymentFormOpen && paymentForPersonId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>{editingPayment ? 'Edit Job Payment' : 'Add Job Payment'}</h3>
-            <form onSubmit={savePayment}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Note *</label>
-                <input type="text" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Amount *</label>
-                <input type="number" step="0.01" min={0} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
-                  <input type="checkbox" checked={paymentIsPaid} onChange={(e) => setPaymentIsPaid(e.target.checked)} />
-                  Paid
-                </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={closePaymentForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={savingPayment} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPayment ? 'Saving…' : 'Save'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {subFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem 0' }}>Add External Subcontractor</h3>
-            <form onSubmit={saveExternalSub}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name *</label>
-                <input type="text" value={subName} onChange={(e) => setSubName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Email</label>
-                <input type="email" value={subEmail} onChange={(e) => setSubEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Phone</label>
-                <input type="tel" value={subPhone} onChange={(e) => setSubPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Notes</label>
-                <textarea value={subNotes} onChange={(e) => setSubNotes(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={closeSubForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={savingSub} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingSub ? 'Saving…' : 'Save'}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -8,6 +8,7 @@ import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
 import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
+import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
@@ -765,7 +766,7 @@ export default function Settings() {
     setExportJobsLoading(true)
     try {
       const [
-        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17,
+        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15,
       ] = await Promise.all([
         supabase.from('jobs_ledger').select('*'),
         supabase.from('jobs_ledger_fixtures').select('*'),
@@ -782,10 +783,8 @@ export default function Settings() {
         supabase.from('jobs_receivables').select('*'),
         supabase.from('jobs_tally_parts').select('*'),
         supabase.from('supply_house_invoices').select('*'),
-        supabase.from('external_team_sub_managers').select('*'),
-        supabase.from('external_team_job_payments').select('*'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error
       if (err) {
         setExportError(err.message)
         return
@@ -808,8 +807,6 @@ export default function Settings() {
           jobs_receivables: r13.data ?? [],
           jobs_tally_parts: r14.data ?? [],
           supply_house_invoices: r15.data ?? [],
-          external_team_sub_managers: r16.data ?? [],
-          external_team_job_payments: r17.data ?? [],
         },
       }
       downloadJson(`jobs-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
@@ -974,7 +971,7 @@ export default function Settings() {
         r35, r36, r37, r38, r39, r40, r41, r42, r43, r44,
         r45, r46, r47, r48, r49, r50, r51, r52, r53,
         r54, r55, r56, r57, r58, r59, r60, r61, r62, r63,
-        r64, r65, r66, r67, r68, r69, r70, r71, r72, r73, r74,
+        r64, r65, r66, r67, r68, r69, r70, r71, r72,
       ] = await Promise.all([
         supabase.from('customers').select('*'),
         supabase.from('projects').select('*'),
@@ -1026,8 +1023,6 @@ export default function Settings() {
         supabase.from('jobs_receivables').select('*'),
         supabase.from('jobs_tally_parts').select('*'),
         supabase.from('supply_house_invoices').select('*'),
-        supabase.from('external_team_sub_managers').select('*'),
-        supabase.from('external_team_job_payments').select('*'),
         supabase.from('checklist_items').select('*'),
         supabase.from('checklist_instances').select('*'),
         supabase.from('reports').select('*'),
@@ -1051,7 +1046,7 @@ export default function Settings() {
         supabase.from('notification_templates').select('*'),
         supabase.from('email_templates').select('*'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error || r18.error || r19.error || r20.error || r21.error || r22.error || r23.error || r24.error || r25.error || r26.error || r27.error || r28.error || r29.error || r30.error || r31.error || r32.error || r33.error || r34.error || r35.error || r36.error || r37.error || r38.error || r39.error || r40.error || r41.error || r42.error || r43.error || r44.error || r45.error || r46.error || r47.error || r48.error || r49.error || r50.error || r51.error || r52.error || r53.error || r54.error || r55.error || r56.error || r57.error || r58.error || r59.error || r60.error || r61.error || r62.error || r63.error || r64.error || r65.error || r66.error || r67.error || r68.error || r69.error || r70.error || r71.error || r72.error || r73.error || r74.error
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error || r18.error || r19.error || r20.error || r21.error || r22.error || r23.error || r24.error || r25.error || r26.error || r27.error || r28.error || r29.error || r30.error || r31.error || r32.error || r33.error || r34.error || r35.error || r36.error || r37.error || r38.error || r39.error || r40.error || r41.error || r42.error || r43.error || r44.error || r45.error || r46.error || r47.error || r48.error || r49.error || r50.error || r51.error || r52.error || r53.error || r54.error || r55.error || r56.error || r57.error || r58.error || r59.error || r60.error || r61.error || r62.error || r63.error || r64.error || r65.error || r66.error || r67.error || r68.error || r69.error || r70.error || r71.error || r72.error
       if (err) {
         setExportError(err.message)
         return
@@ -1109,30 +1104,28 @@ export default function Settings() {
           jobs_receivables: r48.data ?? [],
           jobs_tally_parts: r49.data ?? [],
           supply_house_invoices: r50.data ?? [],
-          external_team_sub_managers: r51.data ?? [],
-          external_team_job_payments: r52.data ?? [],
-          checklist_items: r53.data ?? [],
-          checklist_instances: r54.data ?? [],
-          reports: r55.data ?? [],
-          report_templates: r56.data ?? [],
-          report_template_fields: r57.data ?? [],
-          report_enabled_users: r58.data ?? [],
-          user_report_notification_preferences: r59.data ?? [],
-          prospects: r60.data ?? [],
-          prospect_callbacks: r61.data ?? [],
-          prospect_comments: r62.data ?? [],
-          app_settings: r63.data ?? [],
-          workflow_templates: r64.data ?? [],
-          workflow_template_steps: r65.data ?? [],
-          workflow_step_dependencies: r66.data ?? [],
-          service_types: r67.data ?? [],
-          fixture_types: r68.data ?? [],
-          part_types: r69.data ?? [],
-          assembly_types: r70.data ?? [],
-          counts_fixture_groups: r71.data ?? [],
-          counts_fixture_group_items: r72.data ?? [],
-          notification_templates: r73.data ?? [],
-          email_templates: r74.data ?? [],
+          checklist_items: r51.data ?? [],
+          checklist_instances: r52.data ?? [],
+          reports: r53.data ?? [],
+          report_templates: r54.data ?? [],
+          report_template_fields: r55.data ?? [],
+          report_enabled_users: r56.data ?? [],
+          user_report_notification_preferences: r57.data ?? [],
+          prospects: r58.data ?? [],
+          prospect_callbacks: r59.data ?? [],
+          prospect_comments: r60.data ?? [],
+          app_settings: r61.data ?? [],
+          workflow_templates: r62.data ?? [],
+          workflow_template_steps: r63.data ?? [],
+          workflow_step_dependencies: r64.data ?? [],
+          service_types: r65.data ?? [],
+          fixture_types: r66.data ?? [],
+          part_types: r67.data ?? [],
+          assembly_types: r68.data ?? [],
+          counts_fixture_groups: r69.data ?? [],
+          counts_fixture_group_items: r70.data ?? [],
+          notification_templates: r71.data ?? [],
+          email_templates: r72.data ?? [],
         },
       }
       downloadJson(`full-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
@@ -1172,12 +1165,11 @@ export default function Settings() {
 
   async function loadExternalTeamTotalAndPinnedUsers() {
     if (myRole !== 'dev') return
-    const [paymentsRes, pinnedRes] = await Promise.all([
-      supabase.from('external_team_job_payments').select('amount, is_paid').eq('is_paid', false),
-      getUsersWithPin('/materials', 'external-team'),
+    const [subLaborTotal, pinnedRes] = await Promise.all([
+      fetchSubLaborDueTotal(),
+      getUsersWithPin('/jobs', 'sub_sheet_ledger'),
     ])
-    const total = (paymentsRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
-    setExternalTeamTotal(total)
+    setExternalTeamTotal(subLaborTotal)
     setPinExternalTeamMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
   }
 
@@ -7926,9 +7918,9 @@ export default function Settings() {
         </div>
 
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin External Team to Dashboard</h2>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Sub Labor Due to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-            Pin External Team outstanding total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin Sub Labor Due (unpaid sub labor balances) to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinExternalTeamMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -7967,7 +7959,7 @@ export default function Settings() {
                 setPinExternalTeamMessage(null)
                 const total = externalTeamTotal ?? 0
                 const formatTotal = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                const item = { path: '/materials', label: `External Team: $${formatTotal}`, tab: 'external-team' as const }
+                const item = { path: '/jobs', label: `Sub Labor Due: $${formatTotal}`, tab: 'sub_sheet_ledger' as const }
                 const ids = Array.from(pinExternalTeamMasterIds)
                 let ok = 0
                 let errMsg: string | null = null
@@ -8003,12 +7995,17 @@ export default function Settings() {
               onClick={async () => {
                 setPinExternalTeamUnpinSaving(true)
                 setPinExternalTeamMessage(null)
-                const { count, error } = await deletePinForPathAndTab('/materials', 'external-team')
+                const [subRes, extRes] = await Promise.all([
+                  deletePinForPathAndTab('/jobs', 'sub_sheet_ledger'),
+                  deletePinForPathAndTab('/materials', 'external-team'),
+                ])
+                const count = (subRes.count ?? 0) + (extRes.count ?? 0)
+                const error = subRes.error ?? extRes.error
                 setPinExternalTeamUnpinSaving(false)
                 if (error) setPinExternalTeamMessage({ type: 'error', text: error.message })
                 else {
                   loadExternalTeamTotalAndPinnedUsers()
-                  setPinExternalTeamMessage({ type: 'success', text: `Unpinned External Team for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setPinExternalTeamMessage({ type: 'success', text: `Unpinned Sub Labor Due for ${count} user${count !== 1 ? 's' : ''}.` })
                   setTimeout(() => setPinExternalTeamMessage(null), 5000)
                 }
               }}

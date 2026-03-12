@@ -2511,6 +2511,42 @@ export default function Jobs() {
     })
   }, [jobs, laborJobs, tallyParts, teamLaborData, driveMileageCost, driveTimePerMile, invoiceAmountByJob])
 
+  const subLaborDueTotal = useMemo(() => {
+    const mileageCost = driveMileageCost ?? 0.70
+    const timePerMile = driveTimePerMile ?? 0.02
+    const q = subLaborSearch.trim().toLowerCase()
+    const filtered = laborJobs.filter((job) => {
+      if (!q) return true
+      const contractor = (job.assigned_to_name ?? '').toLowerCase()
+      const hcp = (job.job_number ?? '').toLowerCase()
+      const addr = (job.address ?? '').toLowerCase()
+      const jobName = laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]?.toLowerCase() ?? ''
+      return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
+    })
+    return filtered.reduce((sum, job) => {
+      const jobRate = job.labor_rate ?? 0
+      const laborTotal = (job.items ?? []).reduce((s, i) => {
+        const hrs = Number(i.hrs_per_unit) || 0
+        const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
+        const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
+        return s + laborHrs * rate
+      }, 0)
+      const miles = Number(job.distance_miles) || 0
+      const driveCost = miles > 0 && jobRate > 0
+        ? miles * mileageCost + miles * timePerMile * jobRate
+        : miles > 0 ? miles * mileageCost : 0
+      let totalCost = laborTotal + driveCost
+      const jobPayments = job.payments ?? []
+      const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
+      const backcharges = jobPayments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
+      if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
+        totalCost = paid + backcharges
+      }
+      const balance = totalCost - paid - backcharges
+      return sum + (balance > 0 ? balance : 0)
+    }, 0)
+  }, [laborJobs, subLaborSearch, laborJobNamesByHcp, driveMileageCost, driveTimePerMile])
+
   function openNew() {
     setEditing(null)
     setHcpNumber('')
@@ -4274,7 +4310,8 @@ export default function Jobs() {
       {activeTab === 'sub_sheet_ledger' && (
         <div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="search"
               placeholder="Search contractor, HCP, address…"
@@ -4305,6 +4342,10 @@ export default function Jobs() {
                 Default Labor Rate
               </button>
             )}
+            </div>
+            <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+              Sub Labor Due: ${formatCurrency(subLaborDueTotal)}
+            </div>
           </div>
           {laborJobsLoading ? (
             <p style={{ color: '#6b7280' }}>Loading sub sheet ledger…</p>

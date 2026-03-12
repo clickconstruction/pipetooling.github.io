@@ -59,7 +59,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'lien-release',
   ],
   '/checklist': ['today', 'history', 'manage', 'checklists'],
-  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'external-team'],
+  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
 }
 
 export function getStorageKey(userId: string): string {
@@ -189,6 +189,23 @@ export async function getUsersWithPin(path: string, tab: string): Promise<{ user
     .eq('tab', tab)
   if (error) return []
   return (data ?? []) as { user_id: string }[]
+}
+
+/** Delete a specific user's pin for path+tab. Returns { error }. */
+export async function deletePinForUserPathAndTab(
+  userId: string,
+  path: string,
+  tab: string
+): Promise<{ error: Error | null }> {
+  const { error } = await (supabase as any)
+    .from('user_pinned_tabs')
+    .delete()
+    .eq('user_id', userId)
+    .eq('path', path)
+    .eq('tab', tab)
+  if (error) return { error: new Error(error.message) }
+  window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
+  return { error: null }
 }
 
 /** Delete all pins for a given path+tab (e.g. Cost matrix). Devs only. Returns { count, error }. */

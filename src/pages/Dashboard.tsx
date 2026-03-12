@@ -19,7 +19,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
-import { useExternalTeamTotal } from '../hooks/useExternalTeamTotal'
+import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import type { Database } from '../types/database'
 
 function toDatetimeLocal(iso: string | null): string {
@@ -270,16 +270,18 @@ export default function Dashboard() {
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
   const visiblePins = filterPinnedByRole(pinnedRoutes, role)
-  const pinsToShow = visiblePins.filter((p) => p.path !== '/dashboard' && p.path !== '/')
+  const pinsToShow = visiblePins
+    .filter((p) => p.path !== '/dashboard' && p.path !== '/')
+    .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
   const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'pay')
   const hasBilledPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'billed')
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
-  const hasExternalTeamPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'external-team')
+  const hasSubLaborDuePin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'sub_sheet_ledger')
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
-  const { total: externalTeamTotal } = useExternalTeamTotal(hasExternalTeamPin, financialRefreshKey)
+  const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
   // Load users for Forward modal (dev-only)
   useEffect(() => {
@@ -367,16 +369,18 @@ export default function Dashboard() {
 
   // Realtime: refresh financial pin totals when underlying data changes
   useEffect(() => {
-    if (!authUser?.id || (!hasBilledPin && !hasSupplyHousesAPPin && !hasExternalTeamPin)) return
+    if (!authUser?.id || (!hasBilledPin && !hasSupplyHousesAPPin && !hasSubLaborDuePin)) return
     const channel = supabase
       .channel('dashboard-financial-pins')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger' }, () => setFinancialRefreshKey((k) => k + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, () => setFinancialRefreshKey((k) => k + 1))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'external_team_job_payments' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_jobs' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_payments' }, () => setFinancialRefreshKey((k) => k + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_items' }, () => setFinancialRefreshKey((k) => k + 1))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [authUser?.id, hasBilledPin, hasSupplyHousesAPPin, hasExternalTeamPin])
+  }, [authUser?.id, hasBilledPin, hasSupplyHousesAPPin, hasSubLaborDuePin])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -1425,9 +1429,11 @@ export default function Dashboard() {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
               const isBilled = item.path === '/jobs' && item.tab === 'billed'
-              const isExternalTeam = item.path === '/materials' && item.tab === 'external-team'
+              const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'
               const to = item.tab
-                ? `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
+                ? isSubLaborDue
+                  ? '/jobs?tab=sub_sheet_ledger'
+                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
                 : item.path
               const displayLabel = isCostMatrix
                 ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
@@ -1435,8 +1441,8 @@ export default function Dashboard() {
                   ? (billedCount != null && billedTotal != null ? `Billed Awaiting Payment (${billedCount}): $${billedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Billed Awaiting Payment…')
                   : isSupplyHouseAP
                     ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
-                    : isExternalTeam
-                      ? (externalTeamTotal != null ? `External Team: $${Math.round(externalTeamTotal).toLocaleString('en-US')}` : item.label)
+                    : isSubLaborDue
+                      ? (subLaborDueTotal != null ? `Sub Labor Due: $${subLaborDueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.label)
                       : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
                 <Link

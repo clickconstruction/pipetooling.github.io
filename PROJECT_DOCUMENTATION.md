@@ -931,6 +931,7 @@ uuid3           | Supply House C    | 0
   - `email` (text, nullable)
   - `address` (text, nullable)
   - `notes` (text, nullable)
+  - `monthly_payment_day` (integer, nullable) - Day of month (1-31) when payment is typically due; used for Due column in supply house list
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: Only devs and master_technicians can CRUD
 
@@ -1975,7 +1976,7 @@ user_id = auth.uid()
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
-  - **Pinned Links** (from Settings or Layout Pin): Dev can pin Billed Awaiting Payment, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "External Team: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses and External Team links navigate to Materials Supply Houses and Materials External Team section, Cost matrix to People Pay Cost matrix.
+  - **Pinned Links** (from Settings or Layout Pin): Dev can pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "Sub Labor Due: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses link navigates to Materials Supply Houses, Sub Labor Due to Jobs Sub Labor tab, Cost matrix to People Pay Cost matrix.
   - **Upcoming inspection (3 days)** (assistant, dev, master, primary): Next 3 days of inspections (address, type, date) for jobs the user can access; links to Jobs Inspections tab.
   - **User Role Display**: Shows current user's role
   - **How It Works** (Masters/Devs only): Explains system structure
@@ -2054,7 +2055,7 @@ user_id = auth.uid()
   - **Email Template Management**: Create and edit email templates for all notification types
   - **Prospect copy templates** (dev): Edit default body and subject for No Response Email, Phone call Follow up Email, and Just checking in Email. Stored in `app_settings`. New users inherit these defaults.
   - View all people entries (not just own entries)
-  - **Pin to Dashboard** (dev-only): Pin Billed Awaiting Payment, Supply Houses AP, External Team, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, External Team: $X, Internal Team: $X). Share Cost Matrix and Teams section moved from People Pay to Settings (below Billed pin).
+  - **Pin to Dashboard** (dev-only): Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, Sub Labor Due: $X, Internal Team: $X). Share Cost Matrix and Teams section moved from People Pay to Settings (below Billed pin).
   - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.
   - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
@@ -2091,7 +2092,7 @@ user_id = auth.uid()
 ### 11. Materials Management
 - **Page**: `Materials.tsx`
 - **Route**: `/materials`
-- **Access**: Devs, master_technicians, assistants, and estimators (estimators see Price Book, Assembly Book, Templates, Purchase Orders; Supply Houses & External Subs tab hidden from estimators)
+- **Access**: Devs, master_technicians, assistants, and estimators (estimators see Price Book, Assembly Book, Templates, Purchase Orders; Supply Houses tab hidden from estimators)
 - **Purpose**: Comprehensive system for managing parts, prices, templates, and purchase orders
 
 #### Features
@@ -2198,10 +2199,10 @@ user_id = auth.uid()
     - **Add to Workflow**: Link to add PO as line item to workflow steps
   - **Delete button**: Located in selected PO section (left side)
 
-**Supply Houses & External Subs Tab** (dev, master, assistant only; hidden from estimators):
-- **Supply Houses section**: Summary at top with AP total (Supply Houses: $X); expandable rows per supply house; Add Supply House button (top right). Per supply house: name, address, phone, email; invoices (Invoice #, Date, Due Date, Amount, Link, Paid checkbox); purchase orders linked via `supply_house_id`. Unpaid invoices sum to outstanding; paid invoices excluded. Tables: `supply_house_invoices`, `supply_houses`; `purchase_orders.supply_house_id`.
-- **External Team section**: Table of external subcontractors (from `people` kind='sub') with External Subcontractor, Sub Manager (User), Outstanding, Add Job Payment. Expandable rows show job payments (note, amount, paid checkbox); Add External Subcontractor button. Sub Manager assignable from users dropdown. Unpaid job payments sum to Outstanding. Tables: `external_team_sub_managers`, `external_team_job_payments`.
-- **Dev-only Settings**: Pin Supply Houses AP and Pin External Team to Dashboard (like Pin AR); pins show on masters/devs Dashboards.
+**Supply Houses Tab** (dev, master, assistant only; hidden from estimators):
+- **Header**: "Show paid invoices" toggle (top right) - when off, hides paid supply house invoices; when on, shows all.
+- **Supply Houses section**: Summary at top with AP total (Supply Houses: $X); expandable rows per supply house; Add Supply House button. Per supply house: name, address, phone, email, **Monthly payment date** (day 1-31, sets Due column); invoices (Invoice #, Date, Due Date, Amount, Link, Paid checkbox); purchase orders linked via `supply_house_id`. Due column uses `monthly_payment_day` from supply house (e.g. "15th"); unpaid invoices sum to outstanding. Tables: `supply_house_invoices`, `supply_houses`; `purchase_orders.supply_house_id`.
+- **Dev-only Settings**: Pin Supply Houses AP and Pin Sub Labor Due to Dashboard (like Pin AR); pins show on masters/devs Dashboards.
 
 **Integration with Workflows**:
 - Finalized purchase orders can be added as line items to workflow steps
@@ -2213,10 +2214,8 @@ user_id = auth.uid()
 #### Database Schema
 
 **Tables**:
-- `supply_houses` - Supply house information (name, contact_name, phone, email, address, notes)
+- `supply_houses` - Supply house information (name, contact_name, phone, email, address, notes, monthly_payment_day)
 - `supply_house_invoices` - Invoices per supply house (invoice_number, invoice_date, due_date, amount, link, is_paid); unpaid sum = AP
-- `external_team_sub_managers` - Sub Manager (user) per subcontractor (person_id, user_id)
-- `external_team_job_payments` - Job payments per subcontractor (person_id, note, amount, is_paid); unpaid sum = Outstanding
 - `material_parts` - Parts catalog (name, manufacturer, fixture_type, notes)
 - `material_part_prices` - Prices for parts by supply house (with effective_date, unique constraint on part_id + supply_house_id)
 - `material_part_price_history` - Historical price changes (old_price, new_price, price_change_percent, changed_at, changed_by, notes)

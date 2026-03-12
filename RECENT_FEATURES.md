@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.97)"
-    line: ~312
+  - name: "Latest Version (v2.99)"
+    line: ~305
+    description: "External Team removed; Sub Labor Due pin; Supply Houses tab only"
+  - name: "v2.98"
+    line: ~318
+    description: "Supply Houses: Show paid invoices toggle, Monthly payment date, fallback when migration not applied"
+  - name: "v2.97"
+    line: ~330
     description: "Bids Counts: Save & Add label, Cancel styling; Bids Pricing: Price book centered, total row cleanup"
   - name: "v2.96"
     line: ~318
@@ -296,6 +302,30 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.99)
+
+**Date**: 2026-03-12
+
+### Materials – Supply Houses Tab
+
+- **External Team section removed**: The External Team table (External Subcontractor, Sub Manager, Outstanding, Add Job Payment, Add External Subcontractor) has been removed from the Materials Supply Houses tab. Sub Labor Due data lives in Jobs Sub Labor tab (`people_labor_jobs` + `people_labor_job_payments`).
+- **Dashboard pin**: "Pin Sub Labor Due to Dashboard" in Settings pins to Jobs Sub Labor tab instead. The pin shows "Sub Labor Due: $X" and links to `/jobs?tab=sub_sheet_ledger`.
+- **Backup exports**: Removed `external_team_sub_managers` and `external_team_job_payments` from Jobs backup and Full backup exports.
+
+---
+
+## Latest Updates (v2.98)
+
+**Date**: 2026-03-12
+
+### Materials – Supply Houses Tab
+
+- **Show paid invoices toggle**: Toggle in the top-right corner. When off (default), paid supply house invoices are hidden. When on, all invoices are shown.
+- **Monthly payment date**: Supply house list Due column now uses `monthly_payment_day` from the supply house (e.g. "15th") instead of invoice due dates. Edit Supply House form includes "Monthly payment date" field (day 1–31). Migration: `20260311120000_add_monthly_payment_day_to_supply_houses.sql`.
+- **Fallback when migration not applied**: If `monthly_payment_day` column does not exist, supply houses and invoices still load using fallback queries (id, name, etc.) so the tab works before the migration is applied.
 
 ---
 

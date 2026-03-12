@@ -99,6 +99,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Update RLS policies on bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, bids_takeoff_template_mappings, bid_pricing_assignments, bid_count_row_custom_prices, customers; add primary to all bid-related policies; update can_access_bid_for_pricing helper; primaries see all customers (for New Bid GC picker)
 - **Impact**: Primaries can see all bids, full CRUD, all Bids tabs (Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
 
+### March 2026
+
+#### March 11, 2026
+
+**`20260311120000_add_monthly_payment_day_to_supply_houses.sql`**
+- **Purpose**: Add monthly payment day for supply house Due column
+- **Changes**: Add `monthly_payment_day INTEGER CHECK (monthly_payment_day >= 1 AND monthly_payment_day <= 31)` to `supply_houses`
+- **Impact**: Supply house list Due column uses `monthly_payment_day` (e.g. "15th") instead of invoice due_date; Edit Supply House form includes "Monthly payment date" field
+- **Category**: Materials / Supply Houses
+
 ### March 2025
 
 #### March 10, 2025
@@ -624,6 +634,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Jobs / Job Tally
 
 #### February 20–21, 2026
+
+**`20260311120000_add_monthly_payment_day_to_supply_houses.sql`**
+- **Purpose**: Add monthly payment day for supply house Due column
+- **Changes**: Add `monthly_payment_day INTEGER CHECK (monthly_payment_day >= 1 AND monthly_payment_day <= 31)` to `supply_houses`
+- **Impact**: Supply house list Due column uses `monthly_payment_day` (e.g. "15th") instead of invoice due_date; Edit Supply House form includes "Monthly payment date" field
+- **Category**: Materials / Supply Houses
 
 **`20260220210000_create_external_team.sql`**
 - **Purpose**: External Team section in Materials Supply Houses & External Subs tab

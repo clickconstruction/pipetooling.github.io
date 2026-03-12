@@ -446,7 +446,7 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 **Database**: `supply_houses` table
 
-**Fields**: name, contact info, address, notes
+**Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
 
 ### Price / Part Price
 Cost of a specific part from a specific supply house. One price per (part, supply_house) combination.
