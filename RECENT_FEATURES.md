@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.100)"
+  - name: "Latest Version (v2.101)"
     line: ~305
+    description: "Location capture at clock-in/out; Location column in Pending sessions"
+  - name: "v2.100"
+    line: ~330
     description: "Clock In/Out with required notes modal; Pending clock sessions; edge cases"
   - name: "v2.99"
     line: ~355
@@ -305,6 +308,23 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.101)
+
+**Date**: 2026-03-15
+
+### Clock In/Out – Location Capture
+
+- **Location at clock-in**: When completing clock-in, the app requests geolocation (if available). On success, `clock_in_lat` and `clock_in_lng` are stored. On permission denied, timeout, or unavailable, clock-in proceeds without location.
+- **Location at clock-out**: Same behavior when clocking out; `clock_out_lat` and `clock_out_lng` stored when available.
+- **Pending clock sessions**: People Hours tab pending table now includes a **Location** column. Shows "In: lat, lng" and "Out: lat, lng" (each links to Google Maps when present); "—" when both missing. Coordinates truncated to 4 decimal places.
+- **Optional**: Location is never required; clock-in/out always succeed. Users can pre-grant permission via Settings → Push Notifications → Enable Location based Reminders.
+
+### Database
+
+- **`clock_sessions`**: Added `clock_in_lat`, `clock_in_lng`, `clock_out_lat`, `clock_out_lng` (all NUMERIC, nullable). Migration: `20260315120000_add_location_to_clock_sessions.sql`.
 
 ---
 

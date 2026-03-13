@@ -200,6 +200,8 @@ export default function Settings() {
   const [testNotificationSending, setTestNotificationSending] = useState(false)
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
+  const [locationPermission, setLocationPermission] = useState<'unknown' | 'prompt' | 'granted' | 'denied'>('unknown')
+  const [locationLoading, setLocationLoading] = useState(false)
   const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
   // Billed pin to dashboard (dev-only)
   const [pinBilledMasterIds, setPinBilledMasterIds] = useState<Set<string>>(new Set())
@@ -448,6 +450,22 @@ export default function Settings() {
     } finally {
       setTestNotificationSending(false)
     }
+  }
+
+  function handleEnableLocation() {
+    if (!('geolocation' in navigator)) return
+    setLocationLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      () => {
+        setLocationPermission('granted')
+        setLocationLoading(false)
+      },
+      (err) => {
+        setLocationPermission(err.code === 1 ? 'denied' : 'unknown')
+        setLocationLoading(false)
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+    )
   }
 
   const [convertMasterId, setConvertMasterId] = useState<string>('')
@@ -3176,6 +3194,17 @@ export default function Settings() {
   }, [authUser?.id])
 
   useEffect(() => {
+    if (!('permissions' in navigator)) return
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then((status) => {
+        setLocationPermission(status.state as 'granted' | 'denied' | 'prompt')
+        status.onchange = () => setLocationPermission(status.state as 'granted' | 'denied' | 'prompt')
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (!notificationHistoryOpen || !authUser?.id) return
     setNotificationHistoryLoading(true)
     supabase
@@ -4225,6 +4254,27 @@ export default function Settings() {
               </button>
               {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
                 <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
+              )}
+            </div>
+            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              Allow location for location-based reminders
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {locationPermission === 'granted' ? (
+                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Location based reminders enabled</span>
+              ) : locationPermission === 'denied' ? (
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Location based reminders disabled — enable in browser settings to allow location based reminders
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleEnableLocation}
+                  disabled={locationLoading}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
+                >
+                  {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
+                </button>
               )}
             </div>
             {testNotificationSuccess && (

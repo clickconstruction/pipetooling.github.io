@@ -697,6 +697,10 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          clock_in_lat: number | null
+          clock_in_lng: number | null
+          clock_out_lat: number | null
+          clock_out_lng: number | null
           clocked_in_at: string
           clocked_out_at: string | null
           created_at: string | null
@@ -708,6 +712,10 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           clocked_in_at: string
           clocked_out_at?: string | null
           created_at?: string | null
@@ -719,6 +727,10 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          clock_in_lat?: number | null
+          clock_in_lng?: number | null
+          clock_out_lat?: number | null
+          clock_out_lng?: number | null
           clocked_in_at?: string
           clocked_out_at?: string | null
           created_at?: string | null

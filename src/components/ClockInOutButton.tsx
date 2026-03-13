@@ -144,11 +144,30 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     setClockInError(null)
     try {
       const now = new Date()
+      let clockInLat: number | null = null
+      let clockInLng: number | null = null
+      if ('geolocation' in navigator) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 8000,
+              maximumAge: 60000,
+            })
+          })
+          clockInLat = pos.coords.latitude
+          clockInLng = pos.coords.longitude
+        } catch {
+          // Proceed without location (permission denied, timeout, or unavailable)
+        }
+      }
       const { error: err } = await supabase.from('clock_sessions').insert({
         user_id: userId,
         clocked_in_at: now.toISOString(),
         work_date: toLocalDateString(now),
         notes: clockInNotes.trim(),
+        ...(clockInLat != null &&
+          clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
       })
       if (err) throw err
       setClockInModalOpen(false)
@@ -165,9 +184,30 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     setActionLoading(true)
     setError(null)
     try {
+      let clockOutLat: number | null = null
+      let clockOutLng: number | null = null
+      if ('geolocation' in navigator) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 8000,
+              maximumAge: 60000,
+            })
+          })
+          clockOutLat = pos.coords.latitude
+          clockOutLng = pos.coords.longitude
+        } catch {
+          // Proceed without location (permission denied, timeout, or unavailable)
+        }
+      }
       const { error: err } = await supabase
         .from('clock_sessions')
-        .update({ clocked_out_at: new Date().toISOString() })
+        .update({
+          clocked_out_at: new Date().toISOString(),
+          ...(clockOutLat != null &&
+            clockOutLng != null && { clock_out_lat: clockOutLat, clock_out_lng: clockOutLng }),
+        })
         .eq('id', openSession.id)
       if (err) throw err
       setOpenSession(null)

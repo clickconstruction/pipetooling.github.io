@@ -123,6 +123,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: ClockInOutButton modal requires notes before clock-in; People Hours tab shows notes in pending sessions; edit modal requires notes before save
 - **Category**: Hours / Clock Sessions
 
+#### March 15, 2026
+
+**`20260315120000_add_location_to_clock_sessions.sql`**
+- **Purpose**: Optional location capture at clock-in and clock-out
+- **Changes**: Add `clock_in_lat`, `clock_in_lng`, `clock_out_lat`, `clock_out_lng` (all NUMERIC, nullable) to `clock_sessions`
+- **Impact**: ClockInOutButton requests geolocation on clock-in and clock-out; coordinates stored when permission granted; People Hours pending table shows Location column with links to Google Maps
+- **Category**: Hours / Clock Sessions
+
 ### March 2025
 
 #### March 10, 2025
