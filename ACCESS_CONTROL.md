@@ -255,8 +255,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 **Purpose**: External workers assigned to specific stages
 
 **Access**:
-- Dashboard, Calendar only
-- **Blocked**: All other pages (Customers, Projects, People, Jobs, Bids, Materials, Settings, Templates)
+- Dashboard, Checklist, Settings, Tally
+- **Blocked**: Calendar, Customers, Projects, People, Jobs, Bids, Materials, Templates
 
 **Permissions**:
 
@@ -264,16 +264,14 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Can only see stages where `assigned_to_name` matches their name
 - Cannot see stages they're not assigned to
 - Cannot access any management pages
-- Navigation hides all links except Dashboard and Calendar
+- Navigation: Dashboard, Checklist, Settings, Tally (Calendar hidden)
+- In Settings: Cannot edit own name; Advanced section hidden
 
 **Dashboard**:
 - View only assigned stages
 - Set Start on assigned stages
 - Complete assigned stages
 - Cannot see private notes, line items, or projections
-
-**Calendar**:
-- View only assigned stages with scheduled dates
 
 **What They Cannot Do**:
 - Cannot create, edit, or delete anything
@@ -413,7 +411,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing |
-| **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -421,7 +419,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ### Redirection Rules
 
-**Subcontractors**: Any page except Dashboard/Calendar → `/dashboard`
+**Subcontractors**: Any page except Dashboard/Checklist/Settings/Tally → `/dashboard`; Calendar hidden from nav
 
 **Estimators**: Any page except Dashboard/Materials/Bids/Calendar/Checklist/Settings → `/bids`
 

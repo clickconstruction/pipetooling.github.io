@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-10
+last_updated: 2026-04-15
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -91,6 +91,32 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ## Recent Migrations
 
 ### April 2026
+
+#### April 15, 2026
+
+**`20260415120000_add_location_to_reports.sql`**
+- **Purpose**: Optional location capture when reports are submitted
+- **Changes**: Add `reported_at_lat`, `reported_at_lng` (both NUMERIC, nullable) to `reports`
+- **Impact**: NewReportModal and AdditionalReportModal request geolocation on submit; coordinates stored when permission granted; ReportViewModal shows location icon (dev/master/assistant only)
+- **Category**: Reports
+
+**`20260415120001_insert_report_add_location_params.sql`**
+- **Purpose**: Allow insert_report RPC to accept optional location params
+- **Changes**: Add `p_reported_at_lat`, `p_reported_at_lng` (DEFAULT NULL) to `insert_report` function
+- **Impact**: Estimators submitting reports can pass location when available
+- **Category**: Reports
+
+**`20260415120002_list_reports_with_job_info_add_location.sql`**
+- **Purpose**: Return reported_at_lat/lng in list_reports_with_job_info, role-gated
+- **Changes**: Add reported_at_lat, reported_at_lng to RPC return; only dev/master_technician/assistant receive values; others get NULL
+- **Impact**: ReportViewModal shows location icon only for devs, masters, assistants
+- **Category**: Reports
+
+**`20260415120003_list_my_reports_add_location.sql`**
+- **Purpose**: Same role-gated location columns for list_my_reports
+- **Changes**: Add reported_at_lat, reported_at_lng with same conditional as list_reports_with_job_info
+- **Impact**: My Reports modal and Dashboard report views respect location visibility by role
+- **Category**: Reports
 
 #### April 10, 2026
 

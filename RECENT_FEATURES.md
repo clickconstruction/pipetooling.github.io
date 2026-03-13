@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-12
+last_updated: 2026-04-15
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.101)"
-    line: ~305
+  - name: "Latest Version (v2.102)"
+    line: ~314
+    description: "Report location capture; Subcontractor restrictions; My Notification History hide when empty"
+  - name: "v2.101"
+    line: ~345
     description: "Location capture at clock-in/out; Location column in Pending sessions"
   - name: "v2.100"
     line: ~330
@@ -308,6 +311,33 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.102)
+
+**Date**: 2026-04-15
+
+### Reports – Location Capture
+
+- **Location at report submit**: When submitting a report (NewReportModal, AdditionalReportModal), the app requests geolocation. On success, `reported_at_lat` and `reported_at_lng` are stored in the `reports` table. On permission denied or timeout, submit proceeds without location.
+- **Location icon in ReportViewModal**: When both coordinates exist, a location pin icon links to Google Maps. Visible only to devs, masters, and assistants—subcontractors, estimators, and primaries receive null from RPCs and do not see the icon.
+- **Migrations**: `add_location_to_reports`, `insert_report_add_location_params`, `list_reports_with_job_info_add_location`, `list_my_reports_add_location`.
+
+### Subcontractor Restrictions
+
+- **Calendar hidden**: Calendar link removed from header for subcontractors; `/calendar` removed from allowed paths. Redirect to `/dashboard` if they try to access it.
+- **Settings – Name read-only**: Subcontractors cannot edit their name in My Profile. Field is disabled with hint "Name is managed by admins. Contact a master or dev to change it."
+- **Settings – Advanced hidden**: Advanced section (Fix app, admin code) is not shown to subcontractors.
+
+### Settings – My Notification History
+
+- **Hide when empty**: The "My Notification History" section is shown only when the user has at least one notification. A lightweight existence check runs on Settings load.
+- **UX improvements**: Button instead of h2 for expand/collapse; error message displayed when fetch fails; scroll into view when expanded.
+
+### Layout – Gear Dropdown
+
+- **Fixed thick black bar**: For non-devs, the Hard Reload button now has `borderBottom: 'none'` explicitly to prevent browser default border from appearing as a thick black bar below the last item.
 
 ---
 
