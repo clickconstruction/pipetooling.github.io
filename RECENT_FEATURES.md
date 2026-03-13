@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.99)"
+  - name: "Latest Version (v2.100)"
     line: ~305
+    description: "Clock In/Out with required notes modal; Pending clock sessions; edge cases"
+  - name: "v2.99"
+    line: ~355
     description: "External Team removed; Sub Labor Due pin; Supply Houses tab only"
   - name: "v2.98"
     line: ~318
@@ -302,6 +305,37 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.100)
+
+**Date**: 2026-03-12
+
+### Dashboard – Clock In/Out
+
+- **Clock In button**: Full-width, safety orange (#ff6600), same height and text size as Job Report button. Visible to all authenticated users. Requires user to have a name set in Settings.
+- **Clock In modal**: Clicking Clock In opens a modal with darkened backdrop (70% opacity). Required "What are you working on today?" notes field—cannot be skipped. Complete Clock In and Cancel buttons; Cancel on left, Complete on right. Body scroll lock when modal is open (iOS and Android). Auto-focus on notes textarea.
+- **Total hours today**: When clocked in, the button shows total time worked during the current calendar day (sum of all sessions today), not just the current session. Updates every second.
+- **Clock Out**: Red button with elapsed time and "Clock Out" label.
+
+### People – Hours Tab: Pending Clock Sessions
+
+- **Pending clock sessions**: Collapsible section above the Hours grid. Shows sessions where user has clocked out but approval has not yet been applied. Table: Person, Date, In, Out, Duration, Notes, Actions (Edit, Approve, Delete). Pay-access users only.
+- **Approve**: Calls `approve_clock_sessions` RPC. Merges hours into `people_hours` (adds to existing for same person/date). Marks session approved. Session disappears from pending list. Does not check `people_pay_config` or Show in Hours—approval succeeds for anyone.
+- **Edit modal**: Edit clocked in/out times and notes. Notes required. Save disabled until notes are non-empty.
+- **Realtime**: Hours tab subscribes to `clock_sessions` for live updates.
+
+### Edge Cases and Behavior
+
+- **Person without Show in Hours**: Approval succeeds; hours are written to `people_hours`. Person does not appear in the Hours grid (grid is built from `showPeopleForHours`). Hours exist but are not visible in the main Hours UI.
+- **Devs**: Devs do not appear in the People Pay config roster (`allRosterNames` excludes devs). If a dev's clock session is approved, hours are written to `people_hours` but the dev has no pay config, so hours are not visible in the Hours grid or pay stub flows.
+- **Cross-midnight work (e.g. 11pm–1am)**: `work_date` is set from the clock-in date. All hours are attributed to that date. The hour after midnight is not split across days. "Total hours today" on the Dashboard uses `work_date`—a session from 11pm–1am would not count toward "today" when viewed the next day.
+
+### Database
+
+- **`clock_sessions`**: `user_id`, `clocked_in_at`, `clocked_out_at`, `work_date`, `notes` (required), `approved_at`, `approved_by`. Migration: `20260312130000_add_notes_to_clock_sessions.sql`.
+- **Realtime**: `clock_sessions` added to `supabase_realtime` publication.
 
 ---
 

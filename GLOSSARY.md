@@ -166,6 +166,11 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 
 **Access**: Only dev can create/edit templates
 
+### Clock Sessions / Pending Clock Sessions
+User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), and required `notes` ("What are you working on today?"). **Pending** sessions are clocked out but not yet approved. Pay-access users approve them in People Hours tab; `approve_clock_sessions` RPC merges hours into `people_hours`. Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid.
+
+**Database**: `clock_sessions`
+
 ---
 
 ## Access Control

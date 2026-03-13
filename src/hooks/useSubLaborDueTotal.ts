@@ -11,7 +11,7 @@ export async function fetchSubLaborDueTotal(): Promise<number> {
   if (jobsErr || !jobs?.length) return 0
 
   const jobIds = (jobs as LaborJobRow[]).map((j) => j.id)
-  const [itemsRes, paymentsRes, settingsRes] = await Promise.all([
+  const [itemsRes, paymentsRes] = await Promise.all([
     supabase
       .from('people_labor_job_items')
       .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
@@ -22,20 +22,10 @@ export async function fetchSubLaborDueTotal(): Promise<number> {
       .select('job_id, amount')
       .in('job_id', jobIds)
       .order('sequence_order', { ascending: true }),
-    supabase
-      .from('app_settings')
-      .select('key, value_num')
-      .in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
   ])
 
   const items = (itemsRes.data ?? []) as LaborItemRow[]
   const payments = (paymentsRes.data ?? []) as LaborPaymentRow[]
-  const settings = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
-
-  const mileageCost =
-    settings.find((s) => s.key === 'drive_mileage_cost')?.value_num ?? 0.70
-  const timePerMile =
-    settings.find((s) => s.key === 'drive_time_per_mile')?.value_num ?? 0.02
 
   const itemsByJob = new Map<string, LaborItemRow[]>()
   for (const it of items) {
@@ -58,14 +48,7 @@ export async function fetchSubLaborDueTotal(): Promise<number> {
       const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
       return s + laborHrs * rate
     }, 0)
-    const miles = Number(job.distance_miles) || 0
-    const driveCost =
-      miles > 0 && jobRate > 0
-        ? miles * mileageCost + miles * timePerMile * jobRate
-        : miles > 0
-          ? miles * mileageCost
-          : 0
-    let totalCost = laborTotal + driveCost
+    let totalCost = laborTotal
     const jobPayments = paymentsByJob.get(job.id) ?? []
     const paid = jobPayments
       .filter((p) => Number(p.amount) >= 0)
@@ -137,7 +120,7 @@ export function useSubLaborDueTotal(
         }
 
         const jobIds = (jobs as LaborJobRow[]).map((j) => j.id)
-        const [itemsRes, paymentsRes, settingsRes] = await Promise.all([
+        const [itemsRes, paymentsRes] = await Promise.all([
           supabase
             .from('people_labor_job_items')
             .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate')
@@ -148,22 +131,12 @@ export function useSubLaborDueTotal(
             .select('job_id, amount')
             .in('job_id', jobIds)
             .order('sequence_order', { ascending: true }),
-          supabase
-            .from('app_settings')
-            .select('key, value_num')
-            .in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
         ])
 
         if (cancelled) return
 
         const items = (itemsRes.data ?? []) as LaborItemRow[]
         const payments = (paymentsRes.data ?? []) as LaborPaymentRow[]
-        const settings = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
-
-        const mileageCost =
-          settings.find((s) => s.key === 'drive_mileage_cost')?.value_num ?? 0.70
-        const timePerMile =
-          settings.find((s) => s.key === 'drive_time_per_mile')?.value_num ?? 0.02
 
         const itemsByJob = new Map<string, LaborItemRow[]>()
         for (const it of items) {
@@ -186,14 +159,7 @@ export function useSubLaborDueTotal(
             const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
             return s + laborHrs * rate
           }, 0)
-          const miles = Number(job.distance_miles) || 0
-          const driveCost =
-            miles > 0 && jobRate > 0
-              ? miles * mileageCost + miles * timePerMile * jobRate
-              : miles > 0
-                ? miles * mileageCost
-                : 0
-          let totalCost = laborTotal + driveCost
+          let totalCost = laborTotal
           const jobPayments = paymentsByJob.get(job.id) ?? []
           const paid = jobPayments
             .filter((p) => Number(p.amount) >= 0)

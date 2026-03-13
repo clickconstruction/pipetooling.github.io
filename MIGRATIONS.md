@@ -109,6 +109,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Supply house list Due column uses `monthly_payment_day` (e.g. "15th") instead of invoice due_date; Edit Supply House form includes "Monthly payment date" field
 - **Category**: Materials / Supply Houses
 
+#### March 12, 2026
+
+**`20260312120002_approve_clock_sessions_rpc.sql`**
+- **Purpose**: Atomic approval of clock sessions and merge into people_hours
+- **Changes**: Create `approve_clock_sessions(p_session_ids UUID[])` RPC; caller must have pay access; upserts hours into `people_hours`, sets `approved_at`/`approved_by` on sessions
+- **Impact**: People Hours tab Approve button calls this RPC; cross-midnight sessions attributed to clock-in date; devs excluded from Pay roster
+- **Category**: Hours / Clock Sessions
+
+**`20260312130000_add_notes_to_clock_sessions.sql`**
+- **Purpose**: Require notes on clock-in ("What are you working on today?")
+- **Changes**: Add `notes TEXT NOT NULL DEFAULT ''` to `clock_sessions`
+- **Impact**: ClockInOutButton modal requires notes before clock-in; People Hours tab shows notes in pending sessions; edit modal requires notes before save
+- **Category**: Hours / Clock Sessions
+
 ### March 2025
 
 #### March 10, 2025

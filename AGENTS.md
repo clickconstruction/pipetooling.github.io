@@ -22,6 +22,7 @@
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All 10 functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
+| Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours; `GLOSSARY.md` → Clock Sessions |
 
 ---
 

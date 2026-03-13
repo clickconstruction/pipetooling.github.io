@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       app_settings: {
@@ -668,6 +693,57 @@ export type Database = {
           },
         ]
       }
+      clock_sessions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          clocked_in_at: string
+          clocked_out_at: string | null
+          created_at: string | null
+          id: string
+          notes: string
+          user_id: string
+          work_date: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          clocked_in_at: string
+          clocked_out_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes: string
+          user_id: string
+          work_date: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          clocked_in_at?: string
+          clocked_out_at?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string
+          user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clock_sessions_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       common_jobs: {
         Row: {
           id: string
@@ -817,16 +893,16 @@ export type Database = {
       }
       cost_matrix_tag_colors: {
         Row: {
-          color: string
           tag: string
+          color: string
         }
         Insert: {
-          color?: string
           tag: string
+          color?: string
         }
         Update: {
-          color?: string
           tag?: string
+          color?: string
         }
         Relationships: []
       }
@@ -4632,6 +4708,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_clock_sessions: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          approved_count: number
+          error_message: string
+        }[]
+      }
       assistants_share_master: {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
@@ -4661,6 +4744,10 @@ export type Database = {
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
+      can_modify_people_labor_job: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
         Returns: boolean
@@ -4691,6 +4778,10 @@ export type Database = {
           p_items: Json
           p_page: string
         }
+        Returns: Json
+      }
+      create_view_link: {
+        Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
       }
       duplicate_purchase_order: {
@@ -5115,6 +5206,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       project_status: ["active", "completed", "on_hold", "awaiting_start"],

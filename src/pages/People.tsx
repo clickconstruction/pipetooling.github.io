@@ -20,6 +20,18 @@ const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', maste
 
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
 
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+function fromDatetimeLocal(value: string): string | null {
+  const v = value.trim()
+  if (!v) return null
+  return new Date(v).toISOString()
+}
+
 const tabStyle = (active: boolean) => ({
   padding: '0.75rem 1.5rem',
   border: 'none',
@@ -96,6 +108,13 @@ export default function People() {
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
+  type PendingClockSession = { id: string; user_id: string; clocked_in_at: string; clocked_out_at: string; work_date: string; notes: string; users: { name: string | null } | null }
+  const [pendingClockSessions, setPendingClockSessions] = useState<PendingClockSession[]>([])
+  const [editClockSession, setEditClockSession] = useState<PendingClockSession | null>(null)
+  const [editClockSessionIn, setEditClockSessionIn] = useState('')
+  const [editClockSessionOut, setEditClockSessionOut] = useState('')
+  const [editClockSessionNotes, setEditClockSessionNotes] = useState('')
+  const [editClockSessionSaving, setEditClockSessionSaving] = useState(false)
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
     const d = new Date()
@@ -755,6 +774,24 @@ export default function People() {
       return
     }
     setPeopleHours((data ?? []) as HoursRow[])
+  }
+
+  async function loadPendingClockSessions(start: string, end: string) {
+    if (!canAccessHours && !canAccessPay) return
+    const { data, error } = await supabase
+      .from('clock_sessions')
+      .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, users!clock_sessions_user_id_fkey(name)')
+      .not('clocked_out_at', 'is', null)
+      .is('approved_at', null)
+      .gte('work_date', start)
+      .lte('work_date', end)
+      .order('work_date', { ascending: false })
+      .order('clocked_in_at', { ascending: false })
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setPendingClockSessions((data ?? []) as unknown as PendingClockSession[])
   }
 
   async function loadHoursDaysCorrect(start: string, end: string) {
@@ -1456,6 +1493,7 @@ export default function People() {
           loadPeopleHours(hoursDateStart, hoursDateEnd),
           loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
           loadHoursDisplayOrder(),
+          loadPendingClockSessions(hoursDateStart, hoursDateEnd),
         ]).finally(() => setHoursTabLoading(false))
       }, 80)
       return () => clearTimeout(t)
@@ -1835,6 +1873,9 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
 
+  const loadPendingClockSessionsRef = useRef<() => void>()
+  loadPendingClockSessionsRef.current = () => loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+
   useEffect(() => {
     const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
     const isRelevantTab = activeTab === 'pay' || activeTab === 'hours'
@@ -1844,11 +1885,14 @@ export default function People() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
         loadPeopleHoursRef.current?.()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
+        loadPendingClockSessionsRef.current?.()
+      })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [activeTab, canAccessHours, canAccessPay, canViewCostMatrixShared])
+  }, [activeTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
   function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return
@@ -4828,6 +4872,94 @@ export default function People() {
               next week →
             </button>
           </div>
+          {pendingClockSessions.length > 0 && (
+            <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+                Pending clock sessions ({pendingClockSessions.length})
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f3f4f6' }}>
+                    <tr>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>In</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Out</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Duration</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingClockSessions.map((s) => {
+                      const inDate = new Date(s.clocked_in_at)
+                      const outDate = new Date(s.clocked_out_at)
+                      const hrs = (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
+                      const personName = s.users?.name?.trim() ?? 'Unknown'
+                      return (
+                        <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{personName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{s.work_date}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{inDate.toLocaleString()}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{outDate.toLocaleString()}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hrs.toFixed(2)}h</td>
+                          <td style={{ padding: '0.5rem 0.75rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.notes || undefined}>{s.notes || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditClockSession(s)
+                                setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                                setEditClockSessionOut(toDatetimeLocal(s.clocked_out_at))
+                                setEditClockSessionNotes(s.notes ?? '')
+                              }}
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
+                                if (error) {
+                                  setError(error.message)
+                                  return
+                                }
+                                const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                                const row = result[0]
+                                if (row?.error_message) {
+                                  setError(row.error_message)
+                                  return
+                                }
+                                showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                                await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                                loadPeopleHoursRef.current?.()
+                              }}
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm('Delete this clock session?')) return
+                                const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
+                                if (error) setError(error.message)
+                                else await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                              }}
+                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
           {showPeopleForHours.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
           ) : (
@@ -6193,6 +6325,112 @@ export default function People() {
           onSaved={() => loadCrewJobsRef.current?.()}
           canEditCrewJobs={canEditCrewJobs}
         />
+      )}
+
+      {editClockSession && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1100,
+          }}
+          onClick={() => !editClockSessionSaving && setEditClockSession(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Escape') setEditClockSession(null) }}
+        >
+          <div
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>Edit clock session</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
+                <input
+                  type="datetime-local"
+                  value={editClockSessionIn}
+                  onChange={(e) => setEditClockSessionIn(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked out</label>
+                <input
+                  type="datetime-local"
+                  value={editClockSessionOut}
+                  onChange={(e) => setEditClockSessionOut(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>What are you working on today?</label>
+                <textarea
+                  value={editClockSessionNotes}
+                  onChange={(e) => setEditClockSessionNotes(e.target.value)}
+                  rows={3}
+                  disabled={editClockSessionSaving}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setEditClockSession(null)}
+                disabled={editClockSessionSaving}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const inVal = fromDatetimeLocal(editClockSessionIn)
+                  const outVal = fromDatetimeLocal(editClockSessionOut)
+                  if (!inVal || !outVal) {
+                    setError('Invalid date/time')
+                    return
+                  }
+                  if (new Date(outVal) <= new Date(inVal)) {
+                    setError('Clocked out must be after clocked in')
+                    return
+                  }
+                  if (!editClockSessionNotes.trim()) {
+                    setError('Notes are required')
+                    return
+                  }
+                  setEditClockSessionSaving(true)
+                  const workDate = editClockSessionIn.slice(0, 10)
+                  const { error } = await supabase
+                    .from('clock_sessions')
+                    .update({
+                      clocked_in_at: inVal,
+                      clocked_out_at: outVal,
+                      work_date: workDate,
+                      notes: editClockSessionNotes.trim(),
+                    })
+                    .eq('id', editClockSession.id)
+                  setEditClockSessionSaving(false)
+                  if (error) {
+                    setError(error.message)
+                    return
+                  }
+                  setEditClockSession(null)
+                  await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                }}
+                disabled={!editClockSessionNotes.trim() || editClockSessionSaving}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: editClockSessionNotes.trim() && !editClockSessionSaving ? 'pointer' : 'not-allowed' }}
+              >
+                {editClockSessionSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
 

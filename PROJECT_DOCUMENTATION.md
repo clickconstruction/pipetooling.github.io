@@ -122,7 +122,7 @@ A Master Plumber can:
   - Authentication (email/password)
   - Row Level Security (RLS) policies
   - Edge Functions (Deno runtime)
-  - Real-time subscriptions (people_hours for Pay/Hours sync; user_pinned_tabs for Dashboard pins; force-reload broadcast for Global Reload)
+  - Real-time subscriptions (people_hours for Pay/Hours sync; clock_sessions for Hours tab pending; user_pinned_tabs for Dashboard pins; force-reload broadcast for Global Reload)
 
 ### Hosting
 - **GitHub Pages** - Static site hosting
@@ -691,6 +691,21 @@ WHERE proname IN (
   - `phone` (text, nullable)
   - `notes` (text, nullable)
 - **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
+
+#### `public.clock_sessions`
+- **Purpose**: User clock-in/clock-out sessions. Approved sessions merge into `people_hours`. Used by Dashboard Clock In/Out button and People Hours tab pending section.
+- **Key Fields**:
+  - `id` (uuid, PK)
+  - `user_id` (uuid, FK → `users.id` ON DELETE CASCADE)
+  - `clocked_in_at` (timestamptz, required)
+  - `clocked_out_at` (timestamptz, nullable) - null = session still open
+  - `work_date` (date, required) - derived from clock-in date (local timezone)
+  - `notes` (text, required) - "What are you working on today?"
+  - `approved_at` (timestamptz, nullable)
+  - `approved_by` (uuid, FK → `users.id`, nullable)
+- **RLS**: Users SELECT/INSERT/UPDATE own (for clock out); pay-access (approved masters, assistants) SELECT/UPDATE/DELETE all for approval and edit.
+- **Realtime**: Table in `supabase_realtime` publication for Hours tab live updates.
+- **RPC**: `approve_clock_sessions(p_session_ids UUID[])` merges hours into `people_hours` and marks sessions approved.
 
 #### `public.people_labor_jobs`
 - **Purpose**: Labor jobs from Jobs page (Labor tab); displayed in Sub Sheet Ledger tab on Jobs
@@ -1925,13 +1940,15 @@ user_id = auth.uid()
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
   - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
   - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
-  - **Hours Tab** (dev, approved masters, assistants): Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` Realtime; refetches when another user changes hours.
+  - **Hours Tab** (dev, approved masters, assistants): **Pending clock sessions** (collapsible) above the grid: sessions clocked out but not yet approved. Table: Person, Date, In, Out, Duration, Notes, Actions (Edit, Approve, Delete). Approve merges hours into `people_hours` via `approve_clock_sessions` RPC; does not check Show in Hours—hours are written but person may not appear in grid if not in pay config. Edit modal: clock in/out times and required notes. Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` and `clock_sessions` Realtime; refetches when another user changes hours.
   - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
   - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
   - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
   - **Review Tab** (dev-only): Per-person metrics for a selected period (today, yesterday, last week, etc.): Profit for this period, Revenue per Man Hour, Profit per Man Hour; Jobs Worked list; Hours and Pay. **Team Summary** button opens a new window with per-person table (Name, Period Profit, Rev/MH, Profit/MH). **Only Count Jobs Marked Paid in Full** checkbox: when checked, revenue, profit, and labor hours exclude non-paid jobs; uses paid-only RPCs and filters labor/crew jobs to paid jobs only.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams)
+- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, approved_at, approved_by)
+- **Pay roster**: `allRosterNames()` builds the Pay tab roster from assistants, master_technicians, subs, estimators (people + users), and primaries. **Devs are excluded**—they do not appear in People Pay config. If a dev's clock session is approved, hours go to `people_hours` but are not visible in the Hours grid.
+- **Cross-midnight work**: `work_date` is set from clock-in date. All session hours are attributed to that date; hours after midnight are not split across days.
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
 
 ### 6. Jobs Page
@@ -1975,6 +1992,7 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
+  - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on today?" notes. When clocked in, shows total hours worked today (sum of all sessions) and Clock Out button. Body scroll lock when modal open (iOS/Android). Requires user name in Settings.
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "Sub Labor Due: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses link navigates to Materials Supply Houses, Sub Labor Due to Jobs Sub Labor tab, Cost matrix to People Pay Cost matrix.
   - **Upcoming inspection (3 days)** (assistant, dev, master, primary): Next 3 days of inspections (address, type, date) for jobs the user can access; links to Jobs Inspections tab.
@@ -3233,7 +3251,7 @@ async function myFunction() {
 
 ### Performance Optimizations
 - **Data Fetching**: Some pages fetch all data upfront (consider pagination)
-- **Real-time**: Supabase Realtime used for `people_hours` (Pay/Hours sync), `user_pinned_tabs` (Dashboard pins), and `force-reload` broadcast (Global Reload)
+- **Real-time**: Supabase Realtime used for `people_hours` (Pay/Hours sync), `clock_sessions` (Hours tab pending sessions), `user_pinned_tabs` (Dashboard pins), and `force-reload` broadcast (Global Reload)
 - **Caching**: No client-side caching (consider React Query)
 
 ---

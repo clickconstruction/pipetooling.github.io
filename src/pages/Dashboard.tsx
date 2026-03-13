@@ -20,6 +20,7 @@ import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
+import ClockInOutButton from '../components/ClockInOutButton'
 import type { Database } from '../types/database'
 
 function toDatetimeLocal(iso: string | null): string {
@@ -266,6 +267,7 @@ export default function Dashboard() {
   const [sendBackSentBy, setSendBackSentBy] = useState<string | null>(null)
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
   const [upcomingInspectionsLoading, setUpcomingInspectionsLoading] = useState(false)
+  const [userName, setUserName] = useState<string | null>(null)
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
@@ -536,6 +538,7 @@ export default function Dashboard() {
 
       const user = userData as { name: string | null } | null
       setUserLoading(false)
+      setUserName(user?.name ?? null)
 
       const userNamesSet = new Set<string>()
       const allUsers = allUsersRes.data ?? []
@@ -1422,6 +1425,11 @@ export default function Dashboard() {
 
   return (
     <div>
+      {authUser?.id && (
+        <div style={{ marginBottom: '1rem' }}>
+          <ClockInOutButton userId={authUser.id} userName={userName} />
+        </div>
+      )}
       {pinsToShow.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
