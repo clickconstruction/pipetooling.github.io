@@ -3809,6 +3809,8 @@ export type Database = {
           id: string
           job_ledger_id: string | null
           project_id: string | null
+          reported_at_lat: number | null
+          reported_at_lng: number | null
           template_id: string
           updated_at: string | null
         }
@@ -3819,6 +3821,8 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           project_id?: string | null
+          reported_at_lat?: number | null
+          reported_at_lng?: number | null
           template_id: string
           updated_at?: string | null
         }
@@ -3829,6 +3833,8 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           project_id?: string | null
+          reported_at_lat?: number | null
+          reported_at_lng?: number | null
           template_id?: string
           updated_at?: string | null
         }
@@ -4932,6 +4938,8 @@ export type Database = {
           p_field_values: Json
           p_job_ledger_id: string | null
           p_project_id: string | null
+          p_reported_at_lat?: number | null
+          p_reported_at_lng?: number | null
           p_template_id: string
         }
         Returns: string

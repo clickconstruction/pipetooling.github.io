@@ -72,6 +72,25 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
     for (const f of fields) {
       fv[f.label] = fieldValues[f.label] ?? ''
     }
+
+    let reportedAtLat: number | null = null
+    let reportedAtLng: number | null = null
+    if ('geolocation' in navigator) {
+      try {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 8000,
+            maximumAge: 60000,
+          })
+        })
+        reportedAtLat = pos.coords.latitude
+        reportedAtLng = pos.coords.longitude
+      } catch {
+        // Proceed without location
+      }
+    }
+
     let inserted: { id: string } | null = null
     let err: { message: string } | null = null
 
@@ -81,6 +100,8 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
         p_field_values: fv,
         p_job_ledger_id: jobId,
         p_project_id: null,
+        p_reported_at_lat: reportedAtLat ?? undefined,
+        p_reported_at_lng: reportedAtLng ?? undefined,
       })
       err = rpcErr
       if (reportId && typeof reportId === 'string') inserted = { id: reportId }
@@ -93,6 +114,8 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
         field_values: fv,
         job_ledger_id: jobId,
         project_id: null,
+        ...(reportedAtLat != null &&
+          reportedAtLng != null && { reported_at_lat: reportedAtLat, reported_at_lng: reportedAtLng }),
       }).select('id').single()
       err = insertErr
       inserted = row ?? null

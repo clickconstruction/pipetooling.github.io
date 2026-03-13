@@ -121,7 +121,7 @@ const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant:
   { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no' },
   { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no' },
   { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only' },
-  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'no', primary: 'yes' },
+  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'yes' },
   { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release' },
   { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes' },
   { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no' },
@@ -486,6 +486,8 @@ export default function Settings() {
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
+  const [notificationHistoryError, setNotificationHistoryError] = useState<string | null>(null)
+  const [hasNotificationHistory, setHasNotificationHistory] = useState<boolean | null>(null)
   const [reportEditWindowDays, setReportEditWindowDays] = useState<string>('2')
   const [reportSubVisibilityMonths, setReportSubVisibilityMonths] = useState<string>('3')
   const [reportEnabledUserIds, setReportEnabledUserIds] = useState<Set<string>>(new Set())
@@ -1417,7 +1419,8 @@ export default function Settings() {
       setMyProfileError('Email is required.')
       return
     }
-    if (trimmedName) {
+    const canEditName = myRole !== 'subcontractor'
+    if (canEditName && trimmedName) {
       const isDuplicate = await checkDuplicateName(trimmedName, authUser.id)
       if (isDuplicate) {
         setMyProfileError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
@@ -1425,9 +1428,11 @@ export default function Settings() {
       }
     }
     setMyProfileSaving(true)
+    const updates: { name?: string; email: string; phone: string | null } = { email: trimmedEmail, phone: trimmedPhone }
+    if (canEditName) updates.name = trimmedName
     const { error: err } = await supabase
       .from('users')
-      .update({ name: trimmedName, email: trimmedEmail, phone: trimmedPhone })
+      .update(updates)
       .eq('id', authUser.id)
     if (err) {
       setMyProfileError(err.message)
@@ -3205,7 +3210,21 @@ export default function Settings() {
   }, [])
 
   useEffect(() => {
+    if (!authUser?.id) return
+    supabase
+      .from('notification_history')
+      .select('id')
+      .eq('recipient_user_id', authUser.id)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        setHasNotificationHistory(error ? false : !!data)
+      })
+  }, [authUser?.id])
+
+  useEffect(() => {
     if (!notificationHistoryOpen || !authUser?.id) return
+    setNotificationHistoryError(null)
     setNotificationHistoryLoading(true)
     supabase
       .from('notification_history')
@@ -3215,10 +3234,20 @@ export default function Settings() {
       .limit(100)
       .then(({ data, error }) => {
         setNotificationHistoryLoading(false)
-        if (error) return
+        if (error) {
+          setNotificationHistoryError(error.message)
+          return
+        }
         setNotificationHistory((data ?? []) as NotificationHistoryRow[])
       })
   }, [notificationHistoryOpen, authUser?.id])
+
+  useEffect(() => {
+    if (notificationHistoryOpen) {
+      const el = document.getElementById('notification-history-content')
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [notificationHistoryOpen])
 
   useEffect(() => {
     if (myRole === 'dev') {
@@ -4010,8 +4039,23 @@ export default function Settings() {
               type="text"
               value={myProfileName}
               onChange={(e) => setMyProfileName(e.target.value)}
-              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              readOnly={myRole === 'subcontractor'}
+              disabled={myRole === 'subcontractor'}
+              style={{
+                width: '100%',
+                maxWidth: 320,
+                padding: '0.5rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                boxSizing: 'border-box',
+                ...(myRole === 'subcontractor' && { background: '#f3f4f6', cursor: 'not-allowed' }),
+              }}
             />
+            {myRole === 'subcontractor' && (
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                Name is managed by admins. Contact a master or dev to change it.
+              </p>
+            )}
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Email</label>
@@ -4043,27 +4087,38 @@ export default function Settings() {
         </form>
       </div>
 
+      {hasNotificationHistory === true && (
       <div style={{ marginBottom: '2rem' }}>
-        <h2
+        <button
+          type="button"
           style={{
             fontSize: '1.125rem',
+            margin: 0,
             marginBottom: notificationHistoryOpen ? '0.75rem' : 0,
+            padding: 0,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
+            background: 'none',
+            border: 'none',
+            textAlign: 'left',
+            width: '100%',
+            font: 'inherit',
+            color: 'inherit',
           }}
           onClick={() => setNotificationHistoryOpen((o) => !o)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && setNotificationHistoryOpen((o) => !o)}
+          aria-expanded={notificationHistoryOpen}
+          aria-controls="notification-history-content"
         >
           {notificationHistoryOpen ? '▼' : '▶'} My Notification History
-        </h2>
+        </button>
         {notificationHistoryOpen && (
-          <div style={{ padding: '1rem 0 0 0' }}>
+          <div id="notification-history-content" style={{ padding: '1rem 0 0 0' }}>
             {notificationHistoryLoading ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+            ) : notificationHistoryError ? (
+              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
             ) : notificationHistory.length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
             ) : (
@@ -4118,6 +4173,7 @@ export default function Settings() {
           </div>
         )}
       </div>
+      )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
@@ -8085,6 +8141,7 @@ export default function Settings() {
         </div>
       )}
 
+      {myRole !== 'subcontractor' && (
       <div style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
         <button
           type="button"
@@ -8142,6 +8199,7 @@ export default function Settings() {
           </div>
         )}
       </div>
+      )}
 
     </div>
   )

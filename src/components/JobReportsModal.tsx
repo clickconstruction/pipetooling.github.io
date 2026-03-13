@@ -11,6 +11,8 @@ type ReportForView = {
   created_at: string
   created_by_name: string
   field_values?: Record<string, string>
+  reported_at_lat?: number | null
+  reported_at_lng?: number | null
 }
 
 type ReportWithJobInfo = ReportForView & {

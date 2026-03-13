@@ -138,7 +138,7 @@ type ChecklistInstance = {
 const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
 const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 
@@ -223,15 +223,15 @@ export default function Dashboard() {
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
-  const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> }>>([])
+  const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
-  const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string> } | null>(null)
+  const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null } | null>(null)
   const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
   const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(new Set())
-  const [myReports, setMyReports] = useState<Array<{ id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string> }>>([])
+  const [myReports, setMyReports] = useState<Array<{ id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [myReportsLoading, setMyReportsLoading] = useState(false)
   const [reportEditWindowDays, setReportEditWindowDays] = useState(2)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
@@ -405,13 +405,15 @@ export default function Dashboard() {
       try {
         const { data } = await supabase.rpc('list_reports_with_job_info')
         const arr = Array.isArray(data) ? data : []
-        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown }) => ({
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
           id: r.id,
           template_name: r.template_name,
           job_display_name: r.job_display_name,
           created_at: r.created_at,
           created_by_name: r.created_by_name,
           field_values: r.field_values as Record<string, string> | undefined,
+          reported_at_lat: r.reported_at_lat ?? null,
+          reported_at_lng: r.reported_at_lng ?? null,
         }))
         setRecentReports(list)
       } finally {
@@ -434,7 +436,7 @@ export default function Dashboard() {
         const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
         setReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
         const arr = Array.isArray(data) ? data : []
-        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown }) => ({
+        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
           id: r.id,
           template_id: r.template_id,
           template_name: r.template_name,
@@ -444,6 +446,8 @@ export default function Dashboard() {
           created_at: r.created_at,
           created_by_name: r.created_by_name,
           field_values: r.field_values as Record<string, string> | undefined,
+          reported_at_lat: r.reported_at_lat ?? null,
+          reported_at_lng: r.reported_at_lng ?? null,
         }))
         setMyReports(list)
       } finally {
@@ -1667,7 +1671,7 @@ export default function Dashboard() {
                   <div
                     style={{ flex: 1, minWidth: 0 }}
                     onClick={() => {
-                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values })
+                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
                       setViewReportModalOpen(true)
                     }}
                   >
@@ -2809,7 +2813,7 @@ export default function Dashboard() {
         reports={myReports as ReportForMyReports[]}
         reportEditWindowDays={reportEditWindowDays}
         onViewReport={(r) => {
-          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values })
+          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
           setViewReportModalOpen(true)
         }}
         onEditReport={(r) => {
