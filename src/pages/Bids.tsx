@@ -4198,13 +4198,14 @@ export default function Bids() {
       const rows = pricingCountRows.map((countRow) => {
         const assignment = bidPricingAssignments.find((a) => a.count_row_id === countRow.id)
         const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : priceBookEntries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+        const customPrice = bidCountRowCustomPrices.find((c) => c.count_row_id === countRow.id)?.unit_price
         const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
         const count = Number(countRow.count)
         const laborHrs = laborRow ? laborRowHours(laborRow) : 0
         const laborCost = laborHrs * rate
         const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
         const cost = laborCost + allocatedMaterials
-        const unitPrice = entry ? Number(entry.total_price) : 0
+        const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
         const isFixedPrice = assignment?.is_fixed_price ?? false
         const revenue = isFixedPrice ? unitPrice : count * unitPrice
         totalRevenue += revenue
@@ -4261,13 +4262,19 @@ export default function Bids() {
       bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
     } else {
       const versionIds = priceBookVersions.map((v) => v.id)
-      const [entriesResult, assignmentsResult] = await Promise.all([
+      const [entriesResult, assignmentsResult, customPricesResult] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', selectedBidForPricing.id),
+        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', selectedBidForPricing.id).in('price_book_version_id', versionIds),
       ])
       const { data: allEntries, error: entriesErr } = entriesResult
       if (entriesErr) {
         setError(`Failed to load price book entries: ${entriesErr.message}`)
+        return
+      }
+      const allCustomPrices = (customPricesResult.data as BidCountRowCustomPrice[]) ?? []
+      if (customPricesResult.error) {
+        setError(`Failed to load custom prices: ${customPricesResult.error.message}`)
         return
       }
       const allAssignments = (assignmentsResult.data as BidPricingAssignment[]) ?? []
@@ -4302,12 +4309,15 @@ export default function Bids() {
         const entriesById = new Map(entries.map((e) => [e.id, e]))
         const assignmentForVersion = (countRowId: string) =>
           allAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === version.id)
+        const customPriceForVersion = (countRowId: string) =>
+          allCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === version.id)?.unit_price
         let totalRevenue = 0
         const rows = pricingCountRows.map((countRow) => {
           const assignment = assignmentForVersion(countRow.id)
           const entry = assignment
             ? entriesById.get(assignment.price_book_entry_id)
             : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
+          const customPrice = customPriceForVersion(countRow.id)
           const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase())
           const count = Number(countRow.count)
           const laborHrs = laborRow
@@ -4316,7 +4326,7 @@ export default function Bids() {
           const laborCost = laborHrs * rate
           const allocatedMaterials = totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0
           const cost = laborCost + allocatedMaterials
-          const unitPrice = entry ? Number(entry.total_price) : 0
+          const unitPrice = assignment?.unit_price_override ?? (entry ? Number(entry.total_price) : (customPrice ?? 0))
           const isFixedPrice = assignment?.is_fixed_price ?? false
           const revenue = isFixedPrice ? unitPrice : count * unitPrice
           totalRevenue += revenue
