@@ -22,6 +22,7 @@ interface CrewJobsBlockProps {
   showTeamLabor?: boolean
   jobIdsFilter?: string[]
   collapsibleCrewJobs?: boolean
+  hideJobCostColumn?: boolean
 }
 
 export function CrewJobsBlock({
@@ -34,6 +35,7 @@ export function CrewJobsBlock({
   showTeamLabor = true,
   jobIdsFilter,
   collapsibleCrewJobs = false,
+  hideJobCostColumn = false,
 }: CrewJobsBlockProps) {
   const { user: authUser } = useAuth()
 
@@ -544,7 +546,7 @@ export function CrewJobsBlock({
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Man Hours</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Job Cost</th>
+                {!hideJobCostColumn && <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Job Cost</th>}
               </tr>
             </thead>
             <tbody>
@@ -585,23 +587,25 @@ export function CrewJobsBlock({
                         {r.manHours.toFixed(2)}
                       </button>
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        onClick={() => setBreakdownModal({ jobId: r.jobId, jobName: r.jobName, type: 'cost' })}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          color: '#2563eb',
-                          textDecoration: 'underline',
-                          fontSize: 'inherit',
-                        }}
-                      >
-                        ${formatCurrency(r.jobCost)}
-                      </button>
-                    </td>
+                    {!hideJobCostColumn && (
+                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => setBreakdownModal({ jobId: r.jobId, jobName: r.jobName, type: 'cost' })}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            cursor: 'pointer',
+                            color: '#2563eb',
+                            textDecoration: 'underline',
+                            fontSize: 'inherit',
+                          }}
+                        >
+                          ${formatCurrency(r.jobCost)}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
             </tbody>

@@ -29,6 +29,7 @@ export function useHoursAwaitingApprovalCount(
           .select('id', { count: 'exact', head: true })
           .not('clocked_out_at', 'is', null)
           .is('approved_at', null)
+          .is('rejected_at', null)
         if (cancelled) return
         if (error) {
           setCount(null)

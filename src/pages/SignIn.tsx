@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function SignIn() {
@@ -41,7 +40,6 @@ export default function SignIn() {
 
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1 style={{ marginBottom: '1rem' }}>Sign in</h1>
       {sessionMessage && (
         <div style={{
           padding: '1rem',
@@ -87,17 +85,15 @@ export default function SignIn() {
         <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
+        <p style={{ marginTop: '1rem', textAlign: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
+          Issue logging in? Contact the office
+        </p>
       </form>
       <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb' }}>
         <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
-          Pipe-Tooling is a web application designed for Master Plumbers to track plumbing work across multiple projects and crews. Masters can see all steps in a project, Assistants and Subcontractors can only see steps they have been assigned to.
+          PipeTooling is a web application designed to decrease the actions and thinking necessary for Plumbers, Electricians, and HVAC techs to engage and win work while reducing the comunication risk of completing that work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and faster decisions can be made.
         </p>
       </div>
-      <p style={{ marginTop: '1rem', textAlign: 'center' }}>
-        <Link to="/sign-up">Create an account</Link>
-        {' · '}
-        <Link to="/reset-password">Forgot password?</Link>
-      </p>
     </div>
   )
 }

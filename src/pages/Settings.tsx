@@ -7222,6 +7222,9 @@ export default function Settings() {
             </button>
             {emailTemplatesSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '0.5rem', color: '#dc2626', fontSize: '0.875rem', fontStyle: 'italic' }}>
+                  Note: Create an account · Forgot password? has been hidden on the sign in page.
+                </p>
                 <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                   Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
                 </p>

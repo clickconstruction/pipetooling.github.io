@@ -697,6 +697,10 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          revoked_at: string | null
+          revoked_by: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
           clock_out_lat: number | null
@@ -713,6 +717,10 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -729,6 +737,10 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -746,6 +758,20 @@ export type Database = {
           {
             foreignKeyName: "clock_sessions_approved_by_fkey"
             columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_revoked_by_fkey"
+            columns: ["revoked_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4741,6 +4767,13 @@ export type Database = {
         Returns: {
           approved_count: number
           error_message: string
+        }[]
+      }
+      revoke_clock_sessions: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          revoked_count: number
+          error_message: string | null
         }[]
       }
       assistants_share_master: {

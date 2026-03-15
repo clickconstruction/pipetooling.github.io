@@ -10,6 +10,8 @@ import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
+import { ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
+import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null }
@@ -108,23 +110,10 @@ export default function People() {
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
-  type PendingClockSession = {
-    id: string
-    user_id: string
-    clocked_in_at: string
-    clocked_out_at: string | null
-    work_date: string
-    notes: string
-    job_ledger_id: string | null
-    clock_in_lat: number | null
-    clock_in_lng: number | null
-    clock_out_lat: number | null
-    clock_out_lng: number | null
-    users: { name: string | null } | null
-    jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
-  }
-  const [pendingClockSessions, setPendingClockSessions] = useState<PendingClockSession[]>([])
-  const [editClockSession, setEditClockSession] = useState<PendingClockSession | null>(null)
+  const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
+  const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
+  const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
+  const [editClockSession, setEditClockSession] = useState<ClockSessionRow | null>(null)
   const [editClockSessionIn, setEditClockSessionIn] = useState('')
   const [editClockSessionOut, setEditClockSessionOut] = useState('')
   const [editClockSessionNotes, setEditClockSessionNotes] = useState('')
@@ -790,12 +779,15 @@ export default function People() {
     setPeopleHours((data ?? []) as HoursRow[])
   }
 
+  const clockSessionSelect = 'id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by, users!clock_sessions_user_id_fkey(name), approved_by_user:users!clock_sessions_approved_by_fkey(name), rejected_by_user:users!clock_sessions_rejected_by_fkey(name), revoked_by_user:users!clock_sessions_revoked_by_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address)'
+
   async function loadPendingClockSessions(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, users!clock_sessions_user_id_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address)')
+      .select(clockSessionSelect)
       .is('approved_at', null)
+      .is('rejected_at', null)
       .gte('work_date', start)
       .lte('work_date', end)
       .order('work_date', { ascending: false })
@@ -804,7 +796,41 @@ export default function People() {
       setError(error.message)
       return
     }
-    setPendingClockSessions((data ?? []) as unknown as PendingClockSession[])
+    setPendingClockSessions((data ?? []) as unknown as ClockSessionRow[])
+  }
+
+  async function loadApprovedClockSessions(start: string, end: string) {
+    if (!canAccessHours && !canAccessPay) return
+    const { data, error } = await supabase
+      .from('clock_sessions')
+      .select(clockSessionSelect)
+      .not('approved_at', 'is', null)
+      .gte('work_date', start)
+      .lte('work_date', end)
+      .order('work_date', { ascending: false })
+      .order('clocked_in_at', { ascending: false })
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setApprovedClockSessions((data ?? []) as unknown as ClockSessionRow[])
+  }
+
+  async function loadRejectedClockSessions(start: string, end: string) {
+    if (!canAccessHours && !canAccessPay) return
+    const { data, error } = await supabase
+      .from('clock_sessions')
+      .select(clockSessionSelect)
+      .not('rejected_at', 'is', null)
+      .gte('work_date', start)
+      .lte('work_date', end)
+      .order('work_date', { ascending: false })
+      .order('clocked_in_at', { ascending: false })
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setRejectedClockSessions((data ?? []) as unknown as ClockSessionRow[])
   }
 
   async function loadHoursDaysCorrect(start: string, end: string) {
@@ -1507,6 +1533,8 @@ export default function People() {
           loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
           loadHoursDisplayOrder(),
           loadPendingClockSessions(hoursDateStart, hoursDateEnd),
+          loadApprovedClockSessions(hoursDateStart, hoursDateEnd),
+          loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
         ]).finally(() => setHoursTabLoading(false))
       }, 80)
       return () => clearTimeout(t)
@@ -1886,8 +1914,12 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
 
-  const loadPendingClockSessionsRef = useRef<() => void>()
-  loadPendingClockSessionsRef.current = () => loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+  const loadAllClockSessionsRef = useRef<() => void>()
+  loadAllClockSessionsRef.current = () => {
+    loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+    loadApprovedClockSessions(hoursDateStart, hoursDateEnd)
+    loadRejectedClockSessions(hoursDateStart, hoursDateEnd)
+  }
 
   useEffect(() => {
     const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
@@ -1899,7 +1931,7 @@ export default function People() {
         loadPeopleHoursRef.current?.()
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        loadPendingClockSessionsRef.current?.()
+        loadAllClockSessionsRef.current?.()
       })
       .subscribe()
     return () => {
@@ -4885,181 +4917,132 @@ export default function People() {
               next week →
             </button>
           </div>
-          {pendingClockSessions.length > 0 && (
-            <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-              <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-                Pending clock sessions ({pendingClockSessions.length})
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: '#f3f4f6' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Duration | In | Out</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Location</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingClockSessions.map((s) => {
-                      const inDate = new Date(s.clocked_in_at)
-                      const outDate = s.clocked_out_at ? new Date(s.clocked_out_at) : new Date()
-                      const hrs = (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
-                      const isActive = s.clocked_out_at == null
-                      const personName = s.users?.name?.trim() ?? 'Unknown'
-                      return (
-                        <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{personName}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {(() => {
-                              const d = new Date(s.work_date + 'T12:00:00')
-                              return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${d.toLocaleDateString(undefined, { weekday: 'short' })}`
-                            })()}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>{hrs.toFixed(2)}h | {inDate.toLocaleTimeString()} | {isActive ? '—' : outDate.toLocaleTimeString()}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.notes || undefined}>{s.notes || '—'}</td>
-                          <td
-                            style={{ padding: '0.5rem 0.75rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                            title={s.jobs_ledger ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}` : undefined}
-                          >
-                            {s.jobs_ledger
-                              ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}`
-                              : '—'}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
-                            {(() => {
-                              const hasIn = s.clock_in_lat != null && s.clock_in_lng != null
-                              const hasOut = s.clock_out_lat != null && s.clock_out_lng != null
-                              if (!hasIn && !hasOut) return '—'
-                              const MapPinIcon = () => (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-                                  <path d="M576 112C576 100.9 570.3 90.6 560.8 84.8C551.3 79 539.6 78.4 529.7 83.4L413.5 141.5L234.1 81.6C226 78.9 217.3 79.5 209.7 83.3L81.7 147.3C70.8 152.8 64 163.9 64 176L64 528C64 539.1 69.7 549.4 79.2 555.2C88.7 561 100.4 561.6 110.3 556.6L226.4 498.5L399.7 556.3C395.4 549.9 391.2 543.2 387.1 536.4C376.1 518.1 365.2 497.1 357.1 474.6L255.9 440.9L255.9 156.4L383.9 199.1L383.9 298.4C414.9 262.6 460.9 240 511.9 240C534.5 240 556.1 244.4 575.9 252.5L576 112zM512 288C445.7 288 392 340.8 392 405.9C392 474.8 456.1 556.3 490.6 595.2C502.2 608.2 521.9 608.2 533.5 595.2C568 556.3 632.1 474.8 632.1 405.9C632.1 340.8 578.4 288 512.1 288zM472 408C472 385.9 489.9 368 512 368C534.1 368 552 385.9 552 408C552 430.1 534.1 448 512 448C489.9 448 472 430.1 472 408z" fill="currentColor" />
-                                </svg>
-                              )
-                              const link = (lat: number, lng: number, label: string) => {
-                                const fmt = `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`
-                                return (
-                                  <a
-                                    key={label}
-                                    href={`https://www.google.com/maps?q=${lat},${lng}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={`${label}: ${fmt}`}
-                                    style={{ color: '#2563eb', textDecoration: 'none' }}
-                                  >
-                                    <MapPinIcon />
-                                  </a>
-                                )
-                              }
-                              const routePoints: string[] = []
-                              if (hasIn) routePoints.push(`${s.clock_in_lat},${s.clock_in_lng}`)
-                              if (hasOut) routePoints.push(`${s.clock_out_lat},${s.clock_out_lng}`)
-                              const routeUrl = `https://www.google.com/maps/dir/${routePoints.join('/')}`
-                              const RouteIcon = () => (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
-                                  <path d="M576 112C576 100.9 570.3 90.6 560.8 84.8C551.3 79 539.6 78.4 529.7 83.4L413.5 141.5L234.1 81.6C226 78.9 217.3 79.5 209.7 83.3L81.7 147.3C70.8 152.8 64 163.9 64 176L64 528C64 539.1 69.7 549.4 79.2 555.2C88.7 561 100.4 561.6 110.3 556.6L226.4 498.5L405.8 558.3C413.9 561 422.6 560.4 430.2 556.6L558.2 492.6C569 487.2 575.9 476.1 575.9 464L575.9 112zM256 440.9L256 156.4L384 199.1L384 483.6L256 440.9z" fill="currentColor" />
-                                </svg>
-                              )
-                              return (
-                                <>
-                                  In: {hasIn ? link(s.clock_in_lat!, s.clock_in_lng!, 'In') : '—'}
-                                  {hasIn && hasOut && ' | '}
-                                  Out: {hasOut ? link(s.clock_out_lat!, s.clock_out_lng!, 'Out') : '—'}
-                                  {' | '}
-                                  <a
-                                    href={routeUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="View route in Google Maps"
-                                    style={{ color: '#2563eb', textDecoration: 'none' }}
-                                  >
-                                    <RouteIcon />
-                                  </a>
-                                </>
-                              )
-                            })()}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            {isActive && (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!confirm(`Force clock out ${personName}?`)) return
-                                  const now = new Date().toISOString()
-                                  const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
-                                  if (error) setError(error.message)
-                                  else {
-                                    showToast?.('Session clocked out', 'success')
-                                    await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                                  }
-                                }}
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                              >
-                                Force clock out
-                              </button>
-                            )}
-                            {!isActive && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEditClockSession(s)
-                                    setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                                    setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
-                                    setEditClockSessionNotes(s.notes ?? '')
-                                  }}
-                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
-                                    if (error) {
-                                      setError(error.message)
-                                      return
-                                    }
-                                    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                                    const row = result[0]
-                                    if (row?.error_message) {
-                                      setError(row.error_message)
-                                      return
-                                    }
-                                    showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
-                                    await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                                    loadPeopleHoursRef.current?.()
-                                  }}
-                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (!confirm('Delete this clock session?')) return
-                                    const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
-                                    if (error) setError(error.message)
-                                    else await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                                  }}
-                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+              Pending clock sessions ({pendingClockSessions.length})
             </div>
-          )}
+            <ClockSessionsTable
+              sessions={pendingClockSessions}
+              showActionsColumn
+              locationVariant="full"
+              emptyMessage="No pending sessions"
+              renderActions={(s) => {
+                const personName = s.users?.name?.trim() ?? 'Unknown'
+                const isActive = s.clocked_out_at == null
+                return (
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    {isActive && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Force clock out ${personName}?`)) return
+                          const now = new Date().toISOString()
+                          const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
+                          if (error) setError(error.message)
+                          else {
+                            showToast?.('Session clocked out', 'success')
+                            loadAllClockSessionsRef.current?.()
+                          }
+                        }}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                      >
+                        Force clock out
+                      </button>
+                    )}
+                    {!isActive && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditClockSession(s)
+                            setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                            setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
+                            setEditClockSessionNotes(s.notes ?? '')
+                          }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
+                            if (error) { setError(error.message); return }
+                            const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                            const row = result[0]
+                            if (row?.error_message) { setError(row.error_message); return }
+                            showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                            loadAllClockSessionsRef.current?.()
+                            loadPeopleHoursRef.current?.()
+                          }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Reject this clock session?')) return
+                            const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
+                            if (error) setError(error.message)
+                            else { showToast?.('Session rejected', 'success'); loadAllClockSessionsRef.current?.() }
+                          }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )
+              }}
+            />
+          </div>
+          <ClockSessionsSection
+            title="Approved Sessions"
+            sessions={approvedClockSessions}
+            collapsedByDefault
+            showActionsColumn
+            renderActions={(s) => (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm('Revoke this session? It will move back to Pending and remove its hours from Hours.')) return
+                  const { data, error } = await supabase.rpc('revoke_clock_sessions', { p_session_ids: [s.id] })
+                  if (error) { setError(error.message); return }
+                  const result = (data ?? []) as Array<{ revoked_count: number; error_message: string | null }>
+                  const row = result[0]
+                  if (row?.error_message) { setError(row.error_message); return }
+                  showToast?.(`Revoked ${row?.revoked_count ?? 0} session(s)`, 'success')
+                  loadAllClockSessionsRef.current?.()
+                  loadPeopleHoursRef.current?.()
+                }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: '#fffbeb', color: '#d97706', cursor: 'pointer' }}
+              >
+                Revoke
+              </button>
+            )}
+          />
+          <ClockSessionsSection
+            title="Rejected Sessions"
+            sessions={rejectedClockSessions}
+            collapsedByDefault
+            showActionsColumn
+            renderActions={(s) => (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm('Delete this clock session permanently?')) return
+                  const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
+                  if (error) setError(error.message)
+                  else { showToast?.('Session deleted', 'success'); loadAllClockSessionsRef.current?.() }
+                }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+              >
+                Delete
+              </button>
+            )}
+          />
           {showPeopleForHours.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
           ) : (
