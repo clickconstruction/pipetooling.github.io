@@ -6434,7 +6434,7 @@ export default function People() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>What are you working on today?</label>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>What are you working on?</label>
                 <textarea
                   value={editClockSessionNotes}
                   onChange={(e) => setEditClockSessionNotes(e.target.value)}

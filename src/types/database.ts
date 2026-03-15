@@ -705,6 +705,7 @@ export type Database = {
           clocked_out_at: string | null
           created_at: string | null
           id: string
+          job_ledger_id: string | null
           notes: string
           user_id: string
           work_date: string
@@ -720,6 +721,7 @@ export type Database = {
           clocked_out_at?: string | null
           created_at?: string | null
           id?: string
+          job_ledger_id?: string | null
           notes: string
           user_id: string
           work_date: string
@@ -735,6 +737,7 @@ export type Database = {
           clocked_out_at?: string | null
           created_at?: string | null
           id?: string
+          job_ledger_id?: string | null
           notes?: string
           user_id?: string
           work_date?: string
@@ -752,6 +755,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]

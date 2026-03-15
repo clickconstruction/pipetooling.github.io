@@ -149,6 +149,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: ClockInOutButton modal requires notes before clock-in; People Hours tab shows notes in pending sessions; edit modal requires notes before save
 - **Category**: Hours / Clock Sessions
 
+#### March 13, 2026
+
+**`20260313180000_add_job_ledger_id_to_clock_sessions.sql`**
+- **Purpose**: Optional job association for clock sessions (job-level hour reporting)
+- **Changes**: Add `job_ledger_id UUID REFERENCES jobs_ledger(id) ON DELETE SET NULL` to `clock_sessions`
+- **Impact**: Clock In and Update Focus modals include optional job search/select; sessions store selected job for reporting
+- **Category**: Hours / Clock Sessions
+
 #### March 15, 2026
 
 **`20260315120000_add_location_to_clock_sessions.sql`**

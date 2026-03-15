@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-03-10
+last_updated: 2026-03-13
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -992,6 +992,7 @@ bid_pricing_assignments:
 **Features**:
 - Print single selected price book or all price books
 - Shows comparison table with cost breakdown
+- **Unit cost overrides**: Printed output uses user-entered unit costs (from the editable Unit Cost column) when present, not just the price book value. Same resolution as on-screen: `unit_price_override` or `bid_count_row_custom_prices` takes precedence over the price book entry.
 
 **Table Columns**:
 - **Fixture**: From count rows

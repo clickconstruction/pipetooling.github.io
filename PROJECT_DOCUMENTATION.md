@@ -700,7 +700,8 @@ WHERE proname IN (
   - `clocked_in_at` (timestamptz, required)
   - `clocked_out_at` (timestamptz, nullable) - null = session still open
   - `work_date` (date, required) - derived from clock-in date (local timezone)
-  - `notes` (text, required) - "What are you working on today?"
+  - `notes` (text, required) - "What are you working on?"
+  - `job_ledger_id` (uuid, nullable, FK → `jobs_ledger.id` ON DELETE SET NULL) - Optional job for job-level hour reporting
   - `clock_in_lat`, `clock_in_lng` (numeric, nullable) - GPS at clock-in
   - `clock_out_lat`, `clock_out_lng` (numeric, nullable) - GPS at clock-out
   - `approved_at` (timestamptz, nullable)
@@ -1948,7 +1949,7 @@ user_id = auth.uid()
   - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
   - **Review Tab** (dev-only): Per-person metrics for a selected period (today, yesterday, last week, etc.): Profit for this period, Revenue per Man Hour, Profit per Man Hour; Jobs Worked list; Hours and Pay. **Team Summary** button opens a new window with per-person table (Name, Period Profit, Rev/MH, Profit/MH). **Only Count Jobs Marked Paid in Full** checkbox: when checked, revenue, profit, and labor hours exclude non-paid jobs; uses paid-only RPCs and filters labor/crew jobs to paid jobs only.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
-- **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, approved_at, approved_by)
+  - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, approved_at, approved_by)
 - **Pay roster**: `allRosterNames()` builds the Pay tab roster from assistants, master_technicians, subs, estimators (people + users), and primaries. **Devs are excluded**—they do not appear in People Pay config. If a dev's clock session is approved, hours go to `people_hours` but are not visible in the Hours grid.
 - **Cross-midnight work**: `work_date` is set from clock-in date. All session hours are attributed to that date; hours after midnight are not split across days.
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
@@ -1994,7 +1995,7 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
-  - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on today?" notes. When clocked in, shows total hours worked today (sum of all sessions) and Clock Out button. Body scroll lock when modal open (iOS/Android). Requires user name in Settings. Optionally captures GPS location at clock-in and clock-out (shown in People Hours pending sessions).
+  - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on?" notes and optional job search/select below. When clocked in, shows total hours worked today (sum of all sessions), solid red Clock Out button (white text), and solid blue Update Focus button (white text). Update Focus modal starts blank with cursor in notes; includes same optional job picker. Body scroll lock when modal open (iOS/Android). Requires user name in Settings. Optionally captures GPS location at clock-in and clock-out (shown in People Hours pending sessions).
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "Sub Labor Due: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses link navigates to Materials Supply Houses, Sub Labor Due to Jobs Sub Labor tab, Cost matrix to People Pay Cost matrix.
   - **Upcoming inspection (3 days)** (assistant, dev, master, primary): Next 3 days of inspections (address, type, date) for jobs the user can access; links to Jobs Inspections tab.
@@ -2306,7 +2307,8 @@ user_id = auth.uid()
 - Pricing is managed by **Price Book Versions** (named sets of `price_book_entries`) and a per-bid version selection (`bids.selected_price_book_version_id`).
 - Each bid can store a selected version (`selected_price_book_version_id`), which is restored when reopening Pricing.
 - Each count row (fixture) on a bid is assigned a price book entry via `bid_pricing_assignments` (unique per `(bid_id, count_row_id)`).
-- Pricing view compares **estimated cost** (labor + allocated materials) vs **revenue** (price book entry) to compute **margin %**, and flags margin: red (< 20%), yellow (< 40%), green (≥ 40%), including totals.
+- Pricing view compares **estimated cost** (labor + allocated materials) vs **revenue** (price book entry or user override) to compute **margin %**, and flags margin: red (< 20%), yellow (< 40%), green (≥ 40%), including totals.
+- **Unit cost overrides**: Users can enter a custom Unit Cost per row; revenue uses `unit_price_override` or `bid_count_row_custom_prices` when set, otherwise the price book entry. **Print** and **Print All** use the same logic—printed output reflects user-entered unit costs.
 - **Prerequisites**: Pricing expects the bid to have Counts and a Cost Estimate. If a bid has count rows but no cost estimate yet, Pricing prompts you to create one first.
 - **Cost allocation (high level)**:
   - **Labor cost** comes from Cost Estimate labor rows (per fixture / tie-in).

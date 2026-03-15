@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-15
+last_updated: 2026-03-13
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,12 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.102)"
+  - name: "Latest Version (v2.104)"
     line: ~314
-    description: "Report location capture; Subcontractor restrictions; My Notification History hide when empty"
+    description: "Clock In Job Selection; Update Focus UX; button styling"
+  - name: "v2.103"
+    line: ~325
+    description: "Bids Pricing Print uses user-entered unit cost overrides"
   - name: "v2.101"
     line: ~345
     description: "Location capture at clock-in/out; Location column in Pending sessions"
@@ -311,6 +314,35 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.104)
+
+**Date**: 2026-03-13
+
+### Clock In/Out – Job Selection
+
+- **Optional job picker**: Below "What are you working on?" in both Clock In and Update Focus modals. Users can search jobs by HCP #, project name, or address via `search_jobs_ledger`, select a job (or leave blank), and the session stores `job_ledger_id` for reporting and payroll.
+- **Label**: Notes field label changed from "What are you working on today?" to "What are you working on?"
+- **Update Focus modal**: Starts blank (notes and job) with cursor in the notes textarea.
+- **Button styling**: Clock Out and Update Focus buttons use solid colors with white text (Clock Out: solid red; Update Focus: solid blue).
+
+### Database
+
+- **`clock_sessions`**: Added `job_ledger_id` (UUID, nullable, FK → `jobs_ledger.id` ON DELETE SET NULL). Migration: `20260313180000_add_job_ledger_id_to_clock_sessions.sql`.
+
+---
+
+## Latest Updates (v2.103)
+
+**Date**: 2026-03-13
+
+### Bids – Pricing Print Unit Cost
+
+- **Print uses user-entered unit cost**: When a user enters a custom Unit Cost in Bids → Pricing and clicks **Print** or **Print All**, the printed output now shows the entered unit price (from `bid_pricing_assignments.unit_price_override` or `bid_count_row_custom_prices`) instead of always using the price book value.
+- **Consistency with on-screen display**: Print and Print All now use the same unit price resolution logic as the on-screen table: override first, then price book entry, then custom price.
+- **Print All**: Fetches `bid_count_row_custom_prices` for all versions so custom prices are correctly applied per price book version.
 
 ---
 
