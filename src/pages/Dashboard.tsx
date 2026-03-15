@@ -18,6 +18,7 @@ import {
 import { useToastContext } from '../contexts/ToastContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
+import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import ClockInOutButton from '../components/ClockInOutButton'
@@ -282,6 +283,7 @@ export default function Dashboard() {
   const [financialRefreshKey, setFinancialRefreshKey] = useState(0)
   const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
+  const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
@@ -1434,9 +1436,26 @@ export default function Dashboard() {
           <ClockInOutButton userId={authUser.id} userName={userName} />
         </div>
       )}
-      {pinsToShow.length > 0 && (
+      {(pinsToShow.length > 0 || isDev) && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            {isDev && (
+              <Link
+                to="/people?tab=hours"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
+              </Link>
+            )}
             {pinsToShow.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
