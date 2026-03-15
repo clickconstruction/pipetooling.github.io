@@ -112,14 +112,16 @@ export default function People() {
     id: string
     user_id: string
     clocked_in_at: string
-    clocked_out_at: string
+    clocked_out_at: string | null
     work_date: string
     notes: string
+    job_ledger_id: string | null
     clock_in_lat: number | null
     clock_in_lng: number | null
     clock_out_lat: number | null
     clock_out_lng: number | null
     users: { name: string | null } | null
+    jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
   }
   const [pendingClockSessions, setPendingClockSessions] = useState<PendingClockSession[]>([])
   const [editClockSession, setEditClockSession] = useState<PendingClockSession | null>(null)
@@ -792,8 +794,7 @@ export default function People() {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, users!clock_sessions_user_id_fkey(name)')
-      .not('clocked_out_at', 'is', null)
+      .select('id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, users!clock_sessions_user_id_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address)')
       .is('approved_at', null)
       .gte('work_date', start)
       .lte('work_date', end)
@@ -4895,10 +4896,9 @@ export default function People() {
                     <tr>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>In</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Out</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Duration</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Duration | In | Out</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Location</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
                     </tr>
@@ -4906,17 +4906,29 @@ export default function People() {
                   <tbody>
                     {pendingClockSessions.map((s) => {
                       const inDate = new Date(s.clocked_in_at)
-                      const outDate = new Date(s.clocked_out_at)
+                      const outDate = s.clocked_out_at ? new Date(s.clocked_out_at) : new Date()
                       const hrs = (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
+                      const isActive = s.clocked_out_at == null
                       const personName = s.users?.name?.trim() ?? 'Unknown'
                       return (
                         <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{personName}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{s.work_date}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{inDate.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{outDate.toLocaleString()}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hrs.toFixed(2)}h</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {(() => {
+                              const d = new Date(s.work_date + 'T12:00:00')
+                              return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${d.toLocaleDateString(undefined, { weekday: 'short' })}`
+                            })()}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>{hrs.toFixed(2)}h | {inDate.toLocaleTimeString()} | {isActive ? '—' : outDate.toLocaleTimeString()}</td>
                           <td style={{ padding: '0.5rem 0.75rem', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.notes || undefined}>{s.notes || '—'}</td>
+                          <td
+                            style={{ padding: '0.5rem 0.75rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            title={s.jobs_ledger ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}` : undefined}
+                          >
+                            {s.jobs_ledger
+                              ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}`
+                              : '—'}
+                          </td>
                           <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                             {(() => {
                               const hasIn = s.clock_in_lat != null && s.clock_in_lng != null
@@ -4971,52 +4983,74 @@ export default function People() {
                             })()}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditClockSession(s)
-                                setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                                setEditClockSessionOut(toDatetimeLocal(s.clocked_out_at))
-                                setEditClockSessionNotes(s.notes ?? '')
-                              }}
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
-                                if (error) {
-                                  setError(error.message)
-                                  return
-                                }
-                                const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                                const row = result[0]
-                                if (row?.error_message) {
-                                  setError(row.error_message)
-                                  return
-                                }
-                                showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
-                                await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                                loadPeopleHoursRef.current?.()
-                              }}
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!confirm('Delete this clock session?')) return
-                                const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
-                                if (error) setError(error.message)
-                                else await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                              }}
-                              style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                            >
-                              Delete
-                            </button>
+                            {isActive && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!confirm(`Force clock out ${personName}?`)) return
+                                  const now = new Date().toISOString()
+                                  const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
+                                  if (error) setError(error.message)
+                                  else {
+                                    showToast?.('Session clocked out', 'success')
+                                    await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                                  }
+                                }}
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                              >
+                                Force clock out
+                              </button>
+                            )}
+                            {!isActive && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditClockSession(s)
+                                    setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                                    setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
+                                    setEditClockSessionNotes(s.notes ?? '')
+                                  }}
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
+                                    if (error) {
+                                      setError(error.message)
+                                      return
+                                    }
+                                    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                                    const row = result[0]
+                                    if (row?.error_message) {
+                                      setError(row.error_message)
+                                      return
+                                    }
+                                    showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                                    await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                                    loadPeopleHoursRef.current?.()
+                                  }}
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!confirm('Delete this clock session?')) return
+                                    const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
+                                    if (error) setError(error.message)
+                                    else await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                                  }}
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       )
