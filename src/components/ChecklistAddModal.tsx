@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -23,8 +23,10 @@ export default function ChecklistAddModal() {
   const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
   const [repeatSectionOpen, setRepeatSectionOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({
     title: '',
+    links: [] as string[],
     assigned_to_user_ids: [] as string[],
     repeat_type: 'once' as 'day_of_week' | 'days_after_completion' | 'once',
     repeat_days_of_week: [] as number[],
@@ -90,6 +92,7 @@ export default function ChecklistAddModal() {
     if (modalContext?.isOpen) {
       setForm({
         title: '',
+        links: [],
         assigned_to_user_ids: users[0]?.id ? [users[0].id] : [],
         repeat_type: 'once',
         repeat_days_of_week: [],
@@ -161,6 +164,7 @@ export default function ChecklistAddModal() {
       .from('checklist_items')
       .insert({
         title: form.title,
+        links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
         created_by_user_id: authUser.id,
         repeat_type: form.repeat_type,
         repeat_days_of_week: form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -212,11 +216,99 @@ export default function ChecklistAddModal() {
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
             <input
+              ref={titleInputRef}
               type="text"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               style={{ width: '100%', padding: '0.5rem' }}
             />
+          </label>
+          <label>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Links</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {form.links.map((url, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = titleInputRef.current
+                      if (input) {
+                        const start = input.selectionStart ?? form.title.length
+                        const end = input.selectionEnd ?? form.title.length
+                        const placeholder = `[${i + 1}]`
+                        const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
+                        setForm((f) => ({ ...f, title: newTitle }))
+                        setTimeout(() => {
+                          input.focus()
+                          const pos = start + placeholder.length
+                          input.setSelectionRange(pos, pos)
+                        }, 0)
+                      }
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '0.25rem 0.5rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    [{i + 1}]
+                  </button>
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        links: f.links.map((u, j) => (j === i ? e.target.value : u)),
+                      }))
+                    }
+                    placeholder="URL"
+                    style={{ flex: 1, padding: '0.5rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        links: f.links.filter((_, j) => j !== i),
+                      }))
+                    }
+                    style={{
+                      padding: '0.25rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#6b7280',
+                      fontSize: '1.25rem',
+                      lineHeight: 1,
+                    }}
+                    title="Remove link"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '0.25rem 0.5rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#2563eb',
+                  textDecoration: 'underline',
+                  fontSize: '0.875rem',
+                }}
+              >
+                [+ add]
+              </button>
+            </div>
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>

@@ -10,6 +10,7 @@ import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
+import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
 
@@ -312,7 +313,7 @@ export default function People() {
   const [reviewHours, setReviewHours] = useState<Array<{ work_date: string; hours: number }>>([])
   type ReviewReport = { id: string; template_name: string; job_display_name: string; created_at: string }
   const [reviewReports, setReviewReports] = useState<ReviewReport[]>([])
-  type ReviewTask = { id: string; title: string; scheduled_date: string; completed_at: string | null }
+  type ReviewTask = { id: string; title: string; links?: string[] | null; scheduled_date: string; completed_at: string | null }
   const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
   const [reviewJobsWorkedCollapsed, setReviewJobsWorkedCollapsed] = useState(false)
   const [reviewJobExpandedKey, setReviewJobExpandedKey] = useState<string | null>(null)
@@ -2255,7 +2256,7 @@ export default function People() {
       userId
         ? supabase
             .from('checklist_instances')
-            .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+            .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
             .eq('checklist_instance_assignees.user_id', userId)
             .not('completed_at', 'is', null)
             .gte('completed_at', start + 'T00:00:00')
@@ -2274,7 +2275,7 @@ export default function People() {
     const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
     const allReports = (reportsRes.data ?? []) as Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>
-    const taskInstances = (tasksRes.data ?? []) as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string } | null }>
+    const taskInstances = (tasksRes.data ?? []) as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string; links?: string[] | null } | null }>
     const settingsRows = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
     const tallyParts = (tallyRes.data ?? []) as Array<{ job_id: string; part_id: string | null; price_at_time: number | null; fixture_cost: number | null; quantity: number }>
     const allHoursRows = (allHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
@@ -2591,7 +2592,8 @@ export default function People() {
 
     const tasks: ReviewTask[] = taskInstances.map((t) => ({
       id: t.id,
-      title: (t.checklist_items as { title: string } | null)?.title ?? 'Untitled',
+      title: (t.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled',
+      links: (t.checklist_items as { title: string; links?: string[] | null } | null)?.links,
       scheduled_date: t.scheduled_date,
       completed_at: t.completed_at,
     }))
@@ -6124,7 +6126,7 @@ export default function People() {
                       <tbody>
                         {reviewTasks.map((t) => (
                           <tr key={t.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{t.title}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={t.title} links={t.links} /></td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.scheduled_date}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.completed_at ? new Date(t.completed_at).toLocaleString() : '—'}</td>
                           </tr>

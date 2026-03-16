@@ -9,7 +9,7 @@ import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
-import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
+import CompletedTaskNotificationPrefsModal from '../components/CompletedTaskNotificationPrefsModal'
 import {
   getPinned,
   getPinnedForUserFromSupabase,
@@ -22,6 +22,7 @@ import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApproval
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import ClockInOutButton from '../components/ClockInOutButton'
+import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import type { Database } from '../types/database'
 
 function toDatetimeLocal(iso: string | null): string {
@@ -134,7 +135,7 @@ type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
-  checklist_items?: { title: string } | null
+  checklist_items?: { title: string; links?: string[] | null } | null
   checklist_instance_assignees?: Array<{ user_id: string }>
 }
 
@@ -226,6 +227,7 @@ export default function Dashboard() {
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
+  const [completedTaskPrefsModalOpen, setCompletedTaskPrefsModalOpen] = useState(false)
   const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
@@ -246,14 +248,10 @@ export default function Dashboard() {
     }
   })
   const [hideOnRefreshPending, setHideOnRefreshPending] = useState(false)
-  const [myReports, setMyReports] = useState<Array<{ id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
-  const [myReportsLoading, setMyReportsLoading] = useState(false)
-  const [reportEditWindowDays, setReportEditWindowDays] = useState(2)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
-  const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
-  const [myReportsExpanded, setMyReportsExpanded] = useState(false)
+  const [readyToBillExpanded, setReadyToBillExpanded] = useState(false)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
@@ -410,9 +408,6 @@ export default function Dashboard() {
   }, [authUser?.id])
 
   const loadRecentReportsRef = useRef<() => void>(() => {})
-  const loadMyReportsRef = useRef<() => void>(() => {})
-
-  const showMyReports = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary' || role === 'subcontractor'
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -443,40 +438,6 @@ export default function Dashboard() {
   }, [authUser?.id, role, isReportEnabledOnlyUser])
 
   useEffect(() => {
-    if (!authUser?.id || !showMyReports) return
-    setMyReportsLoading(true)
-    const load = async () => {
-      try {
-        const [{ data: reportSettings }, { data }] = await Promise.all([
-          supabase.from('app_settings').select('key, value_num').eq('key', 'report_edit_window_days').maybeSingle(),
-          supabase.rpc('list_my_reports'),
-        ])
-        const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
-        setReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
-        const arr = Array.isArray(data) ? data : []
-        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
-          id: r.id,
-          template_id: r.template_id,
-          template_name: r.template_name,
-          job_display_name: r.job_display_name,
-          job_ledger_id: r.job_ledger_id ?? null,
-          project_id: r.project_id ?? null,
-          created_at: r.created_at,
-          created_by_name: r.created_by_name,
-          field_values: r.field_values as Record<string, string> | undefined,
-          reported_at_lat: r.reported_at_lat ?? null,
-          reported_at_lng: r.reported_at_lng ?? null,
-        }))
-        setMyReports(list)
-      } finally {
-        setMyReportsLoading(false)
-      }
-    }
-    loadMyReportsRef.current = load
-    load()
-  }, [authUser?.id, showMyReports])
-
-  useEffect(() => {
     const showUpcomingInspections = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
     if (!authUser?.id || !showUpcomingInspections) return
     setUpcomingInspectionsLoading(true)
@@ -503,18 +464,17 @@ export default function Dashboard() {
 
   useEffect(() => {
     const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
-    if (!showRecent && !showMyReports) return
+    if (!showRecent) return
     const channel = supabase
       .channel('dashboard-reports-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
         loadRecentReportsRef.current?.()
-        loadMyReportsRef.current?.()
       })
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [role, isReportEnabledOnlyUser, showMyReports])
+  }, [role, isReportEnabledOnlyUser])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -541,7 +501,7 @@ export default function Dashboard() {
         .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true'),
       supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUser.id)
         .eq('scheduled_date', today)
         .order('created_at', { ascending: true }),
@@ -938,13 +898,13 @@ export default function Dashboard() {
   }, [sendBackJob])
 
   useEffect(() => {
-    if (!completedItemsOpen || !authUser?.id || !isDev) return
+    if (!authUser?.id || !isDev) return
     setCompletedItemsLoading(true)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     Promise.all([
       supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, checklist_items(title), checklist_instance_assignees(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, checklist_items(title, links), checklist_instance_assignees(user_id)')
         .not('completed_at', 'is', null)
         .gte('completed_at', sevenDaysAgo)
         .order('completed_at', { ascending: false }),
@@ -981,7 +941,7 @@ export default function Dashboard() {
       }
       setCompletedItemsLoading(false)
     })
-  }, [completedItemsOpen, authUser?.id, isDev])
+  }, [authUser?.id, isDev])
 
   async function markCompletedItemAsRead(inst: ChecklistInstance) {
     if (!authUser?.id || markingReadId) return
@@ -1057,7 +1017,7 @@ export default function Dashboard() {
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUser.id)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -1070,7 +1030,7 @@ export default function Dashboard() {
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUser.id)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -1461,70 +1421,41 @@ export default function Dashboard() {
 
   return (
     <div>
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
+          {[
+            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
+            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
+            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
+            { key: 'project', label: 'Project', to: '/projects/new' },
+            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
+            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
+            { key: 'prospect', label: 'New Prospect', to: '/prospects?newProspect=true' },
+            { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
+          ]
+            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
+            .map((b) => (
+              <Link
+                key={b.key}
+                to={b.to}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                }}
+              >
+                {b.label}
+              </Link>
+            ))}
+        </div>
+      )}
       {authUser?.id && (
         <div style={{ marginBottom: '1rem' }}>
           <ClockInOutButton userId={authUser.id} userName={userName} />
-        </div>
-      )}
-      {(pinsToShow.length > 0 || isDev) && (
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {isDev && (
-              <Link
-                to="/people?tab=hours"
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 6,
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                }}
-              >
-                Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
-              </Link>
-            )}
-            {pinsToShow.map((item) => {
-              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
-              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
-              const isBilled = item.path === '/jobs' && item.tab === 'billed'
-              const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'
-              const to = item.tab
-                ? isSubLaborDue
-                  ? '/jobs?tab=sub_sheet_ledger'
-                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
-                : item.path
-              const displayLabel = isCostMatrix
-                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : isBilled
-                  ? (billedCount != null && billedTotal != null ? `Billed Awaiting Payment (${billedCount}): $${billedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Billed Awaiting Payment…')
-                  : isSupplyHouseAP
-                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
-                    : isSubLaborDue
-                      ? (subLaborDueTotal != null ? `Sub Labor Due: $${subLaborDueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.label)
-                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
-              return (
-                <Link
-                  key={item.path + (item.tab ?? '')}
-                  to={to}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 6,
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                >
-                  {displayLabel}
-                </Link>
-              )
-            })}
-          </div>
         </div>
       )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
@@ -1588,38 +1519,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          {[
-            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
-            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
-            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
-            { key: 'project', label: 'Project', to: '/projects/new' },
-            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
-            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
-            { key: 'prospect', label: 'New Prospect', to: '/prospects?newProspect=true' },
-            { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
-          ]
-            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
-            .map((b) => (
-              <Link
-                key={b.key}
-                to={b.to}
-                style={{
-                  padding: '0.75rem 1.25rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                }}
-              >
-                {b.label}
-              </Link>
-            ))}
-        </div>
-      )}
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link
@@ -1666,6 +1565,67 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+      {(pinsToShow.length > 0 || isDev) && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+            {isDev && (
+              <Link
+                to="/people?tab=hours"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
+              </Link>
+            )}
+            {pinsToShow.map((item) => {
+              const isCostMatrix = item.path === '/people' && item.tab === 'pay'
+              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
+              const isBilled = item.path === '/jobs' && item.tab === 'billed'
+              const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'
+              const to = item.tab
+                ? isSubLaborDue
+                  ? '/jobs?tab=sub_sheet_ledger'
+                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
+                : item.path
+              const displayLabel = isCostMatrix
+                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
+                : isBilled
+                  ? (billedCount != null && billedTotal != null ? `Billed Awaiting Payment (${billedCount}): $${billedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Billed Awaiting Payment…')
+                  : isSupplyHouseAP
+                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
+                    : isSubLaborDue
+                      ? (subLaborDueTotal != null ? `Sub Labor Due: $${subLaborDueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.label)
+                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
+              return (
+                <Link
+                  key={item.path + (item.tab ?? '')}
+                  to={to}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 6,
+                    textDecoration: 'none',
+                    fontWeight: 500,
+                  }}
+                >
+                  {displayLabel}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {role === 'master_technician' && (
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link
@@ -1696,7 +1656,8 @@ export default function Dashboard() {
           ) : todayChecklist.length > 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayChecklist.map((inst) => {
-              const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+              const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+              const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
               const isCompleted = !!inst.completed_at
               return (
                 <li
@@ -1719,7 +1680,7 @@ export default function Dashboard() {
                     disabled={!!completingChecklistId}
                   />
                   <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#6b7280' : 'inherit' }}>
-                    {title}
+                    <ChecklistTitleWithLinks title={title} links={links} />
                   </span>
                   {inst.completed_at && (
                     <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
@@ -1752,27 +1713,38 @@ export default function Dashboard() {
         </div>
       )}
       {isDev && (
-        <div style={{ marginTop: '2rem' }}>
-          <h2
-            style={{
-              fontSize: '1.125rem',
-              marginBottom: completedItemsOpen ? '0.75rem' : 0,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
-            onClick={() => setCompletedItemsOpen((o) => !o)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
-          >
-            {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks (last 7 days)
-            {(() => {
-              const n = completedItems.filter((inst) => !readInstanceIds.has(inst.id)).length
-              return n > 0 ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{' - '}{n} UNREAD</span> : null
-            })()}
-          </h2>
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: completedItemsOpen ? '0.75rem' : 0 }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                margin: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+              onClick={() => setCompletedItemsOpen((o) => !o)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
+            >
+              {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks
+              {(() => {
+                const n = completedItems.filter((inst) => !readInstanceIds.has(inst.id)).length
+                return n > 0 ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{' - '}{n} UNREAD</span> : null
+              })()}
+            </h2>
+            {completedItemsOpen && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setCompletedTaskPrefsModalOpen(true) }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', background: 'none', border: '1px solid #d1d5db', borderRadius: 4 }}
+              >
+                Notification preferences
+              </button>
+            )}
+          </div>
           {completedItemsOpen && (
             <>
               {completedItemsLoading ? (
@@ -1832,7 +1804,8 @@ export default function Dashboard() {
                             {isExpanded && (
                               <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
                                 {items.map((inst) => {
-                                  const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+                                  const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                                  const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
                                   const isRead = readInstanceIds.has(inst.id)
                                   const assigneeName = (inst.checklist_instance_assignees ?? [])
                                     .map((a) => getUserName(a.user_id))
@@ -1852,7 +1825,7 @@ export default function Dashboard() {
                                         background: isRead ? '#fff' : '#f0f9ff',
                                       }}
                                     >
-                                      <span style={{ flex: 1, fontWeight: 500 }}>{title}</span>
+                                      <span style={{ flex: 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
                                       <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
                                         {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
                                       </span>
@@ -1888,86 +1861,6 @@ export default function Dashboard() {
                 })()
               )}
             </>
-          )}
-        </div>
-      )}
-      {showMyReports && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setMyReportsExpanded((prev) => !prev)}
-            aria-expanded={myReportsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: myReportsExpanded ? '0.5rem' : 0 }}
-          >
-            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span aria-hidden>{myReportsExpanded ? '\u25BC' : '\u25B6'}</span>
-              My Reports
-            </h2>
-            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
-              >
-                Show more →
-              </button>
-            )}
-          </button>
-          {myReportsExpanded && (
-          <>
-          {myReportsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
-          ) : myReports.length > 0 ? (
-            (() => {
-              const r = myReports[0]!
-              const editWindowMs = reportEditWindowDays * 24 * 60 * 60 * 1000
-              const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
-              return (
-                <div
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    background: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <div
-                    style={{ flex: 1, minWidth: 0 }}
-                    onClick={() => {
-                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
-                      setViewReportModalOpen(true)
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {new Date(r.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  {isWithinEditWindow && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
-                        setEditReportModalOpen(true)
-                      }}
-                      style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-              )
-            })()
-          ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one with the Job Report button above.</p>
-          )}
-          </>
           )}
         </div>
       )}
@@ -2324,9 +2217,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (readyToBillLoading || readyToBillInvoices.length > 0 || readyToBillJobs.length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Ready to Bill</h2>
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setReadyToBillExpanded((prev) => !prev)}
+            aria-expanded={readyToBillExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillJobs.length + readyToBillInvoices.length})</h2>
+          </button>
+          {readyToBillExpanded && (
+          <>
           {readyToBillLoading && readyToBillInvoices.length === 0 && readyToBillJobs.length === 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[1, 2].map((i) => (
@@ -2336,6 +2239,8 @@ export default function Dashboard() {
                 </li>
               ))}
             </ul>
+          ) : readyToBillJobs.length === 0 && readyToBillInvoices.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
           ) : (
             <div>
               {readyToBillJobs.map((j) => {
@@ -2505,11 +2410,13 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+          </>
+          )}
         </div>
       )}
 
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <button
             type="button"
             onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
@@ -2517,7 +2424,7 @@ export default function Dashboard() {
             style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
           >
             <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Waiting for Payment</h2>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({waitingForPaymentJobs.length + waitingForPaymentInvoices.length})</h2>
           </button>
           {waitingForPaymentExpanded && (
           <>
@@ -2928,23 +2835,14 @@ export default function Dashboard() {
           setReportForEdit(null)
         }}
         onSaved={() => {
-          loadMyReportsRef.current?.()
+          loadRecentReportsRef.current?.()
         }}
       />
-      <MyReportsModal
-        open={myReportsModalOpen}
-        onClose={() => setMyReportsModalOpen(false)}
-        reports={myReports as ReportForMyReports[]}
-        reportEditWindowDays={reportEditWindowDays}
-        onViewReport={(r) => {
-          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
-          setViewReportModalOpen(true)
-        }}
-        onEditReport={(r) => {
-          setMyReportsModalOpen(false)
-          setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
-          setEditReportModalOpen(true)
-        }}
+      <CompletedTaskNotificationPrefsModal
+        open={completedTaskPrefsModalOpen}
+        authUserId={authUser?.id ?? null}
+        onClose={() => setCompletedTaskPrefsModalOpen(false)}
+        onSaved={() => {}}
       />
       {viewReportsJob && (
         <JobReportsModal

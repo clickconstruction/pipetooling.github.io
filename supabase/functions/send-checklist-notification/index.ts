@@ -79,6 +79,26 @@ serve(async (req) => {
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
+
+    // Skip completed task notifications if recipient has muted them
+    if (tag?.startsWith('checklist-')) {
+      const { data: mutePref } = await adminClient
+        .from('user_completed_task_mute_preferences')
+        .select('muted_until')
+        .eq('user_id', recipient_user_id)
+        .maybeSingle()
+      if (mutePref && new Date(mutePref.muted_until) > new Date()) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Checklist notification skipped (recipient muted)',
+            push_sent: 0,
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     const { data: subscriptions } = await adminClient
       .from('push_subscriptions')
       .select('endpoint, p256dh_key, auth_key')

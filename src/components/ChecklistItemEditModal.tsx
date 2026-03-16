@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
@@ -6,6 +6,7 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'e
 type ChecklistItem = {
   id: string
   title: string
+  links?: string[] | null
   created_by_user_id: string
   repeat_type: string
   repeat_days_of_week: number[] | null
@@ -26,6 +27,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 type FormState = {
   title: string
+  links: string[]
   assigned_to_user_ids: string[]
   repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
   repeat_days_of_week: number[]
@@ -41,6 +43,7 @@ type FormState = {
 
 const initialForm: FormState = {
   title: '',
+  links: [],
   assigned_to_user_ids: [],
   repeat_type: 'once',
   repeat_days_of_week: [],
@@ -58,6 +61,7 @@ function populateForm(item: ChecklistItem, assigneeIds: string[]): FormState {
   const rt = item.reminder_time
   return {
     title: item.title,
+    links: item.links ?? [],
     assigned_to_user_ids: assigneeIds,
     repeat_type: item.repeat_type as FormState['repeat_type'],
     repeat_days_of_week: item.repeat_days_of_week ?? [],
@@ -85,6 +89,7 @@ export function ChecklistItemEditModal({
   setError: (s: string | null) => void
   role: UserRole | null
 }) {
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -98,7 +103,7 @@ export function ChecklistItemEditModal({
     Promise.all([
       supabase
         .from('checklist_items')
-        .select('id, title, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at')
+        .select('id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at')
         .eq('id', itemId)
         .single(),
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
@@ -135,6 +140,7 @@ export function ChecklistItemEditModal({
         .from('checklist_items')
         .update({
           title: form.title,
+          links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
           repeat_type: form.repeat_type,
           repeat_days_of_week: form.repeat_type === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
           repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
@@ -185,11 +191,99 @@ export function ChecklistItemEditModal({
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Title</span>
             <input
+              ref={titleInputRef}
               type="text"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               style={{ width: '100%', padding: '0.5rem' }}
             />
+          </label>
+          <label>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Links</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {form.links.map((url, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = titleInputRef.current
+                      if (input) {
+                        const start = input.selectionStart ?? form.title.length
+                        const end = input.selectionEnd ?? form.title.length
+                        const placeholder = `[${i + 1}]`
+                        const newTitle = form.title.slice(0, start) + placeholder + form.title.slice(end)
+                        setForm((f) => ({ ...f, title: newTitle }))
+                        setTimeout(() => {
+                          input.focus()
+                          const pos = start + placeholder.length
+                          input.setSelectionRange(pos, pos)
+                        }, 0)
+                      }
+                    }}
+                    style={{
+                      flexShrink: 0,
+                      padding: '0.25rem 0.5rem',
+                      background: '#f3f4f6',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    [{i + 1}]
+                  </button>
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        links: f.links.map((u, j) => (j === i ? e.target.value : u)),
+                      }))
+                    }
+                    placeholder="URL"
+                    style={{ flex: 1, padding: '0.5rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        links: f.links.filter((_, j) => j !== i),
+                      }))
+                    }
+                    style={{
+                      padding: '0.25rem',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#6b7280',
+                      fontSize: '1.25rem',
+                      lineHeight: 1,
+                    }}
+                    title="Remove link"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, links: [...f.links, ''] }))}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '0.25rem 0.5rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#2563eb',
+                  textDecoration: 'underline',
+                  fontSize: '0.875rem',
+                }}
+              >
+                [+ add]
+              </button>
+            </div>
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>

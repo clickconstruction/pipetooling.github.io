@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -11,6 +11,10 @@ import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
+import ReportViewModal from '../components/ReportViewModal'
+import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
+import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
+import CompletedTaskNotificationPrefsModal from '../components/CompletedTaskNotificationPrefsModal'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
@@ -484,6 +488,10 @@ export default function Settings() {
   const [reportSettingsSectionOpen, setReportSettingsSectionOpen] = useState(false)
   const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
+  const [mutedCompletedTasksOpen, setMutedCompletedTasksOpen] = useState(false)
+  const [mutedCompletedTasksPreference, setMutedCompletedTasksPreference] = useState<{ muted_until: string } | null>(null)
+  const [mutedCompletedTasksLoading, setMutedCompletedTasksLoading] = useState(false)
+  const [mutedCompletedTasksModalOpen, setMutedCompletedTasksModalOpen] = useState(false)
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
   const [notificationHistoryError, setNotificationHistoryError] = useState<string | null>(null)
@@ -530,6 +538,16 @@ export default function Settings() {
   const [reportTemplates, setReportTemplates] = useState<Array<{ id: string; name: string }>>([])
   const [reportNotificationTemplateIds, setReportNotificationTemplateIds] = useState<Set<string>>(new Set())
   const [reportNotificationSaving, setReportNotificationSaving] = useState(false)
+  const [myReports, setMyReports] = useState<ReportForMyReports[]>([])
+  const [myReportsLoading, setMyReportsLoading] = useState(false)
+  const [myReportsExpanded, setMyReportsExpanded] = useState(false)
+  const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
+  const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null } | null>(null)
+  const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
+  const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
+  const [editReportModalOpen, setEditReportModalOpen] = useState(false)
+  const [myReportsReportEditWindowDays, setMyReportsReportEditWindowDays] = useState<number>(2)
+  const loadMyReportsRef = useRef<(() => void) | null>(null)
 
   function downloadJson(filename: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -3242,6 +3260,80 @@ export default function Settings() {
       })
   }, [notificationHistoryOpen, authUser?.id])
 
+  async function loadMutedCompletedTasksPreference() {
+    if (!authUser?.id) return
+    const { data } = await supabase
+      .from('user_completed_task_mute_preferences')
+      .select('muted_until')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+    setMutedCompletedTasksPreference(data ? { muted_until: data.muted_until } : null)
+  }
+
+  useEffect(() => {
+    if (!mutedCompletedTasksOpen || !authUser?.id) return
+    setMutedCompletedTasksLoading(true)
+    supabase
+      .from('user_completed_task_mute_preferences')
+      .select('muted_until')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        setMutedCompletedTasksLoading(false)
+        if (error) return
+        setMutedCompletedTasksPreference(data ? { muted_until: data.muted_until } : null)
+      })
+  }, [mutedCompletedTasksOpen, authUser?.id])
+
+  const showMyReports = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary' || myRole === 'subcontractor'
+
+  useEffect(() => {
+    if (!authUser?.id || !showMyReports) return
+    setMyReportsLoading(true)
+    const load = async () => {
+      try {
+        const [{ data: reportSettings }, { data }] = await Promise.all([
+          supabase.from('app_settings').select('key, value_num').eq('key', 'report_edit_window_days').maybeSingle(),
+          supabase.rpc('list_my_reports'),
+        ])
+        const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
+        setMyReportsReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
+        const arr = Array.isArray(data) ? data : []
+        const list = arr.map((r: { id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
+          id: r.id,
+          template_id: r.template_id,
+          template_name: r.template_name,
+          job_display_name: r.job_display_name,
+          job_ledger_id: r.job_ledger_id ?? null,
+          project_id: r.project_id ?? null,
+          created_at: r.created_at,
+          created_by_name: r.created_by_name,
+          field_values: r.field_values as Record<string, string> | undefined,
+          reported_at_lat: r.reported_at_lat ?? null,
+          reported_at_lng: r.reported_at_lng ?? null,
+        }))
+        setMyReports(list)
+      } finally {
+        setMyReportsLoading(false)
+      }
+    }
+    loadMyReportsRef.current = load
+    load()
+  }, [authUser?.id, showMyReports])
+
+  useEffect(() => {
+    if (!showMyReports) return
+    const channel = supabase
+      .channel('settings-my-reports-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
+        loadMyReportsRef.current?.()
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [showMyReports])
+
   useEffect(() => {
     if (notificationHistoryOpen) {
       const el = document.getElementById('notification-history-content')
@@ -4026,6 +4118,87 @@ export default function Settings() {
         </div>
       </div>
 
+      {showMyReports && (
+        <div style={{ marginBottom: '2rem', marginTop: 0 }}>
+          <button
+            type="button"
+            onClick={() => setMyReportsExpanded((prev) => !prev)}
+            aria-expanded={myReportsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: myReportsExpanded ? '0.5rem' : 0 }}
+          >
+            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span aria-hidden>{myReportsExpanded ? '\u25BC' : '\u25B6'}</span>
+              My Reports
+            </h2>
+            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+              >
+                Show more →
+              </button>
+            )}
+          </button>
+          {myReportsExpanded && (
+            <>
+              {myReportsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+              ) : myReports.length > 0 ? (
+                (() => {
+                  const r = myReports[0]!
+                  const editWindowMs = myReportsReportEditWindowDays * 24 * 60 * 60 * 1000
+                  const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
+                  return (
+                    <div
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        background: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div
+                        style={{ flex: 1, minWidth: 0 }}
+                        onClick={() => {
+                          setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
+                          setViewReportModalOpen(true)
+                        }}
+                      >
+                        <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          {new Date(r.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      {isWithinEditWindow && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                            setEditReportModalOpen(true)
+                          }}
+                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()
+              ) : (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one from a job.</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
         <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>My Profile</h2>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
@@ -4173,6 +4346,79 @@ export default function Settings() {
           </div>
         )}
       </div>
+      )}
+
+      {authUser?.id && (
+        <div style={{ marginBottom: '2rem' }}>
+          <button
+            type="button"
+            style={{
+              fontSize: '1.125rem',
+              margin: 0,
+              marginBottom: mutedCompletedTasksOpen ? '0.75rem' : 0,
+              padding: 0,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'none',
+              border: 'none',
+              textAlign: 'left',
+              width: '100%',
+              font: 'inherit',
+              color: 'inherit',
+            }}
+            onClick={() => setMutedCompletedTasksOpen((o) => !o)}
+            aria-expanded={mutedCompletedTasksOpen}
+            aria-controls="muted-completed-tasks-content"
+          >
+            {mutedCompletedTasksOpen ? '▼' : '▶'} Muted Completed Tasks
+          </button>
+          {mutedCompletedTasksOpen && (
+            <div id="muted-completed-tasks-content" style={{ padding: '1rem 0 0 0' }}>
+              {mutedCompletedTasksLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : mutedCompletedTasksPreference ? (
+                (() => {
+                  const until = new Date(mutedCompletedTasksPreference.muted_until)
+                  const isForever = until > new Date('9999-01-01')
+                  const isExpired = until <= new Date()
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                        {isExpired
+                          ? 'Your mute has expired. You are receiving completed task notifications again.'
+                          : isForever
+                            ? 'Completed task notifications are muted forever.'
+                            : `Completed task notifications are muted until ${until.toLocaleDateString(undefined, { dateStyle: 'long' })}.`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setMutedCompletedTasksModalOpen(true)}
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'flex-start' }}
+                      >
+                        {isExpired ? 'Mute again' : 'Change preference'}
+                      </button>
+                    </div>
+                  )
+                })()
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                    You are not muting completed task notifications.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMutedCompletedTasksModalOpen(true)}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'flex-start' }}
+                  >
+                    Notification preferences
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
@@ -8204,6 +8450,45 @@ export default function Settings() {
       </div>
       )}
 
+      {showMyReports && (
+        <>
+          <ReportViewModal
+            open={viewReportModalOpen}
+            report={selectedReport}
+            onClose={() => { setViewReportModalOpen(false); setSelectedReport(null) }}
+          />
+          <ReportEditModal
+            open={editReportModalOpen}
+            report={reportForEdit}
+            onClose={() => { setEditReportModalOpen(false); setReportForEdit(null) }}
+            onSaved={() => {
+              setEditReportModalOpen(false)
+              setReportForEdit(null)
+              loadMyReportsRef.current?.()
+            }}
+          />
+          <MyReportsModal
+            open={myReportsModalOpen}
+            onClose={() => setMyReportsModalOpen(false)}
+            reports={myReports}
+            reportEditWindowDays={myReportsReportEditWindowDays}
+            onViewReport={(r) => {
+              setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
+              setViewReportModalOpen(true)
+            }}
+            onEditReport={(r) => {
+              setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+              setEditReportModalOpen(true)
+            }}
+          />
+        </>
+      )}
+      <CompletedTaskNotificationPrefsModal
+        open={mutedCompletedTasksModalOpen}
+        authUserId={authUser?.id ?? null}
+        onClose={() => setMutedCompletedTasksModalOpen(false)}
+        onSaved={() => loadMutedCompletedTasksPreference()}
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
+import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 type ChecklistTab = 'today' | 'history' | 'manage' | 'checklists'
@@ -16,7 +17,7 @@ type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
-  checklist_items?: { title: string } | null
+  checklist_items?: { title: string; links?: string[] | null } | null
 }
 
 const tabStyle = (active: boolean) => ({
@@ -206,7 +207,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -223,7 +224,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -248,7 +249,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
@@ -429,7 +430,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayInstances.map((inst) => {
-              const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+              const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+              const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
               const isCompleted = !!inst.completed_at
               return (
                 <li
@@ -452,7 +454,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                     style={{ marginTop: '0.25rem' }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{title}</div>
+                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}><ChecklistTitleWithLinks title={title} links={links} /></div>
                     <textarea
                       value={notesByInstance[inst.id] ?? inst.notes ?? ''}
                       onChange={(e) => setNotesByInstance((prev) => ({ ...prev, [inst.id]: e.target.value }))}
@@ -519,7 +521,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingInstances.map((inst) => {
-                  const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+                  const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                  const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
                   return (
                     <li
                       key={inst.id}
@@ -532,7 +535,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                       }}
                     >
                       <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{inst.scheduled_date}</span>
-                      <span style={{ flex: 1 }}>{title}</span>
+                      <span style={{ flex: 1 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
                       {isDev && (
                         <button
                           type="button"
@@ -693,7 +696,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
@@ -708,11 +711,12 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   if (loading) return <p>Loading…</p>
 
-  const byItem = new Map<string, { title: string; dates: Record<string, 'completed' | 'completed_by_other' | 'incomplete'> }>()
+  const byItem = new Map<string, { title: string; links?: string[] | null; dates: Record<string, 'completed' | 'completed_by_other' | 'incomplete'> }>()
   for (const inst of instances) {
     const itemId = inst.checklist_item_id
-    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
-    if (!byItem.has(itemId)) byItem.set(itemId, { title, dates: {} })
+    const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+    const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+    if (!byItem.has(itemId)) byItem.set(itemId, { title, links, dates: {} })
     const entry = byItem.get(itemId)!
     let status: 'completed' | 'completed_by_other' | 'incomplete' = 'incomplete'
     if (inst.completed_at) {
@@ -862,10 +866,10 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
             </tr>
           </thead>
           <tbody>
-            {Array.from(byItem.entries()).map(([itemId, { title, dates }]) => (
+            {Array.from(byItem.entries()).map(([itemId, { title, links, dates }]) => (
               <tr key={itemId}>
                 <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
-                  {title}
+                  <ChecklistTitleWithLinks title={title} links={links} />
                 </td>
                 {sortedDates.slice(-60).map((d) => {
                   const rawStatus = dates[d]
@@ -908,7 +912,7 @@ type OutstandingInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  checklist_items?: { title?: string; repeat_type?: string; reminder_scope?: string | null } | null
+  checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
 }
 
 function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
@@ -1053,7 +1057,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, checklist_items(title, repeat_type, reminder_scope), checklist_instance_assignees(user_id, users(name, email))')
+      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope), checklist_instance_assignees(user_id, users(name, email))')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -1076,7 +1080,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
       id: string
       checklist_item_id: string
       scheduled_date: string
-      checklist_items?: { title?: string; repeat_type?: string; reminder_scope?: string | null } | null
+      checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
       checklist_instance_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
     }>
     let instances = raw.filter((inst) => {
@@ -1229,7 +1233,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                         {instances.map((inst) => (
                           <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{ flex: 1 }}>
-                              {inst.checklist_items?.title ?? '—'} <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+                              <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} /> <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
                             </span>
                             {isDev && (
                               <>
@@ -1379,6 +1383,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
 type ChecklistItem = {
   id: string
   title: string
+  links?: string[] | null
   created_by_user_id: string
   repeat_type: string
   repeat_days_of_week: number[] | null
@@ -1421,7 +1426,7 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
   }
 
   async function loadItems() {
-    const baseSelect = 'id, title, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at'
+    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at'
     const { data, error } = filterUserId
       ? await supabase
           .from('checklist_items')
@@ -1486,7 +1491,7 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
         <tbody>
           {items.map((item) => (
             <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-              <td style={{ padding: '0.5rem 0.75rem' }}>{item.title}</td>
+              <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={item.title} links={item.links} /></td>
               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                 {(item.checklist_item_assignees ?? []).map((a) => a.users?.name || a.users?.email || 'Unknown').filter(Boolean).join(', ') || '—'}
               </td>

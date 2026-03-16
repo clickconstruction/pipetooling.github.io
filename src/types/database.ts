@@ -644,6 +644,7 @@ export type Database = {
           created_at: string | null
           created_by_user_id: string
           id: string
+          links: string[] | null
           notify_creator_on_complete: boolean
           notify_on_complete_user_id: string | null
           reminder_scope: string | null
@@ -661,6 +662,7 @@ export type Database = {
           created_at?: string | null
           created_by_user_id: string
           id?: string
+          links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
           reminder_scope?: string | null
@@ -678,6 +680,7 @@ export type Database = {
           created_at?: string | null
           created_by_user_id?: string
           id?: string
+          links?: string[] | null
           notify_creator_on_complete?: boolean
           notify_on_complete_user_id?: string | null
           reminder_scope?: string | null
@@ -4228,6 +4231,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_completed_task_mute_preferences: {
+        Row: {
+          user_id: string
+          muted_until: string
+        }
+        Insert: {
+          user_id: string
+          muted_until: string
+        }
+        Update: {
+          user_id?: string
+          muted_until?: string
+        }
+        Relationships: []
       }
       user_dashboard_buttons: {
         Row: {
