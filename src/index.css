@@ -10,6 +10,11 @@
   background-color: #fafafa;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import PasswordInput from '../components/PasswordInput'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -63,22 +64,27 @@ export default function SignIn() {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setError(null)
+            }}
             required
             autoComplete="email"
+            autoFocus
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: 4 }}>Password</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
+            label="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              setError(null)
+            }}
             required
             autoComplete="current-password"
-            style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}

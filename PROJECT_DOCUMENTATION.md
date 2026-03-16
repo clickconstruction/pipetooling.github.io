@@ -2076,7 +2076,7 @@ user_id = auth.uid()
   - **Projects: Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
   - **My Notification History**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
-  - **Recently Completed Tasks (7 days)**: Expandable section showing checklist items completed in the last 7 days, grouped by completer. **Main section**: Only task types not in dev's ignore list; each item has Mark as read, Re-send, Ignore. **Ignored section** (collapsed by default): Task types dev has ignored; each item has Un-ignore. UNREAD count excludes ignored items.
+  - **Recently Completed Tasks (7 days)**: Expandable section showing checklist items completed in the last 7 days, grouped by completer. **Main section**: Only task types not in dev's ignore list; each item has Mark as read (envelope icon), Re-send (arrow-turn-up icon), Ignore (ban icon) buttons; when read, shows Read (envelope-open icon). **Ignored section** (collapsed by default): Task types dev has ignored; each item has Un-ignore. UNREAD count excludes ignored items.
   - **Performance**: Parallel fetches and progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
   - **Checklist FWD (dev-only)**: Each checklist item shows a light grey "fwd" link on the far right; opens modal to edit title and assign to one user; creates new task and removes original. Manage tab shows comma-separated assignees per item.
   - **Card Layout**: 

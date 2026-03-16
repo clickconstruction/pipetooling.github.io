@@ -58,7 +58,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'change-order',
     'lien-release',
   ],
-  '/checklist': ['today', 'history', 'manage', 'checklists'],
+  '/checklist': ['today', 'history', 'review', 'manage'],
   '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses'],
 }
 

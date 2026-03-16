@@ -957,21 +957,6 @@ export type Database = {
           },
         ]
       }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
-      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -1186,6 +1171,32 @@ export type Database = {
           },
         ]
       }
+      dev_ignored_checklist_items: {
+        Row: {
+          checklist_item_id: string
+          dev_user_id: string
+          ignored_at: string
+        }
+        Insert: {
+          checklist_item_id: string
+          dev_user_id: string
+          ignored_at?: string
+        }
+        Update: {
+          checklist_item_id?: string
+          dev_user_id?: string
+          ignored_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_ignored_checklist_items_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_read_completed_items: {
         Row: {
           checklist_instance_id: string
@@ -1211,24 +1222,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      dev_ignored_checklist_items: {
-        Row: {
-          dev_user_id: string
-          checklist_item_id: string
-          ignored_at: string
-        }
-        Insert: {
-          dev_user_id: string
-          checklist_item_id: string
-          ignored_at?: string
-        }
-        Update: {
-          dev_user_id?: string
-          checklist_item_id?: string
-          ignored_at?: string
-        }
-        Relationships: []
       }
       email_templates: {
         Row: {
@@ -3823,6 +3816,32 @@ export type Database = {
           },
         ]
       }
+      report_reads: {
+        Row: {
+          read_at: string
+          report_id: string
+          user_id: string
+        }
+        Insert: {
+          read_at?: string
+          report_id: string
+          user_id: string
+        }
+        Update: {
+          read_at?: string
+          report_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_reads_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_template_fields: {
         Row: {
           created_at: string | null
@@ -4252,21 +4271,29 @@ export type Database = {
       }
       user_checklist_item_mute_preferences: {
         Row: {
-          user_id: string
           checklist_item_id: string
           muted_until: string
+          user_id: string
         }
         Insert: {
-          user_id: string
           checklist_item_id: string
           muted_until: string
+          user_id: string
         }
         Update: {
-          user_id?: string
           checklist_item_id?: string
           muted_until?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_checklist_item_mute_preferences_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_dashboard_buttons: {
         Row: {
@@ -5034,8 +5061,8 @@ export type Database = {
         | {
             Args: {
               p_field_values: Json
-              p_job_ledger_id: string | null
-              p_project_id: string | null
+              p_job_ledger_id: string
+              p_project_id: string
               p_template_id: string
             }
             Returns: string
@@ -5043,8 +5070,8 @@ export type Database = {
         | {
             Args: {
               p_field_values: Json
-              p_job_ledger_id: string | null
-              p_project_id: string | null
+              p_job_ledger_id: string
+              p_project_id: string
               p_reported_at_lat?: number
               p_reported_at_lng?: number
               p_template_id: string

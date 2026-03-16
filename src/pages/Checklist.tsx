@@ -8,7 +8,7 @@ import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
-type ChecklistTab = 'today' | 'history' | 'manage' | 'checklists'
+type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
 
 type ChecklistInstance = {
   id: string
@@ -65,7 +65,7 @@ export default function Checklist() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (tab === 'today' || tab === 'history' || tab === 'manage' || tab === 'checklists') {
+    if (tab === 'today' || tab === 'history' || tab === 'review' || tab === 'manage') {
       setActiveTab(tab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -117,6 +117,20 @@ export default function Checklist() {
             <button
               type="button"
               onClick={() => {
+                setActiveTab('review')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'review')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'review')}
+            >
+              Review
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setActiveTab('manage')
                 setSearchParams((p) => {
                   const next = new URLSearchParams(p)
@@ -125,20 +139,6 @@ export default function Checklist() {
                 })
               }}
               style={tabStyle(activeTab === 'manage')}
-            >
-              Review
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('checklists')
-                setSearchParams((p) => {
-                  const next = new URLSearchParams(p)
-                  next.set('tab', 'checklists')
-                  return next
-                })
-              }}
-              style={tabStyle(activeTab === 'checklists')}
             >
               Manage
             </button>
@@ -153,10 +153,10 @@ export default function Checklist() {
       {activeTab === 'history' && (
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
-      {activeTab === 'manage' && canManageChecklists && (
+      {activeTab === 'review' && canManageChecklists && (
         <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} setEditItemId={setEditItemId} />
       )}
-      {activeTab === 'checklists' && canManageChecklists && (
+      {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
       )}
       {editItemId && (
@@ -996,7 +996,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
-  const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('next_day')
+  const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')

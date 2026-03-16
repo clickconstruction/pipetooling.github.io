@@ -150,13 +150,59 @@ export default function Layout() {
     }
   }
 
-  function renderNavLinks(onNavClick?: () => void) {
+  const dashboardIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M298.2 72.6C310.5 61.2 329.5 61.2 341.7 72.6L432 156.3L432 144C432 126.3 446.3 112 464 112L496 112C513.7 112 528 126.3 528 144L528 245.5L565.8 280.6C575.4 289.6 578.6 303.5 573.8 315.7C569 327.9 557.2 336 544 336L528 336L528 512C528 547.3 499.3 576 464 576L176 576C140.7 576 112 547.3 112 512L112 336L96 336C82.8 336 71 327.9 66.2 315.7C61.4 303.5 64.6 289.5 74.2 280.6L298.2 72.6zM304 384C277.5 384 256 405.5 256 432L256 528L384 528L384 432C384 405.5 362.5 384 336 384L304 384z" />
+    </svg>
+  )
+  const quickfillIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M305 151.1L320 171.8L335 151.1C360 116.5 400.2 96 442.9 96C516.4 96 576 155.6 576 229.1L576 231.7C576 343.9 436.1 474.2 363.1 529.9C350.7 539.3 335.5 544 320 544C304.5 544 289.2 539.4 276.9 529.9C203.9 474.2 64 343.9 64 231.7L64 229.1C64 155.6 123.6 96 197.1 96C239.8 96 280 116.5 305 151.1z" />
+    </svg>
+  )
+  const reviewIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M262.8 65.8C271.8 62.1 282.1 64.1 289 71L345 127C354.4 136.4 354.4 151.6 345 160.9L289 216.9C282.1 223.8 271.8 225.8 262.8 222.1C253.8 218.4 248 209.7 248 200L248 176L224 176C206.3 176 192 190.3 192 208L192 422.7C220.3 435 240 463.2 240 496C240 540.2 204.2 576 160 576C115.8 576 80 540.2 80 496C80 463.2 99.7 435 128 422.7L128 208C128 155 171 112 224 112L248 112L248 88C248 78.3 253.8 69.5 262.8 65.8zM456 144C456 157.3 466.7 168 480 168C493.3 168 504 157.3 504 144C504 130.7 493.3 120 480 120C466.7 120 456 130.7 456 144zM448 217.3C419.7 205 400 176.8 400 144C400 99.8 435.8 64 480 64C524.2 64 560 99.8 560 144C560 176.8 540.3 205 512 217.3L512 432C512 485 469 528 416 528L392 528L392 552C392 561.7 386.2 570.5 377.2 574.2C368.2 577.9 357.9 575.9 351 569L295 513C285.6 503.6 285.6 488.4 295 479.1L351 423.1C357.9 416.2 368.2 414.2 377.2 417.9C386.2 421.6 392 430.3 392 440L392 464L416 464C433.7 464 448 449.7 448 432L448 217.3zM136 496C136 509.3 146.7 520 160 520C173.3 520 184 509.3 184 496C184 482.7 173.3 472 160 472C146.7 472 136 482.7 136 496z" />
+    </svg>
+  )
+
+  function renderMobileHeaderLinks() {
+    const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
+      display: 'inline-flex' as const,
+      alignItems: 'center',
+      padding: '0.5rem',
+      color: 'inherit',
+      textDecoration: 'none',
+      ...(isActive && { borderBottom: '1px solid currentColor' }),
+    })
+    return (
+      <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <NavLink to="/dashboard" style={iconLinkStyle} end title="Dashboard" aria-label="Dashboard">
+          {dashboardIcon}
+        </NavLink>
+        {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+          <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
+            {quickfillIcon}
+          </NavLink>
+        )}
+        {role === 'dev' && (
+          <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
+            {reviewIcon}
+          </NavLink>
+        )}
+      </span>
+    )
+  }
+
+  function renderNavLinks(onNavClick?: () => void, excludeHeaderLinks?: boolean) {
     const linkStyle = onNavClick ? dropdownLinkStyle : navStyle
-    // Treat null (loading) as primary to prevent flash of extra nav items before role loads
+    const dashboardContent = onNavClick ? dashboardIcon : 'Dashboard'
     if (role === 'estimator') {
       return (
         <>
-          <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
+          {!excludeHeaderLinks && (
+            <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+          )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
@@ -166,7 +212,9 @@ export default function Layout() {
     if (role === 'primary' || role === null) {
       return (
         <>
-          <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
+          {!excludeHeaderLinks && (
+            <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+          )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
@@ -175,21 +223,19 @@ export default function Layout() {
     }
     return (
       <>
-        {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        {!excludeHeaderLinks && (role === 'dev' || role === 'master_technician' || role === 'assistant') && (
           <NavLink to="/quickfill" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Quickfill" aria-label="Quickfill">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
-              <path d="M305 151.1L320 171.8L335 151.1C360 116.5 400.2 96 442.9 96C516.4 96 576 155.6 576 229.1L576 231.7C576 343.9 436.1 474.2 363.1 529.9C350.7 539.3 335.5 544 320 544C304.5 544 289.2 539.4 276.9 529.9C203.9 474.2 64 343.9 64 231.7L64 229.1C64 155.6 123.6 96 197.1 96C239.8 96 280 116.5 305 151.1z" />
-            </svg>
+            {quickfillIcon}
           </NavLink>
         )}
-        {role === 'dev' && (
+        {!excludeHeaderLinks && role === 'dev' && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
-              <path d="M262.8 65.8C271.8 62.1 282.1 64.1 289 71L345 127C354.4 136.4 354.4 151.6 345 160.9L289 216.9C282.1 223.8 271.8 225.8 262.8 222.1C253.8 218.4 248 209.7 248 200L248 176L224 176C206.3 176 192 190.3 192 208L192 422.7C220.3 435 240 463.2 240 496C240 540.2 204.2 576 160 576C115.8 576 80 540.2 80 496C80 463.2 99.7 435 128 422.7L128 208C128 155 171 112 224 112L248 112L248 88C248 78.3 253.8 69.5 262.8 65.8zM456 144C456 157.3 466.7 168 480 168C493.3 168 504 157.3 504 144C504 130.7 493.3 120 480 120C466.7 120 456 130.7 456 144zM448 217.3C419.7 205 400 176.8 400 144C400 99.8 435.8 64 480 64C524.2 64 560 99.8 560 144C560 176.8 540.3 205 512 217.3L512 432C512 485 469 528 416 528L392 528L392 552C392 561.7 386.2 570.5 377.2 574.2C368.2 577.9 357.9 575.9 351 569L295 513C285.6 503.6 285.6 488.4 295 479.1L351 423.1C357.9 416.2 368.2 414.2 377.2 417.9C386.2 421.6 392 430.3 392 440L392 464L416 464C433.7 464 448 449.7 448 432L448 217.3zM136 496C136 509.3 146.7 520 160 520C173.3 520 184 509.3 184 496C184 482.7 173.3 472 160 472C146.7 472 136 482.7 136 496z" />
-            </svg>
+            {reviewIcon}
           </NavLink>
         )}
-        <NavLink to="/dashboard" style={linkStyle} end onClick={onNavClick}>Dashboard</NavLink>
+        {!excludeHeaderLinks && (
+          <NavLink to="/dashboard" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} end onClick={onNavClick} title="Dashboard" aria-label="Dashboard">{dashboardContent}</NavLink>
+        )}
         {role !== 'subcontractor' && (
           <>
             <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
@@ -214,51 +260,61 @@ export default function Layout() {
       <nav
         className="appNav"
         style={{
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid #e5e7eb',
+          background: impersonating && isMobile ? '#fef3c7' : undefined,
           display: 'flex',
           gap: '1rem',
           alignItems: 'center',
         }}
       >
         {isMobile ? (
-          <div ref={menuRef} style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              title="Menu"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '0.5rem',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'inherit',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24" fill="currentColor" aria-hidden="true">
-                <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7 529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3 448 128 448L512 448C529.7 448 544 462.3 544 480z" />
-              </svg>
-            </button>
-            {menuOpen && (
-              <div
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {role !== 'subcontractor' && (
+            <div ref={menuRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                title="Menu"
+                aria-expanded={menuOpen}
+                aria-controls="mobile-nav"
+                aria-label="Open menu"
                 style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: '100%',
-                  marginTop: 4,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-                  minWidth: 160,
-                  zIndex: 50,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.5rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'inherit',
                 }}
               >
-                {renderNavLinks(() => setMenuOpen(false))}
-              </div>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="24" height="24" fill="currentColor" aria-hidden="true">
+                  <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7 529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3 448 128 448L512 448C529.7 448 544 462.3 544 480z" />
+                </svg>
+              </button>
+              {menuOpen && (
+                <div
+                  id="mobile-nav"
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '100%',
+                    marginTop: 4,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+                    minWidth: 160,
+                    zIndex: 50,
+                  }}
+                >
+                  {renderNavLinks(() => setMenuOpen(false), true)}
+                </div>
+              )}
+            </div>
             )}
+            {renderMobileHeaderLinks()}
           </div>
         ) : (
           renderNavLinks()
@@ -268,6 +324,8 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => checklistAddModal?.openAddModal()}
+              title="Task"
+              aria-label="Task"
               style={{
                 padding: '0.5rem 1rem',
                 background: '#3b82f6',
@@ -276,9 +334,14 @@ export default function Layout() {
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 500,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              Task
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
+              </svg>
             </button>
           )}
           {role === 'estimator' && (
@@ -423,6 +486,31 @@ export default function Layout() {
                 </NavLink>
                 <button
                   type="button"
+                  onClick={async () => {
+                    setGearOpen(false)
+                    await supabase.auth.signOut()
+                    if (typeof localStorage !== 'undefined') {
+                      Object.keys(localStorage).filter((k) => k.startsWith('sb-')).forEach((k) => localStorage.removeItem(k))
+                    }
+                    window.location.href = '/sign-in'
+                  }}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'inherit',
+                    color: '#dc2626',
+                    borderBottom: '1px solid #e5e7eb',
+                  }}
+                >
+                  Sign out
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setGearOpen(false)
                     const base = window.location.origin + window.location.pathname
@@ -470,7 +558,7 @@ export default function Layout() {
             )}
           </div>
           </span>
-          {impersonating && (
+          {impersonating && !isMobile && (
             <button
               type="button"
               onClick={handleBackToMyAccount}

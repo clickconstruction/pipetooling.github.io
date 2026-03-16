@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
-import ReportViewModal from '../components/ReportViewModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
@@ -239,14 +238,14 @@ export default function Dashboard() {
   const [ignoringItemId, setIgnoringItemId] = useState<string | null>(null)
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
+  const [markingUnreadId, setMarkingUnreadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
   const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
-  const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
-  const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null } | null>(null)
   const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
+  const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem(HIDE_ON_REFRESH_STORAGE_KEY)
@@ -263,6 +262,7 @@ export default function Dashboard() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
+  const [recentReportsView, setRecentReportsView] = useState<'unread' | 'all'>('unread')
   const [readyToBillExpanded, setReadyToBillExpanded] = useState(false)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
@@ -428,8 +428,11 @@ export default function Dashboard() {
     setRecentReportsLoading(true)
     const load = async () => {
       try {
-        const { data } = await supabase.rpc('list_reports_with_job_info')
-        const arr = Array.isArray(data) ? data : []
+        const [{ data: reportsData }, { data: readsData }] = await Promise.all([
+          supabase.rpc('list_reports_with_job_info'),
+          supabase.from('report_reads').select('report_id').eq('user_id', authUser.id),
+        ])
+        const arr = Array.isArray(reportsData) ? reportsData : []
         const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
           id: r.id,
           template_name: r.template_name,
@@ -441,6 +444,16 @@ export default function Dashboard() {
           reported_at_lng: r.reported_at_lng ?? null,
         }))
         setRecentReports(list)
+        const readIds = new Set<string>()
+        if (Array.isArray(readsData)) {
+          for (const row of readsData) {
+            if (row?.report_id) readIds.add(row.report_id)
+          }
+        }
+        setReadReportIds(readIds)
+        if (list.some((r) => !readIds.has(r.id))) {
+          setRecentReportsExpanded(true)
+        }
       } finally {
         setRecentReportsLoading(false)
       }
@@ -487,6 +500,14 @@ export default function Dashboard() {
       supabase.removeChannel(channel)
     }
   }, [role, isReportEnabledOnlyUser])
+
+  useEffect(() => {
+    const visible = recentReports.filter((r) => !hiddenReportIds.has(r.id))
+    const unreadCount = visible.filter((r) => !readReportIds.has(r.id)).length
+    if (recentReportsView === 'unread' && unreadCount === 0) {
+      setRecentReportsView('all')
+    }
+  }, [recentReports, readReportIds, hiddenReportIds, recentReportsView])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -971,6 +992,18 @@ export default function Dashboard() {
     })
     setMarkingReadId(null)
     setReadInstanceIds((prev) => new Set(prev).add(inst.id))
+  }
+
+  async function markCompletedItemAsUnread(inst: ChecklistInstance) {
+    if (!authUser?.id || markingUnreadId) return
+    setMarkingUnreadId(inst.id)
+    await supabase.from('dev_read_completed_items').delete().eq('dev_user_id', authUser.id).eq('checklist_instance_id', inst.id)
+    setMarkingUnreadId(null)
+    setReadInstanceIds((prev) => {
+      const next = new Set(prev)
+      next.delete(inst.id)
+      return next
+    })
   }
 
   async function ignoreTaskType(checklistItemId: string) {
@@ -1491,7 +1524,7 @@ export default function Dashboard() {
             { key: 'project', label: 'Project', to: '/projects/new' },
             { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
             { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
-            { key: 'prospect', label: 'New Prospect', to: '/prospects?newProspect=true' },
+            { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
             { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
           ]
             .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
@@ -1902,8 +1935,30 @@ export default function Dashboard() {
                                         background: isRead ? '#fff' : '#f0f9ff',
                                       }}
                                     >
-                                      <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                      {!isMobile && (
+                                        <button
+                                          type="button"
+                                          title="Ignore"
+                                          onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                          disabled={!!ignoringItemId}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
+                                        </button>
+                                      )}
+                                      <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', flex: isMobile ? undefined : 1, minWidth: 0 }}>
+                                        {isMobile && (
+                                          <button
+                                            type="button"
+                                            title="Ignore"
+                                            onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                            disabled={!!ignoringItemId}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
+                                          </button>
+                                        )}
                                         {isMobile ? (
                                           <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
                                             <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
@@ -1915,39 +1970,50 @@ export default function Dashboard() {
                                           </span>
                                         )}
                                         <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
-                                        {!isRead && (
+                                        {!isMobile && (
                                           <button
                                             type="button"
-                                            title="Mark as read"
-                                            onClick={() => markCompletedItemAsRead(inst)}
-                                            disabled={!!markingReadId}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            title="Re-send"
+                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#3b82f6', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
                                           </button>
                                         )}
-                                        {isRead && (
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', color: '#059669' }} title="Read">
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
-                                          </span>
+                                        {isMobile && (
+                                          <button
+                                            type="button"
+                                            title="Re-send"
+                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#3b82f6', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
+                                          </button>
                                         )}
-                                        <button
-                                          type="button"
-                                          title="Re-send"
-                                          onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          title="Ignore"
-                                          onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
-                                          disabled={!!ignoringItemId}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
-                                        </button>
+                                        <span style={{ marginLeft: 'auto' }}>
+                                          {!isRead && (
+                                            <button
+                                              type="button"
+                                              title="Mark as read"
+                                              onClick={() => markCompletedItemAsRead(inst)}
+                                              disabled={!!markingReadId}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
+                                            </button>
+                                          )}
+                                          {isRead && (
+                                            <button
+                                              type="button"
+                                              title="Mark as unread"
+                                              onClick={() => markCompletedItemAsUnread(inst)}
+                                              disabled={!!markingUnreadId}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: markingUnreadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
+                                            </button>
+                                          )}
+                                        </span>
                                       </div>
                                     </li>
                                   )
@@ -1971,7 +2037,7 @@ export default function Dashboard() {
                             gap: '0.5rem',
                             cursor: 'pointer',
                             fontSize: '0.9375rem',
-                            color: '#6b7280',
+                            color: '#9ca3af',
                             marginBottom: ignoredSectionOpen ? '0.5rem' : 0,
                           }}
                         >
@@ -2051,7 +2117,17 @@ export default function Dashboard() {
                                                   background: '#fff',
                                                 }}
                                               >
-                                                <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                                {!isMobile && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                    disabled={!!ignoringItemId}
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                                  >
+                                                    Un-ignore
+                                                  </button>
+                                                )}
+                                                <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                                                   {isMobile ? (
                                                     <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
@@ -2064,14 +2140,16 @@ export default function Dashboard() {
                                                     </span>
                                                   )}
                                                   <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
-                                                    disabled={!!ignoringItemId}
-                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
-                                                  >
-                                                    Un-ignore
-                                                  </button>
+                                                  {isMobile && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                      disabled={!!ignoringItemId}
+                                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
+                                                    >
+                                                      Un-ignore
+                                                    </button>
+                                                  )}
                                                 </div>
                                               </li>
                                             )
@@ -2105,7 +2183,7 @@ export default function Dashboard() {
           >
             <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span aria-hidden>{recentReportsExpanded ? '\u25BC' : '\u25B6'}</span>
-              Recent Reports
+              Recent Reports ({recentReports.filter((r) => !hiddenReportIds.has(r.id) && !readReportIds.has(r.id)).length})
             </h2>
             {recentReportsExpanded && (
               <label
@@ -2141,43 +2219,106 @@ export default function Dashboard() {
           </button>
           {recentReportsExpanded && (
             <>
-              {!isReportEnabledOnlyUser && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
-                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.25rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setRecentReportsView('unread')}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.8125rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      background: recentReportsView === 'unread' ? '#f3f4f6' : 'transparent',
+                      cursor: 'pointer',
+                      fontWeight: recentReportsView === 'unread' ? 600 : 400,
+                      color: 'inherit',
+                    }}
+                  >
+                    Unread reports
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRecentReportsView('all')}
+                    style={{
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.8125rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      background: recentReportsView === 'all' ? '#f3f4f6' : 'transparent',
+                      cursor: 'pointer',
+                      fontWeight: recentReportsView === 'all' ? 600 : 400,
+                      color: 'inherit',
+                    }}
+                  >
+                    All recent reports
+                  </button>
                 </div>
-              )}
+                {!isReportEnabledOnlyUser && (
+                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+                )}
+              </div>
               {recentReportsLoading ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
               ) : recentReports.length > 0 ? (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
+                  {recentReports
+                    .filter((r) => !hiddenReportIds.has(r.id) && (recentReportsView === 'all' || !readReportIds.has(r.id) || expandedReportId === r.id))
+                    .map((r) => {
                 const isRead = readReportIds.has(r.id)
+                    const isExpanded = expandedReportId === r.id
                     return (
-                      <li
-                    key={r.id}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          marginBottom: '0.5rem',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: 8,
-                          background: isRead ? '#f9fafb' : '#fff',
-                          opacity: isRead ? 0.85 : 1,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                        }}
-                        onClick={() => {
-                          setSelectedReport(r)
-                          setViewReportModalOpen(true)
-                        }}
-                      >
+                      <li key={r.id} style={{ marginBottom: '0.5rem' }}>
+                        <div
+                          style={{
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 8,
+                            background: isExpanded ? '#fff' : (isRead ? '#f9fafb' : '#fff'),
+                            opacity: isRead && !isExpanded ? 0.85 : 1,
+                            overflow: 'hidden',
+                          }}
+                        >
+                        <div
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
+                          }}
+                          onClick={() => {
+                            const nextExpanded = isExpanded ? null : r.id
+                            setExpandedReportId(nextExpanded)
+                            if (nextExpanded) {
+                              setReadReportIds((prev) => new Set(prev).add(r.id))
+                              if (authUser?.id) {
+                                supabase.from('report_reads').upsert({ user_id: authUser.id, report_id: r.id }, { onConflict: 'user_id,report_id' }).then(() => {})
+                              }
+                            }
+                          }}
+                        >
                         {!isRead && (
                           <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
                               <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
                             </svg>
                           </span>
+                        )}
+                        {isRead && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setHiddenReportIds((prev) => new Set(prev).add(r.id))
+                            }}
+                            title="Hide from dashboard"
+                            aria-label="Hide from dashboard"
+                            style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
+                              <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                            </svg>
+                          </button>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
@@ -2187,41 +2328,77 @@ export default function Dashboard() {
                           </div>
                         </div>
                         {isRead && (
-                          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setHiddenReportIds((prev) => new Set(prev).add(r.id))
-                              }}
-                              title="Hide from dashboard"
-                              aria-label="Hide from dashboard"
-                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
-                                <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setReadReportIds((prev) => {
-                                  const next = new Set(prev)
-                                  next.delete(r.id)
-                                  return next
-                                })
-                              }}
-                              title="Mark as unread"
-                              aria-label="Mark as unread"
-                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 14, height: 14 }}>
-                                <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
-                              </svg>
-                            </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setReadReportIds((prev) => {
+                                const next = new Set(prev)
+                                next.delete(r.id)
+                                return next
+                              })
+                              if (authUser?.id) {
+                                supabase.from('report_reads').delete().eq('user_id', authUser.id).eq('report_id', r.id).then(() => {})
+                              }
+                            }}
+                            title="Mark as unread"
+                            aria-label="Mark as unread"
+                            style={{ flexShrink: 0, width: 44, height: 44, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginLeft: 'auto' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 26, height: 26 }}>
+                              <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
+                            </svg>
+                          </button>
+                        )}
+                        </div>
+                        {isExpanded && (
+                          <div
+                            style={{
+                              padding: '0.75rem 0.75rem 1rem',
+                              borderTop: '1px solid #e5e7eb',
+                              fontSize: '0.875rem',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <div style={{ fontWeight: 600, fontSize: '1rem' }}>{r.template_name}</div>
+                              <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{r.job_display_name || 'Unknown job'}</div>
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                              {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                              {r.reported_at_lat != null && r.reported_at_lng != null && (
+                                <a
+                                  href={`https://www.google.com/maps?q=${r.reported_at_lat},${r.reported_at_lng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`${Number(r.reported_at_lat).toFixed(4)}, ${Number(r.reported_at_lng).toFixed(4)}`}
+                                  style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16}>
+                                    <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" fill="currentColor" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                            {r.field_values && Object.keys(r.field_values).length > 0 ? (
+                              <div>
+                                {Object.entries(r.field_values).map(([label, val]) =>
+                                  val ? (
+                                    <div key={label} style={{ marginBottom: '0.75rem' }}>
+                                      <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                                        {label}
+                                      </span>
+                                      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{String(val)}</div>
+                                    </div>
+                                  ) : null
+                                )}
+                              </div>
+                            ) : (
+                              <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No content</p>
+                            )}
                           </div>
                         )}
+                        </div>
                       </li>
                     )
                   })}
@@ -3048,15 +3225,6 @@ export default function Dashboard() {
         onSaved={() => setNewReportModalOpen(false)}
         authUserId={authUser?.id ?? null}
         userRole={role}
-      />
-      <ReportViewModal
-        open={viewReportModalOpen}
-        report={selectedReport}
-        onClose={() => {
-          if (selectedReport) setReadReportIds((prev) => new Set(prev).add(selectedReport.id))
-          setViewReportModalOpen(false)
-          setSelectedReport(null)
-        }}
       />
       <ReportEditModal
         open={editReportModalOpen}

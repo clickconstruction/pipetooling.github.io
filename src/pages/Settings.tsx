@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
@@ -15,6 +15,7 @@ import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
+import PasswordInput from '../components/PasswordInput'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
@@ -180,7 +181,6 @@ function timeSinceAgo(iso: string | null): string {
 }
 
 export default function Settings() {
-  const navigate = useNavigate()
   const { user: authUser } = useAuth()
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
@@ -410,7 +410,12 @@ export default function Settings() {
 
   async function handleSignOut() {
     await supabase.auth.signOut()
-    navigate('/sign-in', { replace: true })
+    // Manually clear Supabase auth keys so full page load sees no session
+    if (typeof localStorage !== 'undefined') {
+      const keys = Object.keys(localStorage).filter((k) => k.startsWith('sb-'))
+      keys.forEach((k) => localStorage.removeItem(k))
+    }
+    window.location.href = '/sign-in'
   }
 
   async function handleTestNotification() {
@@ -549,6 +554,9 @@ export default function Settings() {
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [myReportsReportEditWindowDays, setMyReportsReportEditWindowDays] = useState<number>(2)
   const loadMyReportsRef = useRef<(() => void) | null>(null)
+  const [impersonating, setImpersonating] = useState(
+    () => typeof window !== 'undefined' && !!localStorage.getItem('impersonation_original')
+  )
 
   function downloadJson(filename: string, data: unknown) {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -558,6 +566,23 @@ export default function Settings() {
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function handleBackToMyAccount() {
+    const raw = localStorage.getItem('impersonation_original')
+    localStorage.removeItem('impersonation_original')
+    setImpersonating(false)
+    if (!raw) return
+    try {
+      const { access_token, refresh_token } = JSON.parse(raw) as { access_token?: string; refresh_token?: string }
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({ access_token, refresh_token })
+      }
+    } catch {
+      window.location.href = '/sign-in'
+      return
+    }
+    window.location.href = '/dashboard'
   }
 
   async function exportProjectsBackup() {
@@ -4109,6 +4134,39 @@ export default function Settings() {
 
   return (
     <div>
+      {impersonating && (
+        <div
+          style={{
+            marginBottom: '1rem',
+            padding: '0.75rem 1rem',
+            background: '#fef3c7',
+            border: '1px solid #f59e0b',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
+        >
+          <span style={{ color: '#92400e', fontWeight: 500 }}>Signed in as another user</span>
+          <button
+            type="button"
+            onClick={handleBackToMyAccount}
+            style={{
+              padding: '0.35rem 0.75rem',
+              background: '#fef3c7',
+              color: '#92400e',
+              border: '1px solid #f59e0b',
+              borderRadius: 4,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Back to my account
+          </button>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ margin: 0 }}>Settings</h1>
@@ -4456,7 +4514,7 @@ export default function Settings() {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
             {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections'] as const).map((key) => {
-              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'New Prospect' : key === 'inspections' ? 'Inspections' : key.charAt(0).toUpperCase() + key.slice(1)
+              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'Prospect' : key === 'inspections' ? 'Inspections' : key.charAt(0).toUpperCase() + key.slice(1)
               return (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                   <input
@@ -4975,10 +5033,9 @@ export default function Settings() {
       {passwordChangeOpen && (
         <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="current-password" style={{ display: 'block', marginBottom: 4 }}>Current password *</label>
-              <input
+              <PasswordInput
                 id="current-password"
-                type="password"
+                label="Current password *"
                 value={currentPassword}
                 onChange={(e) => {
                   setCurrentPassword(e.target.value)
@@ -4986,14 +5043,13 @@ export default function Settings() {
                 }}
                 required
                 autoComplete="current-password"
-                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+                style={{ width: '100%', maxWidth: 400 }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="new-password" style={{ display: 'block', marginBottom: 4 }}>New password *</label>
-              <input
+              <PasswordInput
                 id="new-password"
-                type="password"
+                label="New password *"
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value)
@@ -5002,14 +5058,13 @@ export default function Settings() {
                 required
                 autoComplete="new-password"
                 minLength={6}
-                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+                style={{ width: '100%', maxWidth: 400 }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label htmlFor="confirm-password" style={{ display: 'block', marginBottom: 4 }}>Confirm new password *</label>
-              <input
+              <PasswordInput
                 id="confirm-password"
-                type="password"
+                label="Confirm new password *"
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value)
@@ -5018,7 +5073,7 @@ export default function Settings() {
                 required
                 autoComplete="new-password"
                 minLength={6}
-                style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
+                style={{ width: '100%', maxWidth: 400 }}
               />
             </div>
             {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
@@ -6120,15 +6175,13 @@ export default function Settings() {
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="manual-password" style={{ display: 'block', marginBottom: 4 }}>Initial password *</label>
-                <input
+                <PasswordInput
                   id="manual-password"
-                  type="password"
+                  label="Initial password *"
                   value={manualAddPassword}
                   onChange={(e) => { setManualAddPassword(e.target.value); setManualAddError(null) }}
                   required
                   disabled={manualAddSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
                   autoComplete="new-password"
                 />
               </div>
@@ -6371,31 +6424,27 @@ export default function Settings() {
             <h2 style={{ marginTop: 0 }}>Set password for {setPasswordUser.email}</h2>
             <form onSubmit={handleSetPassword}>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="set-password-new" style={{ display: 'block', marginBottom: 4 }}>New password *</label>
-                <input
+                <PasswordInput
                   id="set-password-new"
-                  type="password"
+                  label="New password *"
                   value={setPasswordValue}
                   onChange={(e) => { setSetPasswordValue(e.target.value); setSetPasswordError(null) }}
                   required
                   minLength={6}
                   disabled={setPasswordSubmitting}
                   autoComplete="new-password"
-                  style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="set-password-confirm" style={{ display: 'block', marginBottom: 4 }}>Confirm password *</label>
-                <input
+                <PasswordInput
                   id="set-password-confirm"
-                  type="password"
+                  label="Confirm password *"
                   value={setPasswordConfirm}
                   onChange={(e) => { setSetPasswordConfirm(e.target.value); setSetPasswordError(null) }}
                   required
                   minLength={6}
                   disabled={setPasswordSubmitting}
                   autoComplete="new-password"
-                  style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
               {setPasswordError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{setPasswordError}</p>}

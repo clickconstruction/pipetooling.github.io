@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import PasswordInput from '../components/PasswordInput'
 
 export default function ResetPasswordConfirm() {
   const [password, setPassword] = useState('')
@@ -99,10 +100,9 @@ export default function ResetPasswordConfirm() {
       </p>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="password" style={{ display: 'block', marginBottom: 4 }}>New password</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
+            label="New password"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)
@@ -111,14 +111,12 @@ export default function ResetPasswordConfirm() {
             required
             autoComplete="new-password"
             minLength={6}
-            style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="confirm-password" style={{ display: 'block', marginBottom: 4 }}>Confirm new password</label>
-          <input
+          <PasswordInput
             id="confirm-password"
-            type="password"
+            label="Confirm new password"
             value={confirmPassword}
             onChange={(e) => {
               setConfirmPassword(e.target.value)
@@ -127,7 +125,6 @@ export default function ResetPasswordConfirm() {
             required
             autoComplete="new-password"
             minLength={6}
-            style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
         {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}

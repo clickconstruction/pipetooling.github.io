@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-18
+last_updated: 2026-04-19
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.110)"
+  - name: "Latest Version (v2.111)"
     line: ~318
+    description: "Recently Completed Tasks button icons"
+  - name: "v2.110"
+    line: ~330
     description: "Dev Ignored Tasks section in Recently Completed Tasks"
   - name: "v2.109"
     line: ~330
@@ -366,6 +369,39 @@ when_to_read:
 - **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
 - **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
 - **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
+
+---
+
+## Latest Updates (v2.112)
+
+**Date**: 2026-03-16
+
+### Dashboard – Recent Reports: Persistent Read State
+
+- **`report_reads` table**: New table stores which reports each user has marked as read. Read state persists across sessions and devices.
+- **Load on dashboard**: When loading Recent Reports, the app fetches the user's read report IDs from `report_reads` and applies them.
+- **Mark as read**: Expanding a report card inserts a row into `report_reads` for the current user.
+- **Mark as unread**: Clicking "Mark as unread" deletes the row from `report_reads`.
+
+**Files**: `src/pages/Dashboard.tsx`  
+**Migrations**: `20260316120000_create_report_reads.sql`
+
+---
+
+## Latest Updates (v2.111)
+
+**Date**: 2026-04-19
+
+### Dashboard – Recently Completed Tasks: Button Icons
+
+- **Mark as read**: Replaced text with envelope icon (Font Awesome); outline blue button with `title="Mark as read"`.
+- **Re-send**: Replaced text with arrow-turn-up icon; filled blue button with `title="Re-send"`.
+- **Read**: Replaced text with envelope-open icon when item is marked read; green (#059669) with `title="Read"`.
+- **Ignore**: Uses ban/slash icon; outline gray button with `title="Ignore"`.
+
+All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: center` for consistent icon centering.
+
+**File**: `src/pages/Dashboard.tsx`
 
 ---
 
