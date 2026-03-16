@@ -1212,6 +1212,24 @@ export type Database = {
           },
         ]
       }
+      dev_ignored_checklist_items: {
+        Row: {
+          dev_user_id: string
+          checklist_item_id: string
+          ignored_at: string
+        }
+        Insert: {
+          dev_user_id: string
+          checklist_item_id: string
+          ignored_at?: string
+        }
+        Update: {
+          dev_user_id?: string
+          checklist_item_id?: string
+          ignored_at?: string
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           body: string
@@ -4232,17 +4250,20 @@ export type Database = {
           },
         ]
       }
-      user_completed_task_mute_preferences: {
+      user_checklist_item_mute_preferences: {
         Row: {
           user_id: string
+          checklist_item_id: string
           muted_until: string
         }
         Insert: {
           user_id: string
+          checklist_item_id: string
           muted_until: string
         }
         Update: {
           user_id?: string
+          checklist_item_id?: string
           muted_until?: string
         }
         Relationships: []

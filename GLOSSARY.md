@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-02-13
+last_updated: 2026-04-18
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -272,11 +272,17 @@ Remaining budget after subtracting ledger total from projections.
 ## Checklist
 
 ### Checklist Items / Checklist Instances
-Recurring tasks with Today, History, and Manage tabs. **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`.
+Recurring tasks with Today, History, and Manage tabs. **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`. **Link placeholders**: `[1]`, `[2]`, etc. in item titles map to URLs in `checklist_items.links` array; Add/Edit modal provides URL inputs; displayed as clickable links via `ChecklistTitleWithLinks`.
 
 **Database**: `checklist_items`, `checklist_instances`, `checklist_item_assignees`, `checklist_instance_assignees`
 
 **Repeat types**: once, day_of_week (multiple days), days_after_completion
+
+### Muted task
+Per-task preference to stop receiving completed-task push notifications for a specific checklist item. Stored in `user_checklist_item_mute_preferences`. Users who are notification recipients (notify_on_complete_user_id or creator when notify_creator_on_complete) can mute via inline bell-off icon on Checklist Today, Manage, Dashboard; Settings shows Muted Tasks list.
+
+### Ignored section (dev)
+Collapsible section in Dashboard Recently Completed Tasks where devs move task types they want out of the main view. Stored in `dev_ignored_checklist_items`. Main section shows only non-ignored types; UNREAD count excludes ignored; Ignore/Un-ignore buttons move task types between sections.
 
 ---
 

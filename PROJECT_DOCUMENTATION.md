@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-03-26
+last_updated: 2026-04-18
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -104,7 +104,7 @@ A Master Plumber can:
 - **Template system**: Reusable workflow templates for common job types
 - **Notification subscriptions**: Users can subscribe to stage notifications
 - **Calendar view**: Visual calendar showing assigned work
-- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard. **Multi-assignee**: Add/Edit modal assigns to one or more users via checkboxes; junction tables `checklist_item_assignees` and `checklist_instance_assignees`. **FWD (Forward)** (dev-only): Button/link on each task to forward it—edit title, assign to one user; creates new task and removes original. Manage tab shows comma-separated assignees. **Scheduled reminders** (dev-only): Per-item reminder time (CST) and scope (today only / today+overdue); pg_cron invokes `send-scheduled-reminders` every 15 minutes to notify assignees with incomplete tasks
+- **Checklist**: Recurring checklist items (weekly by day(s), days-after-completion) with push notifications; items due today shown on Dashboard. **Links**: Titles can include placeholders `[1]`, `[2]`, etc. mapped to URLs in `checklist_items.links`; Add/Edit modal has Links section; `ChecklistTitleWithLinks` renders clickable links. **Multi-assignee**: Add/Edit modal assigns to one or more users via checkboxes; junction tables `checklist_item_assignees` and `checklist_instance_assignees`. **FWD (Forward)** (dev-only): Button/link on each task to forward it—edit title, assign to one user; creates new task and removes original. Manage tab shows comma-separated assignees. **Scheduled reminders** (dev-only): Per-item reminder time (CST) and scope (today only / today+overdue); pg_cron invokes `send-scheduled-reminders` every 15 minutes to notify assignees with incomplete tasks. **Per-task mute**: Users who receive notifications for a task (notify_on_complete_user_id or creator when notify_creator_on_complete) can mute that specific task via inline bell-off icon on Checklist Today, Manage, Dashboard; Settings shows Muted Tasks list; `send-checklist-notification` skips when recipient has active mute for that checklist_item_id.
 
 ---
 
@@ -715,6 +715,10 @@ WHERE proname IN (
 - **Realtime**: Table in `supabase_realtime` publication for Hours tab live updates.
 - **RPCs**: `approve_clock_sessions(p_session_ids UUID[])` merges hours into `people_hours` and marks sessions approved; `revoke_clock_sessions(p_session_ids UUID[])` subtracts hours from `people_hours` and moves sessions back to Pending.
 
+#### `public.checklist_items` (key fields)
+- **Purpose**: Recurring checklist task definitions. See `checklist_item_assignees` for assignees.
+- **Key Fields**: `title`, `links` (text[], URLs for placeholders [1], [2], etc. in title; links[0]=[1], links[1]=[2])
+
 #### `public.checklist_item_assignees`
 - **Purpose**: Junction table for checklist item assignees (many-to-many). Replaces legacy single `assigned_to_user_id` on checklist_items.
 - **Key Fields**:
@@ -731,6 +735,26 @@ WHERE proname IN (
 - **Primary Key**: `(checklist_instance_id, user_id)`
 - **RLS**: Dev/master/assistant/primary can manage; users can read rows where they are assigned
 - **Usage**: Dashboard, Checklist, People fetch instances via `checklist_instance_assignees!inner(user_id)`; Today/History filter by assignee
+
+#### `public.user_checklist_item_mute_preferences`
+- **Purpose**: Per-task mute: user mutes completed-task push notifications for a specific checklist item
+- **Key Fields**:
+  - `user_id` (uuid, FK → auth.users.id ON DELETE CASCADE)
+  - `checklist_item_id` (uuid, FK → checklist_items.id ON DELETE CASCADE)
+  - `muted_until` (timestamptz, required) - when mute expires; far-future for "forever"
+- **Primary Key**: `(user_id, checklist_item_id)`
+- **RLS**: Users can SELECT/INSERT/UPDATE/DELETE own rows only
+- **Usage**: ChecklistItemMuteModal, Settings Muted Tasks list, `send-checklist-notification` skips when recipient has active mute for that checklist_item_id
+
+#### `public.dev_ignored_checklist_items`
+- **Purpose**: Task types a dev has chosen to move to the Ignored section in Recently Completed Tasks
+- **Key Fields**:
+  - `dev_user_id` (uuid, FK → auth.users.id ON DELETE CASCADE)
+  - `checklist_item_id` (uuid, FK → checklist_items.id ON DELETE CASCADE)
+  - `ignored_at` (timestamptz, default now)
+- **Primary Key**: `(dev_user_id, checklist_item_id)`
+- **RLS**: Devs can SELECT/INSERT/DELETE own rows only
+- **Usage**: Dashboard Recently Completed Tasks; main section excludes ignored types; collapsible Ignored section with Un-ignore
 
 #### `public.people_labor_jobs`
 - **Purpose**: Labor jobs from Jobs page (Labor tab); displayed in Sub Sheet Ledger tab on Jobs
@@ -2052,7 +2076,7 @@ user_id = auth.uid()
   - **Projects: Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
   - **My Notification History**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
-  - **Recently Completed Tasks (7 days)**: Expandable section showing checklist items completed in the last 7 days, grouped by completer
+  - **Recently Completed Tasks (7 days)**: Expandable section showing checklist items completed in the last 7 days, grouped by completer. **Main section**: Only task types not in dev's ignore list; each item has Mark as read, Re-send, Ignore. **Ignored section** (collapsed by default): Task types dev has ignored; each item has Un-ignore. UNREAD count excludes ignored items.
   - **Performance**: Parallel fetches and progressive rendering with per-section loading flags; skeleton UI for Checklist, Assigned, Subscribed
   - **Checklist FWD (dev-only)**: Each checklist item shows a light grey "fwd" link on the far right; opens modal to edit title and assign to one user; creates new task and removes original. Manage tab shows comma-separated assignees per item.
   - **Card Layout**: 

@@ -25,6 +25,7 @@
 | Clock In/Out, pending sessions, Revoke, accountability, Quickfill Hours | `RECENT_FEATURES.md` → v2.100, v2.105; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours, Quickfill; `GLOSSARY.md` → Clock Sessions |
 | Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=user@example.com` when `import.meta.env.DEV`; set `VITE_DEV_LOGIN_SECRET` and `DEV_LOGIN_SECRET` |
 | Set password (dev) | `EDGE_FUNCTIONS.md` → set-user-password; Settings → Active Accounts → Set password for another user |
+| Dev Ignored Tasks, Recently Completed Tasks | `RECENT_FEATURES.md` → v2.110; `PROJECT_DOCUMENTATION.md` → Dashboard; `GLOSSARY.md` → Ignored section |
 
 ---
 

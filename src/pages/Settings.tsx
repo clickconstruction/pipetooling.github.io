@@ -14,7 +14,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
-import CompletedTaskNotificationPrefsModal from '../components/CompletedTaskNotificationPrefsModal'
+import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import type { Database } from '../types/database'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
@@ -488,10 +488,11 @@ export default function Settings() {
   const [reportSettingsSectionOpen, setReportSettingsSectionOpen] = useState(false)
   const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
-  const [mutedCompletedTasksOpen, setMutedCompletedTasksOpen] = useState(false)
-  const [mutedCompletedTasksPreference, setMutedCompletedTasksPreference] = useState<{ muted_until: string } | null>(null)
-  const [mutedCompletedTasksLoading, setMutedCompletedTasksLoading] = useState(false)
-  const [mutedCompletedTasksModalOpen, setMutedCompletedTasksModalOpen] = useState(false)
+  const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
+  const [mutedTasks, setMutedTasks] = useState<Array<{ checklist_item_id: string; task_title: string; muted_until: string }>>([])
+  const [mutedTasksLoading, setMutedTasksLoading] = useState(false)
+  const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
+  const [muteModalTitle, setMuteModalTitle] = useState('')
   const [notificationHistory, setNotificationHistory] = useState<NotificationHistoryRow[]>([])
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
   const [notificationHistoryError, setNotificationHistoryError] = useState<string | null>(null)
@@ -3260,30 +3261,37 @@ export default function Settings() {
       })
   }, [notificationHistoryOpen, authUser?.id])
 
-  async function loadMutedCompletedTasksPreference() {
+  async function loadMutedTasks() {
     if (!authUser?.id) return
-    const { data } = await supabase
-      .from('user_completed_task_mute_preferences')
-      .select('muted_until')
+    const { data: prefs, error } = await supabase
+      .from('user_checklist_item_mute_preferences')
+      .select('checklist_item_id, muted_until')
       .eq('user_id', authUser.id)
-      .maybeSingle()
-    setMutedCompletedTasksPreference(data ? { muted_until: data.muted_until } : null)
+      .gt('muted_until', new Date().toISOString())
+    if (error) return
+    const itemIds = (prefs ?? []).map((p) => p.checklist_item_id)
+    if (itemIds.length === 0) {
+      setMutedTasks([])
+      return
+    }
+    const { data: items } = await supabase
+      .from('checklist_items')
+      .select('id, title')
+      .in('id', itemIds)
+    const titleMap = new Map((items ?? []).map((i) => [i.id, i.title ?? 'Untitled']))
+    const list = (prefs ?? []).map((p) => ({
+      checklist_item_id: p.checklist_item_id,
+      task_title: titleMap.get(p.checklist_item_id) ?? 'Untitled',
+      muted_until: p.muted_until,
+    }))
+    setMutedTasks(list)
   }
 
   useEffect(() => {
-    if (!mutedCompletedTasksOpen || !authUser?.id) return
-    setMutedCompletedTasksLoading(true)
-    supabase
-      .from('user_completed_task_mute_preferences')
-      .select('muted_until')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        setMutedCompletedTasksLoading(false)
-        if (error) return
-        setMutedCompletedTasksPreference(data ? { muted_until: data.muted_until } : null)
-      })
-  }, [mutedCompletedTasksOpen, authUser?.id])
+    if (!mutedTasksOpen || !authUser?.id) return
+    setMutedTasksLoading(true)
+    loadMutedTasks().finally(() => setMutedTasksLoading(false))
+  }, [mutedTasksOpen, authUser?.id])
 
   const showMyReports = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'primary' || myRole === 'subcontractor'
 
@@ -4355,7 +4363,7 @@ export default function Settings() {
             style={{
               fontSize: '1.125rem',
               margin: 0,
-              marginBottom: mutedCompletedTasksOpen ? '0.75rem' : 0,
+              marginBottom: mutedTasksOpen ? '0.75rem' : 0,
               padding: 0,
               cursor: 'pointer',
               display: 'flex',
@@ -4368,53 +4376,72 @@ export default function Settings() {
               font: 'inherit',
               color: 'inherit',
             }}
-            onClick={() => setMutedCompletedTasksOpen((o) => !o)}
-            aria-expanded={mutedCompletedTasksOpen}
-            aria-controls="muted-completed-tasks-content"
+            onClick={() => setMutedTasksOpen((o) => !o)}
+            aria-expanded={mutedTasksOpen}
+            aria-controls="muted-tasks-content"
           >
-            {mutedCompletedTasksOpen ? '▼' : '▶'} Muted Completed Tasks
+            {mutedTasksOpen ? '▼' : '▶'} Muted Tasks
           </button>
-          {mutedCompletedTasksOpen && (
-            <div id="muted-completed-tasks-content" style={{ padding: '1rem 0 0 0' }}>
-              {mutedCompletedTasksLoading ? (
+          {mutedTasksOpen && (
+            <div id="muted-tasks-content" style={{ padding: '1rem 0 0 0' }}>
+              {mutedTasksLoading ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
-              ) : mutedCompletedTasksPreference ? (
-                (() => {
-                  const until = new Date(mutedCompletedTasksPreference.muted_until)
-                  const isForever = until > new Date('9999-01-01')
-                  const isExpired = until <= new Date()
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
-                        {isExpired
-                          ? 'Your mute has expired. You are receiving completed task notifications again.'
-                          : isForever
-                            ? 'Completed task notifications are muted forever.'
-                            : `Completed task notifications are muted until ${until.toLocaleDateString(undefined, { dateStyle: 'long' })}.`}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setMutedCompletedTasksModalOpen(true)}
-                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'flex-start' }}
-                      >
-                        {isExpired ? 'Mute again' : 'Change preference'}
-                      </button>
-                    </div>
-                  )
-                })()
+              ) : mutedTasks.length === 0 ? (
+                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                  You are not muting any task notifications. Use the mute icon on a task (Checklist or Dashboard) to mute it.
+                </p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
-                    You are not muting completed task notifications.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setMutedCompletedTasksModalOpen(true)}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'flex-start' }}
-                  >
-                    Notification preferences
-                  </button>
-                </div>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {mutedTasks.map((m) => {
+                    const until = new Date(m.muted_until)
+                    const isForever = until > new Date('9999-01-01')
+                    const expiryText = isForever ? 'Forever' : until.toLocaleDateString(undefined, { dateStyle: 'medium' })
+                    return (
+                      <li
+                        key={m.checklist_item_id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          padding: '0.5rem 0.75rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 6,
+                          background: '#f9fafb',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{m.task_title}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Muted until: {expiryText}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => { setMuteModalItemId(m.checklist_item_id); setMuteModalTitle(m.task_title) }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Change
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!authUser?.id) return
+                              await supabase
+                                .from('user_checklist_item_mute_preferences')
+                                .delete()
+                                .eq('user_id', authUser.id)
+                                .eq('checklist_item_id', m.checklist_item_id)
+                              loadMutedTasks()
+                            }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            Unmute
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
             </div>
           )}
@@ -8483,11 +8510,13 @@ export default function Settings() {
           />
         </>
       )}
-      <CompletedTaskNotificationPrefsModal
-        open={mutedCompletedTasksModalOpen}
+      <ChecklistItemMuteModal
+        open={!!muteModalItemId}
+        checklistItemId={muteModalItemId}
+        taskTitle={muteModalTitle}
         authUserId={authUser?.id ?? null}
-        onClose={() => setMutedCompletedTasksModalOpen(false)}
-        onSaved={() => loadMutedCompletedTasksPreference()}
+        onClose={() => setMuteModalItemId(null)}
+        onSaved={() => loadMutedTasks()}
       />
     </div>
   )

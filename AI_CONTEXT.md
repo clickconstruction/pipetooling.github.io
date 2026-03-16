@@ -125,6 +125,7 @@ pipetooling.github.io/
 - **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
+- **`src/components/ChecklistTitleWithLinks.tsx`** - Renders checklist titles with [1], [2], etc. as clickable links
 - **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
 - **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
@@ -212,7 +213,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Database improvements | `DATABASE_IMPROVEMENTS_SUMMARY.md` → v2.22 enhancements |
 | Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
-| Checklist (multi-assignee, Today/History/Manage) | `RECENT_FEATURES.md` → v2.107; `PROJECT_DOCUMENTATION.md` → Key Features; `GLOSSARY.md` → Checklist Items |
+| Checklist (multi-assignee, links, Today/History/Manage) | `RECENT_FEATURES.md` → v2.107, v2.109; `PROJECT_DOCUMENTATION.md` → Key Features; `GLOSSARY.md` → Checklist Items |
 | Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=user@example.com` when running dev server; set `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for Edge Function |
 
 ---

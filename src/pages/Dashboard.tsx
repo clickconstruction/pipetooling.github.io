@@ -9,7 +9,7 @@ import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
-import CompletedTaskNotificationPrefsModal from '../components/CompletedTaskNotificationPrefsModal'
+import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
   getPinned,
   getPinnedForUserFromSupabase,
@@ -135,7 +135,13 @@ type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
-  checklist_items?: { title: string; links?: string[] | null } | null
+  checklist_items?: {
+    title: string
+    links?: string[] | null
+    notify_on_complete_user_id?: string | null
+    notify_creator_on_complete?: boolean
+    created_by_user_id?: string | null
+  } | null
   checklist_instance_assignees?: Array<{ user_id: string }>
 }
 
@@ -219,15 +225,19 @@ export default function Dashboard() {
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
+  const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
+  const [muteModalTitle, setMuteModalTitle] = useState('')
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const [completedItemsOpen, setCompletedItemsOpen] = useState(false)
   const [completedItems, setCompletedItems] = useState<ChecklistInstance[]>([])
   const [completedItemsLoading, setCompletedItemsLoading] = useState(false)
   const [readInstanceIds, setReadInstanceIds] = useState<Set<string>>(new Set())
+  const [ignoredItemIds, setIgnoredItemIds] = useState<Set<string>>(new Set())
+  const [ignoredSectionOpen, setIgnoredSectionOpen] = useState(false)
+  const [ignoringItemId, setIgnoringItemId] = useState<string | null>(null)
   const [expandedCompleterIds, setExpandedCompleterIds] = useState<Set<string>>(new Set())
   const [markingReadId, setMarkingReadId] = useState<string | null>(null)
   const [completedItemsUserMap, setCompletedItemsUserMap] = useState<Map<string, string>>(new Map())
-  const [completedTaskPrefsModalOpen, setCompletedTaskPrefsModalOpen] = useState(false)
   const [recentReports, setRecentReports] = useState<Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
@@ -912,7 +922,11 @@ export default function Dashboard() {
         .from('dev_read_completed_items')
         .select('checklist_instance_id')
         .eq('dev_user_id', authUser.id),
-    ]).then(async ([instRes, readRes]) => {
+      supabase
+        .from('dev_ignored_checklist_items')
+        .select('checklist_item_id')
+        .eq('dev_user_id', authUser.id),
+    ]).then(async ([instRes, readRes, ignoredRes]) => {
       if (instRes.error) {
         setCompletedItemsLoading(false)
         return
@@ -935,6 +949,9 @@ export default function Dashboard() {
       const readSet = new Set<string>()
       ;(readRes.data ?? []).forEach((r: { checklist_instance_id: string }) => readSet.add(r.checklist_instance_id))
       setReadInstanceIds(readSet)
+      const ignoredSet = new Set<string>()
+      ;(ignoredRes.data ?? []).forEach((r: { checklist_item_id: string }) => ignoredSet.add(r.checklist_item_id))
+      setIgnoredItemIds(ignoredSet)
       if (instances.length > 0) {
         const completerIds = new Set(instances.map((i) => i.completed_by_user_id).filter(Boolean) as string[])
         setExpandedCompleterIds((prev) => (prev.size === 0 ? completerIds : prev))
@@ -952,6 +969,29 @@ export default function Dashboard() {
     })
     setMarkingReadId(null)
     setReadInstanceIds((prev) => new Set(prev).add(inst.id))
+  }
+
+  async function ignoreTaskType(checklistItemId: string) {
+    if (!authUser?.id || ignoringItemId) return
+    setIgnoringItemId(checklistItemId)
+    await supabase.from('dev_ignored_checklist_items').insert({
+      dev_user_id: authUser.id,
+      checklist_item_id: checklistItemId,
+    })
+    setIgnoringItemId(null)
+    setIgnoredItemIds((prev) => new Set(prev).add(checklistItemId))
+  }
+
+  async function unignoreTaskType(checklistItemId: string) {
+    if (!authUser?.id || ignoringItemId) return
+    setIgnoringItemId(checklistItemId)
+    await supabase.from('dev_ignored_checklist_items').delete().eq('dev_user_id', authUser.id).eq('checklist_item_id', checklistItemId)
+    setIgnoringItemId(null)
+    setIgnoredItemIds((prev) => {
+      const next = new Set(prev)
+      next.delete(checklistItemId)
+      return next
+    })
   }
 
   async function loadAssignedSteps() {
@@ -1017,7 +1057,7 @@ export default function Dashboard() {
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUser.id)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -1030,7 +1070,7 @@ export default function Dashboard() {
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUser.id)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -1061,6 +1101,25 @@ export default function Dashboard() {
       await sendChecklistCompletionNotifications(inst)
       await maybeCreateNextChecklistInstance(inst)
     }
+  }
+
+  function isNotificationRecipient(inst: ChecklistInstance): boolean {
+    if (!authUser?.id) return false
+    const item = inst.checklist_items as {
+      notify_on_complete_user_id?: string | null
+      notify_creator_on_complete?: boolean
+      created_by_user_id?: string | null
+    } | null
+    if (!item) return false
+    if (item.notify_on_complete_user_id === authUser.id) return true
+    if (item.notify_creator_on_complete && item.created_by_user_id === authUser.id) return true
+    return false
+  }
+
+  function openMuteModal(inst: ChecklistInstance) {
+    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setMuteModalItemId(inst.checklist_item_id)
+    setMuteModalTitle(title)
   }
 
   function openFwd(inst: ChecklistInstance) {
@@ -1687,24 +1746,44 @@ export default function Dashboard() {
                       {new Date(inst.completed_at).toLocaleString()}
                     </span>
                   )}
-                  {isDev && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); openFwd(inst) }}
-                      style={{
-                        marginLeft: 'auto',
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.8125rem',
-                        color: '#9ca3af',
-                        textDecoration: 'underline',
-                      }}
-                    >
-                      fwd
-                    </button>
-                  )}
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    {isNotificationRecipient(inst) && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); openMuteModal(inst) }}
+                        style={{
+                          padding: '0.2rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: 'white',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          lineHeight: 1,
+                        }}
+                        title="Mute notifications for this task"
+                        aria-label="Mute notifications for this task"
+                      >
+                        🔕
+                      </button>
+                    )}
+                    {isDev && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); openFwd(inst) }}
+                        style={{
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.8125rem',
+                          color: '#9ca3af',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        fwd
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}
@@ -1731,19 +1810,11 @@ export default function Dashboard() {
             >
               {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks
               {(() => {
-                const n = completedItems.filter((inst) => !readInstanceIds.has(inst.id)).length
+                const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+                const n = visibleItems.filter((inst) => !readInstanceIds.has(inst.id)).length
                 return n > 0 ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{' - '}{n} UNREAD</span> : null
               })()}
             </h2>
-            {completedItemsOpen && (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setCompletedTaskPrefsModalOpen(true) }}
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', background: 'none', border: '1px solid #d1d5db', borderRadius: 4 }}
-              >
-                Notification preferences
-              </button>
-            )}
           </div>
           {completedItemsOpen && (
             <>
@@ -1753,8 +1824,10 @@ export default function Dashboard() {
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
               ) : (
                 (() => {
+                  const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+                  const ignoredItems = completedItems.filter((inst) => ignoredItemIds.has(inst.checklist_item_id))
                   const byCompleter = new Map<string, ChecklistInstance[]>()
-                  completedItems.forEach((inst) => {
+                  visibleItems.forEach((inst) => {
                     const cid = inst.completed_by_user_id ?? 'unknown'
                     if (!byCompleter.has(cid)) byCompleter.set(cid, [])
                     byCompleter.get(cid)!.push(inst)
@@ -1764,6 +1837,7 @@ export default function Dashboard() {
                     return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
                   }
                   return (
+                    <>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {Array.from(byCompleter.entries()).map(([completerId, items]) => {
                         const isExpanded = expandedCompleterIds.has(completerId)
@@ -1848,6 +1922,14 @@ export default function Dashboard() {
                                       >
                                         Re-send
                                       </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                        disabled={!!ignoringItemId}
+                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: ignoringItemId ? 'not-allowed' : 'pointer', color: '#6b7280' }}
+                                      >
+                                        Ignore
+                                      </button>
                                     </li>
                                   )
                                 })}
@@ -1857,6 +1939,126 @@ export default function Dashboard() {
                         )
                       })}
                     </ul>
+                    {ignoredItems.length > 0 && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setIgnoredSectionOpen((o) => !o)}
+                          onKeyDown={(e) => e.key === 'Enter' && setIgnoredSectionOpen((o) => !o)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.9375rem',
+                            color: '#6b7280',
+                            marginBottom: ignoredSectionOpen ? '0.5rem' : 0,
+                          }}
+                        >
+                          <span style={{ minWidth: 16 }}>{ignoredSectionOpen ? '▼' : '▶'}</span>
+                          Ignored ({ignoredItems.length})
+                        </div>
+                        {ignoredSectionOpen && (
+                          (() => {
+                            const byCompleterIgnored = new Map<string, ChecklistInstance[]>()
+                            ignoredItems.forEach((inst) => {
+                              const cid = inst.completed_by_user_id ?? 'unknown'
+                              if (!byCompleterIgnored.has(cid)) byCompleterIgnored.set(cid, [])
+                              byCompleterIgnored.get(cid)!.push(inst)
+                            })
+                            const getUserNameIgnored = (id: string | null) => {
+                              if (!id) return 'Unknown'
+                              return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
+                            }
+                            return (
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {Array.from(byCompleterIgnored.entries()).map(([completerId, items]) => {
+                                  const isExpanded = expandedCompleterIds.has(completerId)
+                                  const completerName = getUserNameIgnored(completerId === 'unknown' ? null : completerId)
+                                  return (
+                                    <li key={`ignored-${completerId}`} style={{ marginBottom: '0.5rem' }}>
+                                      <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setExpandedCompleterIds((prev) => {
+                                          const next = new Set(prev)
+                                          if (next.has(completerId)) next.delete(completerId)
+                                          else next.add(completerId)
+                                          return next
+                                        })}
+                                        onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
+                                          const next = new Set(prev)
+                                          if (next.has(completerId)) next.delete(completerId)
+                                          else next.add(completerId)
+                                          return next
+                                        })}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.5rem',
+                                          padding: '0.5rem 0.75rem',
+                                          border: '1px solid #e5e7eb',
+                                          borderRadius: 8,
+                                          cursor: 'pointer',
+                                          background: '#f9fafb',
+                                        }}
+                                      >
+                                        <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
+                                        <span style={{ fontWeight: 500 }}>{completerName}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
+                                      </div>
+                                      {isExpanded && (
+                                        <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
+                                          {items.map((inst) => {
+                                            const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                                            const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+                                            const assigneeName = (inst.checklist_instance_assignees ?? [])
+                                              .map((a) => getUserNameIgnored(a.user_id))
+                                              .filter(Boolean)
+                                              .join(', ') || '—'
+                                            return (
+                                              <li
+                                                key={inst.id}
+                                                style={{
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '0.75rem',
+                                                  padding: '0.5rem 0.75rem',
+                                                  border: '1px solid #e5e7eb',
+                                                  borderRadius: 8,
+                                                  marginTop: '0.5rem',
+                                                  background: '#fff',
+                                                }}
+                                              >
+                                                <span style={{ flex: 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                  {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                                </span>
+                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                  disabled={!!ignoringItemId}
+                                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
+                                                >
+                                                  Un-ignore
+                                                </button>
+                                              </li>
+                                            )
+                                          })}
+                                        </ul>
+                                      )}
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )
+                          })()
+                        )}
+                      </div>
+                    )}
+                    </>
                   )
                 })()
               )}
@@ -2838,11 +3040,13 @@ export default function Dashboard() {
           loadRecentReportsRef.current?.()
         }}
       />
-      <CompletedTaskNotificationPrefsModal
-        open={completedTaskPrefsModalOpen}
+      <ChecklistItemMuteModal
+        open={!!muteModalItemId}
+        checklistItemId={muteModalItemId}
+        taskTitle={muteModalTitle}
         authUserId={authUser?.id ?? null}
-        onClose={() => setCompletedTaskPrefsModalOpen(false)}
-        onSaved={() => {}}
+        onClose={() => setMuteModalItemId(null)}
+        onSaved={() => loadTodayChecklist()}
       />
       {viewReportsJob && (
         <JobReportsModal

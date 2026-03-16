@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-15
+last_updated: 2026-04-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through April 8, 2026"
+date_range: "Through April 18, 2026"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -118,6 +118,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: My Reports modal and Dashboard report views respect location visibility by role
 - **Category**: Reports
 
+**`20260415120003_add_checklist_item_links.sql`**
+- **Purpose**: URL placeholders in checklist item titles
+- **Changes**: Add `links text[] DEFAULT '{}'` to `checklist_items`; links[0] maps to [1], links[1] to [2], etc.
+- **Impact**: Add/Edit modal has Links section; ChecklistTitleWithLinks component; Dashboard, Checklist, People display clickable links
+- **Category**: Checklist
+
 **`20260415120000_create_checklist_item_assignees.sql`**
 - **Purpose**: Multi-assignee support for checklist items; junction table replaces single assigned_to_user_id
 - **Changes**: Create `checklist_item_assignees` (checklist_item_id, user_id) PK; RLS for dev/master/assistant/primary + assignees read own; migrate existing data from checklist_items.assigned_to_user_id
@@ -137,6 +143,37 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Checklist
 
 **Note**: April 15 migrations share timestamps with Reports migrations; Supabase runs them in lexical filename order.
+
+#### April 16, 2026
+
+**`20260416120000_create_user_completed_task_mute_preferences.sql`**
+- **Purpose**: User preference to mute completed task push notifications (global)
+- **Changes**: Create `user_completed_task_mute_preferences` (user_id PK, muted_until timestamptz); RLS for users to manage own row
+- **Impact**: Settings and Dashboard mute modal; send-checklist-notification skips sending when recipient has muted_until > now
+- **Category**: Checklist / Notifications
+- **Note**: Superseded by April 17 migrations; replaced with per-task `user_checklist_item_mute_preferences`
+
+#### April 17, 2026
+
+**`20260417120000_create_user_checklist_item_mute_preferences.sql`**
+- **Purpose**: Per-task mute: user mutes completed-task push notifications for a specific checklist item
+- **Changes**: Create `user_checklist_item_mute_preferences` (user_id, checklist_item_id, muted_until) PK; RLS for users to manage own rows
+- **Impact**: ChecklistItemMuteModal; inline bell-off icon on Checklist Today, Manage, Dashboard for notification recipients; Settings Muted Tasks list; send-checklist-notification checks per-task mute by checklist_item_id
+- **Category**: Checklist / Notifications
+
+**`20260417120001_drop_user_completed_task_mute_preferences.sql`**
+- **Purpose**: Remove global mute table; replaced by per-task user_checklist_item_mute_preferences
+- **Changes**: DROP TABLE user_completed_task_mute_preferences
+- **Impact**: Global mute removed; per-task mute only
+- **Category**: Checklist / Notifications
+
+#### April 18, 2026
+
+**`20260418120000_create_dev_ignored_checklist_items.sql`**
+- **Purpose**: Dev Ignored Tasks section in Recently Completed Tasks
+- **Changes**: Create `dev_ignored_checklist_items` (dev_user_id, checklist_item_id, ignored_at) PK; RLS for devs to manage own rows
+- **Impact**: Dashboard Recently Completed Tasks split into main section (non-ignored types) and collapsible Ignored section; Ignore/Un-ignore buttons; UNREAD count excludes ignored items
+- **Category**: Checklist / Dashboard
 
 #### April 10, 2026
 

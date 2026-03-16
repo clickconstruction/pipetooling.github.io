@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
+import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
@@ -17,7 +18,13 @@ type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
-  checklist_items?: { title: string; links?: string[] | null } | null
+  checklist_items?: {
+    title: string
+    links?: string[] | null
+    notify_on_complete_user_id?: string | null
+    notify_creator_on_complete?: boolean
+    created_by_user_id?: string | null
+  } | null
 }
 
 const tabStyle = (active: boolean) => ({
@@ -179,6 +186,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
+  const [muteModalTitle, setMuteModalTitle] = useState('')
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -207,7 +216,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -224,7 +233,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -249,7 +258,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
@@ -364,6 +373,25 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     await loadToday()
   }
 
+  function isNotificationRecipient(inst: ChecklistInstance): boolean {
+    if (!authUserId) return false
+    const item = inst.checklist_items as {
+      notify_on_complete_user_id?: string | null
+      notify_creator_on_complete?: boolean
+      created_by_user_id?: string | null
+    } | null
+    if (!item) return false
+    if (item.notify_on_complete_user_id === authUserId) return true
+    if (item.notify_creator_on_complete && item.created_by_user_id === authUserId) return true
+    return false
+  }
+
+  function openMuteModal(inst: ChecklistInstance) {
+    const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
+    setMuteModalItemId(inst.checklist_item_id)
+    setMuteModalTitle(title)
+  }
+
   function openFwd(inst: ChecklistInstance) {
     const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
     setFwdInstance(inst)
@@ -469,26 +497,46 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                       </div>
                     )}
                   </div>
-                  {isDev && (
-                    <button
-                      type="button"
-                      className="fwd-btn-desktop"
-                      onClick={() => openFwd(inst)}
-                      style={{
-                        flexShrink: 0,
-                        padding: '0.35rem 0.6rem',
-                        fontSize: '0.8125rem',
-                        fontWeight: 500,
-                        border: '1px solid #3b82f6',
-                        borderRadius: 4,
-                        background: '#3b82f6',
-                        color: 'white',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      FWD
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, alignItems: 'flex-start' }}>
+                    {isNotificationRecipient(inst) && (
+                      <button
+                        type="button"
+                        onClick={() => openMuteModal(inst)}
+                        style={{
+                          padding: '0.35rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: 'white',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          lineHeight: 1,
+                        }}
+                        title="Mute notifications for this task"
+                        aria-label="Mute notifications for this task"
+                      >
+                        🔕
+                      </button>
+                    )}
+                    {isDev && (
+                      <button
+                        type="button"
+                        className="fwd-btn-desktop"
+                        onClick={() => openFwd(inst)}
+                        style={{
+                          padding: '0.35rem 0.6rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 500,
+                          border: '1px solid #3b82f6',
+                          borderRadius: 4,
+                          background: '#3b82f6',
+                          color: 'white',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        FWD
+                      </button>
+                    )}
+                  </div>
                 </li>
               )
             })}
@@ -536,26 +584,46 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                     >
                       <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{inst.scheduled_date}</span>
                       <span style={{ flex: 1 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                      {isDev && (
-                        <button
-                          type="button"
-                          className="fwd-btn-desktop"
-                          onClick={() => openFwd(inst)}
-                          style={{
-                            flexShrink: 0,
-                            padding: '0.25rem 0.5rem',
-                            fontSize: '0.8125rem',
-                            fontWeight: 500,
-                            border: '1px solid #3b82f6',
-                            borderRadius: 4,
-                            background: '#3b82f6',
-                            color: 'white',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          FWD
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                        {isNotificationRecipient(inst) && (
+                          <button
+                            type="button"
+                            onClick={() => openMuteModal(inst)}
+                            style={{
+                              padding: '0.25rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: 'white',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              lineHeight: 1,
+                            }}
+                            title="Mute notifications for this task"
+                            aria-label="Mute notifications for this task"
+                          >
+                            🔕
+                          </button>
+                        )}
+                        {isDev && (
+                          <button
+                            type="button"
+                            className="fwd-btn-desktop"
+                            onClick={() => openFwd(inst)}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              fontWeight: 500,
+                              border: '1px solid #3b82f6',
+                              borderRadius: 4,
+                              background: '#3b82f6',
+                              color: 'white',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            FWD
+                          </button>
+                        )}
+                      </div>
                     </li>
                   )
                 })}
@@ -652,6 +720,15 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
           </div>
         </div>
       )}
+
+      <ChecklistItemMuteModal
+        open={!!muteModalItemId}
+        checklistItemId={muteModalItemId}
+        taskTitle={muteModalTitle}
+        authUserId={authUserId}
+        onClose={() => setMuteModalItemId(null)}
+        onSaved={() => {}}
+      />
     </div>
   )
 }
@@ -1400,12 +1477,14 @@ type ChecklistItem = {
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
 
-function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [loading, setLoading] = useState(true)
   const [filterUserId, setFilterUserId] = useState<string>('')
+  const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
+  const [muteModalTitle, setMuteModalTitle] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -1452,6 +1531,13 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
   }
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  function isNotificationRecipient(item: ChecklistItem): boolean {
+    if (!authUserId) return false
+    if (item.notify_on_complete_user_id === authUserId) return true
+    if (item.notify_creator_on_complete && item.created_by_user_id === authUserId) return true
+    return false
+  }
 
   if (loading) return <p>Loading…</p>
 
@@ -1526,6 +1612,17 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
                 </td>
               )}
               <td style={{ padding: '0.5rem 0.75rem' }}>
+                {isNotificationRecipient(item) && (
+                  <button
+                    type="button"
+                    onClick={() => { setMuteModalItemId(item.id); setMuteModalTitle(item.title) }}
+                    title="Mute notifications for this task"
+                    aria-label="Mute notifications for this task"
+                    style={{ marginRight: '0.5rem', padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
+                  >
+                    🔕
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setEditItemId(item.id)}
@@ -1552,6 +1649,15 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
         </tbody>
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
+
+      <ChecklistItemMuteModal
+        open={!!muteModalItemId}
+        checklistItemId={muteModalItemId}
+        taskTitle={muteModalTitle}
+        authUserId={authUserId}
+        onClose={() => setMuteModalItemId(null)}
+        onSaved={() => loadItems()}
+      />
     </div>
   )
 }

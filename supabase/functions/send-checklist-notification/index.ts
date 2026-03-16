@@ -80,22 +80,31 @@ serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
-    // Skip completed task notifications if recipient has muted them
+    // Skip completed task notifications if recipient has muted this specific task
     if (tag?.startsWith('checklist-')) {
-      const { data: mutePref } = await adminClient
-        .from('user_completed_task_mute_preferences')
-        .select('muted_until')
-        .eq('user_id', recipient_user_id)
+      const checklistInstanceId = tag.slice('checklist-'.length)
+      const { data: instance } = await adminClient
+        .from('checklist_instances')
+        .select('checklist_item_id')
+        .eq('id', checklistInstanceId)
         .maybeSingle()
-      if (mutePref && new Date(mutePref.muted_until) > new Date()) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            message: 'Checklist notification skipped (recipient muted)',
-            push_sent: 0,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
+      if (instance?.checklist_item_id) {
+        const { data: mutePref } = await adminClient
+          .from('user_checklist_item_mute_preferences')
+          .select('muted_until')
+          .eq('user_id', recipient_user_id)
+          .eq('checklist_item_id', instance.checklist_item_id)
+          .maybeSingle()
+        if (mutePref && new Date(mutePref.muted_until) > new Date()) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'Checklist notification skipped (recipient muted this task)',
+              push_sent: 0,
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          )
+        }
       }
     }
 

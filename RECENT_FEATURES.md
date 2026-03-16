@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-15
+last_updated: 2026-04-18
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.108)"
+  - name: "Latest Version (v2.110)"
     line: ~318
+    description: "Dev Ignored Tasks section in Recently Completed Tasks"
+  - name: "v2.109"
+    line: ~330
+    description: "Checklist item links; Per-task mute preferences"
+  - name: "v2.108"
+    line: ~330
     description: "Stages: Ham mode date buttons, Stage Notes, job name wrap, View Reports keyboard close"
   - name: "v2.107"
     line: ~340
@@ -338,6 +344,42 @@ when_to_read:
 - **View Reports modal**: Escape and Spacebar close the full-screen modal. If a nested modal (viewing a report or adding an additional report) is open, that closes first. Spacebar is ignored when focus is in an input or textarea.
 
 **Files**: `src/pages/Jobs.tsx`, `src/components/JobReportsModal.tsx`
+
+---
+
+## Latest Updates (v2.109)
+
+**Date**: 2026-04-16
+
+### Checklist – Item Links
+
+- **`links` column**: Added `links text[] DEFAULT '{}'` to `checklist_items`. Placeholders `[1]`, `[2]`, etc. in the title map to `links[0]`, `links[1]`, etc.
+- **Add/Edit modal**: Links section with `[1]`, `[2]`, URL inputs, `[+ add]`, and insert-at-cursor buttons to insert placeholders into the title.
+- **`ChecklistTitleWithLinks` component**: Renders checklist item titles with `[1]`, `[2]`, etc. as clickable links (opens in new tab).
+- **Dashboard, Checklist, People**: Fetch `checklist_items(title, links)` and use `ChecklistTitleWithLinks` for display.
+- **Migration**: `20260415120003_add_checklist_item_links.sql`
+
+### Per-Task Mute Preferences
+
+- **`user_checklist_item_mute_preferences` table**: Per-task mute (user_id, checklist_item_id, muted_until). Users mute completed-task push notifications for specific checklist items.
+- **Inline bell-off icon**: Checklist Today, Manage, Dashboard show mute icon for notification recipients (notify_on_complete_user_id or creator when notify_creator_on_complete). Click opens `ChecklistItemMuteModal` with Turn on / 1 week / 1 month / Forever.
+- **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
+- **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
+- **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
+
+---
+
+## Latest Updates (v2.110)
+
+**Date**: 2026-04-18
+
+### Dev Ignored Tasks Section
+
+- **`dev_ignored_checklist_items` table**: Task types a dev has chosen to move to the Ignored section (dev_user_id, checklist_item_id, ignored_at). Dev-only RLS.
+- **Dashboard Recently Completed Tasks**: Main section shows only task types not in dev's ignore list; UNREAD count excludes ignored items.
+- **Collapsible "Ignored" section** (collapsed by default): Shows task types dev has ignored; grouped by completer; each item has Un-ignore button.
+- **Ignore button**: On each item in main section; adds that task type to ignore list (moves to Ignored section).
+- **Migration**: `20260418120000_create_dev_ignored_checklist_items.sql`
 
 ---
 

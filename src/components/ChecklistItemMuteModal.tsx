@@ -7,25 +7,35 @@ type MuteOption = '1_week' | '1_month' | 'forever' | 'unmute'
 
 type Props = {
   open: boolean
+  checklistItemId: string | null
+  taskTitle: string
   authUserId: string | null
   onClose: () => void
   onSaved: () => void
 }
 
-export default function CompletedTaskNotificationPrefsModal({ open, authUserId, onClose, onSaved }: Props) {
+export default function ChecklistItemMuteModal({
+  open,
+  checklistItemId,
+  taskTitle,
+  authUserId,
+  onClose,
+  onSaved,
+}: Props) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<MuteOption | null>(null)
 
   useEffect(() => {
-    if (!open || !authUserId) return
+    if (!open || !authUserId || !checklistItemId) return
     setLoading(true)
     setError(null)
     supabase
-      .from('user_completed_task_mute_preferences')
+      .from('user_checklist_item_mute_preferences')
       .select('muted_until')
       .eq('user_id', authUserId)
+      .eq('checklist_item_id', checklistItemId)
       .maybeSingle()
       .then(({ data, error: err }) => {
         setLoading(false)
@@ -47,11 +57,11 @@ export default function CompletedTaskNotificationPrefsModal({ open, authUserId, 
           } else {
             setSelected('unmute')
           }
-          } else {
-            setSelected('unmute')
-          }
+        } else {
+          setSelected('unmute')
+        }
       })
-  }, [open, authUserId])
+  }, [open, authUserId, checklistItemId])
 
   function handleClose() {
     setError(null)
@@ -60,15 +70,16 @@ export default function CompletedTaskNotificationPrefsModal({ open, authUserId, 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!authUserId || selected === null) return
+    if (!authUserId || !checklistItemId || selected === null) return
     setSaving(true)
     setError(null)
     try {
       if (selected === 'unmute') {
         const { error: err } = await supabase
-          .from('user_completed_task_mute_preferences')
+          .from('user_checklist_item_mute_preferences')
           .delete()
           .eq('user_id', authUserId)
+          .eq('checklist_item_id', checklistItemId)
         if (err) throw err
       } else {
         const now = new Date()
@@ -85,8 +96,11 @@ export default function CompletedTaskNotificationPrefsModal({ open, authUserId, 
           mutedUntil = FOREVER_DATE
         }
         const { error: err } = await supabase
-          .from('user_completed_task_mute_preferences')
-          .upsert({ user_id: authUserId, muted_until: mutedUntil }, { onConflict: 'user_id' })
+          .from('user_checklist_item_mute_preferences')
+          .upsert(
+            { user_id: authUserId, checklist_item_id: checklistItemId, muted_until: mutedUntil },
+            { onConflict: 'user_id,checklist_item_id' }
+          )
         if (err) throw err
       }
       onSaved()
@@ -125,7 +139,7 @@ export default function CompletedTaskNotificationPrefsModal({ open, authUserId, 
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Completed Task Notification Preferences</h2>
+          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Mute notifications for this task</h2>
           <button
             type="button"
             onClick={handleClose}
@@ -135,6 +149,12 @@ export default function CompletedTaskNotificationPrefsModal({ open, authUserId, 
             ×
           </button>
         </div>
+
+        {taskTitle && (
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Task: {taskTitle}
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           {loading ? (

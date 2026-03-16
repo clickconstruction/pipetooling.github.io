@@ -707,10 +707,11 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 #### Implementation Details
 
 1. Validates JWT from Authorization header
-2. Fetches push subscriptions for recipient from `push_subscriptions` table
-3. Sends Web Push via `web-push` library using VAPID keys
-4. Returns count of notifications sent (0 if no subscriptions)
-5. Used by: Checklist completion flow, Settings "Test notification" button
+2. **Mute check**: If `tag` starts with `checklist-`, parses `checklist_instance_id` from tag; queries `checklist_instances` for `checklist_item_id`; queries `user_checklist_item_mute_preferences` for (recipient_user_id, checklist_item_id) where `muted_until > now`; if match found, returns success with `push_sent: 0` and skips sending
+3. Fetches push subscriptions for recipient from `push_subscriptions` table
+4. Sends Web Push via `web-push` library using VAPID keys
+5. Returns count of notifications sent (0 if no subscriptions)
+6. Used by: Checklist completion flow, Settings "Test notification" button
 
 ---
 
