@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-15
+last_updated: 2026-03-15
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -118,6 +118,26 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: My Reports modal and Dashboard report views respect location visibility by role
 - **Category**: Reports
 
+**`20260415120000_create_checklist_item_assignees.sql`**
+- **Purpose**: Multi-assignee support for checklist items; junction table replaces single assigned_to_user_id
+- **Changes**: Create `checklist_item_assignees` (checklist_item_id, user_id) PK; RLS for dev/master/assistant/primary + assignees read own; migrate existing data from checklist_items.assigned_to_user_id
+- **Impact**: Add/Edit checklist modal uses checkboxes for multiple assignees
+- **Category**: Checklist
+
+**`20260415120001_create_checklist_instance_assignees.sql`**
+- **Purpose**: Multi-assignee support for checklist instances
+- **Changes**: Create `checklist_instance_assignees` (checklist_instance_id, user_id) PK; same RLS pattern; migrate from checklist_instances.assigned_to_user_id
+- **Impact**: Dashboard, Checklist, People fetch instances via checklist_instance_assignees
+- **Category**: Checklist
+
+**`20260415120002_drop_checklist_assigned_to_user_id.sql`**
+- **Purpose**: Remove legacy single-assignee columns; RLS policies updated to use junction tables
+- **Changes**: Drop `assigned_to_user_id` from checklist_items and checklist_instances; recreate RLS policies to use checklist_item_assignees and checklist_instance_assignees
+- **Impact**: All checklist assignee logic uses junction tables
+- **Category**: Checklist
+
+**Note**: April 15 migrations share timestamps with Reports migrations; Supabase runs them in lexical filename order.
+
 #### April 10, 2026
 
 **`20260410130000_primaries_full_bids_access.sql`**
@@ -163,6 +183,34 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Optional location capture at clock-in and clock-out
 - **Changes**: Add `clock_in_lat`, `clock_in_lng`, `clock_out_lat`, `clock_out_lng` (all NUMERIC, nullable) to `clock_sessions`
 - **Impact**: ClockInOutButton requests geolocation on clock-in and clock-out; coordinates stored when permission granted; People Hours pending table shows Location column with links to Google Maps
+- **Category**: Hours / Clock Sessions
+
+**`20260315120001_add_rejected_to_clock_sessions.sql`**
+- **Purpose**: Reject flow for pending clock sessions (move to Rejected section instead of delete)
+- **Changes**: Add `rejected_at` (TIMESTAMPTZ), `rejected_by` (UUID FK → users.id) to `clock_sessions`
+- **Impact**: People Hours tab Reject button; `approve_clock_sessions` excludes rejected sessions
+- **Category**: Hours / Clock Sessions
+
+**`20260315120002_approve_clock_sessions_exclude_rejected.sql`**
+- **Purpose**: Exclude rejected sessions from approval
+- **Changes**: Update `approve_clock_sessions` to filter out sessions where `rejected_at IS NOT NULL`
+- **Category**: Hours / Clock Sessions
+
+**`20260315120003_revoke_clock_sessions_rpc.sql`**
+- **Purpose**: Revoke approved sessions (move back to Pending, subtract hours from people_hours)
+- **Changes**: Create `revoke_clock_sessions(p_session_ids UUID[])` RPC; subtracts session hours from `people_hours`, clears `approved_at`/`approved_by`
+- **Impact**: Approved Sessions Revoke button in People Hours and Quickfill
+- **Category**: Hours / Clock Sessions
+
+**`20260315120004_add_revoked_to_clock_sessions.sql`**
+- **Purpose**: Accountability for revoked sessions
+- **Changes**: Add `revoked_at` (TIMESTAMPTZ), `revoked_by` (UUID FK → users.id) to `clock_sessions`
+- **Impact**: Action column shows "Revoked by [name] at [timestamp]" on Pending rows that were revoked
+- **Category**: Hours / Clock Sessions
+
+**`20260315120005_revoke_set_revoked_by_approve_clear.sql`**
+- **Purpose**: Set revoked_at/revoked_by when revoking; clear when re-approving
+- **Changes**: Update `revoke_clock_sessions` to set `revoked_at`/`revoked_by`; update `approve_clock_sessions` to clear them
 - **Category**: Hours / Clock Sessions
 
 ### March 2025

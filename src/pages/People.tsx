@@ -2255,8 +2255,8 @@ export default function People() {
       userId
         ? supabase
             .from('checklist_instances')
-            .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title)')
-            .eq('assigned_to_user_id', userId)
+            .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+            .eq('checklist_instance_assignees.user_id', userId)
             .not('completed_at', 'is', null)
             .gte('completed_at', start + 'T00:00:00')
             .lte('completed_at', end + 'T23:59:59')

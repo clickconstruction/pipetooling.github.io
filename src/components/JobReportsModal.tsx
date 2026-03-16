@@ -51,6 +51,29 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
       })
   }, [open, jobId])
 
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape' && e.key !== ' ') return
+      if (e.key === ' ') {
+        const target = e.target as HTMLElement
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return
+        e.preventDefault()
+      }
+      if (viewingReport) {
+        setViewingReport(null)
+        return
+      }
+      if (newReportOpen) {
+        setNewReportOpen(false)
+        return
+      }
+      onClose()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, viewingReport, newReportOpen, onClose])
+
   function handleReportAdded() {
     supabase.rpc('list_reports_with_job_info').then(({ data }) => {
       const all = (data as ReportWithJobInfo[]) ?? []

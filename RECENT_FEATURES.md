@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-13
+last_updated: 2026-04-15
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,18 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.104)"
-    line: ~314
-    description: "Clock In Job Selection; Update Focus UX; button styling"
+  - name: "Latest Version (v2.108)"
+    line: ~318
+    description: "Stages: Ham mode date buttons, Stage Notes, job name wrap, View Reports keyboard close"
+  - name: "v2.107"
+    line: ~340
+    description: "Checklist multi-assignee support"
+  - name: "v2.106"
+    line: ~335
+    description: "Dev login for testing without credentials"
+  - name: "v2.105"
+    line: ~355
+    description: "Revoke Approved; Accountability; Quickfill clock sessions; Job Cost hidden"
   - name: "v2.103"
     line: ~325
     description: "Bids Pricing Print uses user-entered unit cost overrides"
@@ -314,6 +323,78 @@ when_to_read:
 
 - **Jobs with Billed Materials only**: Parts tab now includes jobs that have Billed Materials but no tally parts. Previously these jobs appeared in the Billing tab but not in Parts. They now show with Parts from Tally = $0, Billed Materials column populated; when expanded, only the Billed Materials section is shown (no empty tally parts table).
 - **Jobs with Invoices from Supply Houses only**: Parts tab now includes jobs that have supply house invoice allocations (from Materials Supply Houses) but no tally parts and no Billed Materials. `loadTallyParts` merges job IDs from `supply_house_invoice_job_allocations` with tally parts job IDs before calling `get_invoice_amounts_for_jobs`, so all jobs with invoice allocations get their amounts in the "Invoices from Supply Houses" column.
+
+---
+
+## Latest Updates (v2.108)
+
+**Date**: 2026-04-15
+
+### Jobs – Stages Tab: Ham Mode Date Buttons, Stage Notes, Job Name Wrap, View Reports Modal
+
+- **Ham mode -1 / +1 buttons**: When Ham mode is ON (dev/assistant only), -1 and +1 buttons appear below the T-2 (tue) estimated completion display. Clicking adjusts the job's `estimated_completion_date` by one day without opening Edit Job. If no date exists, +1 sets tomorrow, -1 sets yesterday.
+- **Stage Notes**: Input changed to textarea for text wrapping; no placeholder when empty; transparent background; maxWidth removed, column minWidth 200 so the box expands to fill available space.
+- **Job name wrap at comma**: When a job name contains a comma (e.g. "Smith Residence, Phase 2"), the text after the comma displays on a second line in gray, matching the address display pattern.
+- **View Reports modal**: Escape and Spacebar close the full-screen modal. If a nested modal (viewing a report or adding an additional report) is open, that closes first. Spacebar is ignored when focus is in an input or textarea.
+
+**Files**: `src/pages/Jobs.tsx`, `src/components/JobReportsModal.tsx`
+
+---
+
+## Latest Updates (v2.106)
+
+**Date**: 2026-03-15
+
+### Dev Login (Testing Without Credentials)
+
+- **`/dev-login` route**: Sign in as any user by email when running the dev server. No password required. Enables AI agents and automated tests to authenticate for checklist testing, E2E, etc.
+- **Flow**: Frontend calls `dev-login` Edge Function with email + shared secret; function returns magic link; browser redirects; user lands authenticated.
+- **Security**: Only active when `import.meta.env.DEV` is true. Requires `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for the Edge Function. Production builds redirect to sign-in.
+- **Usage**: Open `http://localhost:5175/dev-login?as=user@example.com` or use the form at `/dev-login`.
+- **Docs**: `EDGE_FUNCTIONS.md` → dev-login; `AGENTS.md` and `AI_CONTEXT.md` → "Testing without credentials" in Where to Look For.
+
+---
+
+## Latest Updates (v2.107)
+
+**Date**: 2026-03-15
+
+### Checklist – Multi-assignee Support
+
+- **Add/Edit modal**: Assign to uses checkboxes (multiple users) instead of single dropdown. At least one assignee required.
+- **New junction tables**: `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user). Dropped `assigned_to_user_id` from `checklist_items` and `checklist_instances`.
+- **Dashboard, Checklist, People**: Fetch instances via `checklist_instance_assignees!inner(user_id)`; Today/History filter by assignee.
+- **FWD and Reschedule flows**: Updated to use junction tables; FWD modal assigns to one user; Manage tab shows comma-separated assignees.
+- **`send-scheduled-reminders` Edge Function**: Uses `checklist_instance_assignees` for assignee lookup.
+- **Migrations**: `20260415120000_create_checklist_item_assignees`, `20260415120001_create_checklist_instance_assignees`, `20260415120002_drop_checklist_assigned_to_user_id`.
+
+---
+
+## Latest Updates (v2.105)
+
+**Date**: 2026-03-15
+
+### People – Hours Tab: Revoke, Accountability, UX
+
+- **Revoke button**: Approved Sessions section now has a Revoke button. Revoking moves the session back to Pending and subtracts its hours from `people_hours`. Uses `revoke_clock_sessions` RPC.
+- **Accountability**: Clock session rows show who performed the last action and when. Action column displays "Approved by [name] at [timestamp]", "Rejected by [name] at [timestamp]", or "Revoked by [name] at [timestamp]" as applicable.
+- **Duration column**: Format changed to `0.00h | 1:52 PM | 1:52 PM | Sun, Mar 15` (times without seconds, date at end). Separate Date column removed.
+- **Location cell**: When no Out location (e.g. active session), Out and the point-to-point route icon are hidden. Compact variant uses map pin icon instead of "map" text.
+
+### Quickfill – Hours Section
+
+- **Pending clock sessions**: Added above the hours grid. Same actions as People Hours (Force clock out, Edit link to People, Approve, Reject).
+- **Approved Sessions**: Collapsible section with Revoke button. Both sections use the same date range as the hours grid and subscribe to `clock_sessions` Realtime.
+
+### Quickfill – Crew Jobs
+
+- **Job Cost column hidden**: Team Job Labor table in Quickfill hides the Job Cost column. `CrewJobsBlock` accepts `hideJobCostColumn` prop; `CrewJobsSection` passes it for Quickfill only.
+
+### Database
+
+- **`clock_sessions`**: Added `revoked_at`, `revoked_by` for accountability when sessions are revoked.
+- **RPCs**: `revoke_clock_sessions(p_session_ids UUID[])` subtracts hours from `people_hours` and clears approved state; sets `revoked_at`/`revoked_by`. `approve_clock_sessions` updated to clear `revoked_at`/`revoked_by` when approving.
+- **Migrations**: `20260315120003_revoke_clock_sessions_rpc`, `20260315120004_add_revoked_to_clock_sessions`, `20260315120005_revoke_set_revoked_by_approve_clear`.
 
 ---
 

@@ -73,6 +73,7 @@ when_to_read:
 - [Project Management](#project-management)
 - [Access Control](#access-control)
 - [Workflow Concepts](#workflow-concepts)
+- [Checklist](#checklist)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
 - [Database Concepts](#database-concepts)
@@ -167,7 +168,7 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 **Access**: Only dev can create/edit templates
 
 ### Clock Sessions / Pending Clock Sessions
-User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` for job-level reporting. **Pending** sessions are clocked out but not yet approved. Pay-access users approve them in People Hours tab; `approve_clock_sessions` RPC merges hours into `people_hours`. Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid.
+User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` for job-level reporting. **Pending** sessions are clocked out but not yet approved or rejected. **Approved** sessions have hours merged into `people_hours`; **Rejected** sessions are in a separate section. Pay-access users approve, reject, or revoke in People Hours tab (and Quickfill Hours section). `approve_clock_sessions` RPC merges hours into `people_hours`; `revoke_clock_sessions` subtracts hours and moves back to Pending. Rows show accountability: "Approved by [name] at [time]", "Rejected by [name] at [time]", or "Revoked by [name] at [time]". Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid.
 
 **Database**: `clock_sessions`
 
@@ -265,6 +266,17 @@ Remaining budget after subtracting ledger total from projections.
 **Calculation**: Projections - Ledger Total
 
 **Visibility**: Masters and dev only (hidden from assistants)
+
+---
+
+## Checklist
+
+### Checklist Items / Checklist Instances
+Recurring tasks with Today, History, and Manage tabs. **Assignees** are stored in junction tables `checklist_item_assignees` (item, user) and `checklist_instance_assignees` (instance, user)—items and instances can have multiple assignees. Add/Edit modal uses checkboxes for multi-assignee selection; at least one assignee required. Today/History filter by `checklist_instance_assignees.user_id`.
+
+**Database**: `checklist_items`, `checklist_instances`, `checklist_item_assignees`, `checklist_instance_assignees`
+
+**Repeat types**: once, day_of_week (multiple days), days_after_completion
 
 ---
 

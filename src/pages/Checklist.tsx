@@ -12,7 +12,6 @@ type ChecklistInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  assigned_to_user_id: string
   completed_at: string | null
   notes: string | null
   completed_by_user_id: string | null
@@ -207,8 +206,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-      .eq('assigned_to_user_id', authUserId)
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
     if (e1) {
@@ -224,8 +223,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-        .eq('assigned_to_user_id', authUserId)
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
         .in('checklist_item_id', itemIds)
@@ -249,8 +248,8 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-      .eq('assigned_to_user_id', authUserId)
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
       .limit(30)
@@ -318,16 +317,17 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   }
 
   async function maybeCreateNextInstance(inst: ChecklistInstance) {
-    const { data: item } = await supabase
-      .from('checklist_items')
-      .select('repeat_type, repeat_days_after, repeat_end_date')
-      .eq('id', inst.checklist_item_id)
-      .single()
+    const [{ data: item }, { data: assignees }] = await Promise.all([
+      supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', inst.checklist_item_id).single(),
+      supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', inst.checklist_item_id),
+    ])
     if (!item) return
     const rt = (item as { repeat_type: string }).repeat_type
     if (rt !== 'days_after_completion') return
     const daysAfter = (item as { repeat_days_after: number | null }).repeat_days_after
     if (!daysAfter) return
+    const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
+    if (assigneeIds.length === 0) return
     const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
     const nextDate = new Date(inst.scheduled_date)
     nextDate.setDate(nextDate.getDate() + daysAfter)
@@ -340,11 +340,16 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       .eq('scheduled_date', nextDateStr)
       .single()
     if (existing.data) return
-    await supabase.from('checklist_instances').insert({
-      checklist_item_id: inst.checklist_item_id,
-      scheduled_date: nextDateStr,
-      assigned_to_user_id: inst.assigned_to_user_id,
-    })
+    const { data: newInst } = await supabase
+      .from('checklist_instances')
+      .insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr })
+      .select('id')
+      .single()
+    if (newInst?.id) {
+      await supabase.from('checklist_instance_assignees').insert(
+        assigneeIds.map((uid) => ({ checklist_instance_id: newInst.id, user_id: uid }))
+      )
+    }
     await loadUpcoming()
   }
 
@@ -362,7 +367,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
     setFwdInstance(inst)
     setFwdTitle(title)
-    setFwdAssigneeId(inst.assigned_to_user_id)
+    setFwdAssigneeId('')
   }
 
   async function saveFwd() {
@@ -380,7 +385,6 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         .from('checklist_items')
         .insert({
           title: fwdTitle.trim(),
-          assigned_to_user_id: fwdAssigneeId,
           created_by_user_id: authUserId,
           repeat_type: 'once',
           start_date: fwdInstance.scheduled_date,
@@ -392,12 +396,16 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         .select('id')
         .single()
       if (itemErr) throw itemErr
-      if (newItem?.id) {
-        await supabase.from('checklist_instances').insert({
-          checklist_item_id: newItem.id,
-          scheduled_date: fwdInstance.scheduled_date,
-          assigned_to_user_id: fwdAssigneeId,
-        })
+      if (newItem?.id && fwdAssigneeId) {
+        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const { data: newInst } = await supabase
+          .from('checklist_instances')
+          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
+          .select('id')
+          .single()
+        if (newInst?.id) {
+          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
+        }
         await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
       }
       setFwdInstance(null)
@@ -685,8 +693,8 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, checklist_items(title)')
-      .eq('assigned_to_user_id', selectedUserId)
+      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
       .order('scheduled_date', { ascending: true })
@@ -700,26 +708,29 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   if (loading) return <p>Loading…</p>
 
-  const byItem = new Map<string, { title: string; dates: Record<string, 'completed' | 'incomplete'> }>()
+  const byItem = new Map<string, { title: string; dates: Record<string, 'completed' | 'completed_by_other' | 'incomplete'> }>()
   for (const inst of instances) {
     const itemId = inst.checklist_item_id
     const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
     if (!byItem.has(itemId)) byItem.set(itemId, { title, dates: {} })
     const entry = byItem.get(itemId)!
-    entry.dates[inst.scheduled_date] = inst.completed_at ? 'completed' : 'incomplete'
+    let status: 'completed' | 'completed_by_other' | 'incomplete' = 'incomplete'
+    if (inst.completed_at) {
+      status = inst.completed_by_user_id && inst.completed_by_user_id !== selectedUserId ? 'completed_by_other' : 'completed'
+    }
+    entry.dates[inst.scheduled_date] = status
   }
 
   const allDates = new Set<string>()
   for (const inst of instances) allDates.add(inst.scheduled_date)
   const sortedDates = Array.from(allDates).sort()
 
-  const instanceByKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string; assigned_to_user_id: string }>()
+  const instanceByKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string }>()
   for (const inst of instances) {
     instanceByKey.set(`${inst.checklist_item_id}-${inst.scheduled_date}`, {
       id: inst.id,
       checklist_item_id: inst.checklist_item_id,
       scheduled_date: inst.scheduled_date,
-      assigned_to_user_id: inst.assigned_to_user_id,
     })
   }
 
@@ -758,25 +769,29 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           setError(delErr.message)
           return
         }
-        const { error: insErr } = await supabase.from('checklist_instances').insert({
+        const { data: newInst, error: insErr } = await supabase.from('checklist_instances').insert({
           checklist_item_id: itemId,
           scheduled_date: date,
-          assigned_to_user_id: selectedUserId,
-        })
+        }).select('id').single()
         if (insErr) {
           setError(insErr.message)
           return
         }
+        if (newInst?.id) {
+          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: selectedUserId })
+        }
       } else {
-        const { error: err } = await supabase.from('checklist_instances').insert({
+        const { data: newInst, error: err } = await supabase.from('checklist_instances').insert({
           checklist_item_id: itemId,
           scheduled_date: date,
-          assigned_to_user_id: selectedUserId,
           completed_at: new Date().toISOString(),
-        })
+        }).select('id').single()
         if (err) {
           setError(err.message)
           return
+        }
+        if (newInst?.id) {
+          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: selectedUserId })
         }
         setDeletedCells((prev) => {
           const next = new Set(prev)
@@ -826,7 +841,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </label>
         )}
         <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-          Green = completed, Red = incomplete, White = not due
+          Green = completed by you, Yellow = completed by someone else, Red = incomplete, White = not due
         </span>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -855,7 +870,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
                 {sortedDates.slice(-60).map((d) => {
                   const rawStatus = dates[d]
                   const status = deletedCells.has(`${itemId}-${d}`) ? undefined : rawStatus
-                  const bg = status === 'completed' ? '#22c55e' : status === 'incomplete' ? '#ef4444' : '#f9fafb'
+                  const bg = status === 'completed' ? '#22c55e' : status === 'completed_by_other' ? '#eab308' : status === 'incomplete' ? '#ef4444' : '#f9fafb'
                   const cellKey = `${itemId}-${d}`
                   const isCycling = cyclingCell === cellKey
                   const isClickable = editMode && !isCycling
@@ -893,9 +908,7 @@ type OutstandingInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  assigned_to_user_id: string
-  checklist_items?: { title: string; repeat_type?: string; reminder_scope?: string | null } | null
-  users?: { name: string; email: string } | null
+  checklist_items?: { title?: string; repeat_type?: string; reminder_scope?: string | null } | null
 }
 
 function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
@@ -936,11 +949,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
     }
   }, [isDev])
 
-  function openFwd(inst: OutstandingInstance) {
+  function openFwd(inst: OutstandingInstance, rowUserId: string) {
     const title = inst.checklist_items?.title ?? 'Untitled'
     setFwdInstance(inst)
     setFwdTitle(title)
-    setFwdAssigneeId(inst.assigned_to_user_id)
+    setFwdAssigneeId(rowUserId)
   }
 
   async function deleteInstance(inst: OutstandingInstance) {
@@ -973,7 +986,6 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
         .from('checklist_items')
         .insert({
           title: fwdTitle.trim(),
-          assigned_to_user_id: fwdAssigneeId,
           created_by_user_id: authUserId,
           repeat_type: 'once',
           start_date: fwdInstance.scheduled_date,
@@ -985,12 +997,16 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
         .select('id')
         .single()
       if (itemErr) throw itemErr
-      if (newItem?.id) {
-        await supabase.from('checklist_instances').insert({
-          checklist_item_id: newItem.id,
-          scheduled_date: fwdInstance.scheduled_date,
-          assigned_to_user_id: fwdAssigneeId,
-        })
+      if (newItem?.id && fwdAssigneeId) {
+        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const { data: newInst } = await supabase
+          .from('checklist_instances')
+          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
+          .select('id')
+          .single()
+        if (newInst?.id) {
+          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
+        }
         await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
       }
       setFwdInstance(null)
@@ -1037,7 +1053,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, checklist_items(title, repeat_type, reminder_scope), users!checklist_instances_assigned_to_user_id_fkey(name, email)')
+      .select('id, checklist_item_id, scheduled_date, checklist_items(title, repeat_type, reminder_scope), checklist_instance_assignees(user_id, users(name, email))')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -1056,25 +1072,42 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
       setLoading(false)
       return
     }
-    let instances = (data ?? []) as OutstandingInstance[]
+    const raw = (data ?? []) as Array<{
+      id: string
+      checklist_item_id: string
+      scheduled_date: string
+      checklist_items?: { title?: string; repeat_type?: string; reminder_scope?: string | null } | null
+      checklist_instance_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
+    }>
+    let instances = raw.filter((inst) => {
+      const assignees = inst.checklist_instance_assignees ?? []
+      return assignees.length > 0
+    })
     if (dateRange === 'non_repeating') {
       instances = instances.filter((inst) => (inst.checklist_items as { repeat_type?: string } | null)?.repeat_type === 'once')
     }
     if (dateRange === 'missed') {
       instances = instances.filter((inst) => (inst.checklist_items as { reminder_scope?: string | null } | null)?.reminder_scope !== 'today_and_overdue')
     }
-    const map = new Map<string, OutstandingInstance[]>()
-    for (const inst of instances) {
-      const list = map.get(inst.assigned_to_user_id) ?? []
-      list.push(inst)
-      map.set(inst.assigned_to_user_id, list)
+    const map = new Map<string, { inst: OutstandingInstance; name: string }[]>()
+    for (const row of instances) {
+      const inst: OutstandingInstance = {
+        id: row.id,
+        checklist_item_id: row.checklist_item_id,
+        scheduled_date: row.scheduled_date,
+        checklist_items: row.checklist_items ?? null,
+      }
+      const assignees = row.checklist_instance_assignees ?? []
+      for (const a of assignees) {
+        const name = a.users?.name || a.users?.email || 'Unknown'
+        const list = map.get(a.user_id) ?? []
+        list.push({ inst, name })
+        map.set(a.user_id, list)
+      }
     }
     const rows = Array.from(map.entries()).map(([userId, list]) => {
-      const first = list[0]
-      const name = first
-        ? ((first.users as { name?: string; email?: string } | null)?.name || (first.users as { email?: string } | null)?.email || 'Unknown')
-        : 'Unknown'
-      return { userId, name, count: list.length, instances: list }
+      const name = list[0]?.name ?? 'Unknown'
+      return { userId, name, count: list.length, instances: list.map((x) => x.inst) }
     })
     rows.sort((a, b) => b.count - a.count)
     setByUser(rows)
@@ -1224,7 +1257,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                                 <button
                                   type="button"
                                   className="fwd-btn-desktop"
-                                  onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                  onClick={(e) => { e.stopPropagation(); openFwd(inst, userId) }}
                                   style={{
                                     flexShrink: 0,
                                     padding: '0.25rem 0.5rem',
@@ -1346,7 +1379,6 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
 type ChecklistItem = {
   id: string
   title: string
-  assigned_to_user_id: string
   created_by_user_id: string
   repeat_type: string
   repeat_days_of_week: number[] | null
@@ -1360,7 +1392,7 @@ type ChecklistItem = {
   reminder_scope: string | null
   created_at: string | null
   updated_at: string | null
-  users?: { name: string; email: string } | null
+  checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
 
 function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditItemId }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
@@ -1389,12 +1421,17 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
   }
 
   async function loadItems() {
-    let q = supabase
-      .from('checklist_items')
-      .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
-      .order('start_date', { ascending: false })
-    if (filterUserId) q = q.eq('assigned_to_user_id', filterUserId)
-    const { data, error } = await q
+    const baseSelect = 'id, title, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at'
+    const { data, error } = filterUserId
+      ? await supabase
+          .from('checklist_items')
+          .select(`${baseSelect}, checklist_item_assignees!inner(user_id, users(name, email))`)
+          .eq('checklist_item_assignees.user_id', filterUserId)
+          .order('start_date', { ascending: false })
+      : await supabase
+          .from('checklist_items')
+          .select(`${baseSelect}, checklist_item_assignees(user_id, users(name, email))`)
+          .order('start_date', { ascending: false })
     if (error) {
       setError(error.message)
       return
@@ -1450,7 +1487,9 @@ function ChecklistManageTab({ authUserId: _authUserId, role, setError, setEditIt
           {items.map((item) => (
             <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
               <td style={{ padding: '0.5rem 0.75rem' }}>{item.title}</td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{(item.users as { name: string; email: string } | null)?.name || (item.users as { email: string } | null)?.email || '—'}</td>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                {(item.checklist_item_assignees ?? []).map((a) => a.users?.name || a.users?.email || 'Unknown').filter(Boolean).join(', ') || '—'}
+              </td>
               <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
                 {item.show_until_completed
                   ? 'Until completed'

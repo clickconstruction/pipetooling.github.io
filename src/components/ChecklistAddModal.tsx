@@ -21,10 +21,11 @@ export default function ChecklistAddModal() {
   const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
   const [role, setRole] = useState<UserRole | null>(null)
   const [reminderScopeModalOpen, setReminderScopeModalOpen] = useState(false)
+  const [repeatSectionOpen, setRepeatSectionOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '',
-    assigned_to_user_id: '',
+    assigned_to_user_ids: [] as string[],
     repeat_type: 'once' as 'day_of_week' | 'days_after_completion' | 'once',
     repeat_days_of_week: [] as number[],
     repeat_days_after: 1,
@@ -48,16 +49,24 @@ export default function ChecklistAddModal() {
       })
       supabase
         .from('checklist_items')
-        .select('assigned_to_user_id')
+        .select('id')
         .eq('created_by_user_id', authUser.id)
         .order('created_at', { ascending: false })
         .limit(30)
-        .then(({ data: recentItems }) => {
-          const ids = (recentItems ?? []) as Array<{ assigned_to_user_id: string }>
+        .then(async ({ data: items }) => {
+          const ids = (items ?? []).map((r) => r.id)
+          if (ids.length === 0) {
+            setRecentAssigneeIds([])
+            return
+          }
+          const { data: assignees } = await supabase
+            .from('checklist_item_assignees')
+            .select('user_id')
+            .in('checklist_item_id', ids)
           const seen = new Set<string>()
           const unique: string[] = []
-          for (const row of ids) {
-            const id = row.assigned_to_user_id
+          for (const row of (assignees ?? []) as Array<{ user_id: string }>) {
+            const id = row.user_id
             if (id && !seen.has(id) && unique.length < 3) {
               seen.add(id)
               unique.push(id)
@@ -71,16 +80,17 @@ export default function ChecklistAddModal() {
   }, [modalContext?.isOpen, authUser?.id])
 
   useEffect(() => {
-    if (modalContext?.isOpen && users.length > 0 && !form.assigned_to_user_id) {
-      setForm((f) => ({ ...f, assigned_to_user_id: users[0]?.id ?? '' }))
+    if (modalContext?.isOpen && users.length > 0 && form.assigned_to_user_ids.length === 0) {
+      const firstId = users[0]?.id
+      if (firstId) setForm((f) => ({ ...f, assigned_to_user_ids: [firstId] }))
     }
-  }, [modalContext?.isOpen, users, form.assigned_to_user_id])
+  }, [modalContext?.isOpen, users, form.assigned_to_user_ids.length])
 
   useEffect(() => {
     if (modalContext?.isOpen) {
       setForm({
         title: '',
-        assigned_to_user_id: users[0]?.id ?? '',
+        assigned_to_user_ids: users[0]?.id ? [users[0].id] : [],
         repeat_type: 'once',
         repeat_days_of_week: [],
         repeat_days_after: 1,
@@ -97,16 +107,15 @@ export default function ChecklistAddModal() {
   }, [modalContext?.isOpen])
 
   async function generateInstances(itemId: string, item: typeof form) {
-    const instances: { checklist_item_id: string; scheduled_date: string; assigned_to_user_id: string }[] = []
+    const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
+    if (assigneeIds.length === 0) return
+
+    const instanceDates: string[] = []
     const start = new Date(item.start_date)
     const endDate = item.repeat_end_date ? new Date(item.repeat_end_date) : null
 
     if (item.repeat_type === 'once') {
-      instances.push({
-        checklist_item_id: itemId,
-        scheduled_date: item.start_date,
-        assigned_to_user_id: item.assigned_to_user_id,
-      })
+      instanceDates.push(item.start_date)
     } else if (item.repeat_type === 'day_of_week') {
       const targetDows = item.repeat_days_of_week ?? []
       const maxWeeks = 104
@@ -115,30 +124,35 @@ export default function ChecklistAddModal() {
         while (d.getDay() !== targetDow) d.setDate(d.getDate() + 1)
         for (let w = 0; w < maxWeeks; w++) {
           if (endDate && d > endDate) break
-          instances.push({
-            checklist_item_id: itemId,
-            scheduled_date: toLocalDateString(d),
-            assigned_to_user_id: item.assigned_to_user_id,
-          })
+          instanceDates.push(toLocalDateString(d))
           d.setDate(d.getDate() + 7)
         }
       }
     } else if (item.repeat_type === 'days_after_completion') {
-      instances.push({
-        checklist_item_id: itemId,
-        scheduled_date: item.start_date,
-        assigned_to_user_id: item.assigned_to_user_id,
-      })
+      instanceDates.push(item.start_date)
     }
 
-    if (instances.length > 0) {
-      await supabase.from('checklist_instances').insert(instances)
+    for (const scheduledDate of instanceDates) {
+      const { data: inst } = await supabase
+        .from('checklist_instances')
+        .insert({ checklist_item_id: itemId, scheduled_date: scheduledDate })
+        .select('id')
+        .single()
+      if (inst?.id) {
+        await supabase.from('checklist_instance_assignees').insert(
+          assigneeIds.map((uid) => ({ checklist_instance_id: inst.id, user_id: uid }))
+        )
+      }
     }
   }
 
   async function saveItem() {
     if (!authUser?.id || !modalContext) return
     setFormError(null)
+    if (form.assigned_to_user_ids.length === 0) {
+      setFormError('Select at least one assignee.')
+      return
+    }
     if (form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length === 0) {
       setFormError('Select at least one day of the week.')
       return
@@ -147,7 +161,6 @@ export default function ChecklistAddModal() {
       .from('checklist_items')
       .insert({
         title: form.title,
-        assigned_to_user_id: form.assigned_to_user_id,
         created_by_user_id: authUser.id,
         repeat_type: form.repeat_type,
         repeat_days_of_week: form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -167,7 +180,12 @@ export default function ChecklistAddModal() {
       return
     }
     const newId = (data as { id: string })?.id
-    if (newId) await generateInstances(newId, form)
+    if (newId) {
+      await supabase.from('checklist_item_assignees').insert(
+        form.assigned_to_user_ids.map((uid) => ({ checklist_item_id: newId, user_id: uid }))
+      )
+      await generateInstances(newId, form)
+    }
     modalContext.closeModal()
     window.dispatchEvent(new CustomEvent('checklist-item-saved'))
   }
@@ -202,15 +220,25 @@ export default function ChecklistAddModal() {
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>
-            <select
-              value={form.assigned_to_user_id}
-              onChange={(e) => setForm((f) => ({ ...f, assigned_to_user_id: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem' }}
-            >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
               {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.assigned_to_user_ids.includes(u.id)}
+                    onChange={(e) => {
+                      setForm((f) => ({
+                        ...f,
+                        assigned_to_user_ids: e.target.checked
+                          ? [...f.assigned_to_user_ids, u.id]
+                          : f.assigned_to_user_ids.filter((id) => id !== u.id),
+                      }))
+                    }}
+                  />
+                  {u.name || u.email}
+                </label>
               ))}
-            </select>
+            </div>
             {recentAssigneeIds.length > 0 && (
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
                 Recent:{' '}
@@ -222,7 +250,14 @@ export default function ChecklistAddModal() {
                       {i > 0 && ', '}
                       <button
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, assigned_to_user_id: u.id }))}
+                        onClick={() => {
+                          setForm((f) => ({
+                            ...f,
+                            assigned_to_user_ids: f.assigned_to_user_ids.includes(u.id)
+                              ? f.assigned_to_user_ids
+                              : [...f.assigned_to_user_ids, u.id],
+                          }))
+                        }}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', fontSize: 'inherit' }}
                       >
                         {u.name || u.email}
@@ -231,76 +266,6 @@ export default function ChecklistAddModal() {
                   ))}
               </p>
             )}
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <label><input type="radio" name="repeat" checked={form.repeat_type === 'once'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'once' }))} /> Once</label>
-              <label><input type="radio" name="repeat" checked={form.repeat_type === 'day_of_week'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'day_of_week' }))} /> Day of week</label>
-              <label><input type="radio" name="repeat" checked={form.repeat_type === 'days_after_completion'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'days_after_completion' }))} /> Days after completion</label>
-            </div>
-          </label>
-          {form.repeat_type === 'day_of_week' && (
-            <label>
-              <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days of week</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                {DAYS.map((name, i) => (
-                  <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.repeat_days_of_week.includes(i)}
-                      onChange={(e) => {
-                        setForm((f) => ({
-                          ...f,
-                          repeat_days_of_week: e.target.checked
-                            ? [...f.repeat_days_of_week, i].sort((a, b) => a - b)
-                            : f.repeat_days_of_week.filter((d) => d !== i),
-                        }))
-                      }}
-                    />
-                    {name}
-                  </label>
-                ))}
-              </div>
-            </label>
-          )}
-          {form.repeat_type === 'days_after_completion' && (
-            <label>
-              <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days after completion</span>
-              <input
-                type="number"
-                min={1}
-                value={form.repeat_days_after}
-                onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
-                style={{ padding: '0.5rem', width: 80 }}
-              />
-            </label>
-          )}
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              checked={form.show_until_completed}
-              onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
-            />
-            <span>Show up until completed</span>
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat end date (optional)</span>
-            <input
-              type="date"
-              value={form.repeat_end_date}
-              onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
-              style={{ padding: '0.5rem' }}
-            />
-          </label>
-          <label>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Start date</span>
-            <input
-              type="date"
-              value={form.start_date}
-              onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-              style={{ padding: '0.5rem' }}
-            />
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Notify once complete</span>
@@ -373,6 +338,89 @@ export default function ChecklistAddModal() {
               )}
             </>
           )}
+          <div style={{ marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => setRepeatSectionOpen((o) => !o)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
+            >
+              {repeatSectionOpen ? '\u25BC' : '\u25B6'} Repeat
+            </button>
+            {repeatSectionOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                <label>
+                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Start date</span>
+                  <input
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                    style={{ padding: '0.5rem' }}
+                  />
+                </label>
+                <label>
+                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'once'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'once' }))} /> Once</label>
+                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'day_of_week'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'day_of_week' }))} /> Day of week</label>
+                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'days_after_completion'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'days_after_completion' }))} /> Days after completion</label>
+                  </div>
+                </label>
+                {form.repeat_type === 'day_of_week' && (
+                  <label>
+                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days of week</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                      {DAYS.map((name, i) => (
+                        <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={form.repeat_days_of_week.includes(i)}
+                            onChange={(e) => {
+                              setForm((f) => ({
+                                ...f,
+                                repeat_days_of_week: e.target.checked
+                                  ? [...f.repeat_days_of_week, i].sort((a, b) => a - b)
+                                  : f.repeat_days_of_week.filter((d) => d !== i),
+                              }))
+                            }}
+                          />
+                          {name}
+                        </label>
+                      ))}
+                    </div>
+                  </label>
+                )}
+                {form.repeat_type === 'days_after_completion' && (
+                  <label>
+                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days after completion</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={form.repeat_days_after}
+                      onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
+                      style={{ padding: '0.5rem', width: 80 }}
+                    />
+                  </label>
+                )}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.show_until_completed}
+                    onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
+                  />
+                  <span>Show up until completed</span>
+                </label>
+                <label>
+                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat end date (optional)</span>
+                  <input
+                    type="date"
+                    value={form.repeat_end_date}
+                    onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
+                    style={{ padding: '0.5rem' }}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
         {formError && <p style={{ color: '#b91c1c', marginTop: '0.5rem', fontSize: '0.875rem' }}>{formError}</p>}
         {reminderScopeModalOpen && (

@@ -180,6 +180,20 @@ pipetooling.github.io/
 3. **Array access**: Always check `array[0]` could be undefined
 4. **Build test**: Run `npm run build` to catch all type errors
 
+### Testing Without Credentials (Dev Login)
+
+AI agents or automated tests can sign in without a password using the dev-login flow:
+
+1. **Prerequisites**: Dev server running (`npm run dev`); Supabase functions running; test user exists in Supabase
+2. **Env vars**: Add to `.env.local`: `VITE_DEV_LOGIN_SECRET=your-secret`
+3. **Edge Function secret**: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
+4. **URL**: Open `http://localhost:5175/dev-login?as=test@example.com` or use the form at `/dev-login`
+5. **Flow**: Frontend calls `dev-login` Edge Function with email + secret; function returns magic link; browser redirects; user lands authenticated
+
+**Security**: Only active when `import.meta.env.DEV` is true. Production builds redirect `/dev-login` to sign-in.
+
+**See**: `EDGE_FUNCTIONS.md` → dev-login; `.env.example` for env var names
+
 ---
 
 ## Where to Look For...
@@ -198,6 +212,8 @@ pipetooling.github.io/
 | Database improvements | `DATABASE_IMPROVEMENTS_SUMMARY.md` → v2.22 enhancements |
 | Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
+| Checklist (multi-assignee, Today/History/Manage) | `RECENT_FEATURES.md` → v2.107; `PROJECT_DOCUMENTATION.md` → Key Features; `GLOSSARY.md` → Checklist Items |
+| Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=user@example.com` when running dev server; set `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for Edge Function |
 
 ---
 

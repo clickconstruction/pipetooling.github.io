@@ -1538,6 +1538,7 @@ export type Database = {
       jobs_ledger: {
         Row: {
           created_at: string | null
+          estimated_completion_date: string | null
           google_drive_link: string | null
           hcp_number: string
           id: string
@@ -1548,11 +1549,13 @@ export type Database = {
           payments_made: number | null
           pct_complete: number | null
           revenue: number | null
+          stage_notes: string | null
           status: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
@@ -1563,11 +1566,13 @@ export type Database = {
           payments_made?: number | null
           pct_complete?: number | null
           revenue?: number | null
+          stage_notes?: string | null
           status?: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
@@ -1578,6 +1583,7 @@ export type Database = {
           payments_made?: number | null
           pct_complete?: number | null
           revenue?: number | null
+          stage_notes?: string | null
           status?: string
           updated_at?: string | null
         }

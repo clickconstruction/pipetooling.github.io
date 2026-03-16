@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import SignIn from './pages/SignIn'
+import DevLogin from './pages/DevLogin'
 import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
@@ -121,6 +122,7 @@ function AppContent() {
       <AuthHandler />
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
+        <Route path="/dev-login" element={<DevLogin />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
@@ -130,11 +132,11 @@ function AppContent() {
             <ProtectedRoute>
               <ForceReloadProvider>
                 <ChecklistAddModalProvider>
-<NewCustomerModalProvider>
-                <EditCustomerModalProvider>
-                  <Layout />
-                </EditCustomerModalProvider>
-              </NewCustomerModalProvider>
+                  <NewCustomerModalProvider>
+                    <EditCustomerModalProvider>
+                      <Layout />
+                    </EditCustomerModalProvider>
+                  </NewCustomerModalProvider>
                 </ChecklistAddModalProvider>
               </ForceReloadProvider>
             </ProtectedRoute>

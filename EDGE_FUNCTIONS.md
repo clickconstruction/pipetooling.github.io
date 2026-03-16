@@ -89,6 +89,7 @@ when_to_read:
    - [archive-user](#archive-user)
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
+   - [dev-login](#dev-login)
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
    - [set-user-password](#set-user-password)
@@ -470,6 +471,54 @@ const response = await supabase.functions.invoke('login-as-user', {
 - **Redirect URLs**: Add both `https://pipetooling.com/**` and `http://localhost:5173/**`. Settings imitate uses localhost; People → Users imitate (dev-only) uses pipetooling.com.
 
 **Deployment**: See [`supabase/functions/login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
+
+---
+
+### dev-login
+
+**Purpose**: Sign in as any user by email when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials.
+
+**Endpoint**: `POST /functions/v1/dev-login`
+
+**Authentication**: `X-Dev-Login-Secret` header must match `DEV_LOGIN_SECRET` env var. No JWT required.
+
+**Availability**: Only intended for local dev. Frontend route `/dev-login` renders only when `import.meta.env.DEV` is true; production builds redirect to sign-in.
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DEV_LOGIN_SECRET` - Shared secret (also set as `VITE_DEV_LOGIN_SECRET` in `.env.local` for frontend)
+
+#### Request Parameters
+
+```typescript
+interface DevLoginRequest {
+  email: string        // Target user's email
+  redirectTo?: string  // URL to redirect after login (e.g., http://localhost:5175/dashboard)
+}
+```
+
+#### Example Request
+
+```typescript
+const response = await supabase.functions.invoke('dev-login', {
+  body: {
+    email: 'test@example.com',
+    redirectTo: 'http://localhost:5175/dashboard'
+  },
+  headers: { 'X-Dev-Login-Secret': import.meta.env.VITE_DEV_LOGIN_SECRET }
+})
+```
+
+#### Usage
+
+1. Add to `.env.local`: `VITE_DEV_LOGIN_SECRET=your-secret`
+2. Set Edge Function secret: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
+3. Open `http://localhost:5175/dev-login?as=test@example.com` or use the form at `/dev-login`
+
+#### Supabase Auth Config
+
+`additional_redirect_urls` in `supabase/config.toml` must include `http://localhost:5175/**` (and optionally `http://localhost:5173/**`) for dev-login magic links to redirect back to localhost. Production: `https://pipetooling.com/**`; local dev: localhost URLs.
 
 ---
 
@@ -1118,6 +1167,7 @@ supabase functions deploy create-user
 supabase functions deploy archive-user
 supabase functions deploy restore-user
 supabase functions deploy login-as-user
+supabase functions deploy dev-login
 supabase functions deploy send-workflow-notification
 supabase functions deploy set-user-password
 supabase functions deploy test-email

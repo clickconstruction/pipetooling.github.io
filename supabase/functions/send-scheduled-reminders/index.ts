@@ -90,7 +90,7 @@ serve(async (req) => {
 
     const { data: items } = await adminClient
       .from('checklist_items')
-      .select('id, title, assigned_to_user_id, reminder_time, reminder_scope')
+      .select('id, title, reminder_time, reminder_scope')
       .not('reminder_time', 'is', null)
 
     if (!items || items.length === 0) {
@@ -120,10 +120,9 @@ serve(async (req) => {
       const scope = item.reminder_scope as string
       let query = adminClient
         .from('checklist_instances')
-        .select('id')
+        .select('id, checklist_instance_assignees(user_id)')
         .eq('checklist_item_id', item.id)
         .is('completed_at', null)
-        .eq('assigned_to_user_id', item.assigned_to_user_id)
 
       if (scope === 'today_only') {
         query = query.eq('scheduled_date', todayCst)
@@ -137,10 +136,14 @@ serve(async (req) => {
       if (!instances || instances.length === 0) continue
 
       const title = (item as { title: string }).title
-      const userId = item.assigned_to_user_id
-      const list = userToInstances.get(userId) ?? []
-      for (let i = 0; i < instances.length; i++) list.push({ title })
-      userToInstances.set(userId, list)
+      for (const inst of instances) {
+        const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
+        for (const a of assignees) {
+          const list = userToInstances.get(a.user_id) ?? []
+          list.push({ title })
+          userToInstances.set(a.user_id, list)
+        }
+      }
     }
 
     let totalSent = 0

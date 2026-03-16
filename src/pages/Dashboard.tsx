@@ -128,12 +128,12 @@ type ChecklistInstance = {
   id: string
   checklist_item_id: string
   scheduled_date: string
-  assigned_to_user_id: string
   completed_at: string | null
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
   checklist_items?: { title: string } | null
+  checklist_instance_assignees?: Array<{ user_id: string }>
 }
 
 const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
@@ -525,8 +525,8 @@ export default function Dashboard() {
         .or('notify_when_started.eq.true,notify_when_complete.eq.true,notify_when_reopened.eq.true'),
       supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-        .eq('assigned_to_user_id', authUser.id)
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .eq('checklist_instance_assignees.user_id', authUser.id)
         .eq('scheduled_date', today)
         .order('created_at', { ascending: true }),
     ]).then(([userRes, allUsersRes, subsRes, checklistRes]) => {
@@ -928,7 +928,7 @@ export default function Dashboard() {
     Promise.all([
       supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, completed_by_user_id, checklist_items(title)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, checklist_items(title), checklist_instance_assignees(user_id)')
         .not('completed_at', 'is', null)
         .gte('completed_at', sevenDaysAgo)
         .order('completed_at', { ascending: false }),
@@ -944,7 +944,7 @@ export default function Dashboard() {
       const instances = (instRes.data ?? []) as ChecklistInstance[]
       const userIds = new Set<string>()
       instances.forEach((i) => {
-        if (i.assigned_to_user_id) userIds.add(i.assigned_to_user_id)
+        ;(i.checklist_instance_assignees ?? []).forEach((a) => userIds.add(a.user_id))
         if (i.completed_by_user_id) userIds.add(i.completed_by_user_id)
       })
       let userMap = new Map<string, string>()
@@ -1041,8 +1041,8 @@ export default function Dashboard() {
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-      .eq('assigned_to_user_id', authUser.id)
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', authUser.id)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
     const { data: itemsData } = await supabase
@@ -1054,8 +1054,8 @@ export default function Dashboard() {
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, assigned_to_user_id, completed_at, notes, completed_by_user_id, created_at, checklist_items(title)')
-        .eq('assigned_to_user_id', authUser.id)
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title), checklist_instance_assignees!inner(user_id)')
+        .eq('checklist_instance_assignees.user_id', authUser.id)
         .is('completed_at', null)
         .lt('scheduled_date', today)
         .in('checklist_item_id', itemIds)
@@ -1091,7 +1091,7 @@ export default function Dashboard() {
     const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
     setFwdInstance(inst)
     setFwdTitle(title)
-    setFwdAssigneeId(inst.assigned_to_user_id)
+    setFwdAssigneeId('')
   }
 
   async function saveFwd() {
@@ -1109,7 +1109,6 @@ export default function Dashboard() {
         .from('checklist_items')
         .insert({
           title: fwdTitle.trim(),
-          assigned_to_user_id: fwdAssigneeId,
           created_by_user_id: authUser.id,
           repeat_type: 'once',
           start_date: fwdInstance.scheduled_date,
@@ -1122,12 +1121,16 @@ export default function Dashboard() {
         .select('id')
         .single()
       if (itemErr) throw itemErr
-      if (newItem?.id) {
-        await supabase.from('checklist_instances').insert({
-          checklist_item_id: newItem.id,
-          scheduled_date: fwdInstance.scheduled_date,
-          assigned_to_user_id: fwdAssigneeId,
-        })
+      if (newItem?.id && fwdAssigneeId) {
+        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const { data: newInst } = await supabase
+          .from('checklist_instances')
+          .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
+          .select('id')
+          .single()
+        if (newInst?.id) {
+          await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: fwdAssigneeId })
+        }
         await supabase.from('checklist_instances').delete().eq('id', fwdInstance.id)
       }
       setFwdInstance(null)
@@ -1195,11 +1198,22 @@ export default function Dashboard() {
       .eq('scheduled_date', nextDateStr)
       .single()
     if (existing.data) return
-    await supabase.from('checklist_instances').insert({
-      checklist_item_id: inst.checklist_item_id,
-      scheduled_date: nextDateStr,
-      assigned_to_user_id: inst.assigned_to_user_id,
-    })
+    const { data: assignees } = await supabase
+      .from('checklist_item_assignees')
+      .select('user_id')
+      .eq('checklist_item_id', inst.checklist_item_id)
+    const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
+    if (assigneeIds.length === 0) return
+    const { data: newInst } = await supabase
+      .from('checklist_instances')
+      .insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr })
+      .select('id')
+      .single()
+    if (newInst?.id) {
+      await supabase.from('checklist_instance_assignees').insert(
+        assigneeIds.map((uid) => ({ checklist_instance_id: newInst.id, user_id: uid }))
+      )
+    }
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -1785,20 +1799,40 @@ export default function Dashboard() {
                           </div>
                         </div>
                         {isRead && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setHiddenReportIds((prev) => new Set(prev).add(r.id))
-                            }}
-                            title="Hide from dashboard"
-                            aria-label="Hide from dashboard"
-                            style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
-                              <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
-                            </svg>
-                          </button>
+                          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setHiddenReportIds((prev) => new Set(prev).add(r.id))
+                              }}
+                              title="Hide from dashboard"
+                              aria-label="Hide from dashboard"
+                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
+                                <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setReadReportIds((prev) => {
+                                  const next = new Set(prev)
+                                  next.delete(r.id)
+                                  return next
+                                })
+                              }}
+                              title="Mark as unread"
+                              aria-label="Mark as unread"
+                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 14, height: 14 }}>
+                                <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
+                              </svg>
+                            </button>
+                          </div>
                         )}
                       </li>
                     )
@@ -2048,7 +2082,10 @@ export default function Dashboard() {
                                 {items.map((inst) => {
                                   const title = (inst.checklist_items as { title: string } | null)?.title ?? 'Untitled'
                                   const isRead = readInstanceIds.has(inst.id)
-                                  const assigneeName = getUserName(inst.assigned_to_user_id)
+                                  const assigneeName = (inst.checklist_instance_assignees ?? [])
+                                    .map((a) => getUserName(a.user_id))
+                                    .filter(Boolean)
+                                    .join(', ') || '—'
                                   return (
                                     <li
                                       key={inst.id}

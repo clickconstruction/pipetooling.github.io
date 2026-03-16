@@ -6,7 +6,6 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'e
 type ChecklistItem = {
   id: string
   title: string
-  assigned_to_user_id: string
   created_by_user_id: string
   repeat_type: string
   repeat_days_of_week: number[] | null
@@ -27,7 +26,7 @@ const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 
 
 type FormState = {
   title: string
-  assigned_to_user_id: string
+  assigned_to_user_ids: string[]
   repeat_type: 'day_of_week' | 'days_after_completion' | 'once'
   repeat_days_of_week: number[]
   repeat_days_after: number
@@ -42,7 +41,7 @@ type FormState = {
 
 const initialForm: FormState = {
   title: '',
-  assigned_to_user_id: '',
+  assigned_to_user_ids: [],
   repeat_type: 'once',
   repeat_days_of_week: [],
   repeat_days_after: 1,
@@ -55,11 +54,11 @@ const initialForm: FormState = {
   reminder_scope: '',
 }
 
-function populateForm(item: ChecklistItem): FormState {
+function populateForm(item: ChecklistItem, assigneeIds: string[]): FormState {
   const rt = item.reminder_time
   return {
     title: item.title,
-    assigned_to_user_id: item.assigned_to_user_id,
+    assigned_to_user_ids: assigneeIds,
     repeat_type: item.repeat_type as FormState['repeat_type'],
     repeat_days_of_week: item.repeat_days_of_week ?? [],
     repeat_days_after: item.repeat_days_after ?? 1,
@@ -99,19 +98,21 @@ export function ChecklistItemEditModal({
     Promise.all([
       supabase
         .from('checklist_items')
-        .select('id, title, assigned_to_user_id, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, users!checklist_items_assigned_to_user_id_fkey(name, email)')
+        .select('id, title, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at')
         .eq('id', itemId)
         .single(),
+      supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
       supabase.from('users').select('id, name, email').order('name'),
-    ]).then(([itemRes, usersRes]) => {
+    ]).then(([itemRes, assigneesRes, usersRes]) => {
       const item = itemRes.data as ChecklistItem | null
+      const assigneeIds = (assigneesRes.data ?? []).map((r: { user_id: string }) => r.user_id)
       const usersData = (usersRes.data ?? []) as Array<{ id: string; name: string; email: string }>
       if (itemRes.error) {
         setError(itemRes.error.message)
         onClose()
         return
       }
-      if (item) setForm(populateForm(item))
+      if (item) setForm(populateForm(item, assigneeIds))
       setUsers(usersData)
       setLoading(false)
     })
@@ -120,6 +121,10 @@ export function ChecklistItemEditModal({
   async function handleSave() {
     if (!itemId) return
     setError(null)
+    if (form.assigned_to_user_ids.length === 0) {
+      setError('Select at least one assignee.')
+      return
+    }
     if (form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length === 0) {
       setError('Select at least one day of the week.')
       return
@@ -130,7 +135,6 @@ export function ChecklistItemEditModal({
         .from('checklist_items')
         .update({
           title: form.title,
-          assigned_to_user_id: form.assigned_to_user_id,
           repeat_type: form.repeat_type,
           repeat_days_of_week: form.repeat_type === 'day_of_week' ? (form.repeat_days_of_week.length ? form.repeat_days_of_week : null) : null,
           repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
@@ -145,6 +149,12 @@ export function ChecklistItemEditModal({
         })
         .eq('id', itemId)
       if (error) throw error
+      await supabase.from('checklist_item_assignees').delete().eq('checklist_item_id', itemId)
+      if (form.assigned_to_user_ids.length > 0) {
+        await supabase.from('checklist_item_assignees').insert(
+          form.assigned_to_user_ids.map((uid) => ({ checklist_item_id: itemId, user_id: uid }))
+        )
+      }
       window.dispatchEvent(new Event('checklist-item-saved'))
       onSaved()
       onClose()
@@ -183,15 +193,25 @@ export function ChecklistItemEditModal({
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Assign to</span>
-            <select
-              value={form.assigned_to_user_id}
-              onChange={(e) => setForm((f) => ({ ...f, assigned_to_user_id: e.target.value }))}
-              style={{ width: '100%', padding: '0.5rem' }}
-            >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
               {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.assigned_to_user_ids.includes(u.id)}
+                    onChange={(e) => {
+                      setForm((f) => ({
+                        ...f,
+                        assigned_to_user_ids: e.target.checked
+                          ? [...f.assigned_to_user_ids, u.id]
+                          : f.assigned_to_user_ids.filter((id) => id !== u.id),
+                      }))
+                    }}
+                  />
+                  {u.name || u.email}
+                </label>
               ))}
-            </select>
+            </div>
           </label>
           <label>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
