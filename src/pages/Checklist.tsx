@@ -67,14 +67,16 @@ export default function Checklist() {
     const tab = searchParams.get('tab')
     if (tab === 'today' || tab === 'history' || tab === 'review' || tab === 'manage') {
       setActiveTab(tab)
-    } else if (!tab) {
+    } else if (!tab && role !== null) {
+      const defaultTab =
+        role === 'dev' || role === 'master_technician' || role === 'assistant' ? 'review' : 'today'
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'today')
+        next.set('tab', defaultTab)
         return next
       }, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, role])
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const [editItemId, setEditItemId] = useState<string | null>(null)
@@ -993,6 +995,7 @@ type OutstandingInstance = {
 }
 
 function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+  const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
@@ -1004,6 +1007,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
   const [fwdSaving, setFwdSaving] = useState(false)
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
+  const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -1049,6 +1053,78 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
       setError(err instanceof Error ? err.message : 'Failed to delete')
     } finally {
       setDeletingInstanceId(null)
+    }
+  }
+
+  async function markComplete(inst: OutstandingInstance) {
+    if (!authUserId || completingInstanceId) return
+    setCompletingInstanceId(inst.id)
+    setError(null)
+    try {
+      const { error: err } = await supabase
+        .from('checklist_instances')
+        .update({
+          completed_at: new Date().toISOString(),
+          completed_by_user_id: authUserId,
+        })
+        .eq('id', inst.id)
+      if (err) throw err
+      const { data: item } = await supabase
+        .from('checklist_items')
+        .select('notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, title')
+        .eq('id', inst.checklist_item_id)
+        .single()
+      if (item) {
+        const title = (item as { title: string }).title
+        const body = `Dev completed: ${title}`
+        const recipients: string[] = []
+        const notifyUserId = (item as { notify_on_complete_user_id: string | null }).notify_on_complete_user_id
+        if (notifyUserId) recipients.push(notifyUserId)
+        const notifyCreator = (item as { notify_creator_on_complete: boolean }).notify_creator_on_complete
+        const creatorId = (item as { created_by_user_id: string }).created_by_user_id
+        if (notifyCreator && creatorId && !recipients.includes(creatorId)) recipients.push(creatorId)
+        for (const uid of recipients) {
+          try {
+            await supabase.functions.invoke('send-checklist-notification', {
+              body: { recipient_user_id: uid, push_title: 'Checklist completed', push_body: body, push_url: '/checklist', tag: `checklist-${inst.id}` },
+            })
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      const [{ data: itemData }, { data: assignees }] = await Promise.all([
+        supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', inst.checklist_item_id).single(),
+        supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', inst.checklist_item_id),
+      ])
+      if (itemData) {
+        const rt = (itemData as { repeat_type: string }).repeat_type
+        if (rt === 'days_after_completion') {
+          const daysAfter = (itemData as { repeat_days_after: number | null }).repeat_days_after
+          const endDate = (itemData as { repeat_end_date: string | null }).repeat_end_date
+          if (daysAfter) {
+            const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
+            if (assigneeIds.length > 0) {
+              const nextDate = new Date(inst.scheduled_date)
+              nextDate.setDate(nextDate.getDate() + daysAfter)
+              const nextDateStr = toLocalDateString(nextDate)
+              if (!endDate || nextDateStr <= endDate) {
+                const { data: newInst } = await supabase.from('checklist_instances').insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr }).select('id').single()
+                if (newInst?.id) {
+                  for (const uid of assigneeIds) {
+                    await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: uid })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      await loadOutstanding()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to mark complete')
+    } finally {
+      setCompletingInstanceId(null)
     }
   }
 
@@ -1280,7 +1356,28 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                   style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
                   onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
                 >
-                  <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {name}
+                      {expandedUserId === userId && isDev && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); checklistAddModal?.openAddModal(userId) }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.8125rem',
+                            border: '1px solid #3b82f6',
+                            borderRadius: 4,
+                            background: '#3b82f6',
+                            color: 'white',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Add task
+                        </button>
+                      )}
+                    </span>
+                  </td>
                   <td style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>{count}</td>
                   <td style={{ padding: '0.5rem 0.75rem' }}>
                     {expandedUserId === userId ? '▼' : '▶'}
@@ -1309,11 +1406,20 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                       <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
                         {instances.map((inst) => (
                           <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ flex: 1 }}>
-                              <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} /> <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
-                            </span>
                             {isDev && (
-                              <>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); markComplete(inst) }}
+                                  disabled={completingInstanceId === inst.id}
+                                  title="Mark complete"
+                                  aria-label="Mark complete"
+                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer', color: '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                    <path d="M530.8 134.1C545.1 144.5 548.3 164.5 537.9 178.8L281.9 530.8C276.4 538.4 267.9 543.1 258.5 543.9C249.1 544.7 240 541.2 233.4 534.6L105.4 406.6C92.9 394.1 92.9 373.8 105.4 361.3C117.9 348.8 138.2 348.8 150.7 361.3L252.2 462.8L486.2 141.1C496.6 126.8 516.6 123.6 530.9 134z" />
+                                  </svg>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); setEditItemId(inst.checklist_item_id) }}
@@ -1353,8 +1459,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                                 >
                                   FWD
                                 </button>
-                              </>
+                              </span>
                             )}
+                            <span style={{ flex: 1 }}>
+                              <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} /> <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+                            </span>
                           </li>
                         ))}
                       </ul>

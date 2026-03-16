@@ -83,17 +83,23 @@ export default function ChecklistAddModal() {
 
   useEffect(() => {
     if (modalContext?.isOpen && users.length > 0 && form.assigned_to_user_ids.length === 0) {
-      const firstId = users[0]?.id
-      if (firstId) setForm((f) => ({ ...f, assigned_to_user_ids: [firstId] }))
+      const initialId = modalContext.initialAssigneeUserId && users.some((u) => u.id === modalContext.initialAssigneeUserId)
+        ? modalContext.initialAssigneeUserId
+        : users[0]?.id
+      if (initialId) setForm((f) => ({ ...f, assigned_to_user_ids: [initialId] }))
     }
-  }, [modalContext?.isOpen, users, form.assigned_to_user_ids.length])
+  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, form.assigned_to_user_ids.length])
 
   useEffect(() => {
     if (modalContext?.isOpen) {
+      const defaultAssignee =
+        modalContext.initialAssigneeUserId && users.some((u) => u.id === modalContext.initialAssigneeUserId)
+          ? modalContext.initialAssigneeUserId
+          : users[0]?.id
       setForm({
         title: '',
         links: [],
-        assigned_to_user_ids: users[0]?.id ? [users[0].id] : [],
+        assigned_to_user_ids: defaultAssignee ? [defaultAssignee] : [],
         repeat_type: 'once',
         repeat_days_of_week: [],
         repeat_days_after: 1,
@@ -107,7 +113,7 @@ export default function ChecklistAddModal() {
       })
       setFormError(null)
     }
-  }, [modalContext?.isOpen])
+  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users])
 
   async function generateInstances(itemId: string, item: typeof form) {
     const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
