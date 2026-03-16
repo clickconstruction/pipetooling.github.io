@@ -18,6 +18,13 @@ export default function SignIn() {
     }
   }, [])
 
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('signin_email')
+    const savedPassword = localStorage.getItem('signin_password')
+    if (savedEmail) setEmail(savedEmail)
+    if (savedPassword) setPassword(savedPassword)
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -29,6 +36,8 @@ export default function SignIn() {
       return
     }
     void supabase.rpc('touch_last_sign_in')
+    localStorage.setItem('signin_email', email)
+    localStorage.setItem('signin_password', password)
     // Hard reload to clear cache (avoids stale data, service worker cache)
     const reload = () => { location.reload() }
     if (typeof caches !== 'undefined') {

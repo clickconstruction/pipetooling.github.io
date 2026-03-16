@@ -3613,9 +3613,9 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Stage Notes</th>
                         {showPctComplete && (
-                          <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Value Created<br />/ % Complete</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Value Created<br />/ % Complete</th>
                         )}
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? <>Remaining<br />/ Total Bill</> : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? <>Remaining<br />/ Total Bill</> : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                       </tr>
@@ -3797,8 +3797,8 @@ export default function Jobs() {
                               />
                             </td>
                             {showPctComplete && (
-                              <td style={{ padding: '0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                              <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'top' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                   <div style={{ fontSize: '0.8125rem' }}>
                                     {j.pct_complete != null
                                       ? formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)
@@ -3832,7 +3832,7 @@ export default function Jobs() {
                                       width: '3.5rem',
                                       padding: '0.25rem 0.35rem',
                                       fontSize: '0.8125rem',
-                                      textAlign: 'right',
+                                      textAlign: 'center',
                                       border: '1px solid #d1d5db',
                                       borderRadius: 4,
                                     }}
@@ -3840,13 +3840,13 @@ export default function Jobs() {
                                 </div>
                               </td>
                             )}
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                               {showRemaining
                                 ? (() => {
                                     const rev = j.revenue != null ? Number(j.revenue) : 0
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0
                                     return (
-                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                         <span>{rev > 0 || pm > 0 ? formatCurrencyNoCents(rev - pm) : '—'}</span>
                                         <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—'}</span>
                                       </div>
@@ -3995,7 +3995,7 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned<br />HCP</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Stage Notes</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Remaining<br />/ Total Bill</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Remaining<br />/ Total Bill</th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
                         <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
                       </tr>
@@ -4179,8 +4179,8 @@ export default function Jobs() {
                                     }}
                                   />
                                 </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span>
                                       {showRemaining
                                         ? (() => {
@@ -4361,8 +4361,8 @@ export default function Jobs() {
                                     }}
                                   />
                                 </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span>{formatCurrencyNoCents(Number(inv.amount))}</span>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? formatCurrencyNoCents(Number(job.revenue)) : '—'}</span>
                                     {sendBackBelowRemaining && (

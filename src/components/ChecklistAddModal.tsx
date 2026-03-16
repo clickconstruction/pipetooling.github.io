@@ -3,6 +3,26 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 
+const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
+
+function getDefaultAssigneeId(
+  initialAssigneeUserId: string | null,
+  users: Array<{ id: string; email?: string }>,
+  currentUserId: string | null
+): string | null {
+  // Send task flow: use passed userId if valid
+  if (initialAssigneeUserId && users.some((u) => u.id === initialAssigneeUserId)) {
+    return initialAssigneeUserId
+  }
+  // Add checklist flow: current user first
+  if (currentUserId && users.some((u) => u.id === currentUserId)) {
+    return currentUserId
+  }
+  // Fallback: Taunya by email
+  const taunya = users.find((u) => u.email?.toLowerCase() === FALLBACK_ASSIGNEE_EMAIL)
+  return taunya?.id ?? users[0]?.id ?? null
+}
+
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -83,19 +103,22 @@ export default function ChecklistAddModal() {
 
   useEffect(() => {
     if (modalContext?.isOpen && users.length > 0 && form.assigned_to_user_ids.length === 0) {
-      const initialId = modalContext.initialAssigneeUserId && users.some((u) => u.id === modalContext.initialAssigneeUserId)
-        ? modalContext.initialAssigneeUserId
-        : users[0]?.id
-      if (initialId) setForm((f) => ({ ...f, assigned_to_user_ids: [initialId] }))
+      const defaultId = getDefaultAssigneeId(
+        modalContext.initialAssigneeUserId,
+        users,
+        authUser?.id ?? null
+      )
+      if (defaultId) setForm((f) => ({ ...f, assigned_to_user_ids: [defaultId] }))
     }
-  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, form.assigned_to_user_ids.length])
+  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, form.assigned_to_user_ids.length, authUser?.id])
 
   useEffect(() => {
     if (modalContext?.isOpen) {
-      const defaultAssignee =
-        modalContext.initialAssigneeUserId && users.some((u) => u.id === modalContext.initialAssigneeUserId)
-          ? modalContext.initialAssigneeUserId
-          : users[0]?.id
+      const defaultAssignee = getDefaultAssigneeId(
+        modalContext.initialAssigneeUserId,
+        users,
+        authUser?.id ?? null
+      )
       setForm({
         title: '',
         links: [],
@@ -113,7 +136,7 @@ export default function ChecklistAddModal() {
       })
       setFormError(null)
     }
-  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users])
+  }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, authUser?.id])
 
   async function generateInstances(itemId: string, item: typeof form) {
     const assigneeIds = item.assigned_to_user_ids?.length ? item.assigned_to_user_ids : []
