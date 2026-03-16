@@ -1261,7 +1261,7 @@ export default function Settings() {
         .from('user_dashboard_buttons')
         .select('button_key, visible')
         .eq('user_id', authUser.id)
-      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true }
+      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true }
       const map = { ...defaults }
       for (const r of (btnRows ?? []) as Array<{ button_key: string; visible: boolean }>) {
         if (r.button_key in map) map[r.button_key] = r.visible

@@ -353,7 +353,7 @@ export default function Dashboard() {
       .select('button_key, visible')
       .eq('user_id', authUser.id)
       .then(({ data }) => {
-        const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true }
+        const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true }
         const map = { ...defaults }
         for (const r of (data ?? []) as Array<{ button_key: string; visible: boolean }>) {
           if (r.button_key in map) map[r.button_key] = r.visible
@@ -1519,7 +1519,7 @@ export default function Dashboard() {
           <ClockInOutButton userId={authUser.id} userName={userName} />
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
           {upcomingInspectionsLoading ? (
@@ -1918,20 +1918,26 @@ export default function Dashboard() {
                                         {!isRead && (
                                           <button
                                             type="button"
+                                            title="Mark as read"
                                             onClick={() => markCompletedItemAsRead(inst)}
                                             disabled={!!markingReadId}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer' }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
-                                            Mark as read
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
                                           </button>
                                         )}
-                                        {isRead && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Read</span>}
+                                        {isRead && (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', color: '#059669' }} title="Read">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
+                                          </span>
+                                        )}
                                         <button
                                           type="button"
+                                          title="Re-send"
                                           onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                         >
-                                          Re-send
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
                                         </button>
                                         <button
                                           type="button"
