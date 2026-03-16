@@ -2276,7 +2276,7 @@ export default function Prospects() {
                                 <col style={{ width: '10%' }} />
                                 <col style={{ width: '8%' }} />
                                 <col style={{ width: '24%' }} />
-                                {warmth === CANT_REACH_KEY && <col style={{ width: '6%' }} />}
+                                {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <col style={{ width: '6%' }} />}
                               </colgroup>
                               <thead style={{ background: '#f9fafb' }}>
                                 <tr>
@@ -2287,12 +2287,12 @@ export default function Prospects() {
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
-                                  {warmth === CANT_REACH_KEY && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>}
+                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={warmth === CANT_REACH_KEY ? 8 : 7} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? 8 : 7} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -2347,7 +2347,7 @@ export default function Prospects() {
                                           </div>
                                         </div>
                                       </td>
-                                      {warmth === CANT_REACH_KEY && (
+                                      {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
                                         <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                           <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                             <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
@@ -2374,7 +2374,7 @@ export default function Prospects() {
                                     type="button"
                                     onClick={() => selectProspectForList(p)}
                                     className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                    style={warmth === CANT_REACH_KEY ? { paddingBottom: '3rem' } : undefined}
+                                    style={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? { paddingBottom: '3rem' } : undefined}
                                   >
                                     <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
                                     <div className="prospectListMobileCardRow">
@@ -2440,7 +2440,7 @@ export default function Prospects() {
                                       <span>Warmth {p.warmth_count ?? 0}</span>
                                     </div>
                                   </button>
-                                  {warmth === CANT_REACH_KEY && (
+                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
                                     <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                                       <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
                                       <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
