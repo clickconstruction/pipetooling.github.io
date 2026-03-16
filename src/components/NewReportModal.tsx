@@ -194,6 +194,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
 
     if (userRole === 'estimator') {
       // Use RPC - SECURITY DEFINER bypasses RLS (fixes estimator insert policy issues)
+      // RPC accepts null for one of job_ledger_id/project_id; generated types are stricter
       const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
         p_template_id: selectedTemplateId,
         p_field_values: fv,
@@ -201,7 +202,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         p_project_id: projectId,
         p_reported_at_lat: reportedAtLat ?? undefined,
         p_reported_at_lng: reportedAtLng ?? undefined,
-      })
+      } as never)
       err = rpcErr
       if (reportId && typeof reportId === 'string') inserted = { id: reportId }
     } else {
@@ -211,8 +212,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         template_id: selectedTemplateId,
         created_by_user_id: createdByUserId,
         field_values: fv,
-        job_ledger_id: jobLedgerId ?? null,
-        project_id: projectId ?? null,
+        ...(jobLedgerId ? { job_ledger_id: jobLedgerId, project_id: null } : { job_ledger_id: null, project_id: projectId! }),
         ...(reportedAtLat != null &&
           reportedAtLng != null && { reported_at_lat: reportedAtLat, reported_at_lng: reportedAtLng }),
       }).select('id').single()

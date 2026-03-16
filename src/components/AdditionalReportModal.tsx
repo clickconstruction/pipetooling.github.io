@@ -95,11 +95,12 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
     let err: { message: string } | null = null
 
     if (userRole === 'estimator') {
+      // RPC accepts null for p_project_id when p_job_ledger_id is set; generated types are stricter
       const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
         p_template_id: selectedTemplateId,
         p_field_values: fv,
         p_job_ledger_id: jobId,
-        p_project_id: null,
+        p_project_id: null as unknown as string,
         p_reported_at_lat: reportedAtLat ?? undefined,
         p_reported_at_lng: reportedAtLng ?? undefined,
       })

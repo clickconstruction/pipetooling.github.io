@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "overrides": {
+    "sourcemap-codec": "npm:@jridgewell/sourcemap-codec@^1.5.0",
+    "source-map": "^0.7.6",
+    "glob": "^13.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
