@@ -56,6 +56,8 @@ function fromDatetimeLocal(value: string): string | null {
   return new Date(v).toISOString()
 }
 
+const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
+
 type SubscribedStep = {
   step_id: string
   step_name: string
@@ -231,7 +233,19 @@ export default function Dashboard() {
   const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null } | null>(null)
   const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
-  const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(new Set())
+  const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(HIDE_ON_REFRESH_STORAGE_KEY)
+      if (!raw) return new Set()
+      const ids = JSON.parse(raw) as string[]
+      if (!Array.isArray(ids)) return new Set()
+      localStorage.removeItem(HIDE_ON_REFRESH_STORAGE_KEY)
+      return new Set(ids)
+    } catch {
+      return new Set()
+    }
+  })
+  const [hideOnRefreshPending, setHideOnRefreshPending] = useState(false)
   const [myReports, setMyReports] = useState<Array<{ id: string; template_id: string; template_name: string; job_display_name: string; job_ledger_id?: string | null; project_id?: string | null; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null }>>([])
   const [myReportsLoading, setMyReportsLoading] = useState(false)
   const [reportEditWindowDays, setReportEditWindowDays] = useState(2)
@@ -239,6 +253,8 @@ export default function Dashboard() {
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
+  const [myReportsExpanded, setMyReportsExpanded] = useState(false)
+  const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
@@ -1667,192 +1683,6 @@ export default function Dashboard() {
           </Link>
       </div>
       )}
-      {showMyReports && (
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Reports</h2>
-            {!myReportsLoading && myReports.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setMyReportsModalOpen(true)}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
-              >
-                Show more →
-              </button>
-            )}
-          </div>
-          {myReportsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
-          ) : myReports.length > 0 ? (
-            (() => {
-              const r = myReports[0]!
-              const editWindowMs = reportEditWindowDays * 24 * 60 * 60 * 1000
-              const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
-              return (
-                <div
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    background: '#fff',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <div
-                    style={{ flex: 1, minWidth: 0 }}
-                    onClick={() => {
-                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
-                      setViewReportModalOpen(true)
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                      {new Date(r.created_at).toLocaleString()}
-                    </div>
-                  </div>
-                  {isWithinEditWindow && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
-                        setEditReportModalOpen(true)
-                      }}
-                      style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-              )
-            })()
-          ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one with the Job Report button above.</p>
-          )}
-        </div>
-      )}
-      {showRecent && (
-        <div style={{ marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setRecentReportsExpanded((prev) => !prev)}
-            aria-expanded={recentReportsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}
-          >
-            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span aria-hidden>{recentReportsExpanded ? '\u25BC' : '\u25B6'}</span>
-              Recent Reports
-            </h2>
-            {!isReportEnabledOnlyUser && !recentReportsExpanded && (
-              <Link to="/jobs?tab=reports" onClick={(e) => e.stopPropagation()} style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
-            )}
-          </button>
-          {recentReportsExpanded && (
-            <>
-              {!isReportEnabledOnlyUser && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
-                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
-                </div>
-              )}
-              {recentReportsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
-              ) : recentReports.length > 0 ? (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
-                const isRead = readReportIds.has(r.id)
-                    return (
-                      <li
-                    key={r.id}
-                        style={{
-                          padding: '0.5rem 0.75rem',
-                          marginBottom: '0.5rem',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: 8,
-                          background: isRead ? '#f9fafb' : '#fff',
-                          opacity: isRead ? 0.85 : 1,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '0.5rem',
-                        }}
-                        onClick={() => {
-                          setSelectedReport(r)
-                          setViewReportModalOpen(true)
-                        }}
-                      >
-                        {!isRead && (
-                          <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
-                              <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
-                            </svg>
-                          </span>
-                        )}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                            {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
-                          </div>
-                        </div>
-                        {isRead && (
-                          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setHiddenReportIds((prev) => new Set(prev).add(r.id))
-                              }}
-                              title="Hide from dashboard"
-                              aria-label="Hide from dashboard"
-                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
-                                <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setReadReportIds((prev) => {
-                                  const next = new Set(prev)
-                                  next.delete(r.id)
-                                  return next
-                                })
-                              }}
-                              title="Mark as unread"
-                              aria-label="Mark as unread"
-                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 14, height: 14 }}>
-                                <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    )
-                  })}
-                </ul>
-              ) : (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                  No reports yet.{' '}
-                  {isReportEnabledOnlyUser ? (
-                    'Create one above.'
-                  ) : (
-                    <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
-                  )}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
@@ -1919,84 +1749,6 @@ export default function Dashboard() {
             })}
           </ul>
           ) : null}
-        </div>
-      )}
-      {fwdInstance && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-            padding: '1rem',
-          }}
-          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: 8,
-              padding: '1.5rem',
-              minWidth: 320,
-              maxWidth: 400,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
-                <input
-                  type="text"
-                  value={fwdTitle}
-                  onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
-                <select
-                  value={fwdAssigneeId}
-                  onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                >
-                  {sendTaskUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email || u.id}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
-              <button
-                type="button"
-                onClick={saveFwd}
-                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                {fwdSaving ? 'Saving…' : 'Forward'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
         </div>
       )}
       {isDev && (
@@ -2137,6 +1889,310 @@ export default function Dashboard() {
               )}
             </>
           )}
+        </div>
+      )}
+      {showMyReports && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setMyReportsExpanded((prev) => !prev)}
+            aria-expanded={myReportsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: myReportsExpanded ? '0.5rem' : 0 }}
+          >
+            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span aria-hidden>{myReportsExpanded ? '\u25BC' : '\u25B6'}</span>
+              My Reports
+            </h2>
+            {myReportsExpanded && !myReportsLoading && myReports.length > 1 && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+              >
+                Show more →
+              </button>
+            )}
+          </button>
+          {myReportsExpanded && (
+          <>
+          {myReportsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+          ) : myReports.length > 0 ? (
+            (() => {
+              const r = myReports[0]!
+              const editWindowMs = reportEditWindowDays * 24 * 60 * 60 * 1000
+              const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
+              return (
+                <div
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    background: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <div
+                    style={{ flex: 1, minWidth: 0 }}
+                    onClick={() => {
+                      setSelectedReport({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, created_by_name: r.created_by_name, field_values: r.field_values, reported_at_lat: r.reported_at_lat ?? null, reported_at_lng: r.reported_at_lng ?? null })
+                      setViewReportModalOpen(true)
+                    }}
+                  >
+                    <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                    <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      {new Date(r.created_at).toLocaleString()}
+                    </div>
+                  </div>
+                  {isWithinEditWindow && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                        setEditReportModalOpen(true)
+                      }}
+                      style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              )
+            })()
+          ) : (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No reports yet. Create one with the Job Report button above.</p>
+          )}
+          </>
+          )}
+        </div>
+      )}
+      {showRecent && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setRecentReportsExpanded((prev) => !prev)}
+            aria-expanded={recentReportsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}
+          >
+            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span aria-hidden>{recentReportsExpanded ? '\u25BC' : '\u25B6'}</span>
+              Recent Reports
+            </h2>
+            {recentReportsExpanded && (
+              <label
+                onClick={(e) => e.stopPropagation()}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#6b7280', fontWeight: 400 }}
+              >
+                <input
+                  type="checkbox"
+                  checked={hideOnRefreshPending}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setHideOnRefreshPending(checked)
+                    if (checked) {
+                      const ids = recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => r.id)
+                      try {
+                        localStorage.setItem(HIDE_ON_REFRESH_STORAGE_KEY, JSON.stringify(ids))
+                      } catch {
+                        /* ignore */
+                      }
+                    } else {
+                      try {
+                        localStorage.removeItem(HIDE_ON_REFRESH_STORAGE_KEY)
+                      } catch {
+                        /* ignore */
+                      }
+                    }
+                  }}
+                  style={{ margin: 0 }}
+                />
+                <span>hide from dashboard all open reports on refresh</span>
+              </label>
+            )}
+          </button>
+          {recentReportsExpanded && (
+            <>
+              {!isReportEnabledOnlyUser && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+                </div>
+              )}
+              {recentReportsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading reports…</p>
+              ) : recentReports.length > 0 ? (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => {
+                const isRead = readReportIds.has(r.id)
+                    return (
+                      <li
+                    key={r.id}
+                        style={{
+                          padding: '0.5rem 0.75rem',
+                          marginBottom: '0.5rem',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 8,
+                          background: isRead ? '#f9fafb' : '#fff',
+                          opacity: isRead ? 0.85 : 1,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                        }}
+                        onClick={() => {
+                          setSelectedReport(r)
+                          setViewReportModalOpen(true)
+                        }}
+                      >
+                        {!isRead && (
+                          <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
+                              <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
+                            </svg>
+                          </span>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {r.template_name}</span>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
+                          </div>
+                        </div>
+                        {isRead && (
+                          <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setHiddenReportIds((prev) => new Set(prev).add(r.id))
+                              }}
+                              title="Hide from dashboard"
+                              aria-label="Hide from dashboard"
+                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
+                                <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setReadReportIds((prev) => {
+                                  const next = new Set(prev)
+                                  next.delete(r.id)
+                                  return next
+                                })
+                              }}
+                              title="Mark as unread"
+                              aria-label="Mark as unread"
+                              style={{ width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 14, height: 14 }}>
+                                <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                  No reports yet.{' '}
+                  {isReportEnabledOnlyUser ? (
+                    'Create one above.'
+                  ) : (
+                    <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
+                  )}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
+      {fwdInstance && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            padding: '1rem',
+          }}
+          onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              minWidth: 320,
+              maxWidth: 400,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Forward task</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Title</label>
+                <input
+                  type="text"
+                  value={fwdTitle}
+                  onChange={(e) => setFwdTitle(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Assign to</label>
+                <select
+                  value={fwdAssigneeId}
+                  onChange={(e) => setFwdAssigneeId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                >
+                  {sendTaskUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.email || u.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem' }}>
+              <button
+                type="button"
+                onClick={saveFwd}
+                disabled={fwdSaving || !fwdTitle.trim() || !fwdAssigneeId}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: fwdSaving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {fwdSaving ? 'Saving…' : 'Forward'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFwdInstance(null)}
+                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2454,7 +2510,17 @@ export default function Dashboard() {
 
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Waiting for Payment</h2>
+          <button
+            type="button"
+            onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
+            aria-expanded={waitingForPaymentExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Waiting for Payment</h2>
+          </button>
+          {waitingForPaymentExpanded && (
+          <>
           {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[1, 2].map((i) => (
@@ -2632,6 +2698,8 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          )}
+          </>
           )}
         </div>
       )}
