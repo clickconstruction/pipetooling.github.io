@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       app_settings: {
@@ -559,9 +534,38 @@ export type Database = {
           },
         ]
       }
+      checklist_instance_assignees: {
+        Row: {
+          checklist_instance_id: string
+          user_id: string
+        }
+        Insert: {
+          checklist_instance_id: string
+          user_id: string
+        }
+        Update: {
+          checklist_instance_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_instance_assignees_checklist_instance_id_fkey"
+            columns: ["checklist_instance_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_instance_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_instances: {
         Row: {
-          assigned_to_user_id: string
           checklist_item_id: string
           completed_at: string | null
           completed_by_user_id: string | null
@@ -571,7 +575,6 @@ export type Database = {
           scheduled_date: string
         }
         Insert: {
-          assigned_to_user_id: string
           checklist_item_id: string
           completed_at?: string | null
           completed_by_user_id?: string | null
@@ -581,7 +584,6 @@ export type Database = {
           scheduled_date: string
         }
         Update: {
-          assigned_to_user_id?: string
           checklist_item_id?: string
           completed_at?: string | null
           completed_by_user_id?: string | null
@@ -591,13 +593,6 @@ export type Database = {
           scheduled_date?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "checklist_instances_assigned_to_user_id_fkey"
-            columns: ["assigned_to_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "checklist_instances_checklist_item_id_fkey"
             columns: ["checklist_item_id"]
@@ -614,9 +609,38 @@ export type Database = {
           },
         ]
       }
+      checklist_item_assignees: {
+        Row: {
+          checklist_item_id: string
+          user_id: string
+        }
+        Insert: {
+          checklist_item_id: string
+          user_id: string
+        }
+        Update: {
+          checklist_item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_item_assignees_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_item_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
-          assigned_to_user_id: string
           created_at: string | null
           created_by_user_id: string
           id: string
@@ -634,7 +658,6 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          assigned_to_user_id: string
           created_at?: string | null
           created_by_user_id: string
           id?: string
@@ -652,7 +675,6 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          assigned_to_user_id?: string
           created_at?: string | null
           created_by_user_id?: string
           id?: string
@@ -670,13 +692,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "checklist_items_assigned_to_user_id_fkey"
-            columns: ["assigned_to_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "checklist_items_created_by_user_id_fkey"
             columns: ["created_by_user_id"]
@@ -697,10 +712,6 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
-          rejected_at: string | null
-          rejected_by: string | null
-          revoked_at: string | null
-          revoked_by: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
           clock_out_lat: number | null
@@ -711,16 +722,16 @@ export type Database = {
           id: string
           job_ledger_id: string | null
           notes: string
+          rejected_at: string | null
+          rejected_by: string | null
+          revoked_at: string | null
+          revoked_by: string | null
           user_id: string
           work_date: string
         }
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
-          rejected_at?: string | null
-          rejected_by?: string | null
-          revoked_at?: string | null
-          revoked_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -730,17 +741,17 @@ export type Database = {
           created_at?: string | null
           id?: string
           job_ledger_id?: string | null
-          notes: string
+          notes?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           user_id: string
           work_date: string
         }
         Update: {
           approved_at?: string | null
           approved_by?: string | null
-          rejected_at?: string | null
-          rejected_by?: string | null
-          revoked_at?: string | null
-          revoked_by?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -751,6 +762,10 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           notes?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           user_id?: string
           work_date?: string
         }
@@ -760,6 +775,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -781,13 +803,6 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "clock_sessions_job_ledger_id_fkey"
-            columns: ["job_ledger_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -4775,13 +4790,6 @@ export type Database = {
           error_message: string
         }[]
       }
-      revoke_clock_sessions: {
-        Args: { p_session_ids: string[] }
-        Returns: {
-          revoked_count: number
-          error_message: string | null
-        }[]
-      }
       assistants_share_master: {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
@@ -4819,6 +4827,7 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      check_out_project: { Args: { p_project_id: string }; Returns: Json }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
@@ -4982,17 +4991,27 @@ export type Database = {
           total_parts: number
         }[]
       }
-      insert_report: {
-        Args: {
-          p_field_values: Json
-          p_job_ledger_id: string | null
-          p_project_id: string | null
-          p_reported_at_lat?: number | null
-          p_reported_at_lng?: number | null
-          p_template_id: string
-        }
-        Returns: string
-      }
+      insert_report:
+        | {
+            Args: {
+              p_field_values: Json
+              p_job_ledger_id: string | null
+              p_project_id: string | null
+              p_template_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_field_values: Json
+              p_job_ledger_id: string | null
+              p_project_id: string | null
+              p_reported_at_lat?: number
+              p_reported_at_lng?: number
+              p_template_id: string
+            }
+            Returns: string
+          }
       is_assistant: { Args: never; Returns: boolean }
       is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
       is_bid_pricing_user: { Args: never; Returns: boolean }
@@ -5094,6 +5113,13 @@ export type Database = {
       }
       report_edit_window_days: { Args: never; Returns: number }
       report_sub_visibility_months: { Args: never; Returns: number }
+      revoke_clock_sessions: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          error_message: string
+          revoked_count: number
+        }[]
+      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
@@ -5275,9 +5301,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       project_status: ["active", "completed", "on_hold", "awaiting_start"],
