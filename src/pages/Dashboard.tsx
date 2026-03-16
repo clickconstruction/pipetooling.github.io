@@ -21,6 +21,7 @@ import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
+import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import type { Database } from '../types/database'
@@ -208,6 +209,7 @@ function SubscribedSkeleton() {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
+  const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
@@ -1890,8 +1892,9 @@ export default function Dashboard() {
                                       key={inst.id}
                                       style={{
                                         display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        alignItems: isMobile ? 'stretch' : 'center',
+                                        gap: isMobile ? '0.5rem' : '0.75rem',
                                         padding: '0.5rem 0.75rem',
                                         border: '1px solid #e5e7eb',
                                         borderRadius: 8,
@@ -1899,37 +1902,47 @@ export default function Dashboard() {
                                         background: isRead ? '#fff' : '#f0f9ff',
                                       }}
                                     >
-                                      <span style={{ flex: 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                                        {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
-                                      </span>
-                                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
-                                      {!isRead && (
+                                      <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                        {isMobile ? (
+                                          <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
+                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
+                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
+                                          </span>
+                                        ) : (
+                                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                            {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                          </span>
+                                        )}
+                                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                        {!isRead && (
+                                          <button
+                                            type="button"
+                                            onClick={() => markCompletedItemAsRead(inst)}
+                                            disabled={!!markingReadId}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer' }}
+                                          >
+                                            Mark as read
+                                          </button>
+                                        )}
+                                        {isRead && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Read</span>}
                                         <button
                                           type="button"
-                                          onClick={() => markCompletedItemAsRead(inst)}
-                                          disabled={!!markingReadId}
-                                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: markingReadId ? 'not-allowed' : 'pointer' }}
+                                          onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
                                         >
-                                          Mark as read
+                                          Re-send
                                         </button>
-                                      )}
-                                      {isRead && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Read</span>}
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
-                                      >
-                                        Re-send
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
-                                        disabled={!!ignoringItemId}
-                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: ignoringItemId ? 'not-allowed' : 'pointer', color: '#6b7280' }}
-                                      >
-                                        Ignore
-                                      </button>
+                                        <button
+                                          type="button"
+                                          title="Ignore"
+                                          onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                          disabled={!!ignoringItemId}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
+                                        </button>
+                                      </div>
                                     </li>
                                   )
                                 })}
@@ -2022,8 +2035,9 @@ export default function Dashboard() {
                                                 key={inst.id}
                                                 style={{
                                                   display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: '0.75rem',
+                                                  flexDirection: isMobile ? 'column' : 'row',
+                                                  alignItems: isMobile ? 'stretch' : 'center',
+                                                  gap: isMobile ? '0.5rem' : '0.75rem',
                                                   padding: '0.5rem 0.75rem',
                                                   border: '1px solid #e5e7eb',
                                                   borderRadius: 8,
@@ -2031,19 +2045,28 @@ export default function Dashboard() {
                                                   background: '#fff',
                                                 }}
                                               >
-                                                <span style={{ flex: 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                                                  {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
-                                                </span>
-                                                <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
-                                                <button
-                                                  type="button"
-                                                  onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
-                                                  disabled={!!ignoringItemId}
-                                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
-                                                >
-                                                  Un-ignore
-                                                </button>
+                                                <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                                  {isMobile ? (
+                                                    <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
+                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
+                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
+                                                    </span>
+                                                  ) : (
+                                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                      {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                                    </span>
+                                                  )}
+                                                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                    disabled={!!ignoringItemId}
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
+                                                  >
+                                                    Un-ignore
+                                                  </button>
+                                                </div>
                                               </li>
                                             )
                                           })}
