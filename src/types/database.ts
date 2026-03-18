@@ -613,14 +613,17 @@ export type Database = {
         Row: {
           checklist_item_id: string
           user_id: string
+          display_order: number
         }
         Insert: {
           checklist_item_id: string
           user_id: string
+          display_order?: number
         }
         Update: {
           checklist_item_id?: string
           user_id?: string
+          display_order?: number
         }
         Relationships: [
           {

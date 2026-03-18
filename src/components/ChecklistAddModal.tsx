@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { getNextDisplayOrders } from '../utils/checklistOrder'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -214,8 +215,13 @@ export default function ChecklistAddModal() {
     }
     const newId = (data as { id: string })?.id
     if (newId) {
+      const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
       await supabase.from('checklist_item_assignees').insert(
-        form.assigned_to_user_ids.map((uid) => ({ checklist_item_id: newId, user_id: uid }))
+        form.assigned_to_user_ids.map((uid) => ({
+          checklist_item_id: newId,
+          user_id: uid,
+          display_order: nextOrders.get(uid) ?? 1,
+        }))
       )
       await generateInstances(newId, form)
     }

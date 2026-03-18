@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-18
+last_updated: 2026-03-17
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -146,6 +146,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 16, 2026
 
+**`20260416000000_add_stage_notes_to_jobs_ledger.sql`**
+- **Purpose**: Short note for Stages tab
+- **Changes**: Add `stage_notes TEXT` to `jobs_ledger`
+- **Impact**: Stages tab Stage Notes column; editable by any user with job access
+- **Category**: Jobs / Stages
+
 **`20260416120000_create_user_completed_task_mute_preferences.sql`**
 - **Purpose**: User preference to mute completed task push notifications (global)
 - **Changes**: Create `user_completed_task_mute_preferences` (user_id PK, muted_until timestamptz); RLS for users to manage own row
@@ -154,6 +160,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Note**: Superseded by April 17 migrations; replaced with per-task `user_checklist_item_mute_preferences`
 
 #### April 17, 2026
+
+**`20260417000000_add_estimated_completion_date_to_jobs_ledger.sql`**
+- **Purpose**: Optional estimated completion date for jobs
+- **Changes**: Add `estimated_completion_date DATE` to `jobs_ledger`
+- **Impact**: Stages tab; Ham mode -1/+1 buttons adjust this date
+- **Category**: Jobs / Stages
 
 **`20260417120000_create_user_checklist_item_mute_preferences.sql`**
 - **Purpose**: Per-task mute: user mutes completed-task push notifications for a specific checklist item
@@ -181,6 +193,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: Give primaries full, unrestricted access to bids (same as estimators)
 - **Changes**: Update RLS policies on bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, bids_takeoff_template_mappings, bid_pricing_assignments, bid_count_row_custom_prices, customers; add primary to all bid-related policies; update can_access_bid_for_pricing helper; primaries see all customers (for New Bid GC picker)
 - **Impact**: Primaries can see all bids, full CRUD, all Bids tabs (Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
+
+**`20260410140000_fix_bid_pricing_assignments_primary_rls.sql`**
+- **Purpose**: Fix bid_pricing_assignments RLS so primary users can insert (fixes "new row violates row-level security policy" for primaries on Pricing tab)
+- **Changes**: Drop and recreate bid_pricing_assignments SELECT/INSERT/UPDATE/DELETE policies to include `primary` in the role list; uses `can_access_bid_for_pricing(bid_id)` helper
+- **Impact**: Primary users (e.g. Trace) can assign price book entries and set unit cost overrides on Bids Pricing tab without RLS violation
+- **Category**: Bids / RLS
 
 ### March 2026
 

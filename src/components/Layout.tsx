@@ -263,12 +263,12 @@ export default function Layout() {
           borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid #e5e7eb',
           background: impersonating && isMobile ? '#fef3c7' : undefined,
           display: 'flex',
-          gap: '1rem',
+          gap: '0.5rem',
           alignItems: 'center',
         }}
       >
         {isMobile ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             {role !== 'subcontractor' && (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
@@ -310,6 +310,23 @@ export default function Layout() {
                   }}
                 >
                   {renderNavLinks(() => setMenuOpen(false), true)}
+                  {role === 'dev' && (
+                    <NavLink
+                      to="/customers"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'block',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="Customers"
+                      aria-label="Customers"
+                    >
+                      Customers
+                    </NavLink>
+                  )}
                 </div>
               )}
             </div>
@@ -319,7 +336,7 @@ export default function Layout() {
         ) : (
           renderNavLinks()
         )}
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
             <button
               type="button"
@@ -327,7 +344,7 @@ export default function Layout() {
               title="Task"
               aria-label="Task"
               style={{
-                padding: '0.5rem 1rem',
+                padding: '0.5rem 0.5rem',
                 background: '#3b82f6',
                 color: 'white',
                 border: 'none',
@@ -361,7 +378,7 @@ export default function Layout() {
               Bid
             </button>
           )}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem' }}>
           {role !== 'subcontractor' && (
             <NavLink
               to="/calendar"
@@ -400,23 +417,25 @@ export default function Layout() {
           </NavLink>
           {role != null && role !== 'subcontractor' && role !== 'primary' && (
             <>
-              <NavLink
-                to="/customers"
-                style={({ isActive }) => ({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '0.5rem',
-                  color: 'inherit',
-                  textDecoration: 'none',
-                  ...(isActive && { borderBottom: '1px solid currentColor' }),
-                })}
-                title="Customers"
-                aria-label="Customers"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                  <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
-                </svg>
-              </NavLink>
+              {!(isMobile && role === 'dev') && (
+                <NavLink
+                  to="/customers"
+                  style={({ isActive }) => ({
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '0.5rem',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                    ...(isActive && { borderBottom: '1px solid currentColor' }),
+                  })}
+                  title="Customers"
+                  aria-label="Customers"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
+                  </svg>
+                </NavLink>
+              )}
               <NavLink
               to="/people"
               style={({ isActive }) => ({

@@ -35,6 +35,7 @@ export default function Customers() {
   const [viewingBidsForCustomer, setViewingBidsForCustomer] = useState<string | null>(null)
   const [bidsForCustomer, setBidsForCustomer] = useState<BidRow[]>([])
   const [loadingBids, setLoadingBids] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   async function fetchCustomers() {
     const { data, error: err } = await supabase
@@ -99,6 +100,27 @@ export default function Customers() {
   if (loading) return <p>Loading customers…</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
+  const q = searchQuery.trim().toLowerCase()
+  const filteredCustomers = q
+    ? customers.filter((c) => {
+        const name = (c.name ?? '').toLowerCase()
+        const address = (c.address ?? '').toLowerCase()
+        const masterName = (c.master_user?.name ?? '').toLowerCase()
+        const masterEmail = (c.master_user?.email ?? '').toLowerCase()
+        const { phone, email } = extractContactInfo(c.contact_info)
+        const phoneLower = (phone ?? '').toLowerCase()
+        const emailLower = (email ?? '').toLowerCase()
+        return (
+          name.includes(q) ||
+          address.includes(q) ||
+          masterName.includes(q) ||
+          masterEmail.includes(q) ||
+          phoneLower.includes(q) ||
+          emailLower.includes(q)
+        )
+      })
+    : customers
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -111,6 +133,21 @@ export default function Customers() {
           Add customer
         </button>
       </div>
+      {customers.length > 0 && (
+        <div style={{ width: '100%', marginBottom: '0.25rem' }}>
+          <input
+            type="search"
+            placeholder="Search name, address, master, phone, or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+          />
+        </div>
+      )}
       {customers.length === 0 ? (
         <p>No customers yet.{' '}
           <button
@@ -121,9 +158,11 @@ export default function Customers() {
             Add one
           </button>
           .</p>
+      ) : filteredCustomers.length === 0 ? (
+        <p>No customers match your search.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {customers.map((c) => (
+          {filteredCustomers.map((c) => (
             <li
               key={c.id}
               style={{

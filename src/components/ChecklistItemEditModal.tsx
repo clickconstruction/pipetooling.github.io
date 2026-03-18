@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { getNextDisplayOrders } from '../utils/checklistOrder'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 
@@ -157,8 +158,13 @@ export function ChecklistItemEditModal({
       if (error) throw error
       await supabase.from('checklist_item_assignees').delete().eq('checklist_item_id', itemId)
       if (form.assigned_to_user_ids.length > 0) {
+        const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
         await supabase.from('checklist_item_assignees').insert(
-          form.assigned_to_user_ids.map((uid) => ({ checklist_item_id: itemId, user_id: uid }))
+          form.assigned_to_user_ids.map((uid) => ({
+            checklist_item_id: itemId,
+            user_id: uid,
+            display_order: nextOrders.get(uid) ?? 1,
+          }))
         )
       }
       window.dispatchEvent(new Event('checklist-item-saved'))

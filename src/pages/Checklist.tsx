@@ -6,6 +6,7 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
+import { getNextDisplayOrders } from '../utils/checklistOrder'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'
 type ChecklistTab = 'today' | 'history' | 'review' | 'manage'
@@ -156,7 +157,7 @@ export default function Checklist() {
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} setError={setError} setEditItemId={setEditItemId} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
@@ -243,8 +244,25 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         .order('scheduled_date', { ascending: true })
       overdueData = (data ?? []) as ChecklistInstance[]
     }
-    const merged = [...overdueData, ...(todayData ?? [])]
-    merged.sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+    const merged = [...overdueData, ...(todayData ?? [])] as ChecklistInstance[]
+    const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
+    let orderMap = new Map<string, number>()
+    if (mergedItemIds.length > 0) {
+      const { data: orderData } = await supabase
+        .from('checklist_item_assignees')
+        .select('checklist_item_id, display_order')
+        .eq('user_id', authUserId)
+        .in('checklist_item_id', mergedItemIds)
+      for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
+        orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
+      }
+    }
+    merged.sort((a, b) => {
+      const orderA = orderMap.get(a.checklist_item_id) ?? 999999
+      const orderB = orderMap.get(b.checklist_item_id) ?? 999999
+      if (orderA !== orderB) return orderA - orderB
+      return a.scheduled_date.localeCompare(b.scheduled_date)
+    })
     setTodayInstances(merged)
     setNotesByInstance((prev) => {
       const next = { ...prev }
@@ -428,7 +446,12 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         .single()
       if (itemErr) throw itemErr
       if (newItem?.id && fwdAssigneeId) {
-        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
+        await supabase.from('checklist_item_assignees').insert({
+          checklist_item_id: newItem.id,
+          user_id: fwdAssigneeId,
+          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
+        })
         const { data: newInst } = await supabase
           .from('checklist_instances')
           .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
@@ -994,7 +1017,7 @@ type OutstandingInstance = {
   checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1008,6 +1031,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
+  const [movingItemId, setMovingItemId] = useState<string | null>(null)
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -1155,7 +1179,12 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
         .single()
       if (itemErr) throw itemErr
       if (newItem?.id && fwdAssigneeId) {
-        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
+        await supabase.from('checklist_item_assignees').insert({
+          checklist_item_id: newItem.id,
+          user_id: fwdAssigneeId,
+          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
+        })
         const { data: newInst } = await supabase
           .from('checklist_instances')
           .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
@@ -1199,6 +1228,51 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
       // Best-effort; do not block UI
     } finally {
       setRemindingUserId(null)
+    }
+  }
+
+  async function moveItem(userId: string, checklistItemId: string, direction: 'up' | 'down') {
+    const row = byUser.find((r) => r.userId === userId)
+    if (!row) return
+    const idx = row.instances.findIndex((i) => i.checklist_item_id === checklistItemId)
+    if (idx < 0) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= row.instances.length) return
+    const curr = row.instances[idx]
+    const other = row.instances[swapIdx]
+    if (!curr || !other) return
+    setMovingItemId(checklistItemId)
+    setError(null)
+    try {
+      const { data: currRow } = await supabase
+        .from('checklist_item_assignees')
+        .select('display_order')
+        .eq('checklist_item_id', curr.checklist_item_id)
+        .eq('user_id', userId)
+        .single()
+      const { data: otherRow } = await supabase
+        .from('checklist_item_assignees')
+        .select('display_order')
+        .eq('checklist_item_id', other.checklist_item_id)
+        .eq('user_id', userId)
+        .single()
+      const currOrder = (currRow as { display_order: number } | null)?.display_order ?? 0
+      const otherOrder = (otherRow as { display_order: number } | null)?.display_order ?? 0
+      await supabase
+        .from('checklist_item_assignees')
+        .update({ display_order: otherOrder })
+        .eq('checklist_item_id', curr.checklist_item_id)
+        .eq('user_id', userId)
+      await supabase
+        .from('checklist_item_assignees')
+        .update({ display_order: currOrder })
+        .eq('checklist_item_id', other.checklist_item_id)
+        .eq('user_id', userId)
+      await loadOutstanding()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to reorder')
+    } finally {
+      setMovingItemId(null)
     }
   }
 
@@ -1262,9 +1336,34 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
         map.set(a.user_id, list)
       }
     }
+    const userIds = [...map.keys()]
+    const itemIds = [...new Set(instances.map((i) => i.checklist_item_id))]
+    let orderMap = new Map<string, Map<string, number>>()
+    if (userIds.length > 0 && itemIds.length > 0) {
+      const { data: orderData } = await supabase
+        .from('checklist_item_assignees')
+        .select('checklist_item_id, user_id, display_order')
+        .in('user_id', userIds)
+        .in('checklist_item_id', itemIds)
+      for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; user_id: string; display_order: number | null }>) {
+        let userMap = orderMap.get(row.user_id)
+        if (!userMap) {
+          userMap = new Map()
+          orderMap.set(row.user_id, userMap)
+        }
+        userMap.set(row.checklist_item_id, row.display_order ?? 999999)
+      }
+    }
     const rows = Array.from(map.entries()).map(([userId, list]) => {
       const name = list[0]?.name ?? 'Unknown'
-      return { userId, name, count: list.length, instances: list.map((x) => x.inst) }
+      const userOrderMap = orderMap.get(userId)
+      const sortedInstances = [...list.map((x) => x.inst)].sort((a, b) => {
+        const orderA = userOrderMap?.get(a.checklist_item_id) ?? 999999
+        const orderB = userOrderMap?.get(b.checklist_item_id) ?? 999999
+        if (orderA !== orderB) return orderA - orderB
+        return a.scheduled_date.localeCompare(b.scheduled_date)
+      })
+      return { userId, name, count: list.length, instances: sortedInstances }
     })
     rows.sort((a, b) => b.count - a.count)
     setByUser(rows)
@@ -1404,10 +1503,38 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                   <tr key={`${userId}-detail`}>
                     <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                       <ul style={{ margin: 0, paddingLeft: '1.5rem', listStyle: 'disc' }}>
-                        {instances.map((inst) => (
-                          <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {instances.map((inst, instIdx) => (
+                          <li key={inst.id} style={{ marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+                            {canManageChecklists && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); moveItem(userId, inst.checklist_item_id, 'up') }}
+                                  disabled={instIdx === 0 || movingItemId === inst.checklist_item_id}
+                                  title="Move up"
+                                  aria-label="Move up"
+                                  style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: instIdx === 0 || movingItemId === inst.checklist_item_id ? 'not-allowed' : 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', opacity: instIdx === 0 ? 0.4 : 1 }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+                                    <path d="M7 14l5-5 5 5z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); moveItem(userId, inst.checklist_item_id, 'down') }}
+                                  disabled={instIdx === instances.length - 1 || movingItemId === inst.checklist_item_id}
+                                  title="Move down"
+                                  aria-label="Move down"
+                                  style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: instIdx === instances.length - 1 || movingItemId === inst.checklist_item_id ? 'not-allowed' : 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', opacity: instIdx === instances.length - 1 ? 0.4 : 1 }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
+                                    <path d="M7 10l5 5 5-5z" />
+                                  </svg>
+                                </button>
+                              </span>
+                            )}
                             {isDev && (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); markComplete(inst) }}
@@ -1445,19 +1572,24 @@ function ChecklistOutstandingTab({ authUserId, isDev, setError, setEditItemId }:
                                   type="button"
                                   className="fwd-btn-desktop"
                                   onClick={(e) => { e.stopPropagation(); openFwd(inst, userId) }}
+                                  title="Forward"
+                                  aria-label="Forward"
                                   style={{
                                     flexShrink: 0,
-                                    padding: '0.25rem 0.5rem',
-                                    fontSize: '0.8125rem',
-                                    fontWeight: 500,
-                                    border: '1px solid #3b82f6',
+                                    padding: '0.25rem',
+                                    border: 'none',
                                     borderRadius: 4,
-                                    background: '#3b82f6',
-                                    color: 'white',
+                                    background: 'transparent',
+                                    color: '#3b82f6',
                                     cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                   }}
                                 >
-                                  FWD
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                    <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
+                                  </svg>
                                 </button>
                               </span>
                             )}

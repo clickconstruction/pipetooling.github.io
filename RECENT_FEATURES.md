@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-19
+last_updated: 2026-03-17
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.111)"
+  - name: "Latest Version (v2.113)"
     line: ~318
+    description: "Cover Letter trip charge, Customers search, Layout mobile"
+  - name: "v2.111"
+    line: ~330
     description: "Recently Completed Tasks button icons"
   - name: "v2.110"
     line: ~330
@@ -369,6 +372,36 @@ when_to_read:
 - **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
 - **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
 - **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
+
+---
+
+## Latest Updates (v2.113)
+
+**Date**: 2026-03-17
+
+### Bids – Cover Letter: Trip Charge Paragraph
+
+- **Default Terms and Warranty**: Added paragraph after the rock excavation sentence: "Anything outside the scope of work described in this estimate, including any additional trips or visits beyond the standard rough-in, top-out, and trim phases, will be charged as a change order and will include a trip charge. Additionally, any trips or delays caused by builder, general contractor error, scheduling issues, or failure to provide timely access will be charged as a trip charge."
+- **Applies to**: New bids and bids using default terms; combined document and Approval PDF
+
+**File**: `src/pages/Bids.tsx` (DEFAULT_TERMS_AND_WARRANTY)
+
+### Customers – Search
+
+- **Search input**: Full-width search at top of Customers page (below header, above list)
+- **Filters by**: Name, address, master user name/email, phone, email (case-insensitive substring match)
+- **Empty state**: "No customers match your search." when query returns no results
+- **Pattern**: Client-side filtering (same as Prospects Prospect List)
+
+**File**: `src/pages/Customers.tsx`
+
+### Layout – Customers Icon on Mobile (Devs Only)
+
+- **Dev on mobile**: Customers icon removed from header; "Customers" link added to hamburger dropdown menu
+- **Dev on desktop**: No change; Customers icon stays in header
+- **Other roles**: No change; Customers icon stays in header on all viewports
+
+**File**: `src/components/Layout.tsx`
 
 ---
 

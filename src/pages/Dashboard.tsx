@@ -23,6 +23,7 @@ import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
+import { getNextDisplayOrders } from '../utils/checklistOrder'
 import type { Database } from '../types/database'
 
 function toDatetimeLocal(iso: string | null): string {
@@ -127,6 +128,19 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+function getDaysUntilDue(scheduledDateStr: string): number {
+  const today = new Date()
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const parts = scheduledDateStr.split('-').map(Number)
+  const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
+  return Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+function formatTDays(diff: number): string {
+  if (diff >= 0) return `T-${diff}`
+  return `T+${Math.abs(diff)}`
+}
+
 type ChecklistInstance = {
   id: string
   checklist_item_id: string
@@ -213,6 +227,9 @@ export default function Dashboard() {
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
   const [completingChecklistId, setCompletingChecklistId] = useState<string | null>(null)
+  const [outstandingItems, setOutstandingItems] = useState<ChecklistInstance[]>([])
+  const [outstandingLoading, setOutstandingLoading] = useState(true)
+  const [completingOutstandingId, setCompletingOutstandingId] = useState<string | null>(null)
   const [userError, setUserError] = useState<string | null>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [checklistLoading, setChecklistLoading] = useState(true)
@@ -313,13 +330,21 @@ export default function Dashboard() {
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
-  // Load users for Forward modal (dev-only)
+  // Load users for Forward modal (all users, for Outstanding Forward)
   useEffect(() => {
-    if (!isDev) return
+    if (!authUser?.id) return
     supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
-  }, [isDev])
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setOutstandingLoading(false)
+      return
+    }
+    loadOutstanding()
+  }, [authUser?.id])
 
   async function refreshPinned() {
     if (!authUser?.id) {
@@ -538,7 +563,7 @@ export default function Dashboard() {
         .eq('checklist_instance_assignees.user_id', authUser.id)
         .eq('scheduled_date', today)
         .order('created_at', { ascending: true }),
-    ]).then(([userRes, allUsersRes, subsRes, checklistRes]) => {
+    ]).then(async ([userRes, allUsersRes, subsRes, checklistRes]) => {
       if (cancelled) return
 
       const { data: userData, error: userErr } = userRes
@@ -562,8 +587,27 @@ export default function Dashboard() {
       })
       setUserNames(userNamesSet)
 
+      let checklistData = (checklistRes.data ?? []) as ChecklistInstance[]
+      if (!cancelled && checklistData.length > 0) {
+        const itemIds = [...new Set(checklistData.map((r) => r.checklist_item_id))]
+        const { data: orderData } = await supabase
+          .from('checklist_item_assignees')
+          .select('checklist_item_id, display_order')
+          .eq('user_id', authUser.id)
+          .in('checklist_item_id', itemIds)
+        const orderMap = new Map<string, number>()
+        for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
+          orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
+        }
+        checklistData = [...checklistData].sort((a, b) => {
+          const orderA = orderMap.get(a.checklist_item_id) ?? 999999
+          const orderB = orderMap.get(b.checklist_item_id) ?? 999999
+          if (orderA !== orderB) return orderA - orderB
+          return (a.created_at ?? '').localeCompare(b.created_at ?? '')
+        })
+      }
       if (!cancelled) {
-        setTodayChecklist((checklistRes.data ?? []) as ChecklistInstance[])
+        setTodayChecklist(checklistData)
         setChecklistLoading(false)
       }
 
@@ -1118,6 +1162,56 @@ export default function Dashboard() {
     setTodayChecklist(merged as ChecklistInstance[])
   }
 
+  async function loadOutstanding() {
+    if (!authUser?.id) return
+    setOutstandingLoading(true)
+    const { data, error } = await supabase
+      .from('checklist_instances')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, repeat_type), checklist_instance_assignees!inner(user_id)')
+      .eq('checklist_instance_assignees.user_id', authUser.id)
+      .is('completed_at', null)
+      .order('scheduled_date', { ascending: true })
+    if (error) {
+      setOutstandingLoading(false)
+      return
+    }
+    const raw = (data ?? []) as Array<{
+      id: string
+      checklist_item_id: string
+      scheduled_date: string
+      completed_at: string | null
+      notes: string | null
+      completed_by_user_id: string | null
+      created_at: string | null
+      checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string } | null
+      checklist_instance_assignees?: Array<{ user_id: string }>
+    }>
+    let instances = raw.filter((inst) => {
+      const assignees = inst.checklist_instance_assignees ?? []
+      return assignees.length > 0 && (inst.checklist_items as { repeat_type?: string } | null)?.repeat_type === 'once'
+    })
+    const itemIds = [...new Set(instances.map((i) => i.checklist_item_id))]
+    let orderMap = new Map<string, number>()
+    if (itemIds.length > 0) {
+      const { data: orderData } = await supabase
+        .from('checklist_item_assignees')
+        .select('checklist_item_id, display_order')
+        .eq('user_id', authUser.id)
+        .in('checklist_item_id', itemIds)
+      for (const row of (orderData ?? []) as Array<{ checklist_item_id: string; display_order: number | null }>) {
+        orderMap.set(row.checklist_item_id, row.display_order ?? 999999)
+      }
+    }
+    const sorted = [...instances].sort((a, b) => {
+      const orderA = orderMap.get(a.checklist_item_id) ?? 999999
+      const orderB = orderMap.get(b.checklist_item_id) ?? 999999
+      if (orderA !== orderB) return orderA - orderB
+      return a.scheduled_date.localeCompare(b.scheduled_date)
+    })
+    setOutstandingItems((sorted.slice(0, 10) as unknown) as ChecklistInstance[])
+    setOutstandingLoading(false)
+  }
+
   async function toggleChecklistComplete(inst: ChecklistInstance) {
     if (!authUser?.id || completingChecklistId) return
     setCompletingChecklistId(inst.id)
@@ -1132,6 +1226,26 @@ export default function Dashboard() {
     setCompletingChecklistId(null)
     if (e) return
     await loadTodayChecklist()
+    if (!isCompleted) {
+      await sendChecklistCompletionNotifications(inst)
+      await maybeCreateNextChecklistInstance(inst)
+    }
+  }
+
+  async function toggleOutstandingComplete(inst: ChecklistInstance) {
+    if (!authUser?.id || completingOutstandingId) return
+    setCompletingOutstandingId(inst.id)
+    const isCompleted = !!inst.completed_at
+    const { error: e } = await supabase
+      .from('checklist_instances')
+      .update({
+        completed_at: isCompleted ? null : new Date().toISOString(),
+        completed_by_user_id: isCompleted ? null : authUser.id,
+      })
+      .eq('id', inst.id)
+    setCompletingOutstandingId(null)
+    if (e) return
+    await loadOutstanding()
     if (!isCompleted) {
       await sendChecklistCompletionNotifications(inst)
       await maybeCreateNextChecklistInstance(inst)
@@ -1192,7 +1306,12 @@ export default function Dashboard() {
         .single()
       if (itemErr) throw itemErr
       if (newItem?.id && fwdAssigneeId) {
-        await supabase.from('checklist_item_assignees').insert({ checklist_item_id: newItem.id, user_id: fwdAssigneeId })
+        const nextOrders = await getNextDisplayOrders([fwdAssigneeId])
+        await supabase.from('checklist_item_assignees').insert({
+          checklist_item_id: newItem.id,
+          user_id: fwdAssigneeId,
+          display_order: nextOrders.get(fwdAssigneeId) ?? 1,
+        })
         const { data: newInst } = await supabase
           .from('checklist_instances')
           .insert({ checklist_item_id: newItem.id, scheduled_date: fwdInstance.scheduled_date })
@@ -1205,6 +1324,7 @@ export default function Dashboard() {
       }
       setFwdInstance(null)
       await loadTodayChecklist()
+      await loadOutstanding()
     } catch (err: unknown) {
       setUserError(err instanceof Error ? err.message : 'Failed to forward')
     } finally {
@@ -1591,18 +1711,16 @@ export default function Dashboard() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
                         <span style={{ fontWeight: 500 }}>{i.address}</span>
                         {i.address?.trim() && (
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
                             title={`View ${i.address} on map`}
-                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0 }}
+                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
                               <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
                             </svg>
-                          </a>
+                          </button>
                         )}
                       </div>
                     </Link>
@@ -1740,7 +1858,7 @@ export default function Dashboard() {
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
-            Checklist items due today
+            Checklist: Due Today
             <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
               View all →
             </Link>
@@ -1823,6 +1941,77 @@ export default function Dashboard() {
               )
             })}
           </ul>
+          ) : null}
+        </div>
+      )}
+      {(outstandingLoading || outstandingItems.length > 0) && (
+        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
+            Checklist: Outstanding
+            <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+              View all →
+            </Link>
+          </h2>
+          {outstandingLoading && outstandingItems.length === 0 ? (
+            <ChecklistSkeleton />
+          ) : outstandingItems.length > 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {outstandingItems.map((inst) => {
+                const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+                return (
+                  <li
+                    key={inst.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      marginBottom: '0.5rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!inst.completed_at}
+                      onChange={() => toggleOutstandingComplete(inst)}
+                      disabled={!!completingOutstandingId}
+                      title="Mark complete"
+                      aria-label="Mark complete"
+                    />
+                    <span style={{ flex: 1, fontWeight: 500 }}>
+                      <ChecklistTitleWithLinks title={title} links={links} />
+                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                      {' '}({formatTDays(getDaysUntilDue(inst.scheduled_date))})
+                    </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); openFwd(inst) }}
+                      title="Forward"
+                      aria-label="Forward"
+                      style={{
+                        padding: '0.25rem',
+                        border: 'none',
+                        borderRadius: 4,
+                        background: 'transparent',
+                        color: '#3b82f6',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                        <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
+                      </svg>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           ) : null}
         </div>
       )}

@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+// Session refresh: refresh when less than this time remains (tuned for 10h JWT expiry)
+const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
+// Expiry warning: show when less than this time remains
+const WARNING_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
+
 export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
 
 interface UseAuthReturn {
@@ -35,7 +40,21 @@ export function useAuth(): UseAuthReturn {
       return false
     }
 
-    setSessionExpiresAt(session.expires_at ? session.expires_at * 1000 : null)
+    const expiresAtMs = session.expires_at ? session.expires_at * 1000 : null
+    setSessionExpiresAt(expiresAtMs)
+
+    // Proactively refresh when session has less than REFRESH_WINDOW_MS left (tab visible)
+    if (expiresAtMs && document.visibilityState === 'visible') {
+      const timeUntilExpiry = expiresAtMs - Date.now()
+      if (timeUntilExpiry > 0 && timeUntilExpiry < REFRESH_WINDOW_MS) {
+        const { data, error: refreshError } = await supabase.auth.refreshSession()
+        if (!refreshError && data.session) {
+          setSessionExpiresAt(data.session.expires_at ? data.session.expires_at * 1000 : null)
+          warningShownRef.current = false
+        }
+      }
+    }
+
     return true
   }, [])
 
@@ -46,12 +65,12 @@ export function useAuth(): UseAuthReturn {
     if (!expiresAt) return
     
     const timeUntilExpiry = expiresAt - Date.now()
-    if (timeUntilExpiry <= 0 || timeUntilExpiry >= 10 * 60 * 1000) return
+    if (timeUntilExpiry <= 0 || timeUntilExpiry >= REFRESH_WINDOW_MS) return
     
     if (refreshTimeoutRef.current) return
     refreshTimeoutRef.current = setTimeout(() => {
       refreshTimeoutRef.current = undefined
-    }, 60 * 1000)
+    }, 10 * 1000)
     
     supabase.auth.refreshSession().then(({ data, error }) => {
       if (!error && data.session) {
@@ -127,7 +146,7 @@ export function useAuth(): UseAuthReturn {
 
       // If there's recent activity and session is expiring soon, it should have been refreshed
       // Only show warning if no recent activity
-      if (timeUntilExpiry < 5 * 60 * 1000 && !warningShownRef.current && !hasRecentActivity) {
+      if (timeUntilExpiry < WARNING_THRESHOLD_MS && !warningShownRef.current && !hasRecentActivity) {
         warningShownRef.current = true
         // Dispatch custom event for warning
         window.dispatchEvent(new CustomEvent('session-expiring', {
@@ -136,7 +155,7 @@ export function useAuth(): UseAuthReturn {
       }
 
       // Reset warning flag if session refreshed
-      if (timeUntilExpiry > 10 * 60 * 1000) {
+      if (timeUntilExpiry > WARNING_THRESHOLD_MS) {
         warningShownRef.current = false
       }
     }, 60 * 1000)

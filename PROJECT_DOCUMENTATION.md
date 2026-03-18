@@ -1781,7 +1781,8 @@ user_id = auth.uid()
 
 ### 1. Customer Management
 - **Page**: `Customers.tsx`, `CustomerForm.tsx`
-- **Features**: 
+- **Features**:
+  - **Search** at top (below header): Filters by name, address, master user, phone, email (client-side)
   - List customers with name, address, **customer owner (master)**
   - Create/edit customers
   - **Assistants and devs must select a master** when creating customers
@@ -2346,7 +2347,7 @@ user_id = auth.uid()
 
 **Cost Estimate Tab**: Combine material and labor by bid; link up to three POs (Rough In, Top Out, Trim Set) per stage; editable labor hours per fixture (step 0.25 for up/down arrows) and labor rate; fixture labor matrix synced with Counts. **Totals** (Total materials, Labor total, Grand total) and material-by-stage amounts use **comma formatting** for numbers over 999 (e.g. $12,345.67) via `formatCurrency()`.
 
-**Cover Letter Tab**: Select a bid; top section shows **Customer** (name, address) and **Project** (Project Name, Project Address). Editable sections: **Inclusions** (one per line, bullets; default "Permits" in both textarea and combined document), **Exclusions and Scope** (one per line, shown as bullets; default four exclusions), **Terms and Warranty** (collapsible; default full paragraph). **Apply Proposed amount to Bid Value** and **Apply custom amount to Bid Value** (when custom amount used) write the amount to the bid's bid_value; both buttons are hidden when bid_value already matches the effective amount. Combined document (copy to send) builds from those plus proposed amount and fixtures; **Edit bid** button in header opens Edit Bid modal for the selected bid.
+**Cover Letter Tab**: Select a bid; top section shows **Customer** (name, address) and **Project** (Project Name, Project Address). Editable sections: **Inclusions** (one per line, bullets; default "Permits" in both textarea and combined document), **Exclusions and Scope** (one per line, shown as bullets; default four exclusions), **Terms and Warranty** (collapsible; default full paragraph including rock excavation and trip charge / change order language). **Apply Proposed amount to Bid Value** and **Apply custom amount to Bid Value** (when custom amount used) write the amount to the bid's bid_value; both buttons are hidden when bid_value already matches the effective amount. Combined document (copy to send) builds from those plus proposed amount and fixtures; **Edit bid** button in header opens Edit Bid modal for the selected bid.
 - **Design Drawings Plan Date**: A bid-level date-only field (`design_drawing_plan_date`) used for proposal/cover-letter wording (shown in the combined document output where applicable).
 
 **Pricing Tab**:
@@ -2489,6 +2490,7 @@ pipetooling.github.io/
 #### `src/components/Layout.tsx`
 - Main navigation bar
 - **iOS safe area**: Nav uses `padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top))` so menu/settings stay below status bar on iOS
+- **Customers on mobile (dev only)**: Devs on mobile see Customers link in hamburger dropdown instead of header icon
 - Role-based link visibility
 - Impersonation handling ("Back to my account")
 - **Gear menu** (top-right): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime `force-reload` channel)
