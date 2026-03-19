@@ -976,6 +976,7 @@ export default function Bids() {
   const [bidDueDate, setBidDueDate] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
+  const [planPages, setPlanPages] = useState('')
   const [bidDateSent, setBidDateSent] = useState('')
   const [submittedTo, setSubmittedTo] = useState('')
   const [outcome, setOutcome] = useState<OutcomeOption>('')
@@ -6369,6 +6370,7 @@ export default function Bids() {
     setCountToolingLink('')
     setBidSubmissionLink('')
     setDesignDrawingPlanDate('')
+    setPlanPages('')
     setGcCustomerId('')
     setGcCustomerSearch('')
     setProjectName('')
@@ -6402,6 +6404,7 @@ export default function Bids() {
     setCountToolingLink('')
     setBidSubmissionLink('')
     setDesignDrawingPlanDate('')
+    setPlanPages('')
     setGcCustomerId(customer.id)
     setGcCustomerSearch(getCustomerDisplay(customer))
     setProjectName('')
@@ -6454,6 +6457,7 @@ export default function Bids() {
     setBidDueDate(bid.bid_due_date ?? '')
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
+    setPlanPages(bid.plan_pages ?? '')
     setBidDateSent(bid.bid_date_sent ?? '')
     setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
     setOutcome((bid.outcome ?? '') as OutcomeOption)
@@ -6500,6 +6504,7 @@ export default function Bids() {
       count_tooling_link: countToolingLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
+      plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
       project_name: projectName.trim() || null,
@@ -6568,6 +6573,7 @@ export default function Bids() {
       count_tooling_link: countToolingLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
+      plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
       project_name: projectName.trim() || null,
@@ -11794,6 +11800,7 @@ export default function Bids() {
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Job Plans" />
+                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Pages</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
@@ -11804,7 +11811,7 @@ export default function Bids() {
                 </thead>
                 <tbody>
                   {submissionUnsent.length === 0 ? (
-                    <tr><td colSpan={7} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={8} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionUnsent.map((bid) => (
                       <tr
@@ -11828,6 +11835,7 @@ export default function Bids() {
                             <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
                           )}
                         </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>
                         <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem' }}>
@@ -13238,14 +13246,14 @@ export default function Bids() {
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
-              <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className="bid-form-grid-2 bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
                   <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <label style={{ fontWeight: 500, margin: 0 }}>Distance to Office<br />(miles)</label>
+                    <label style={{ fontWeight: 500, margin: 0 }}>Distance to<br />Office (miles)</label>
                     {address && (
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
@@ -13271,6 +13279,19 @@ export default function Bids() {
                     )}
                   </div>
                   <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan<br />Pages</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={planPages}
+                    onChange={(e) => setPlanPages(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    placeholder="e.g. 5"
+                    style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>

@@ -208,6 +208,7 @@ export type Database = {
           loss_reason: string | null
           notes: string | null
           outcome: string | null
+          plan_pages: string | null
           plans_link: string | null
           profit: number | null
           project_name: string | null
@@ -244,6 +245,7 @@ export type Database = {
           loss_reason?: string | null
           notes?: string | null
           outcome?: string | null
+          plan_pages?: string | null
           plans_link?: string | null
           profit?: number | null
           project_name?: string | null
@@ -280,6 +282,7 @@ export type Database = {
           loss_reason?: string | null
           notes?: string | null
           outcome?: string | null
+          plan_pages?: string | null
           plans_link?: string | null
           profit?: number | null
           project_name?: string | null
