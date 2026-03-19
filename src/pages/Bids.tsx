@@ -220,19 +220,6 @@ function formatTimeSinceLastContact(iso: string | null): string {
   return `${Math.floor(mo / 12)} year${Math.floor(mo / 12) !== 1 ? 's' : ''} ago`
 }
 
-function formatTimeSinceDueDate(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const due = new Date(dateStr + 'T12:00:00')
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  due.setHours(0, 0, 0, 0)
-  const diffMs = due.getTime() - today.getTime()
-  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays < 0) return `+${Math.abs(diffDays)}`
-  if (diffDays === 0) return '-0'
-  return `-${diffDays}`
-}
-
 function formatShortDate(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
@@ -11808,9 +11795,9 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date Sent</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -11831,7 +11818,19 @@ export default function Bids() {
                       >
                         <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                         <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
-                        <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_date_sent)}</td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const am = bid.account_manager as EstimatorUser | null
+                            return am ? (am.name || am.email) : '—'
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const est = bid.estimator
+                            const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
+                            return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
+                          })()}
+                        </td>
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
                           (() => {
                             const a = bid.last_contact
@@ -11841,7 +11840,6 @@ export default function Bids() {
                             return new Date(b) > new Date(a) ? b : a
                           })()
                         )}</td>
-                        <td style={{ padding: '0.75rem' }}>{formatTimeSinceDueDate(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -11897,8 +11895,8 @@ export default function Bids() {
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                     <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
@@ -11942,6 +11940,13 @@ export default function Bids() {
                             return am ? (am.name || am.email) : '—'
                           })()}
                         </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const est = bid.estimator
+                            const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
+                            return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
+                          })()}
+                        </td>
                         <td style={{ padding: '0.75rem' }}>{formatTimeSinceLastContact(
                           (() => {
                             const a = bid.last_contact
@@ -11951,7 +11956,6 @@ export default function Bids() {
                             return new Date(b) > new Date(a) ? b : a
                           })()
                         )}</td>
-                        <td style={{ padding: '0.75rem' }}>{formatTimeSinceDueDate(bid.bid_due_date)}</td>
                         <td style={{ padding: '0.75rem', width: 44 }}>
                           {selectedBidForSubmission?.id === bid.id && (
                             <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -12097,12 +12101,14 @@ export default function Bids() {
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
                     <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {submissionStartedOrComplete.length === 0 ? (
-                    <tr><td colSpan={3} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
                   ) : (
                     submissionStartedOrComplete.map((bid) => (
                       <tr
@@ -12124,6 +12130,19 @@ export default function Bids() {
                           ) : (
                             '—'
                           )}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const am = bid.account_manager as EstimatorUser | null
+                            return am ? (am.name || am.email) : '—'
+                          })()}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {(() => {
+                            const est = bid.estimator
+                            const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
+                            return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
+                          })()}
                         </td>
                         <td style={{ padding: '0.75rem', width: 80 }}>
                           {selectedBidForSubmission?.id === bid.id && (
