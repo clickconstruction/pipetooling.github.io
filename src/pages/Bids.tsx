@@ -1578,34 +1578,6 @@ export default function Bids() {
     }
   }
 
-  async function moveCountRowById(rowId: string, direction: 'up' | 'down') {
-    const bidId = selectedBidForCounts?.id
-    if (!bidId || movingCountRow) return
-    skipNextLoadCountRowsRef.current = true
-
-    const idx = countRows.findIndex((r) => r.id === rowId)
-    if (idx === -1) return
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1
-    if (targetIdx < 0 || targetIdx >= countRows.length) return
-    const row = countRows[idx]
-    if (!row) return
-
-    const newOrder = arrayMove(countRows, idx, targetIdx)
-    setLastMovedId(row.id)
-    setTimeout(() => setLastMovedId(null), 800)
-    setMovingCountRow(true)
-    setCountRows(newOrder)
-    try {
-      await saveCountRowsOrder(newOrder)
-    } catch {
-      setCountRows([...countRows])
-      showToast('Failed to save row order', 'error')
-    } finally {
-      setMovingCountRow(false)
-      setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
-    }
-  }
-
   function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>; skippedCount: number } {
     const rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }> = []
     let skippedCount = 0
@@ -8122,18 +8094,13 @@ export default function Bids() {
                     </thead>
                     <tbody>
                       <SortableContext items={countRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
-                        {countRows.map((row, index) => (
+                        {countRows.map((row) => (
                           <SortableCountRow
                             key={row.id}
                             row={row}
-                            index={index}
-                            totalCount={countRows.length}
-                            moveDisabled={movingCountRow}
                             highlight={lastMovedId === row.id}
                             onUpdate={refreshAfterCountsChange}
                             onDelete={refreshAfterCountsChange}
-                            onMoveUp={() => moveCountRowById(row.id, 'up')}
-                            onMoveDown={() => moveCountRowById(row.id, 'down')}
                           />
                         ))}
                         {addingCountRow && (
@@ -14867,16 +14834,11 @@ We saw some structural issues with your plans and I wanted to get clarity...
   )
 }
 
-function SortableCountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown }: {
+function SortableCountRow({ row, highlight, onUpdate, onDelete }: {
   row: BidCountRow
-  index: number
-  totalCount: number
-  moveDisabled?: boolean
   highlight?: boolean
   onUpdate: () => void
   onDelete: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id })
   const dragHandle = (
@@ -14895,14 +14857,9 @@ function SortableCountRow({ row, index, totalCount, moveDisabled, highlight, onU
   return (
     <CountRow
       row={row}
-      index={index}
-      totalCount={totalCount}
-      moveDisabled={moveDisabled}
       highlight={highlight}
       onUpdate={onUpdate}
       onDelete={onDelete}
-      onMoveUp={onMoveUp}
-      onMoveDown={onMoveDown}
       dragHandle={dragHandle}
       trRef={setNodeRef}
       trStyle={{
@@ -14914,16 +14871,11 @@ function SortableCountRow({ row, index, totalCount, moveDisabled, highlight, onU
   )
 }
 
-function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown, dragHandle, trRef, trStyle }: {
+function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef, trStyle }: {
   row: BidCountRow
-  index: number
-  totalCount: number
-  moveDisabled?: boolean
   highlight?: boolean
   onUpdate: () => void
   onDelete: () => void
-  onMoveUp: () => void
-  onMoveDown: () => void
   dragHandle?: React.ReactNode
   trRef?: React.Ref<HTMLTableRowElement>
   trStyle?: React.CSSProperties
@@ -14985,10 +14937,6 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
       <td style={{ padding: '0.75rem' }}>{row.group_tag ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>
-        <span style={{ display: 'inline-flex', flexDirection: 'row', gap: 0, marginRight: '0.5rem' }}>
-          <button type="button" onClick={onMoveUp} disabled={index === 0 || moveDisabled} title="Move row up one position" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: index === 0 || moveDisabled ? 'not-allowed' : 'pointer', color: index === 0 || moveDisabled ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
-          <button type="button" onClick={onMoveDown} disabled={index === totalCount - 1 || moveDisabled} title="Move row down one position" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: index === totalCount - 1 || moveDisabled ? 'not-allowed' : 'pointer', color: index === totalCount - 1 || moveDisabled ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
-        </span>
         <button type="button" onClick={() => setEditing(true)} title="Edit" aria-label="Edit" style={{ marginRight: '0.25rem', padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
             <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
