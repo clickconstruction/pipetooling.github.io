@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
+import { decimalHoursToHhMm } from '../lib/format'
+import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
@@ -856,7 +858,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'bid-costs' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1040,6 +1042,7 @@ export default function Bids() {
   const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
   const [submissionPricingByVersion, setSubmissionPricingByVersion] = useState<Array<{ versionId: string; versionName: string; revenue: number | null; margin: number | null; complete: boolean }>>([])
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  const [bidCostsSectionOpen, setBidCostsSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [selectedAccountManagerForPrint, setSelectedAccountManagerForPrint] = useState<string>('')
   const [, setTick] = useState(0)
 
@@ -1190,6 +1193,9 @@ export default function Bids() {
   const [estimatorCostPerCount, setEstimatorCostPerCount] = useState('10')
   const [estimatorCostFlatAmount, setEstimatorCostFlatAmount] = useState('')
 
+  // Team labor (clocked) for bids - used in Pricing cost breakdown
+  const [teamLaborDataForBids, setTeamLaborDataForBids] = useState<TeamLaborBidRow[]>([])
+
   // Pricing tab
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
   const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(false)
@@ -1290,6 +1296,9 @@ export default function Bids() {
 
   function toggleBuilderReviewSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
     setBuilderReviewSectionOpen((prev: typeof builderReviewSectionOpen) => ({ ...prev, [key]: !prev[key] }))
+  }
+  function toggleBidCostsSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
+    setBidCostsSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   function toggleBuilderReviewCard(customerId: string) {
@@ -5678,7 +5687,7 @@ export default function Bids() {
     loadRole()
   }, [authUser?.id])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'bid-costs', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -5689,6 +5698,15 @@ export default function Bids() {
     }
     const bidId = params.get('bidId')
     const tab = params.get('tab')
+    if (tab === 'bid-costs' && myRole != null && myRole !== 'dev') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      setActiveTab('bid-board')
+      return
+    }
     if (tab === 'builder-review') {
       setActiveTab('builder-review')
       return
@@ -6344,6 +6362,11 @@ export default function Bids() {
   }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
 
   useEffect(() => {
+    if (activeTab !== 'pricing' && activeTab !== 'cost-estimate' && activeTab !== 'bid-costs') return
+    loadTeamLaborDataForBids(supabase).then(setTeamLaborDataForBids).catch(() => setTeamLaborDataForBids([]))
+  }, [activeTab, supabase])
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (pricingAssignmentDropdownOpen) {
         const target = event.target as HTMLElement
@@ -6882,6 +6905,24 @@ export default function Bids() {
   const submissionStartedOrComplete = filteredBidsForSubmission.filter((b) => b.outcome === 'started_or_complete')
   const submissionLost = filteredBidsForSubmission.filter((b) => b.outcome === 'lost')
 
+  const teamLaborByBidId = useMemo(
+    () => new Map(teamLaborDataForBids.map((r) => [r.bidId, r])),
+    [teamLaborDataForBids]
+  )
+  const bidCostsUnsent = bids.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+  const bidCostsPending = bids.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
+  const bidCostsWon = bids.filter((b) => b.outcome === 'won')
+  const bidCostsStartedOrComplete = bids.filter((b) => b.outcome === 'started_or_complete')
+  const bidCostsLost = bids.filter((b) => b.outcome === 'lost')
+
+  function formatBidCostsPeople(breakdown: Array<{ personName: string; hours: number }>): string {
+    if (!breakdown?.length) return '—'
+    return breakdown
+      .sort((a, b) => b.hours - a.hours)
+      .map((b) => `${b.personName} (${decimalHoursToHhMm(b.hours)})`)
+      .join(', ')
+  }
+
   function getSubmissionSectionKey(bid: BidWithBuilder): keyof typeof submissionSectionOpen | null {
     if (bid.outcome === 'won') return 'won'
     if (bid.outcome === 'started_or_complete') return 'startedOrComplete'
@@ -7117,6 +7158,25 @@ export default function Bids() {
         >
           Builder Review
         </button>
+        {myRole === 'dev' && (
+          <>
+            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('bid-costs')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'bid-costs')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'bid-costs')}
+            >
+              Bid Costs
+            </button>
+          </>
+        )}
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -7890,6 +7950,84 @@ export default function Bids() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Bid Costs Tab - Dev only */}
+      {myRole === 'dev' && activeTab === 'bid-costs' && (
+        <div>
+          <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Bid Costs</h2>
+          <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>Team labor (clocked) by bid outcome. People and hours from approved clock sessions with a bid selected.</p>
+
+          {[
+            { key: 'unsent' as const, label: 'Unsent bids', bids: bidCostsUnsent },
+            { key: 'pending' as const, label: 'Not yet won or lost', bids: bidCostsPending },
+            { key: 'won' as const, label: 'Won', bids: bidCostsWon },
+            { key: 'startedOrComplete' as const, label: 'Started or Complete', bids: bidCostsStartedOrComplete },
+            { key: 'lost' as const, label: 'Lost', bids: bidCostsLost },
+          ].map(({ key, label, bids: sectionBids }) => (
+            <div key={key}>
+              <button
+                type="button"
+                onClick={() => toggleBidCostsSection(key)}
+                aria-expanded={bidCostsSectionOpen[key]}
+                style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+              >
+                <span aria-hidden>{bidCostsSectionOpen[key] ? '\u25BC' : '\u25B6'}</span>
+                {label} ({sectionBids.length})
+              </button>
+              {bidCostsSectionOpen[key] && (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Plan Pages</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People (clocked)</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionBids.length === 0 ? (
+                        <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                      ) : (
+                        sectionBids.map((bid) => {
+                          const laborRow = teamLaborByBidId.get(bid.id)
+                          return (
+                            <tr
+                              key={bid.id}
+                              onClick={() => setSharedBid(bid)}
+                              style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                            >
+                              <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>
+                              <td style={{ padding: '0.75rem' }}>
+                                {(() => {
+                                  const am = bid.account_manager as EstimatorUser | null
+                                  return am ? (am.name || am.email) : '—'
+                                })()}
+                              </td>
+                              <td style={{ padding: '0.75rem' }}>
+                                {(() => {
+                                  const est = bid.estimator
+                                  const estimatorNorm = est == null ? null : Array.isArray(est) ? est[0] ?? null : est
+                                  return estimatorNorm ? (estimatorNorm.name || estimatorNorm.email) : '—'
+                                })()}
+                              </td>
+                              <td style={{ padding: '0.75rem' }}>{formatBidCostsPeople(laborRow?.breakdown ?? [])}</td>
+                              <td style={{ padding: '0.75rem', textAlign: 'right' }}>{laborRow ? `$${formatCurrency(laborRow.bidCost)}` : '—'}</td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -10165,7 +10303,9 @@ export default function Bids() {
                 const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
                   ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
                   : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
-                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
+                const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
+                const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
+                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost
                 const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
                 let totalRevenue = 0
                 const rows = pricingCountRows.map((countRow) => {
@@ -10223,6 +10363,9 @@ export default function Bids() {
                       )}
                       {estimatorCost > 0 && (
                         <span>Estimator: ${formatCurrency(estimatorCost)} {totalCost > 0 ? `| ${((estimatorCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
+                      )}
+                      {teamLaborCost > 0 && (
+                        <span>Team Labor (clocked): ${formatCurrency(teamLaborCost)} {totalCost > 0 ? `| ${((teamLaborCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
                       )}
                       <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
                     </div>

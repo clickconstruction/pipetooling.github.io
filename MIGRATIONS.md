@@ -120,6 +120,36 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 23, 2026
+
+**`20260423120000_people_crew_bids.sql`**
+- **Purpose**: Bid-level team labor (parallel to `people_crew_jobs`); synced from approved clock sessions with `bid_id`
+- **Changes**: Create `people_crew_bids` (work_date, person_name, crew_lead_person_name, bid_assignments JSONB); RPC `get_bids_by_ids(p_bid_ids UUID[])`; `sync_crew_bids_from_clock(p_person_name, p_work_date)`; extend `approve_clock_sessions` and `revoke_clock_sessions` to sync bid assignments when sessions have `bid_id`
+- **Impact**: Bids Pricing cost breakdown shows "Team Labor (clocked)" when users have clocked in with a bid; `loadTeamLaborDataForBids` powers display
+- **Category**: Bids / Hours / Clock Sessions / Crew Bids
+
+#### April 22, 2026
+
+**`20260422120000_approve_clock_sessions_crew_jobs.sql`**
+- **Purpose**: Auto-create/update `people_crew_jobs` when clock sessions with `job_ledger_id` are approved or revoked
+- **Changes**: Add `sync_crew_jobs_from_clock(p_person_name, p_work_date)` helper; extend `approve_clock_sessions` to call it for each (person_name, work_date) with job_ledger_id; extend `revoke_clock_sessions` to call it after each revoke when session had job_ledger_id. Percentages computed from hours; skips when crew_lead_person_name is set
+- **Impact**: Approving a session with a job creates/updates Crew Jobs for that person/date; revoking recomputes or removes
+- **Category**: Hours / Clock Sessions / Crew Jobs
+
+#### March 22, 2026
+
+**`20260322120000_search_bids_for_clock_security_definer.sql`**
+- **Purpose**: Fix bid search returning 0 results for subcontractors and others blocked by bids RLS
+- **Changes**: Change `search_bids_for_clock` from SECURITY INVOKER to SECURITY DEFINER; function bypasses bids RLS so subcontractors can search bids for Clock In and Dispatch; filtering by `p_service_type_ids` remains enforced in function logic
+- **Impact**: Clock In, Update Focus, Dispatch, Crew Jobs / Bids, Add job or bid search now return bids for all roles
+- **Category**: Bids / Clock Sessions / Task Dispatch
+
+**`20260322120001_fix_bid_search_and_j_prefix.sql`**
+- **Purpose**: Fix bids still not showing (2-arg overload) and J651/B88 search normalization
+- **Changes**: DROP 2-arg `search_bids_for_clock(TEXT, UUID)` overload so frontend calls use the 3-arg SECURITY DEFINER version; `search_jobs_ledger` normalizes "J" prefix (J651 matches hcp_number 651); `search_bids_for_clock` normalizes "B" prefix (B88 matches bid_number 88)
+- **Impact**: Bids now appear in search; "J651" finds job 651; "B88" finds bid 88
+- **Category**: Bids / Clock Sessions / Search
+
 #### April 21, 2026
 
 **`20260421120000_add_subcontractor_service_type_ids.sql`**
@@ -684,7 +714,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260231000020_create_people_crew_jobs.sql`**
 - **Purpose**: Store crew lead and job/percentage assignments per person per day for Crew Jobs
 - **Changes**: Create `people_crew_jobs` (work_date, person_name, crew_lead_person_name, job_assignments JSONB); RLS same as people_hours
-- **Impact**: Jobs Team Labor tab; Quickfill Crew Jobs; crew members inherit crew lead job breakdown
+- **Impact**: Jobs Team Labor tab; Quickfill Crew Jobs; crew members inherit crew lead job breakdown. Crew jobs auto-created from approved clock sessions with `job_ledger_id` (see `20260422120000_approve_clock_sessions_crew_jobs.sql`)
 - **Category**: Jobs / Quickfill / Crew Jobs
 
 **`20260231000011_fixture_cost_list_and_po.sql`**

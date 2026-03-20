@@ -5,11 +5,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
 import { ClockSessionsTable, ClockSessionsSection } from '../clock-sessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 
 type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 type HoursRow = { person_name: string; work_date: string; hours: number }
-type CrewJobAssignment = { job_id: string; pct: number }
-type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -72,7 +72,7 @@ export function HoursSection() {
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
-  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
+  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
@@ -204,17 +204,48 @@ export function HoursSection() {
     if (!canAccessHours) return
     const days = getDaysInRange(start, end)
     if (days.length === 0) return
-    const { data } = await supabase
-      .from('people_crew_jobs')
-      .select('work_date, person_name, crew_lead_person_name, job_assignments')
-      .in('work_date', days)
-    const map: Record<string, CrewJobRow> = {}
-    for (const r of (data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>) {
-      const key = `${r.work_date}:${r.person_name}`
-      map[key] = {
-        crew_lead_person_name: r.crew_lead_person_name ?? null,
-        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+    const [jobsRes, bidsRes] = await Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+    ])
+    const jobsRows = (jobsRes.data ?? []) as Array<{
+      work_date: string
+      person_name: string
+      crew_lead_person_name: string | null
+      job_assignments: Array<{ job_id: string; pct: number }>
+    }>
+    const bidsRows = (bidsRes.data ?? []) as Array<{
+      work_date: string
+      person_name: string
+      crew_lead_person_name: string | null
+      bid_assignments: Array<{ bid_id: string; pct: number }>
+    }>
+    const jobsByKey: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+    for (const r of jobsRows) {
+      const k = `${r.work_date}:${r.person_name}`
+      jobsByKey[k] = {
+        crew_lead: r.crew_lead_person_name ?? null,
+        jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
+    }
+    const bidsByKey: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+    for (const r of bidsRows) {
+      const k = `${r.work_date}:${r.person_name}`
+      bidsByKey[k] = {
+        crew_lead: r.crew_lead_person_name ?? null,
+        bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+      }
+    }
+    const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
+    const map: Record<string, CrewRow> = {}
+    for (const k of allKeys) {
+      const j = jobsByKey[k]
+      const b = bidsByKey[k]
+      const jobs = j?.jobs ?? []
+      const bids = b?.bids ?? []
+      const unified = mergeToUnified(jobs, bids)
+      const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
+      map[k] = { crew_lead_person_name: crewLead, unifiedAssignments: unified }
     }
     setCrewJobsByDatePerson(map)
   }
@@ -342,6 +373,9 @@ export function HoursSection() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_jobs' }, () => {
         loadCrewJobsRef.current?.()
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_bids' }, () => {
+        loadCrewJobsRef.current?.()
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
         loadAllClockSessionsRef.current?.()
       })
@@ -364,7 +398,7 @@ export function HoursSection() {
     const key = `${workDate}:${personName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return false
-    return !!(row.crew_lead_person_name || (row.job_assignments?.length ?? 0) > 0)
+    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
   }
 
   function hasUnassignedCorrectDays(personName: string): boolean {
@@ -540,7 +574,7 @@ export function HoursSection() {
                           }),
                           ...(isUnassigned && canEditCrewJobs && { cursor: 'pointer' }),
                         }}
-                        title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs' : 'Assign jobs in Crew Jobs section above') : undefined}
+                        title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs or bids' : 'Assign jobs or bids in Crew Jobs / Bids section above') : undefined}
                         {...(isUnassigned && canEditCrewJobs && {
                           role: 'button',
                           tabIndex: 0,

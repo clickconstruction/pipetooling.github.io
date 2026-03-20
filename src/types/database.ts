@@ -618,18 +618,18 @@ export type Database = {
       checklist_item_assignees: {
         Row: {
           checklist_item_id: string
-          user_id: string
           display_order: number
+          user_id: string
         }
         Insert: {
           checklist_item_id: string
-          user_id: string
           display_order?: number
+          user_id: string
         }
         Update: {
           checklist_item_id?: string
-          user_id?: string
           display_order?: number
+          user_id?: string
         }
         Relationships: [
           {
@@ -790,6 +790,13 @@ export type Database = {
             columns: ["approved_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clock_sessions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
           {
@@ -969,21 +976,6 @@ export type Database = {
           },
         ]
       }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
-      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -1003,6 +995,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cost_matrix_tag_colors: {
+        Row: {
+          tag: string
+          color: string
+        }
+        Insert: {
+          tag: string
+          color?: string
+        }
+        Update: {
+          tag?: string
+          color?: string
+        }
+        Relationships: []
       }
       counts_fixture_group_items: {
         Row: {
@@ -1198,97 +1205,6 @@ export type Database = {
           },
         ]
       }
-      dispatch_group_members: {
-        Row: {
-          user_id: string
-        }
-        Insert: {
-          user_id: string
-        }
-        Update: {
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatch_group_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      dispatch_requests: {
-        Row: {
-          id: string
-          from_user_id: string
-          title: string
-          links: string[]
-          status: string
-          created_at: string
-          closed_at: string | null
-          closed_by_user_id: string | null
-          job_ledger_id: string | null
-          bid_id: string | null
-          reference_summary: string | null
-        }
-        Insert: {
-          id?: string
-          from_user_id: string
-          title: string
-          links?: string[]
-          status?: string
-          created_at?: string
-          closed_at?: string | null
-          closed_by_user_id?: string | null
-          job_ledger_id?: string | null
-          bid_id?: string | null
-          reference_summary?: string | null
-        }
-        Update: {
-          id?: string
-          from_user_id?: string
-          title?: string
-          links?: string[]
-          status?: string
-          created_at?: string
-          closed_at?: string | null
-          closed_by_user_id?: string | null
-          job_ledger_id?: string | null
-          bid_id?: string | null
-          reference_summary?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "dispatch_requests_bid_id_fkey"
-            columns: ["bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_requests_closed_by_user_id_fkey"
-            columns: ["closed_by_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_requests_from_user_id_fkey"
-            columns: ["from_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "dispatch_requests_job_ledger_id_fkey"
-            columns: ["job_ledger_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       dev_ignored_checklist_items: {
         Row: {
           checklist_item_id: string
@@ -1337,6 +1253,97 @@ export type Database = {
             columns: ["checklist_instance_id"]
             isOneToOne: false
             referencedRelation: "checklist_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_group_members: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_requests: {
+        Row: {
+          bid_id: string | null
+          closed_at: string | null
+          closed_by_user_id: string | null
+          created_at: string
+          from_user_id: string
+          id: string
+          job_ledger_id: string | null
+          links: string[]
+          reference_summary: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          bid_id?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          created_at?: string
+          from_user_id: string
+          id?: string
+          job_ledger_id?: string | null
+          links?: string[]
+          reference_summary?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          bid_id?: string | null
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          job_ledger_id?: string | null
+          links?: string[]
+          reference_summary?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_closed_by_user_id_fkey"
+            columns: ["closed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
         ]
@@ -2775,6 +2782,27 @@ export type Database = {
         Update: {
           person_name?: string
           tags?: string
+        }
+        Relationships: []
+      }
+      people_crew_bids: {
+        Row: {
+          bid_assignments: Json
+          crew_lead_person_name: string | null
+          person_name: string
+          work_date: string
+        }
+        Insert: {
+          bid_assignments?: Json
+          crew_lead_person_name?: string | null
+          person_name: string
+          work_date: string
+        }
+        Update: {
+          bid_assignments?: Json
+          crew_lead_person_name?: string | null
+          person_name?: string
+          work_date?: string
         }
         Relationships: []
       }
@@ -4580,8 +4608,8 @@ export type Database = {
           notes: string | null
           phone: string | null
           primary_service_type_ids: string[] | null
-          subcontractor_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
+          subcontractor_service_type_ids: string[] | null
           updated_at: string | null
         }
         Insert: {
@@ -4595,8 +4623,8 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
-          subcontractor_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
+          subcontractor_service_type_ids?: string[] | null
           updated_at?: string | null
         }
         Update: {
@@ -4610,8 +4638,8 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
-          subcontractor_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
+          subcontractor_service_type_ids?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -5055,9 +5083,15 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: boolean
       }
-      get_archived_user_names: {
-        Args: Record<string, never>
-        Returns: string[]
+      get_archived_user_names: { Args: never; Returns: string[] }
+      get_bids_by_ids: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          address: string
+          bid_number: string
+          id: string
+          project_name: string
+        }[]
       }
       get_invoice_amounts_for_jobs: {
         Args: { p_job_ids: string[] }
@@ -5248,6 +5282,8 @@ export type Database = {
           job_hcp_number: string
           job_ledger_id: string
           project_id: string
+          reported_at_lat: number
+          reported_at_lng: number
           template_id: string
           template_name: string
           updated_at: string
@@ -5265,6 +5301,8 @@ export type Database = {
           job_hcp_number: string
           job_ledger_id: string
           project_id: string
+          reported_at_lat: number
+          reported_at_lng: number
           template_id: string
           template_name: string
           updated_at: string
@@ -5312,16 +5350,30 @@ export type Database = {
           revoked_count: number
         }[]
       }
-      search_bids_for_clock: {
-        Args: { p_search_text?: string; p_service_type_id?: string; p_service_type_ids?: string[] }
-        Returns: {
-          address: string
-          bid_number: string
-          customer_name: string
-          id: string
-          project_name: string
-        }[]
-      }
+      search_bids_for_clock:
+        | {
+            Args: { p_search_text?: string; p_service_type_id?: string }
+            Returns: {
+              address: string
+              customer_name: string
+              id: string
+              project_name: string
+            }[]
+          }
+        | {
+            Args: {
+              p_search_text?: string
+              p_service_type_id?: string
+              p_service_type_ids?: string[]
+            }
+            Returns: {
+              address: string
+              bid_number: string
+              customer_name: string
+              id: string
+              project_name: string
+            }[]
+          }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
@@ -5340,6 +5392,14 @@ export type Database = {
           job_address: string
           job_name: string
         }[]
+      }
+      sync_crew_bids_from_clock: {
+        Args: { p_person_name: string; p_work_date: string }
+        Returns: undefined
+      }
+      sync_crew_jobs_from_clock: {
+        Args: { p_person_name: string; p_work_date: string }
+        Returns: undefined
       }
       touch_last_sign_in: { Args: never; Returns: undefined }
       update_job_status: {

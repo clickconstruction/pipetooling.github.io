@@ -17,7 +17,7 @@
   2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
   3. Materials (Supply Houses with invoices, price book, templates, purchase orders)
   4. Checklist (recurring tasks, Today/History/Manage tabs, push notifications)
-  - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, Crew Jobs, Receivables) are major subsystems
+  - **Prospects** (lead management, Convert tab, callbacks) and **Quickfill** (billing workflow, Crew Jobs / Bids, Receivables) are major subsystems
 
 ---
 
@@ -128,7 +128,7 @@ pipetooling.github.io/
 - **`src/components/ChecklistTitleWithLinks.tsx`** - Renders checklist titles with [1], [2], etc. as clickable links
 - **`src/pages/Jobs.tsx`** - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Parts, Job Summary, Inspections, Teams Summary tabs)
 - **`src/pages/Prospects.tsx`** - Lead management (Convert tab, callbacks, Team tab for dev/assistant)
-- **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs, Receivables, Billed sections)
+- **`src/pages/Quickfill.tsx`** - Billing workflow (Crew Jobs / Bids, Receivables, Billed sections)
 - **`src/pages/Dashboard.tsx`** - Reports, pins, Estimator Dashboard
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist

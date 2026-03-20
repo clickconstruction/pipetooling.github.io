@@ -12,7 +12,7 @@ import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-hours', sectionId: 'hours', label: 'Hours' },
-  { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs' },
+  { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
@@ -162,7 +162,7 @@ export default function Quickfill() {
       </QuickfillSectionWrapper>
       <QuickfillSectionWrapper
         id="quickfill-crew-jobs"
-        label="Crew Jobs"
+        label="Crew Jobs / Bids"
         color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
         collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
         mark={sectionMarks['crew-jobs']}

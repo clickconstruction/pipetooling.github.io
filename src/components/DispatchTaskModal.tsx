@@ -72,11 +72,10 @@ export default function DispatchTaskModal() {
               : me?.role === 'subcontractor' && subIds && subIds.length > 0
                 ? types.filter((t) => subIds.includes(t.id))
                 : types
-        const firstId = filtered[0]?.id ?? ''
-        setSelectedBidServiceTypeId((prev) => (prev && filtered.some((t) => t.id === prev) ? prev : firstId))
+        setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
         setServiceTypes(filtered)
       } else {
-        setSelectedBidServiceTypeId(types[0]?.id ?? '')
+        setSelectedBidServiceTypeId('')
         setServiceTypes(types)
         setSubcontractorServiceTypeIds(null)
       }
@@ -227,7 +226,7 @@ export default function DispatchTaskModal() {
           </label>
           <div style={{ marginBottom: 0 }}>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reference (optional)</span>
-            {serviceTypes.length > 1 && (
+            {serviceTypes.length > 0 && (
               <select
                 value={selectedBidServiceTypeId}
                 onChange={(e) => {
@@ -243,6 +242,7 @@ export default function DispatchTaskModal() {
                   borderRadius: 4,
                 }}
               >
+                <option value="">All types</option>
                 {serviceTypes.map((st) => (
                   <option key={st.id} value={st.id}>
                     {st.name}

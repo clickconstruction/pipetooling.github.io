@@ -40,6 +40,8 @@ export async function cascadePersonNameInPayTables(oldName: string, newName: str
     supabase.from('people_hours_display_order').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
     supabase.from('people_crew_jobs').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
     supabase.from('people_crew_jobs').update({ crew_lead_person_name: trimmedNew }).eq('crew_lead_person_name', trimmedOld),
+    supabase.from('people_crew_bids').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
+    supabase.from('people_crew_bids').update({ crew_lead_person_name: trimmedNew }).eq('crew_lead_person_name', trimmedOld),
     supabase.from('pay_stubs').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
     supabase.from('pay_stub_days').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
   ])

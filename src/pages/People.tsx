@@ -203,6 +203,8 @@ export default function People() {
   // Hours tab state (unassigned hours modal, crew jobs by date)
   type CrewJobAssignment = { job_id: string; pct: number }
   type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+  type CrewBidAssignment = { bid_id: string; pct: number }
+  type CrewBidRow = { crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
 
@@ -931,13 +933,15 @@ export default function People() {
     setPayStubCalendarData({ earnedByDate, paidByDate })
   }
 
-  function computePayReportJobBreakdown(
+  function computePayReportAssignmentsBreakdown(
     personName: string,
     dayRows: Array<{ work_date: string; hours: number }>,
     crewByDatePerson: Record<string, CrewJobRow>,
-    jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }>
+    crewBidsByDatePerson: Record<string, CrewBidRow>,
+    jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }>,
+    bidsMap: Record<string, { bid_number: string; project_name: string; address: string }>
   ): Array<{ date: string; hours: number; jobsText: string }> {
-    function getEffectiveAssignments(pn: string, workDate: string): CrewJobAssignment[] {
+    function getEffectiveJobAssignments(pn: string, workDate: string): CrewJobAssignment[] {
       const key = `${workDate}:${pn}`
       const row = crewByDatePerson[key]
       if (!row) return []
@@ -948,6 +952,17 @@ export default function People() {
       }
       return row.job_assignments
     }
+    function getEffectiveBidAssignments(pn: string, workDate: string): CrewBidAssignment[] {
+      const key = `${workDate}:${pn}`
+      const row = crewBidsByDatePerson[key]
+      if (!row) return []
+      if (row.crew_lead_person_name) {
+        const leadKey = `${workDate}:${row.crew_lead_person_name}`
+        const leadRow = crewBidsByDatePerson[leadKey]
+        return leadRow?.bid_assignments ?? []
+      }
+      return row.bid_assignments
+    }
     function jobLabel(jobId: string): string {
       const d = jobsMap[jobId]
       if (!d) return jobId.slice(0, 8)
@@ -956,13 +971,27 @@ export default function People() {
       if (jobNum && jobName) return `Job ${jobNum} (${jobName})`
       return jobNum || jobName || (d.job_address ?? '').trim() || jobId.slice(0, 8)
     }
+    function bidLabel(bidId: string): string {
+      const d = bidsMap[bidId]
+      if (!d) return bidId.slice(0, 8)
+      const bidNum = (d.bid_number ?? '').trim()
+      const projectName = (d.project_name ?? '').trim()
+      if (bidNum && projectName) return `Bid ${bidNum} (${projectName})`
+      return bidNum || projectName || (d.address ?? '').trim() || bidId.slice(0, 8)
+    }
     return dayRows.map((r) => {
-      const assignments = getEffectiveAssignments(personName, r.work_date)
-      if (assignments.length === 0) return { date: r.work_date, hours: r.hours, jobsText: '—' }
-      const parts = assignments.map((a) => {
-        const jobHours = r.hours * (a.pct / 100)
-        return `${jobLabel(a.job_id)} ${jobHours.toFixed(2)} hrs`
+      const jobAssignments = getEffectiveJobAssignments(personName, r.work_date)
+      const bidAssignments = getEffectiveBidAssignments(personName, r.work_date)
+      const jobParts = jobAssignments.map((a) => {
+        const hrs = r.hours * (a.pct / 100)
+        return `${jobLabel(a.job_id)} ${hrs.toFixed(2)} hrs`
       })
+      const bidParts = bidAssignments.map((a) => {
+        const hrs = r.hours * (a.pct / 100)
+        return `${bidLabel(a.bid_id)} ${hrs.toFixed(2)} hrs`
+      })
+      const parts = [...jobParts, ...bidParts]
+      if (parts.length === 0) return { date: r.work_date, hours: r.hours, jobsText: '—' }
       return { date: r.work_date, hours: r.hours, jobsText: parts.join(', ') }
     })
   }
@@ -1058,7 +1087,7 @@ export default function People() {
       ? rowsWithJobs!.map((r) => `<tr><td>${escapeHtml(dateWithDay(r.date))}</td><td style="text-align:right">${r.hours.toFixed(2)}</td><td>${escapeHtml(r.jobsText)}</td></tr>`).join('')
       : hoursRows.map((r) => `<tr><td>${escapeHtml(dateWithDay(r.date))}</td><td style="text-align:right">${r.hours.toFixed(2)}</td></tr>`).join('')
     const tableHeader = hasJobs
-      ? '<thead><tr><th>Date</th><th style="text-align:right">Hours</th><th>Jobs</th></tr></thead>'
+      ? '<thead><tr><th>Date</th><th style="text-align:right">Hours</th><th>Jobs / Bids</th></tr></thead>'
       : '<thead><tr><th>Date</th><th style="text-align:right">Hours</th></tr></thead>'
     const tableFooter = hasJobs
       ? `<tfoot><tr><td style="font-weight:600">Total</td><td style="text-align:right; font-weight:600">${hoursTotal.toFixed(2)}</td><td></td></tr></tfoot>`
@@ -1186,12 +1215,12 @@ export default function People() {
       return
     }
     await loadPayStubs()
-    const { data: crewData } = await supabase
-      .from('people_crew_jobs')
-      .select('work_date, person_name, crew_lead_person_name, job_assignments')
-      .gte('work_date', start)
-      .lte('work_date', end)
+    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+    ])
     const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
@@ -1199,22 +1228,38 @@ export default function People() {
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
+    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
+    for (const r of crewBidsRows) {
+      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = {
+        crew_lead_person_name: r.crew_lead_person_name,
+        bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+      }
+    }
     const jobIds = new Set<string>()
+    const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${personName}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
-      for (const a of assignments) jobIds.add(a.job_id)
+      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      for (const a of jobAssignments) jobIds.add(a.job_id)
+      const bidRow = crewBidsByDatePerson[`${r.work_date}:${personName}`]
+      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
     if (jobIds.size > 0) {
       const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
     }
-    const rowsWithJobs = computePayReportJobBreakdown(personName, dayRows, crewByDatePerson, jobsMap)
+    if (bidIds.size > 0) {
+      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
+      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
+        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
       getVehiclesForPersonInPeriod(personName, start, end),
       getOffsetsForPayStub(personName, payStubId, start, end),
@@ -1242,26 +1287,45 @@ export default function People() {
       })
     }
     const wage = cfg?.hourly_wage ?? 0
-    const { data: crewData } = await supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end)
+    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+    ])
     const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
     }
+    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
+    for (const r of crewBidsRows) {
+      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
+    }
     const jobIds = new Set<string>()
+    const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const assignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
-      for (const a of assignments) jobIds.add(a.job_id)
+      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      for (const a of jobAssignments) jobIds.add(a.job_id)
+      const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
+      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
     if (jobIds.size > 0) {
       const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
     }
-    const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
+    if (bidIds.size > 0) {
+      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
+      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
+        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
     const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),
@@ -1290,26 +1354,45 @@ export default function People() {
       })
     }
     const wage = cfg?.hourly_wage ?? 0
-    const { data: crewData } = await supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end)
+    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+    ])
     const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
     }
+    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
+    for (const r of crewBidsRows) {
+      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
+    }
     const jobIds = new Set<string>()
+    const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const assignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
-      for (const a of assignments) jobIds.add(a.job_id)
+      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      for (const a of jobAssignments) jobIds.add(a.job_id)
+      const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
+      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
+    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
     if (jobIds.size > 0) {
       const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
       for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
         jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
       }
     }
-    const rowsWithJobs = computePayReportJobBreakdown(stub.person_name, dayRows, crewByDatePerson, jobsMap)
+    if (bidIds.size > 0) {
+      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
+      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
+        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+      }
+    }
+    const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
     const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
     const [vehicles, { appliedOffsets, pendingOffsets }] = await Promise.all([
       getVehiclesForPersonInPeriod(stub.person_name, start, end),

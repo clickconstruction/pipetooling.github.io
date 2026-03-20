@@ -375,6 +375,60 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.119)
+
+**Date**: 2026-04-23
+
+### Bids – Team Labor (clocked) in Cost Breakdown
+
+- **people_crew_bids table**: Mirrors `people_crew_jobs` for bids; stores `bid_assignments` JSONB `[{ bid_id, pct }]` per person per work date.
+- **Sync from clock**: When a clock session with `bid_id` is approved, `approve_clock_sessions` calls `sync_crew_bids_from_clock`; when revoked, `revoke_clock_sessions` recomputes or removes the row.
+- **Bids Pricing cost breakdown**: When viewing a bid's Cost Model, "Team Labor (clocked)" line shows the cost of hours clocked to that bid; included in total cost.
+- **loadTeamLaborDataForBids**: Fetches `people_crew_bids`, `people_hours`, `people_pay_config`; uses `get_bids_by_ids` RPC to resolve bid details; powers the display.
+- **Cascade person name**: `people_crew_bids` updated when person names change (same as `people_crew_jobs`).
+
+**Files**: `supabase/migrations/20260423120000_people_crew_bids.sql`, `src/utils/teamLabor.ts`, `src/pages/Bids.tsx`, `src/lib/cascadePersonName.ts`
+
+---
+
+## Latest Updates (v2.120)
+
+**Date**: 2026-03-22
+
+### Bid Search – Fix 0 Results for Subcontractors and Service Type Filter
+
+- **Root cause**: `search_bids_for_clock` used SECURITY INVOKER; bids RLS blocks subcontractors (and only allows dev, master, assistant, estimator, primary). Subcontractors got 0 bids when searching in Clock In, Dispatch, and Add job or bid.
+- **Fix**: Migration `20260322120000_search_bids_for_clock_security_definer.sql` changes the function to SECURITY DEFINER so it bypasses RLS. Filtering by `p_service_type_id` / `p_service_type_ids` remains enforced in the function.
+- **2-arg overload fix**: Frontend calls with `{ p_search_text: q }` were matching the 2-arg overload (still SECURITY INVOKER). Migration `20260322120001_fix_bid_search_and_j_prefix.sql` drops the 2-arg overload so only the 3-arg SECURITY DEFINER version exists.
+- **J/B prefix normalization**: "J651" now matches job with hcp_number "651"; "B88" matches bid with bid_number "88". Jobs store hcp_number as "651"; bids store bid_number as "88"; users often type the display prefix.
+- **"All types" option**: Clock In, Update Focus, and Dispatch modals now default to "All types" in the service type dropdown and show the dropdown whenever service types exist (not only when multiple). Users can search across all service types or narrow by one.
+
+**Files**: `supabase/migrations/20260322120000_search_bids_for_clock_security_definer.sql`, `supabase/migrations/20260322120001_fix_bid_search_and_j_prefix.sql`, `src/components/ClockInOutButton.tsx`, `src/components/DispatchTaskModal.tsx`
+
+### Pay Report – Jobs and Bids
+
+- **Pay Report table**: Now shows **Jobs / Bids** column (was "Jobs"). Fetches `people_crew_bids` alongside `people_crew_jobs`; uses `get_bids_by_ids` to resolve bid details. Per-day breakdown merges job and bid assignments, e.g. "Job 651 (Dudley Mason) 2.5 hrs, Bid 88 (Hagedorn) 1.5 hrs". Respects crew_lead inheritance for both.
+- **Crew Jobs / Bids labeling**: Section headers and nav buttons updated from "Crew Jobs" to "Crew Jobs / Bids" in Quickfill and Jobs Team Labor tab. Assignments column supports both jobs and bids; Add job or bid modal searches both.
+
+**Files**: `src/pages/People.tsx`, `src/components/CrewJobsBlock.tsx`, `src/pages/Quickfill.tsx`, `src/components/quickfill/HoursSection.tsx`
+
+---
+
+## Latest Updates (v2.118)
+
+**Date**: 2026-04-22
+
+### People / Hours – Auto-Create Crew Jobs from Approved Clock Sessions
+
+- **Approve**: When a clock session with `job_ledger_id` is approved, `approve_clock_sessions` now creates or updates `people_crew_jobs` for that person and date. Percentages are computed from hours across all approved sessions (e.g. 2h Job A + 3h Job B → 40% A, 60% B).
+- **Revoke**: When a session with `job_ledger_id` is revoked, `revoke_clock_sessions` recomputes `people_crew_jobs` from remaining approved sessions; if none remain, the row is deleted.
+- **Crew lead skip**: If the person has `crew_lead_person_name` set (inherits from lead), we do not overwrite their crew job row.
+- **Helper**: `sync_crew_jobs_from_clock(p_person_name, p_work_date)` centralizes the logic.
+
+**Files**: `supabase/migrations/20260422120000_approve_clock_sessions_crew_jobs.sql`
+
+---
+
 ## Latest Updates (v2.117)
 
 **Date**: 2026-04-21
@@ -594,7 +648,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 ### Database
 
 - **`clock_sessions`**: Added `revoked_at`, `revoked_by` for accountability when sessions are revoked.
-- **RPCs**: `revoke_clock_sessions(p_session_ids UUID[])` subtracts hours from `people_hours` and clears approved state; sets `revoked_at`/`revoked_by`. `approve_clock_sessions` updated to clear `revoked_at`/`revoked_by` when approving.
+- **RPCs**: `revoke_clock_sessions(p_session_ids UUID[])` subtracts hours from `people_hours` and clears approved state; sets `revoked_at`/`revoked_by`; for sessions with `job_ledger_id`, recomputes or removes `people_crew_jobs`. `approve_clock_sessions` updated to clear `revoked_at`/`revoked_by` when approving; for sessions with `job_ledger_id`, auto-creates/updates `people_crew_jobs`.
 - **Migrations**: `20260315120003_revoke_clock_sessions_rpc`, `20260315120004_add_revoked_to_clock_sessions`, `20260315120005_revoke_set_revoked_by_approve_clear`.
 
 ---
@@ -686,7 +740,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 ### People – Hours Tab: Pending Clock Sessions
 
 - **Pending clock sessions**: Collapsible section above the Hours grid. Shows sessions where user has clocked out but approval has not yet been applied. Table: Person, Date, In, Out, Duration, Notes, Actions (Edit, Approve, Delete). Pay-access users only.
-- **Approve**: Calls `approve_clock_sessions` RPC. Merges hours into `people_hours` (adds to existing for same person/date). Marks session approved. Session disappears from pending list. Does not check `people_pay_config` or Show in Hours—approval succeeds for anyone.
+- **Approve**: Calls `approve_clock_sessions` RPC. Merges hours into `people_hours` (adds to existing for same person/date). For sessions with `job_ledger_id`, auto-creates/updates `people_crew_jobs` (percentages by hours). Marks session approved. Session disappears from pending list. Does not check `people_pay_config` or Show in Hours—approval succeeds for anyone.
 - **Edit modal**: Edit clocked in/out times and notes. Notes required. Save disabled until notes are non-empty.
 - **Realtime**: Hours tab subscribes to `clock_sessions` for live updates.
 
@@ -1070,11 +1124,11 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 ### Quickfill – Section Navigation and Feedback Loop
 
-- **Section nav buttons**: Row of buttons below the title (Hours, Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs, Unreachable Prospects, Supply Houses and Subs, Jobs Billing). Click to scroll to section. Each button shows "Last marked: X" and "by [user]" below.
+- **Section nav buttons**: Row of buttons below the title (Hours, Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs / Bids, Unreachable Prospects, Supply Houses and Subs, Jobs Billing). Click to scroll to section. Each button shows "Last marked: X" and "by [user]" below.
 - **Mark up to date**: Below each section, a "Mark [section] up to date!" button. When clicked: section collapses for 12 hours, nav button turns green. Button hidden when section is collapsed; re-marking collapses the section.
 - **Color states**: Nav buttons green (marked within 12h), yellow (12–30h), red (>30h or never).
 - **Open now**: Collapsed sections show "Open now" button to expand immediately. Collapsed message: "Marked up to date at X by [user]. Expands automatically in Yh."
-- **Section order**: Hours first; then Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs, Unreachable Prospects, Supply Houses and Subs, Jobs Billing last.
+- **Section order**: Hours first; then Billing Awaiting Payments, Unpriced Fixtures, Crew Jobs / Bids, Unreachable Prospects, Supply Houses and Subs, Jobs Billing last.
 - **Unpriced Fixtures**: Nav button and section hidden when no unpriced fixtures.
 
 ### Quickfill – Label and Layout Updates
@@ -1082,8 +1136,8 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **Billed Awaiting** → **Billing Awaiting Payments**
 - **Can't Reach** → **Unreachable Prospects** (expanded by default).
 - **Supply Houses** → **Supply Houses and Subs**
-- **Unreachable Prospects** moved after Crew Jobs.
-- **Team Job Labor** (in Crew Jobs): Collapsible, collapsed by default.
+- **Unreachable Prospects** moved after Crew Jobs / Bids.
+- **Team Job Labor** (in Crew Jobs / Bids): Collapsible, collapsed by default.
 
 ### Quickfill – Database
 
@@ -1338,9 +1392,9 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 ### People – Team Costs tab
 
 - **New tab**: Team Costs (same visibility as Pay: canAccessPay or canViewCostMatrixShared)
-- **Crew Jobs table**: Per-day assignment of crew leads and job percentages. Date picker (calendar input) + prev/next day buttons. Columns: Name (from cost matrix), Crew (dropdown to set crew lead; crew members inherit lead's job breakdown), Jobs (add multiple jobs with %; auto-split 100%; editable percentages).
-- **Team Job Labor table**: All-time aggregate of jobs from Crew Jobs. Columns: HCP, Job name + address, People on job, Man hours (clickable → breakdown modal), Job cost (clickable → breakdown modal). Searchable by HCP, job name, address.
-- **Database**: `people_crew_jobs` table; `search_jobs_ledger(search_text)` RPC. Cascade person name updates to people_crew_jobs.
+- **Crew Jobs / Bids table**: Per-day assignment of crew leads and job/bid percentages. Date picker (calendar input) + prev/next day buttons. Columns: Name (from cost matrix), Crew (dropdown to set crew lead; crew members inherit lead's job/bid breakdown), Jobs/Bids (add multiple jobs or bids with %; auto-split 100%; editable percentages).
+- **Team Job Labor table**: All-time aggregate of jobs from Crew Jobs / Bids. Columns: HCP, Job name + address, People on job, Man hours (clickable → breakdown modal), Job cost (clickable → breakdown modal). Searchable by HCP, job name, address.
+- **Database**: `people_crew_jobs` table; `search_jobs_ledger(search_text)` RPC. Cascade person name updates to people_crew_jobs. Crew jobs are auto-created/updated when clock sessions with `job_ledger_id` are approved (see v2.118).
 
 **Files**: `src/pages/People.tsx`, `src/lib/cascadePersonName.ts`, `supabase/migrations/20260231000020_create_people_crew_jobs.sql`, `supabase/migrations/20260231000021_search_jobs_ledger.sql`
 
@@ -1360,9 +1414,9 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 
 **Files**: `src/pages/Jobs.tsx`
 
-### Quick Fill – Crew Jobs section
+### Quick Fill – Crew Jobs / Bids section
 
-- **CrewJobsSection**: Same as Jobs Team Labor tab. Placed below Hours, above Receivables. Crew Jobs table (date picker, prev/next, Same team as yesterday, Name, Crew, Jobs with % and remove). Team Job Labor table (HCP, Job, People, Man hours with clickable breakdown; Job Cost column hidden). Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
+- **CrewJobsSection**: Same as Jobs Team Labor tab. Placed below Hours, above Receivables. Crew Jobs / Bids table (date picker, prev/next, Same team as yesterday, Name, Crew, Jobs/Bids with % and remove). Team Job Labor table (HCP, Job, People, Man hours with clickable breakdown; Job Cost column hidden). Visible to dev, pay-approved masters, assistants, cost-matrix-shared users.
 
 **Files**: `src/components/quickfill/CrewJobsSection.tsx`, `src/pages/Quickfill.tsx`
 

@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatCurrency } from '../lib/format'
+import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
-import { loadTeamLaborData, type CrewJobAssignment, type CrewJobRow, type TeamLaborRow } from '../utils/teamLabor'
+import { loadTeamLaborData, type TeamLaborRow } from '../utils/teamLabor'
+import {
+  type UnifiedAssignment,
+  mergeToUnified,
+  splitFromUnified,
+  formatAssignmentLabel,
+  type JobDetails,
+  type BidDetails,
+} from '../utils/crewAssignments'
 
 type PayConfigRow = {
   person_name: string
@@ -11,6 +19,8 @@ type PayConfigRow = {
   show_in_hours: boolean
   show_in_cost_matrix: boolean
 }
+
+type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
 
 interface CrewJobsBlockProps {
   people?: string[]
@@ -49,12 +59,15 @@ export function CrewJobsBlock({
     d.setDate(d.getDate() - 1)
     return d.toLocaleDateString('en-CA')
   })
-  const [crewJobsData, setCrewJobsData] = useState<Record<string, CrewJobRow>>({})
+  const [crewJobsData, setCrewJobsData] = useState<Record<string, CrewRow>>({})
   const [crewJobsLoading, setCrewJobsLoading] = useState(false)
   const [crewJobSearchModal, setCrewJobSearchModal] = useState<{ personName: string } | null>(null)
   const [crewJobSearchText, setCrewJobSearchText] = useState('')
   const [crewJobSearchResults, setCrewJobSearchResults] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+    Array<
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+    >
   >([])
   const [teamLaborSearch, setTeamLaborSearch] = useState('')
   const [breakdownModal, setBreakdownModal] = useState<{
@@ -63,9 +76,8 @@ export function CrewJobsBlock({
     type: 'hours' | 'cost'
   } | null>(null)
   const [teamLaborOpen, setTeamLaborOpen] = useState(true)
-  const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<
-    Record<string, { hcp_number: string; job_name: string; job_address: string }>
-  >({})
+  const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
+  const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
   const [hideZeroHours, setHideZeroHours] = useState(true)
@@ -147,25 +159,54 @@ export function CrewJobsBlock({
 
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
-    const [crewRes, hoursRes] = await Promise.all([
+    const [jobsRes, bidsRes, hoursRes] = await Promise.all([
       supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', date),
+      supabase.from('people_crew_bids').select('person_name, crew_lead_person_name, bid_assignments').eq('work_date', date),
       supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
     ])
     setCrewJobsLoading(false)
-    const { data: crewData, error: err } = crewRes
-    if (err) {
-      setError(err.message)
+    const { data: jobsData, error: jobsErr } = jobsRes
+    const { data: bidsData, error: bidsErr } = bidsRes
+    if (jobsErr || bidsErr) {
+      setError(jobsErr?.message ?? bidsErr?.message ?? 'Failed to load crew data')
       return
     }
-    const map: Record<string, CrewJobRow> = {}
-    for (const r of (crewData ?? []) as {
+    const jobsRows = (jobsData ?? []) as Array<{
       person_name: string
       crew_lead_person_name: string | null
-      job_assignments: CrewJobAssignment[]
-    }[]) {
-      map[r.person_name] = {
-        crew_lead_person_name: r.crew_lead_person_name ?? null,
-        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      job_assignments: Array<{ job_id: string; pct: number }>
+    }>
+    const bidsRows = (bidsData ?? []) as Array<{
+      person_name: string
+      crew_lead_person_name: string | null
+      bid_assignments: Array<{ bid_id: string; pct: number }>
+    }>
+    const jobsByPerson: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+    for (const r of jobsRows) {
+      jobsByPerson[r.person_name] = {
+        crew_lead: r.crew_lead_person_name ?? null,
+        jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+    const bidsByPerson: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+    for (const r of bidsRows) {
+      bidsByPerson[r.person_name] = {
+        crew_lead: r.crew_lead_person_name ?? null,
+        bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+      }
+    }
+    const allPersonNames = new Set([...Object.keys(jobsByPerson), ...Object.keys(bidsByPerson)])
+    const map: Record<string, CrewRow> = {}
+    for (const personName of allPersonNames) {
+      const j = jobsByPerson[personName]
+      const b = bidsByPerson[personName]
+      const jobs = j?.jobs ?? []
+      const bids = b?.bids ?? []
+      const unified = mergeToUnified(jobs, bids)
+      const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
+      map[personName] = {
+        crew_lead_person_name: crewLead,
+        unifiedAssignments: unified,
       }
     }
     setCrewJobsData(map)
@@ -177,6 +218,10 @@ export function CrewJobsBlock({
     }
   }
 
+  function getAssignmentKey(a: UnifiedAssignment): string {
+    return `${a.type}:${a.id}`
+  }
+
   async function doLoadTeamLaborData() {
     setTeamLaborLoading(true)
     const rows = await loadTeamLaborData(supabase)
@@ -184,21 +229,37 @@ export function CrewJobsBlock({
     setTeamLaborLoading(false)
   }
 
-  async function saveCrewJobRow(personName: string, row: CrewJobRow) {
+  async function saveCrewRow(personName: string, row: CrewRow) {
     if (!canEdit) return
     setCrewJobsData((prev) => ({ ...prev, [personName]: row }))
-    const { error: err } = await supabase
-      .from('people_crew_jobs')
-      .upsert(
-        {
-          work_date: crewJobsDate,
-          person_name: personName,
-          crew_lead_person_name: row.crew_lead_person_name || null,
-          job_assignments: row.job_assignments,
-        },
-        { onConflict: 'work_date,person_name' }
-      )
-    if (err) setError(err.message)
+    const { jobAssignments, bidAssignments } = splitFromUnified(row.unifiedAssignments)
+    const [jobsErr, bidsErr] = await Promise.all([
+      supabase
+        .from('people_crew_jobs')
+        .upsert(
+          {
+            work_date: crewJobsDate,
+            person_name: personName,
+            crew_lead_person_name: row.crew_lead_person_name || null,
+            job_assignments: jobAssignments,
+          },
+          { onConflict: 'work_date,person_name' }
+        )
+        .then((r) => r.error),
+      supabase
+        .from('people_crew_bids')
+        .upsert(
+          {
+            work_date: crewJobsDate,
+            person_name: personName,
+            crew_lead_person_name: row.crew_lead_person_name || null,
+            bid_assignments: bidAssignments,
+          },
+          { onConflict: 'work_date,person_name' }
+        )
+        .then((r) => r.error),
+    ])
+    if (jobsErr || bidsErr) setError(jobsErr?.message ?? bidsErr?.message ?? 'Failed to save')
     else {
       await doLoadTeamLaborData()
       onCrewJobsChange?.()
@@ -210,51 +271,88 @@ export function CrewJobsBlock({
     const d = new Date(crewJobsDate + 'T12:00:00')
     d.setDate(d.getDate() - 1)
     const yesterday = d.toLocaleDateString('en-CA')
-    const { data, error: err } = await supabase
-      .from('people_crew_jobs')
-      .select('person_name, crew_lead_person_name, job_assignments')
-      .eq('work_date', yesterday)
-    if (err) {
-      setError(err.message)
+    const [jobsRes, bidsRes] = await Promise.all([
+      supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', yesterday),
+      supabase.from('people_crew_bids').select('person_name, crew_lead_person_name, bid_assignments').eq('work_date', yesterday),
+    ])
+    if (jobsRes.error || bidsRes.error) {
+      setError(jobsRes.error?.message ?? bidsRes.error?.message ?? 'Failed to load yesterday')
       return
     }
-    const rows = (data ?? []) as Array<{
+    const jobsRows = (jobsRes.data ?? []) as Array<{
       person_name: string
       crew_lead_person_name: string | null
-      job_assignments: CrewJobAssignment[]
+      job_assignments: Array<{ job_id: string; pct: number }>
     }>
-    const toCopy = rows.filter((r) => {
-      const hasData = !!(r.crew_lead_person_name || (Array.isArray(r.job_assignments) && r.job_assignments.length > 0))
-      return hasData && showPeopleForMatrix.includes(r.person_name)
+    const bidsRows = (bidsRes.data ?? []) as Array<{
+      person_name: string
+      crew_lead_person_name: string | null
+      bid_assignments: Array<{ bid_id: string; pct: number }>
+    }>
+    const bidsByPerson: Record<string, Array<{ bid_id: string; pct: number }>> = {}
+    for (const r of bidsRows) {
+      bidsByPerson[r.person_name] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
+    }
+    const allPersonNames = new Set([...jobsRows.map((r) => r.person_name), ...bidsRows.map((r) => r.person_name)])
+    const toCopy = [...allPersonNames].filter((personName) => {
+      const j = jobsRows.find((r) => r.person_name === personName)
+      const b = bidsRows.find((r) => r.person_name === personName)
+      const jobs = Array.isArray(j?.job_assignments) ? j.job_assignments : []
+      const bids = bidsByPerson[personName] ?? []
+      const crewLead = j?.crew_lead_person_name ?? b?.crew_lead_person_name
+      const hasData = !!(crewLead || jobs.length > 0 || bids.length > 0)
+      return hasData && showPeopleForMatrix.includes(personName)
     })
     if (toCopy.length === 0) {
       setError('No crew assignments for yesterday')
       return
     }
     setError(null)
-    for (const r of toCopy) {
-      const row: CrewJobRow = {
-        crew_lead_person_name: r.crew_lead_person_name ?? null,
-        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+    for (const personName of toCopy) {
+      const j = jobsRows.find((r) => r.person_name === personName)
+      const b = bidsRows.find((r) => r.person_name === personName)
+      const jobs = Array.isArray(j?.job_assignments) ? j!.job_assignments : []
+      const bids = bidsByPerson[personName] ?? []
+      const unified = mergeToUnified(jobs, bids)
+      const crewLead = j?.crew_lead_person_name ?? b?.crew_lead_person_name ?? null
+      const row: CrewRow = {
+        crew_lead_person_name: crewLead,
+        unifiedAssignments: unified,
       }
-      await saveCrewJobRow(r.person_name, row)
+      await saveCrewRow(personName, row)
     }
     await doLoadTeamLaborData()
     onCrewJobsChange?.()
   }
 
-  function addJobToPerson(
+  function addAssignmentToPerson(
     personName: string,
-    job: { id: string; hcp_number: string; job_name: string; job_address: string }
+    item:
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
   ) {
-    const row = crewJobsData[personName] ?? { crew_lead_person_name: null, job_assignments: [] }
-    if (row.job_assignments.some((a) => a.job_id === job.id)) return
-    const n = row.job_assignments.length + 1
+    const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+    if (row.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
+    const n = row.unifiedAssignments.length + 1
     const pct = Math.round((100 / n) * 10) / 10
-    const newAssignments = row.job_assignments.map((a) => ({ ...a, pct }))
-    newAssignments.push({ job_id: job.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
-    setCrewJobDetailsMap((prev) => ({ ...prev, [job.id]: { hcp_number: job.hcp_number, job_name: job.job_name, job_address: job.job_address } }))
-    saveCrewJobRow(personName, { ...row, job_assignments: newAssignments })
+    const newAssignments = row.unifiedAssignments.map((a) => ({ ...a, pct }))
+    newAssignments.push({
+      type: item.type,
+      id: item.id,
+      pct: Math.round((100 - newAssignments.reduce((s, a) => s + a.pct, 0)) * 10) / 10,
+    })
+    if (item.type === 'job') {
+      setCrewJobDetailsMap((prev) => ({
+        ...prev,
+        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address },
+      }))
+    } else {
+      setCrewBidDetailsMap((prev) => ({
+        ...prev,
+        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address },
+      }))
+    }
+    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
     setCrewJobSearchModal(null)
     setCrewJobSearchText('')
     setCrewJobSearchResults([])
@@ -283,27 +381,51 @@ export function CrewJobsBlock({
 
   useEffect(() => {
     const jobIds = new Set<string>()
+    const bidIds = new Set<string>()
     for (const row of Object.values(crewJobsData)) {
-      for (const a of row.job_assignments) jobIds.add(a.job_id)
-    }
-    const missing = [...jobIds].filter((id) => !crewJobDetailsMap[id])
-    if (missing.length === 0) return
-    supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: missing }).then(({ data }) => {
-      const map: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
-      for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-        map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+      for (const a of row.unifiedAssignments) {
+        if (a.type === 'job') jobIds.add(a.id)
+        else bidIds.add(a.id)
       }
-      setCrewJobDetailsMap((prev) => ({ ...prev, ...map }))
-    })
+    }
+    const missingJobs = [...jobIds].filter((id) => !crewJobDetailsMap[id])
+    const missingBids = [...bidIds].filter((id) => !crewBidDetailsMap[id])
+    if (missingJobs.length > 0) {
+      supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: missingJobs }).then(({ data }) => {
+        const map: Record<string, JobDetails> = {}
+        for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
+          map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+        }
+        setCrewJobDetailsMap((prev) => ({ ...prev, ...map }))
+      })
+    }
+    if (missingBids.length > 0) {
+      supabase.rpc('get_bids_by_ids', { p_bid_ids: missingBids }).then(({ data }) => {
+        const map: Record<string, BidDetails> = {}
+        for (const r of (data ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
+          map[r.id] = { bid_number: r.bid_number ?? '', project_name: r.project_name ?? '', address: r.address ?? '' }
+        }
+        setCrewBidDetailsMap((prev) => ({ ...prev, ...map }))
+      })
+    }
   }, [crewJobsData])
 
   useEffect(() => {
     const t = setTimeout(() => {
       if (crewJobSearchModal && crewJobSearchText !== undefined) {
-        supabase.rpc('search_jobs_ledger', { search_text: crewJobSearchText }).then(({ data }) => {
-          setCrewJobSearchResults(
-            (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-          )
+        const q = crewJobSearchText.trim()
+        Promise.all([
+          supabase.rpc('search_jobs_ledger', { search_text: q }),
+          supabase.rpc('search_bids_for_clock', { p_search_text: q }),
+        ]).then(([jobsRes, bidsRes]) => {
+          const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string }>
+          const bids = bidsRaw.map((b) => ({ ...b, bid_number: b.bid_number ?? '' }))
+          const merged = [
+            ...jobs.map((j) => ({ type: 'job' as const, ...j })),
+            ...bids.map((b) => ({ type: 'bid' as const, ...b })),
+          ]
+          setCrewJobSearchResults(merged)
         })
       }
     }, 300)
@@ -313,9 +435,18 @@ export function CrewJobsBlock({
   if (!canAccess && canEditProp === undefined) return null
 
   const hasAnyCrewToday = showPeopleForMatrix.some((p) => {
-    const r = crewJobsData[p] ?? { crew_lead_person_name: null, job_assignments: [] }
-    return !!(r.crew_lead_person_name || (r.job_assignments?.length ?? 0) > 0)
+    const r = crewJobsData[p] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+    return !!(r.crew_lead_person_name || (r.unifiedAssignments?.length ?? 0) > 0)
   })
+
+  function getEffectiveAssignments(personName: string): UnifiedAssignment[] {
+    const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+    if (row.crew_lead_person_name) {
+      const leadRow = crewJobsData[row.crew_lead_person_name]
+      return leadRow?.unifiedAssignments ?? []
+    }
+    return row.unifiedAssignments ?? []
+  }
 
   const crewJobsContent = (
     <>
@@ -338,6 +469,20 @@ export function CrewJobsBlock({
             onChange={(e) => setCrewJobsDate(e.target.value)}
             style={{ padding: '0.35rem 0.5rem', fontSize: '0.9375rem', fontWeight: 500, border: '1px solid #d1d5db', borderRadius: 4, minWidth: 140 }}
           />
+          {(() => {
+            const { formatted, isTodayOrTomorrow } = formatDateWithRelativeLabel(crewJobsDate)
+            return (
+              <span
+                style={{
+                  fontSize: '0.9375rem',
+                  fontWeight: 500,
+                  color: isTodayOrTomorrow ? '#b91c1c' : '#374151',
+                }}
+              >
+                {formatted}
+              </span>
+            )
+          })()}
           <button
             type="button"
             onClick={() => {
@@ -376,20 +521,21 @@ export function CrewJobsBlock({
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Crew</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Jobs</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assignments</th>
               </tr>
             </thead>
             <tbody>
               {visiblePeopleForCrew.map((personName) => {
-                const row = crewJobsData[personName] ?? { crew_lead_person_name: null, job_assignments: [] }
+                const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
                 const isCrewLeadByOthers = visiblePeopleForCrew.some((p) => crewJobsData[p]?.crew_lead_person_name === personName)
                 const availableCrewLeads = visiblePeopleForCrew.filter((p) => p !== personName)
                 const hasCrewLead = !!row.crew_lead_person_name
-                const jobsEditable = canEdit && !hasCrewLead
+                const assignmentsEditable = canEdit && !hasCrewLead
                 const crewEditable = canEdit && !isCrewLeadByOthers
                 const day = new Date(crewJobsDate + 'T12:00:00').getDay()
                 const cfg = payConfig[personName]
                 const effectiveHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (effectiveCrewHours[personName] ?? 0)
+                const assignments = assignmentsEditable ? row.unifiedAssignments : getEffectiveAssignments(personName)
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
@@ -400,7 +546,7 @@ export function CrewJobsBlock({
                       {crewEditable ? (
                         <select
                           value={row.crew_lead_person_name ?? ''}
-                          onChange={(e) => saveCrewJobRow(personName, { ...row, crew_lead_person_name: e.target.value || null })}
+                          onChange={(e) => saveCrewRow(personName, { ...row, crew_lead_person_name: e.target.value || null })}
                           style={{ padding: '0.35rem 0.5rem', minWidth: 140, border: '1px solid #d1d5db', borderRadius: 4 }}
                         >
                           <option value="">—</option>
@@ -414,15 +560,16 @@ export function CrewJobsBlock({
                         <span style={{ color: '#6b7280' }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '0.75rem', background: !jobsEditable ? '#f3f4f6' : undefined }}>
-                      {jobsEditable ? (
+                    <td style={{ padding: '0.75rem', background: !assignmentsEditable ? '#f3f4f6' : undefined }}>
+                      {assignmentsEditable ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
-                          {row.job_assignments.map((a, idx) => {
-                            const details = crewJobDetailsMap[a.job_id]
-                            const label = details ? `${details.hcp_number || '—'} · ${details.job_name || '—'}` : a.job_id.slice(0, 8)
+                          {row.unifiedAssignments.map((a, idx) => {
+                            const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
+                            const label = formatAssignmentLabel(a.type, details) || a.id.slice(0, 8)
+                            const titleAttr = a.type === 'job' ? (details as JobDetails)?.job_address : (details as BidDetails)?.address
                             return (
                               <span
-                                key={a.job_id}
+                                key={getAssignmentKey(a)}
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -433,7 +580,7 @@ export function CrewJobsBlock({
                                   fontSize: '0.8125rem',
                                 }}
                               >
-                                <span title={details?.job_address}>{label}</span>
+                                <span title={titleAttr}>{label}</span>
                                 <input
                                   type="number"
                                   min={0}
@@ -441,10 +588,10 @@ export function CrewJobsBlock({
                                   value={a.pct}
                                   onChange={(e) => {
                                     const v = parseFloat(e.target.value) || 0
-                                    const rest = row.job_assignments.filter((_, i) => i !== idx)
+                                    const rest = row.unifiedAssignments.filter((_, i) => i !== idx)
                                     const restSum = rest.reduce((s, x) => s + x.pct, 0)
                                     const scale = restSum > 0 ? (100 - v) / restSum : 1
-                                    let newAssignments = row.job_assignments.map((x, i) =>
+                                    let newAssignments = row.unifiedAssignments.map((x, i) =>
                                       i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
                                     )
                                     const sum = newAssignments.reduce((s, x) => s + x.pct, 0)
@@ -454,7 +601,7 @@ export function CrewJobsBlock({
                                         i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
                                       )
                                     }
-                                    saveCrewJobRow(personName, { ...row, job_assignments: newAssignments })
+                                    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
                                   }}
                                   style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                                 />
@@ -462,9 +609,9 @@ export function CrewJobsBlock({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const rest = row.job_assignments.filter((_, i) => i !== idx)
+                                    const rest = row.unifiedAssignments.filter((_, i) => i !== idx)
                                     if (rest.length === 0) {
-                                      saveCrewJobRow(personName, { ...row, job_assignments: [] })
+                                      saveCrewRow(personName, { ...row, unifiedAssignments: [] })
                                       return
                                     }
                                     const n = rest.length
@@ -473,7 +620,7 @@ export function CrewJobsBlock({
                                       ...x,
                                       pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
                                     }))
-                                    saveCrewJobRow(personName, { ...row, job_assignments: newAssignments })
+                                    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
                                   }}
                                   style={{
                                     padding: '0.1rem 0.25rem',
@@ -484,7 +631,7 @@ export function CrewJobsBlock({
                                     fontSize: '0.875rem',
                                     lineHeight: 1,
                                   }}
-                                  title="Remove job"
+                                  title="Remove"
                                 >
                                   ×
                                 </button>
@@ -511,7 +658,16 @@ export function CrewJobsBlock({
                           </button>
                         </div>
                       ) : (
-                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>Inherits from crew lead</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                          {assignments.length > 0
+                            ? assignments
+                                .map((a) => {
+                                  const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
+                                  return formatAssignmentLabel(a.type, details)
+                                })
+                                .join(', ')
+                            : 'Inherits from crew lead'}
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -612,7 +768,7 @@ export function CrewJobsBlock({
           </table>
           {filteredTeamLaborData.length === 0 && (
             <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>
-              No team labor data yet. Add jobs in Crew Jobs above.
+              No team labor data yet. Add jobs or bids in Crew Jobs / Bids above.
             </p>
           )}
         </div>
@@ -623,7 +779,7 @@ export function CrewJobsBlock({
   return (
     <section style={{ marginBottom: '2rem' }}>
       {showTitle && (
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Crew Jobs</h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Crew Jobs / Bids</h2>
       )}
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
@@ -652,7 +808,7 @@ export function CrewJobsBlock({
                   }}
                 >
                   <span style={{ fontSize: '0.75rem' }}>{crewJobsSectionOpen ? '▼' : '▶'}</span>
-                  Crew Jobs
+                  Crew Jobs / Bids
                 </button>
                 {crewJobsSectionOpen && <div style={{ padding: '0 1rem 1rem 1rem' }}>{crewJobsContent}</div>}
               </div>
@@ -708,21 +864,28 @@ export function CrewJobsBlock({
           }}
         >
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job for {crewJobSearchModal.personName}</h3>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job or bid for {crewJobSearchModal.personName}</h3>
             <input
               type="search"
-              placeholder="Search HCP, job name, address…"
+              placeholder="Search HCP, bid #, job name, project, address…"
               value={crewJobSearchText}
               onChange={(e) => setCrewJobSearchText(e.target.value)}
               autoFocus
               style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid #d1d5db', borderRadius: 4 }}
             />
             <div style={{ maxHeight: 300, overflow: 'auto' }}>
-              {crewJobSearchResults.map((j) => (
+              {crewJobSearchResults.map((item) => (
                 <button
-                  key={j.id}
+                  key={`${item.type}:${item.id}`}
                   type="button"
-                  onClick={() => addJobToPerson(crewJobSearchModal!.personName, j)}
+                  onClick={() =>
+                    addAssignmentToPerson(
+                      crewJobSearchModal!.personName,
+                      item.type === 'job'
+                        ? { type: 'job', id: item.id, hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address }
+                        : { type: 'bid', id: item.id, bid_number: item.bid_number, project_name: item.project_name, address: item.address }
+                    )
+                  }
                   style={{
                     display: 'block',
                     width: '100%',
@@ -736,10 +899,14 @@ export function CrewJobsBlock({
                   }}
                 >
                   <div style={{ fontWeight: 500 }}>
-                    {j.hcp_number || '—'} · {j.job_name || '—'}
+                    {item.type === 'job'
+                      ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
+                      : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}
                   </div>
-                  {j.job_address && (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>
+                  {(item.type === 'job' ? item.job_address : item.address) && (
+                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                      {item.type === 'job' ? item.job_address : item.address}
+                    </div>
                   )}
                 </button>
               ))}

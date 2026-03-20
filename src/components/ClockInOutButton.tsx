@@ -219,11 +219,10 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             : (me?.role === 'subcontractor' && subIds && subIds.length > 0)
               ? types.filter((t) => subIds.includes(t.id))
               : types
-        const firstId = filtered[0]?.id ?? ''
-        setSelectedBidServiceTypeId((prev) => (prev && filtered.some((t) => t.id === prev) ? prev : firstId))
+        setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
         setServiceTypes(filtered)
       } else {
-        setSelectedBidServiceTypeId(types[0]?.id ?? '')
+        setSelectedBidServiceTypeId('')
         setServiceTypes(types)
         setSubcontractorServiceTypeIds(null)
       }
@@ -523,13 +522,14 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
-              {serviceTypes.length > 1 && (
+              {serviceTypes.length > 0 && (
                 <select
                   value={selectedBidServiceTypeId}
                   onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
                   disabled={actionLoading}
                   style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 >
+                  <option value="">All types</option>
                   {serviceTypes.map((st) => (
                     <option key={st.id} value={st.id}>{st.name}</option>
                   ))}
@@ -650,13 +650,14 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 disabled={updateFocusLoading}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               />
-              {serviceTypes.length > 1 && (
+              {serviceTypes.length > 0 && (
                 <select
                   value={selectedBidServiceTypeId}
                   onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
                   disabled={updateFocusLoading}
                   style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 >
+                  <option value="">All types</option>
                   {serviceTypes.map((st) => (
                     <option key={st.id} value={st.id}>{st.name}</option>
                   ))}

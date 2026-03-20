@@ -1657,6 +1657,20 @@ bid_pricing_assignments:
   UNIQUE (bid_id, count_row_id)
 ```
 
+### Team Labor for Bids (people_crew_bids)
+
+```sql
+people_crew_bids:
+  work_date (date, PK)
+  person_name (text, PK)
+  crew_lead_person_name (text, nullable)
+  bid_assignments (jsonb) -- [{ bid_id: uuid, pct: number }], sum to 100
+```
+
+- Synced from approved `clock_sessions` with `bid_id` via `sync_crew_bids_from_clock(p_person_name, p_work_date)`.
+- **RPC**: `get_bids_by_ids(p_bid_ids uuid[])` returns `id`, `bid_number`, `project_name`, `address` for given bid IDs (SECURITY DEFINER).
+- Bids Pricing cost breakdown shows "Team Labor (clocked)" when users have clocked in with a bid.
+
 ### Row Level Security
 
 All book tables (Takeoff, Labor, Price) have RLS policies allowing:

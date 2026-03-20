@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  type UnifiedAssignment,
+  mergeToUnified,
+  splitFromUnified,
+  formatAssignmentLabel,
+  type JobDetails,
+  type BidDetails,
+} from '../utils/crewAssignments'
 
-type CrewJobAssignment = { job_id: string; pct: number }
-type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
-type JobDetails = { hcp_number: string; job_name: string; job_address: string }
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -38,10 +44,15 @@ export function HoursUnassignedModal({
 }: Props) {
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState('')
-  const [draft, setDraft] = useState<CrewJobRow | null>(null)
+  const [draft, setDraft] = useState<CrewRow | null>(null)
   const [jobSearchOpen, setJobSearchOpen] = useState(false)
   const [jobSearchText, setJobSearchText] = useState('')
-  const [jobSearchResults, setJobSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
+  const [jobSearchResults, setJobSearchResults] = useState<
+    Array<
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+    >
+  >([])
   const [commonJobs, setCommonJobs] = useState<Array<{ id: string; job_id: string; hcp_number: string; job_name: string; job_address: string }>>([])
   const [commonJobsError, setCommonJobsError] = useState<string | null>(null)
   const [commonJobsEditMode, setCommonJobsEditMode] = useState(false)
@@ -50,7 +61,8 @@ export function HoursUnassignedModal({
   const [commonJobsSearchResults, setCommonJobsSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
   const [officeJob, setOfficeJob] = useState<{ id: string; hcp_number: string; job_name: string; job_address: string } | null>(null)
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
-  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewJobRow>>({})
+  const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
+  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [showPeople, setShowPeople] = useState<string[]>([])
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
@@ -73,23 +85,27 @@ export function HoursUnassignedModal({
     return row?.hours ?? 0
   }
 
-  function getEffectiveAssignmentsForDate(pName: string, workDate: string): CrewJobAssignment[] {
+  function getEffectiveAssignmentsForDate(pName: string, workDate: string): UnifiedAssignment[] {
     const key = `${workDate}:${pName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return []
     if (row.crew_lead_person_name) {
       const leadKey = `${workDate}:${row.crew_lead_person_name}`
       const leadRow = crewJobsByDatePerson[leadKey]
-      return leadRow?.job_assignments ?? []
+      return leadRow?.unifiedAssignments ?? []
     }
-    return row.job_assignments ?? []
+    return row.unifiedAssignments ?? []
   }
 
   function hasAssignmentsForDate(pName: string, workDate: string): boolean {
     const key = `${workDate}:${pName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return false
-    return !!(row.crew_lead_person_name || (row.job_assignments?.length ?? 0) > 0)
+    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
+  }
+
+  function getAssignmentKey(a: UnifiedAssignment): string {
+    return `${a.type}:${a.id}`
   }
 
   const unassignedDays = useMemo(
@@ -104,13 +120,13 @@ export function HoursUnassignedModal({
 
   const effectiveSelectedDay = (selectedDay && unassignedDays.includes(selectedDay) ? selectedDay : unassignedDays[0]) ?? ''
   const key = `${effectiveSelectedDay}:${personName}`
-  const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
+  const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
   const draftRow = draft ?? row
   const hasCrewLead = !!draftRow.crew_lead_person_name
   const availableCrewLeads = showPeople.filter((p) => {
     if (p === personName) return false
     const assignments = getEffectiveAssignmentsForDate(p, effectiveSelectedDay)
-    if (officeJob && assignments.some((a) => a.job_id === officeJob.id)) return false
+    if (officeJob && assignments.some((a) => a.type === 'job' && a.id === officeJob.id)) return false
     return true
   })
   const jobsEditable = !hasCrewLead
@@ -122,11 +138,12 @@ export function HoursUnassignedModal({
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const [correctRes, hoursRes, configRes, crewRes, officeRes] = await Promise.all([
+      const [correctRes, hoursRes, configRes, jobsRes, bidsRes, officeRes] = await Promise.all([
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
         supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
+        supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.rpc('get_jobs_ledger_office'),
       ])
       const correctDays = new Set((correctRes.data ?? []).map((r: { work_date: string }) => r.work_date))
@@ -141,13 +158,50 @@ export function HoursUnassignedModal({
       }
       setPayConfig(configMap)
       setShowPeople(showList.sort())
-      const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-      const crewMap: Record<string, CrewJobRow> = {}
-      const jobIds = new Set<string>()
-      for (const r of crewRows) {
+      const jobsRows = (jobsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        job_assignments: Array<{ job_id: string; pct: number }>
+      }>
+      const bidsRows = (bidsRes.data ?? []) as Array<{
+        work_date: string
+        person_name: string
+        crew_lead_person_name: string | null
+        bid_assignments: Array<{ bid_id: string; pct: number }>
+      }>
+      const jobsByKey: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+      for (const r of jobsRows) {
         const k = `${r.work_date}:${r.person_name}`
-        crewMap[k] = { crew_lead_person_name: r.crew_lead_person_name ?? null, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
-        for (const a of crewMap[k].job_assignments) jobIds.add(a.job_id)
+        jobsByKey[k] = {
+          crew_lead: r.crew_lead_person_name ?? null,
+          jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+        }
+      }
+      const bidsByKey: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+      for (const r of bidsRows) {
+        const k = `${r.work_date}:${r.person_name}`
+        bidsByKey[k] = {
+          crew_lead: r.crew_lead_person_name ?? null,
+          bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+        }
+      }
+      const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
+      const crewMap: Record<string, CrewRow> = {}
+      const jobIds = new Set<string>()
+      const bidIds = new Set<string>()
+      for (const k of allKeys) {
+        const j = jobsByKey[k]
+        const b = bidsByKey[k]
+        const jobs = j?.jobs ?? []
+        const bids = b?.bids ?? []
+        const unified = mergeToUnified(jobs, bids)
+        const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
+        crewMap[k] = { crew_lead_person_name: crewLead, unifiedAssignments: unified }
+        for (const a of unified) {
+          if (a.type === 'job') jobIds.add(a.id)
+          else bidIds.add(a.id)
+        }
       }
       setCrewJobsByDatePerson(crewMap)
       if (jobIds.size > 0) {
@@ -157,6 +211,14 @@ export function HoursUnassignedModal({
           jobMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
         }
         setCrewJobDetailsMap((prev) => ({ ...prev, ...jobMap }))
+      }
+      if (bidIds.size > 0) {
+        const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
+        const bidMap: Record<string, BidDetails> = {}
+        for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
+          bidMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
+        }
+        setCrewBidDetailsMap((prev) => ({ ...prev, ...bidMap }))
       }
       const office = (officeRes.data as { id: string; hcp_number: string; job_name: string; job_address: string }[] | null)?.[0] ?? null
       setOfficeJob(office)
@@ -194,8 +256,8 @@ export function HoursUnassignedModal({
 
   useEffect(() => {
     if (effectiveSelectedDay) {
-      const r = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, job_assignments: [] }
-      setDraft({ ...r, job_assignments: [...(r.job_assignments || [])] })
+      const r = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+      setDraft({ ...r, unifiedAssignments: [...(r.unifiedAssignments || [])] })
     } else {
       setDraft(null)
     }
@@ -209,8 +271,19 @@ export function HoursUnassignedModal({
   useEffect(() => {
     const t = setTimeout(() => {
       if (jobSearchOpen && jobSearchText !== undefined) {
-        supabase.rpc('search_jobs_ledger', { search_text: jobSearchText }).then(({ data }) => {
-          setJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>)
+        const q = jobSearchText.trim()
+        Promise.all([
+          supabase.rpc('search_jobs_ledger', { search_text: q }),
+          supabase.rpc('search_bids_for_clock', { p_search_text: q }),
+        ]).then(([jobsRes, bidsRes]) => {
+          const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string }>
+          const bids = bidsRaw.map((b) => ({ type: 'bid' as const, ...b, bid_number: b.bid_number ?? '' }))
+          const merged = [
+            ...jobs.map((j) => ({ type: 'job' as const, ...j })),
+            ...bids,
+          ]
+          setJobSearchResults(merged)
         })
       }
     }, 300)
@@ -230,6 +303,7 @@ export function HoursUnassignedModal({
 
   async function handleSave() {
     const toSave = draft ?? row
+    const { jobAssignments, bidAssignments } = splitFromUnified(toSave.unifiedAssignments)
     try {
       await withSupabaseRetry(
         async () => {
@@ -238,13 +312,28 @@ export function HoursUnassignedModal({
               work_date: effectiveSelectedDay,
               person_name: personName,
               crew_lead_person_name: toSave.crew_lead_person_name || null,
-              job_assignments: toSave.job_assignments,
+              job_assignments: jobAssignments,
             },
             { onConflict: 'work_date,person_name' }
           )
           return r as { data: unknown; error: { message: string } | null }
         },
         'save people_crew_jobs'
+      )
+      await withSupabaseRetry(
+        async () => {
+          const r = await supabase.from('people_crew_bids').upsert(
+            {
+              work_date: effectiveSelectedDay,
+              person_name: personName,
+              crew_lead_person_name: toSave.crew_lead_person_name || null,
+              bid_assignments: bidAssignments,
+            },
+            { onConflict: 'work_date,person_name' }
+          )
+          return r as { data: unknown; error: { message: string } | null }
+        },
+        'save people_crew_bids'
       )
     } catch {
       return
@@ -260,15 +349,33 @@ export function HoursUnassignedModal({
     }
   }
 
-  function addJobToDraft(job: { id: string; hcp_number: string; job_name: string; job_address: string }) {
+  function addAssignmentToDraft(
+    item:
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+  ) {
     const current = draft ?? row
-    if (current.job_assignments.some((a) => a.job_id === job.id)) return
-    const n = current.job_assignments.length + 1
+    if (current.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
+    const n = current.unifiedAssignments.length + 1
     const pct = Math.round((100 / n) * 10) / 10
-    const newAssignments = current.job_assignments.map((a) => ({ ...a, pct }))
-    newAssignments.push({ job_id: job.id, pct: 100 - newAssignments.reduce((s, a) => s + a.pct, 0) })
-    setCrewJobDetailsMap((prev) => ({ ...prev, [job.id]: { hcp_number: job.hcp_number, job_name: job.job_name, job_address: job.job_address } }))
-    setDraft({ crew_lead_person_name: null, job_assignments: newAssignments })
+    const newAssignments = current.unifiedAssignments.map((a) => ({ ...a, pct }))
+    newAssignments.push({
+      type: item.type,
+      id: item.id,
+      pct: Math.round((100 - newAssignments.reduce((s, a) => s + a.pct, 0)) * 10) / 10,
+    })
+    if (item.type === 'job') {
+      setCrewJobDetailsMap((prev) => ({
+        ...prev,
+        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address },
+      }))
+    } else {
+      setCrewBidDetailsMap((prev) => ({
+        ...prev,
+        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address },
+      }))
+    }
+    setDraft({ crew_lead_person_name: null, unifiedAssignments: newAssignments })
   }
 
   if (loading) {
@@ -284,9 +391,9 @@ export function HoursUnassignedModal({
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs</h3>
+        <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs or bids</h3>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-          {personName} has hours on Correct days but no job assignments. Assign a crew lead or add jobs for each day.
+          {personName} has hours on Correct days but no assignments. Assign a crew lead or add jobs/bids for each day.
         </p>
         {unassignedDays.length === 0 ? (
           <p style={{ color: '#22c55e' }}>All days are now assigned.</p>
@@ -315,7 +422,7 @@ export function HoursUnassignedModal({
                       value={draftRow.crew_lead_person_name ?? ''}
                       onChange={(e) => {
                         const v = e.target.value || null
-                        setDraft({ ...draftRow, crew_lead_person_name: v, job_assignments: [] })
+                        setDraft({ ...draftRow, crew_lead_person_name: v, unifiedAssignments: [] })
                       }}
                       style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
                     >
@@ -344,16 +451,16 @@ export function HoursUnassignedModal({
                             <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>No common jobs</span>
                           ) : (
                             commonJobs.map((j) => {
-                              const disabled = draftRow.job_assignments.some((a) => a.job_id === j.job_id)
+                              const disabled = draftRow.unifiedAssignments.some((a) => a.type === 'job' && a.id === j.job_id)
                               return (
                                 <button
                                   key={j.id}
                                   type="button"
                                   disabled={disabled}
-                                  onClick={() => addJobToDraft({ id: j.job_id, hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address })}
+                                  onClick={() => addAssignmentToDraft({ type: 'job', id: j.job_id, hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address })}
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
                                 >
-                                  Job {j.hcp_number || '—'} ({j.job_name || '—'})
+                                  J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}
                                 </button>
                               )
                             })
@@ -367,7 +474,7 @@ export function HoursUnassignedModal({
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
                               {commonJobs.map((j) => (
                                 <span key={j.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
-                                  <span>Job {j.hcp_number || '—'} ({j.job_name || '—'})</span>
+                                  <span>J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}</span>
                                   <button
                                     type="button"
                                     onClick={async () => {
@@ -440,7 +547,7 @@ export function HoursUnassignedModal({
                                     }}
                                     style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                   >
-                                    <div style={{ fontWeight: 500 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                                    <div style={{ fontWeight: 500 }}>J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}</div>
                                     {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
                                   </button>
                                 ))}
@@ -455,23 +562,23 @@ export function HoursUnassignedModal({
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <label style={{ fontSize: '0.875rem' }}>Jobs</label>
-                        {officeJob && !draftRow.job_assignments.some((a) => a.job_id === officeJob.id) && (
+                        <label style={{ fontSize: '0.875rem' }}>Assignments</label>
+                        {officeJob && !draftRow.unifiedAssignments.some((a) => a.type === 'job' && a.id === officeJob.id) && (
                           <button
                             type="button"
-                            onClick={() => addJobToDraft(officeJob)}
+                            onClick={() => addAssignmentToDraft({ type: 'job', id: officeJob.id, hcp_number: officeJob.hcp_number, job_name: officeJob.job_name, job_address: officeJob.job_address })}
                             style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
                           >
-                            Office (Job 000)
+                            J000 · Office
                           </button>
                         )}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                        {draftRow.job_assignments.map((a, idx) => {
-                          const details = crewJobDetailsMap[a.job_id]
-                          const label = details ? `Job ${details.hcp_number || '—'} (${details.job_name || '—'})` : a.job_id.slice(0, 8)
+                        {draftRow.unifiedAssignments.map((a, idx) => {
+                          const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
+                          const label = formatAssignmentLabel(a.type, details) || a.id.slice(0, 8)
                           return (
-                            <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                            <span key={getAssignmentKey(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
                               <span>{label}</span>
                               <input
                                 type="number"
@@ -480,10 +587,10 @@ export function HoursUnassignedModal({
                                 value={a.pct}
                                 onChange={(e) => {
                                   const v = parseFloat(e.target.value) || 0
-                                  const rest = draftRow.job_assignments.filter((_, i) => i !== idx)
+                                  const rest = draftRow.unifiedAssignments.filter((_, i) => i !== idx)
                                   const restSum = rest.reduce((s, x) => s + x.pct, 0)
                                   const scale = restSum > 0 ? (100 - v) / restSum : 1
-                                  let newAssignments = draftRow.job_assignments.map((x, i) =>
+                                  let newAssignments = draftRow.unifiedAssignments.map((x, i) =>
                                     i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
                                   )
                                   const sum = newAssignments.reduce((s, x) => s + x.pct, 0)
@@ -493,7 +600,7 @@ export function HoursUnassignedModal({
                                       i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
                                     )
                                   }
-                                  setDraft({ ...draftRow, job_assignments: newAssignments })
+                                  setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 }}
                                 style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                               />
@@ -501,9 +608,9 @@ export function HoursUnassignedModal({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const rest = draftRow.job_assignments.filter((_, i) => i !== idx)
+                                  const rest = draftRow.unifiedAssignments.filter((_, i) => i !== idx)
                                   if (rest.length === 0) {
-                                    setDraft({ ...draftRow, job_assignments: [] })
+                                    setDraft({ ...draftRow, unifiedAssignments: [] })
                                     return
                                   }
                                   const n = rest.length
@@ -512,10 +619,10 @@ export function HoursUnassignedModal({
                                     ...x,
                                     pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
                                   }))
-                                  setDraft({ ...draftRow, job_assignments: newAssignments })
+                                  setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 }}
                                 style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
-                                title="Remove job"
+                                title="Remove"
                               >
                                 ×
                               </button>
@@ -534,27 +641,39 @@ export function HoursUnassignedModal({
                           <div style={{ width: '100%', marginTop: '0.5rem' }}>
                             <input
                               type="search"
-                              placeholder="Search HCP, job name, address…"
+                              placeholder="Search HCP, bid #, job name, project, address…"
                               value={jobSearchText}
                               onChange={(e) => setJobSearchText(e.target.value)}
                               autoFocus
                               style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                             />
                             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
-                              {jobSearchResults.map((j) => (
+                              {jobSearchResults.map((item) => (
                                 <button
-                                  key={j.id}
+                                  key={`${item.type}:${item.id}`}
                                   type="button"
                                   onClick={() => {
-                                    addJobToDraft(j)
+                                    addAssignmentToDraft(
+                                      item.type === 'job'
+                                        ? { type: 'job', id: item.id, hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address }
+                                        : { type: 'bid', id: item.id, bid_number: item.bid_number, project_name: item.project_name, address: item.address }
+                                    )
                                     setJobSearchOpen(false)
                                     setJobSearchText('')
                                     setJobSearchResults([])
                                   }}
                                   style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                 >
-                                  <div style={{ fontWeight: 500 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                                  {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
+                                  <div style={{ fontWeight: 500 }}>
+                                    {item.type === 'job'
+                                      ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
+                                      : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}
+                                  </div>
+                                  {(item.type === 'job' ? item.job_address : item.address) && (
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                                      {item.type === 'job' ? item.job_address : item.address}
+                                    </div>
+                                  )}
                                 </button>
                               ))}
                             </div>

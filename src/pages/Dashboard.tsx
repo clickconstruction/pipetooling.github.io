@@ -22,6 +22,7 @@ import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
+import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import type { Database } from '../types/database'
@@ -3587,6 +3588,10 @@ export default function Dashboard() {
           </ul>
           )}
         </div>
+      )}
+
+      {authUser?.id && (
+        <DashboardMyTimeSection userId={authUser.id} />
       )}
 
       <NewReportModal
