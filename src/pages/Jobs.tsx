@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
+import { parseCustomerImport } from '../utils/parseCustomerImport'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
@@ -216,6 +218,7 @@ export default function Jobs() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser, role: authRole, loading: authLoading } = useAuth()
+  const { showToast } = useToastContext()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
@@ -2716,6 +2719,29 @@ export default function Jobs() {
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
     setFormOpen(true)
+  }
+
+  async function handleCustomerImport() {
+    try {
+      const text = await navigator.clipboard.readText()
+      const trimmed = text.trim()
+      if (!trimmed) {
+        showToast('Clipboard is empty', 'error')
+        return
+      }
+      const { name, address, email, phone } = parseCustomerImport(trimmed)
+      if (name) setCustomerName(name)
+      if (address) setJobAddress(address)
+      if (email) setCustomerEmail(email)
+      if (phone) setCustomerPhone(phone)
+      const filled = [name, address, email, phone].filter(Boolean).length
+      showToast(
+        filled > 0 ? `Imported ${filled} field(s) from clipboard` : 'No recognizable fields in clipboard',
+        filled > 0 ? 'success' : 'error'
+      )
+    } catch {
+      showToast('Could not read clipboard', 'error')
+    }
   }
 
   function closeForm() {
@@ -6900,29 +6926,46 @@ export default function Jobs() {
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <button
-                  type="button"
-                  aria-expanded={customerExpanded}
-                  onClick={() => setCustomerExpanded((p) => !p)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: 0,
-                    marginBottom: customerExpanded ? '0.5rem' : 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    fontSize: 'inherit',
-                    color: 'inherit',
-                    width: '100%',
-                    textAlign: 'left',
-                  }}
-                >
-                  <span aria-hidden>{customerExpanded ? '\u25BC' : '\u25B6'}</span>
-                  Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: customerExpanded ? '0.5rem' : 0 }}>
+                  <button
+                    type="button"
+                    aria-expanded={customerExpanded}
+                    onClick={() => setCustomerExpanded((p) => !p)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      flex: 1,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span aria-hidden>{customerExpanded ? '\u25BC' : '\u25B6'}</span>
+                    Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
+                  </button>
+                  {customerExpanded && (
+                    <button
+                      type="button"
+                      onClick={handleCustomerImport}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        background: '#f9fafb',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Import
+                    </button>
+                  )}
+                </div>
                 {customerExpanded && (
                   <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
                     <div style={{ marginBottom: '0.75rem' }}>
