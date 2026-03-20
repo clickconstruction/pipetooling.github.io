@@ -1198,6 +1198,97 @@ export type Database = {
           },
         ]
       }
+      dispatch_group_members: {
+        Row: {
+          user_id: string
+        }
+        Insert: {
+          user_id: string
+        }
+        Update: {
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_group_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_requests: {
+        Row: {
+          id: string
+          from_user_id: string
+          title: string
+          links: string[]
+          status: string
+          created_at: string
+          closed_at: string | null
+          closed_by_user_id: string | null
+          job_ledger_id: string | null
+          bid_id: string | null
+          reference_summary: string | null
+        }
+        Insert: {
+          id?: string
+          from_user_id: string
+          title: string
+          links?: string[]
+          status?: string
+          created_at?: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          job_ledger_id?: string | null
+          bid_id?: string | null
+          reference_summary?: string | null
+        }
+        Update: {
+          id?: string
+          from_user_id?: string
+          title?: string
+          links?: string[]
+          status?: string
+          created_at?: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          job_ledger_id?: string | null
+          bid_id?: string | null
+          reference_summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_closed_by_user_id_fkey"
+            columns: ["closed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_ignored_checklist_items: {
         Row: {
           checklist_item_id: string
@@ -4489,6 +4580,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           primary_service_type_ids: string[] | null
+          subcontractor_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
@@ -4503,6 +4595,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          subcontractor_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -4517,6 +4610,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          subcontractor_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
@@ -5115,6 +5209,7 @@ export type Database = {
       is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
+      is_dispatch_group_member: { Args: never; Returns: boolean }
       is_estimator: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
@@ -5218,7 +5313,7 @@ export type Database = {
         }[]
       }
       search_bids_for_clock: {
-        Args: { p_search_text?: string; p_service_type_id?: string }
+        Args: { p_search_text?: string; p_service_type_id?: string; p_service_type_ids?: string[] }
         Returns: {
           address: string
           bid_number: string

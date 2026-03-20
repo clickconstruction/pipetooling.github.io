@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import {
+  formatUnifiedResult,
+  type JobSearchResult,
+  type BidSearchResult,
+  type UnifiedSearchResult,
+} from '../utils/unifiedJobBidSearch'
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -31,21 +37,6 @@ type TodaySession = {
   notes: string
   job_ledger_id: string | null
   bid_id: string | null
-}
-
-type JobSearchResult = { id: string; hcp_number: string; job_name: string; job_address: string }
-type BidSearchResult = { id: string; bid_number: string; project_name: string; address: string; customer_name: string }
-type UnifiedSearchResult =
-  | { source: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-  | { source: 'bid'; id: string; bid_number: string; project_name: string; address: string; customer_name: string }
-
-function formatUnifiedResult(r: UnifiedSearchResult): string {
-  if (r.source === 'job') {
-    const prefix = `J${(r.hcp_number || '').trim() || '—'}`
-    return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
-  }
-  const prefix = `B${(r.bid_number || '').trim() || '—'}`
-  return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
 }
 
 function computeTotalSecondsToday(sessions: TodaySession[]): number {
@@ -84,6 +75,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
   const [selectedBidServiceTypeId, setSelectedBidServiceTypeId] = useState<string>('')
+  const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
 
   const fetchSessions = useCallback(async () => {
     if (!userId) return
@@ -185,9 +177,15 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         return
       }
       const q = unifiedSearchText.trim()
+      const bidsParams: { p_search_text: string; p_service_type_id?: string; p_service_type_ids?: string[] } = { p_search_text: q }
+      if (subcontractorServiceTypeIds && subcontractorServiceTypeIds.length > 0) {
+        bidsParams.p_service_type_ids = subcontractorServiceTypeIds
+      } else if (selectedBidServiceTypeId) {
+        bidsParams.p_service_type_id = selectedBidServiceTypeId
+      }
       Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
-        supabase.rpc('search_bids_for_clock', { p_search_text: q, p_service_type_id: selectedBidServiceTypeId || undefined }),
+        supabase.rpc('search_bids_for_clock', bidsParams),
       ]).then(([jobsRes, bidsRes]) => {
         const jobs = (jobsRes.data ?? []) as JobSearchResult[]
         const bids = (bidsRes.data ?? []) as BidSearchResult[]
@@ -199,28 +197,35 @@ export default function ClockInOutButton({ userId, userName }: Props) {
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [clockInModalOpen, updateFocusModalOpen, unifiedSearchText, selectedBidServiceTypeId])
+  }, [clockInModalOpen, updateFocusModalOpen, unifiedSearchText, selectedBidServiceTypeId, subcontractorServiceTypeIds])
 
   useEffect(() => {
     if (!(clockInModalOpen || updateFocusModalOpen)) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
-      setServiceTypes(types)
       if (authUser?.id) {
-        const { data: meData } = await supabase.from('users').select('role, estimator_service_type_ids, primary_service_type_ids').eq('id', authUser.id).single()
-        const me = meData as { role?: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null
+        const { data: meData } = await supabase.from('users').select('role, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids').eq('id', authUser.id).single()
+        const me = meData as { role?: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } | null
         const estIds = me?.estimator_service_type_ids
         const primIds = me?.primary_service_type_ids
+        const subIds = me?.subcontractor_service_type_ids ?? null
+        if (me?.role === 'subcontractor') setSubcontractorServiceTypeIds(subIds && subIds.length > 0 ? subIds : null)
+        else setSubcontractorServiceTypeIds(null)
         const filtered = (me?.role === 'estimator' && estIds && estIds.length > 0)
           ? types.filter((t) => estIds.includes(t.id))
           : (me?.role === 'primary' && primIds && primIds.length > 0)
             ? types.filter((t) => primIds.includes(t.id))
-            : types
+            : (me?.role === 'subcontractor' && subIds && subIds.length > 0)
+              ? types.filter((t) => subIds.includes(t.id))
+              : types
         const firstId = filtered[0]?.id ?? ''
         setSelectedBidServiceTypeId((prev) => (prev && filtered.some((t) => t.id === prev) ? prev : firstId))
+        setServiceTypes(filtered)
       } else {
         setSelectedBidServiceTypeId(types[0]?.id ?? '')
+        setServiceTypes(types)
+        setSubcontractorServiceTypeIds(null)
       }
     }
     void load()

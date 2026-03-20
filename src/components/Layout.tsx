@@ -4,7 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
+import DispatchTaskModal from './DispatchTaskModal'
 import NewCustomerModal from './NewCustomerModal'
 import EditCustomerModal from './EditCustomerModal'
 import {
@@ -59,6 +61,7 @@ export default function Layout() {
   const pinForRef = useRef<HTMLDivElement>(null)
   const forceReload = useForceReload()
   const checklistAddModal = useChecklistAddModal()
+  const dispatchTaskModal = useDispatchTaskModal()
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 640px)')
@@ -180,6 +183,28 @@ export default function Layout() {
         <NavLink to="/dashboard" style={iconLinkStyle} end title="Dashboard" aria-label="Dashboard">
           {dashboardIcon}
         </NavLink>
+        {role != null && (
+          <button
+            type="button"
+            onClick={() => dispatchTaskModal?.openDispatchModal()}
+            title="Task Dispatch"
+            aria-label="Task Dispatch"
+            style={{
+              padding: '0.35rem 0.45rem',
+              background: '#0ea5e9',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.7rem',
+              lineHeight: 1.1,
+              maxWidth: '3.2rem',
+            }}
+          >
+            Dispatch
+          </button>
+        )}
         {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
           <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}
@@ -339,6 +364,27 @@ export default function Layout() {
           </span>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {role != null && (
+            <button
+              type="button"
+              onClick={() => dispatchTaskModal?.openDispatchModal()}
+              title="Task Dispatch"
+              aria-label="Task Dispatch"
+              style={{
+                padding: '0.5rem 0.65rem',
+                background: '#0ea5e9',
+                color: 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Task Dispatch
+            </button>
+          )}
           {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
             <button
               type="button"
@@ -769,6 +815,7 @@ export default function Layout() {
         )}
       </main>
       <ChecklistAddModal />
+      <DispatchTaskModal />
       <NewCustomerModal />
       <EditCustomerModal />
     </div>

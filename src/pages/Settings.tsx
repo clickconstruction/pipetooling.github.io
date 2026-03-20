@@ -37,6 +37,7 @@ type UserRow = {
   last_sign_in_at: string | null
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
+  subcontractor_service_type_ids?: string[] | null
   archived_at?: string | null
 }
 
@@ -301,6 +302,7 @@ export default function Settings() {
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
   const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
+  const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
@@ -327,7 +329,11 @@ export default function Settings() {
     assembly: true,
   })
   const [dashboardButtonsSaving, setDashboardButtonsSaving] = useState(false)
-  
+  const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(true)
+  const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
+  const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
+  const [dispatchGroupSavingUserId, setDispatchGroupSavingUserId] = useState<string | null>(null)
+
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [serviceTypeFormOpen, setServiceTypeFormOpen] = useState(false)
@@ -1306,7 +1312,7 @@ export default function Settings() {
     if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -1406,6 +1412,9 @@ export default function Settings() {
       setReportSubVisibilityMonths(String(byKey.get('report_sub_visibility_months') ?? 3))
       const { data: enabled } = await supabase.from('report_enabled_users').select('user_id')
       setReportEnabledUserIds(new Set((enabled ?? []).map((r: { user_id: string }) => r.user_id)))
+      const { data: dgm, error: dgmErr } = await supabase.from('dispatch_group_members').select('user_id')
+      if (dgmErr) setError(dgmErr.message)
+      else setDispatchMemberIds(new Set((dgm ?? []).map((r: { user_id: string }) => r.user_id)))
       await loadArchivedUsers()
     }
     
@@ -1420,6 +1429,30 @@ export default function Settings() {
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     setArchivedUsers((data as UserRow[]) ?? [])
+  }
+
+  async function toggleDispatchGroupMember(userId: string, currentlyMember: boolean) {
+    if (myRole !== 'dev') return
+    setDispatchGroupSavingUserId(userId)
+    setDispatchGroupError(null)
+    try {
+      if (currentlyMember) {
+        const { error } = await supabase.from('dispatch_group_members').delete().eq('user_id', userId)
+        if (error) setDispatchGroupError(error.message)
+        else
+          setDispatchMemberIds((prev) => {
+            const n = new Set(prev)
+            n.delete(userId)
+            return n
+          })
+      } else {
+        const { error } = await supabase.from('dispatch_group_members').insert({ user_id: userId })
+        if (error) setDispatchGroupError(error.message)
+        else setDispatchMemberIds((prev) => new Set(prev).add(userId))
+      }
+    } finally {
+      setDispatchGroupSavingUserId(null)
+    }
   }
 
   async function saveDefaultLaborRate(e: React.FormEvent) {
@@ -3509,6 +3542,7 @@ export default function Settings() {
     setEditName(u.name)
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
+    setEditSubcontractorServiceTypeIds(u.role === 'subcontractor' ? (u.subcontractor_service_type_ids ?? []) : [])
     setEditError(null)
   }
 
@@ -3518,12 +3552,13 @@ export default function Settings() {
     setEditName('')
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
+    setEditSubcontractorServiceTypeIds([])
     setEditError(null)
   }
 
   async function updateUserProfile(
     id: string,
-    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null },
+    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null },
     oldName?: string,
     userEmail?: string | null
   ) {
@@ -3536,6 +3571,9 @@ export default function Settings() {
     }
     if (updates.primary_service_type_ids !== undefined) {
       updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
+    }
+    if (updates.subcontractor_service_type_ids !== undefined) {
+      updatePayload.subcontractor_service_type_ids = updates.subcontractor_service_type_ids?.length ? updates.subcontractor_service_type_ids : null
     }
     const { error: e } = await supabase
       .from('users')
@@ -3557,7 +3595,7 @@ export default function Settings() {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === id
-            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}) }
+            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}), ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}) }
             : u
         ),
       )
@@ -3586,7 +3624,7 @@ export default function Settings() {
       }
     }
 
-    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } = {
+    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } = {
       name: trimmedName,
       email: trimmedEmail,
     }
@@ -3596,12 +3634,16 @@ export default function Settings() {
     if (editingUser?.role === 'primary') {
       updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
     }
+    if (editingUser?.role === 'subcontractor') {
+      updates.subcontractor_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
+    }
     await updateUserProfile(editingUserId, updates, editingUser?.name, editingUser?.email)
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
+    setEditSubcontractorServiceTypeIds([])
     setEditError(null)
   }
 
@@ -4057,7 +4099,7 @@ export default function Settings() {
         role: manualAddRole,
         name: trimmedName || undefined,
     }
-    if (manualAddRole === 'estimator' && manualAddServiceTypeIds.length > 0) {
+    if ((manualAddRole === 'estimator' || manualAddRole === 'subcontractor') && manualAddServiceTypeIds.length > 0) {
       body.service_type_ids = manualAddServiceTypeIds
     }
     const { data, error: eFn } = await supabase.functions.invoke('create-user', {
@@ -5203,7 +5245,14 @@ export default function Settings() {
                                 .filter(Boolean)
                                 .join(', ') || '—')
                             : 'All')
-                          : '—'}
+                          : u.role === 'subcontractor'
+                            ? (u.subcontractor_service_type_ids?.length
+                              ? (u.subcontractor_service_type_ids
+                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
+                                  .filter(Boolean)
+                                  .join(', ') || '—')
+                              : 'All')
+                            : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -5306,6 +5355,35 @@ export default function Settings() {
                                       setEditPrimaryServiceTypeIds((prev) => [...prev, st.id])
                                     } else {
                                       setEditPrimaryServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                                    }
+                                  }}
+                                  disabled={updatingId === u.id}
+                                />
+                                {st.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingUserId === u.id && u.role === 'subcontractor' && (
+                    <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Clock In, Dispatch)</div>
+                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                            {serviceTypes.map((st) => (
+                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editSubcontractorServiceTypeIds.includes(st.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditSubcontractorServiceTypeIds((prev) => [...prev, st.id])
+                                    } else {
+                                      setEditSubcontractorServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
                                     }
                                   }}
                                   disabled={updatingId === u.id}
@@ -5542,6 +5620,78 @@ export default function Settings() {
               </button>
             </div>
             </div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setTaskDispatchSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{taskDispatchSectionOpen ? '▼' : '▶'}</span>
+              Task Dispatch group
+            </button>
+            {taskDispatchSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  Choose which <strong>assistants</strong> receive Task Dispatch notifications and see the Dispatch inbox on Dashboard.
+                  Only users with role Assistant can be added (enforced by the database).
+                </p>
+                {dispatchMemberIds.size === 0 && (
+                  <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
+                    No dispatch members yet — nobody will receive push notifications until you select at least one assistant.
+                  </p>
+                )}
+                {dispatchGroupError && (
+                  <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{dispatchGroupError}</p>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
+                  {users
+                    .filter((u) => u.role === 'assistant')
+                    .map((u) => {
+                      const checked = dispatchMemberIds.has(u.id)
+                      return (
+                        <label
+                          key={u.id}
+                          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: dispatchGroupSavingUserId ? 'not-allowed' : 'pointer' }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={!!dispatchGroupSavingUserId}
+                            onChange={() => toggleDispatchGroupMember(u.id, checked)}
+                          />
+                          <span>
+                            {u.name || u.email}
+                            {u.email && u.name ? (
+                              <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
+                            ) : null}
+                          </span>
+                          {dispatchGroupSavingUserId === u.id && (
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saving…</span>
+                          )}
+                        </label>
+                      )
+                    })}
+                  {users.filter((u) => u.role === 'assistant').length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant accounts in the system.</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </>
@@ -6199,10 +6349,10 @@ export default function Settings() {
                   ))}
                 </select>
               </div>
-              {manualAddRole === 'estimator' && (
+              {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all service types. Select specific types to restrict.</p>
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                     {serviceTypes.map((st) => (
                       <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>

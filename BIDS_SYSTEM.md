@@ -165,7 +165,7 @@ Column order (left to right):
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
 2. **Job Plans** - Document icon linking to plans (or dash if none)
 3. **GC/Builder** - Customer name (clickable for details)
-4. **Bid #** - Short identifier (e.g. 456); displayed as B456 in Clock In search
+4. **Bid #** - Auto-generated for new bids; displayed as B456 in Clock In search. Editable only by dev, master, assistant (read-only for estimator, primary)
 5. **Project Name** - Bid identifier
 6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
 7. **Account Man** - Account manager or estimator name
@@ -190,7 +190,7 @@ Column order (left to right):
 - **Cancel button** in top-right next to modal title
 - **Field order**:
   1. Project Name* (required, first field)
-  2. Bid # (optional short identifier; near Project Name)
+  2. Bid # (auto-generated for new bids; editable only by dev/master/assistant when editing)
   3. Project Address (renamed from "Address")
   4. Project Folder
   5. Job Plans

@@ -29,6 +29,7 @@ import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
+import { DispatchTaskModalProvider } from './contexts/DispatchTaskModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -132,11 +133,13 @@ function AppContent() {
             <ProtectedRoute>
               <ForceReloadProvider>
                 <ChecklistAddModalProvider>
-                  <NewCustomerModalProvider>
-                    <EditCustomerModalProvider>
-                      <Layout />
-                    </EditCustomerModalProvider>
-                  </NewCustomerModalProvider>
+                  <DispatchTaskModalProvider>
+                    <NewCustomerModalProvider>
+                      <EditCustomerModalProvider>
+                        <Layout />
+                      </EditCustomerModalProvider>
+                    </NewCustomerModalProvider>
+                  </DispatchTaskModalProvider>
                 </ChecklistAddModalProvider>
               </ForceReloadProvider>
             </ProtectedRoute>

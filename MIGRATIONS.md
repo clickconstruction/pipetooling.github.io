@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-20
+last_updated: 2026-03-21
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -106,7 +106,49 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Clock In/Update Focus unified search; bid results show B456 format
 - **Category**: Bids / Clock Sessions
 
+**`20260320120002_bid_number_auto_generate.sql`**
+- **Purpose**: Auto-generate bid_number for new bids; backfill existing
+- **Changes**: Create `bids_bid_number_seq`; backfill bids by created_at (oldest first); `set_bid_number_if_empty` BEFORE INSERT trigger
+- **Impact**: New bids get next number; Bid # read-only in UI when creating
+- **Category**: Bids
+
+**`20260320120003_prevent_estimator_primary_edit_bid_number.sql`**
+- **Purpose**: Restrict Bid # editing to dev, master_technician, assistant
+- **Changes**: `prevent_bid_number_update_by_estimator_primary` BEFORE UPDATE trigger
+- **Impact**: Estimator and primary cannot change bid_number; UI shows read-only for them
+- **Category**: Bids / Access Control
+
 ### April 2026
+
+#### April 21, 2026
+
+**`20260421120000_add_subcontractor_service_type_ids.sql`**
+- **Purpose**: Subcontractor service type restrictions for Clock In and Task Dispatch
+- **Changes**: Add `subcontractor_service_type_ids UUID[] DEFAULT NULL` to `users`; NULL/empty = all types
+- **Impact**: Settings Active Accounts Edit/Manual Add; ClockInOutButton; DispatchTaskModal filter bids by allowed types
+- **Category**: Access control / Clock Sessions / Task Dispatch
+
+**`20260421120001_search_bids_for_clock_service_type_ids.sql`**
+- **Purpose**: Support subcontractors with multiple allowed service types in bid search
+- **Changes**: Add optional `p_service_type_ids UUID[]` to `search_bids_for_clock`; when non-empty, filter `WHERE b.service_type_id = ANY(p_service_type_ids)`; backward compatible with `p_service_type_id`
+- **Impact**: Clock In, Update Focus, Dispatch modals pass `p_service_type_ids` for restricted subcontractors
+- **Category**: Bids / Clock Sessions / Task Dispatch
+
+#### April 20, 2026
+
+**`20260420120000_dispatch_requests_job_bid_reference.sql`**
+- **Purpose**: Task Dispatch optional job or bid reference
+- **Changes**: `dispatch_requests` adds `job_ledger_id`, `bid_id` (mutually exclusive, FKs with ON DELETE SET NULL), `reference_summary` (client-set denormalized line for inbox/push); `dispatch_requests_guard_update` extended so non-devs cannot change those columns after insert
+- **Impact**: Dispatch modal unified job/bid picker; Dashboard inbox and `notify-dispatch-request` can show reference text
+- **Category**: Task Dispatch / Schema
+
+#### April 19, 2026
+
+**`20260419120000_dispatch_group_and_requests.sql`**
+- **Purpose**: Task Dispatch — subs and all roles can send short messages to a dev-configured group of assistants; separate from checklist
+- **Changes**: `dispatch_group_members` (PK `user_id` → `users`, trigger restricts to `role = assistant`); `dispatch_requests` (`from_user_id`, `title`, `links` text[], `status` open/closed, `closed_at`, `closed_by_user_id`); `is_dispatch_group_member()`; update guard trigger for non-dev body edits; RLS on both tables
+- **Impact**: Settings (dev) Dispatch group; header Task Dispatch modal; Dashboard Dispatch inbox; Edge Function `notify-dispatch-request` for push without exposing member list
+- **Category**: Access control / Notifications
 
 #### April 15, 2026
 

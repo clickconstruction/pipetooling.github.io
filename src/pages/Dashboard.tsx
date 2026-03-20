@@ -312,6 +312,20 @@ export default function Dashboard() {
   const [upcomingInspections, setUpcomingInspections] = useState<Array<{ id: string; address: string; inspection_type: string; scheduled_date: string }>>([])
   const [upcomingInspectionsLoading, setUpcomingInspectionsLoading] = useState(false)
   const [userName, setUserName] = useState<string | null>(null)
+  const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
+  const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
+  type DispatchInboxRow = {
+    id: string
+    title: string
+    links: string[] | null
+    created_at: string | null
+    from_user_id: string
+    reference_summary: string | null
+    sender: { name: string | null; email: string | null } | null
+  }
+  const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
+  const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
+  const [dispatchRequestClosingId, setDispatchRequestClosingId] = useState<string | null>(null)
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
@@ -337,6 +351,57 @@ export default function Dashboard() {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setDispatchInboxEligible(false)
+      return
+    }
+    if (role === 'dev') {
+      setDispatchInboxEligible(true)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('dispatch_group_members')
+      .select('user_id')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setDispatchInboxEligible(!!data)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || !dispatchInboxEligible) {
+      setDispatchRequests([])
+      return
+    }
+    let cancelled = false
+    setDispatchRequestsLoading(true)
+    supabase
+      .from('dispatch_requests')
+      .select(
+        'id, title, links, created_at, from_user_id, reference_summary, sender:users!dispatch_requests_from_user_id_fkey(name, email)',
+      )
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setDispatchRequestsLoading(false)
+        if (error) {
+          console.error('Dispatch inbox load:', error)
+          return
+        }
+        setDispatchRequests((data ?? []) as DispatchInboxRow[])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, dispatchInboxEligible])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1628,6 +1693,26 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
+  async function closeDispatchRequest(requestId: string) {
+    if (!authUser?.id) return
+    setDispatchRequestClosingId(requestId)
+    const { error } = await supabase
+      .from('dispatch_requests')
+      .update({
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        closed_by_user_id: authUser.id,
+      })
+      .eq('id', requestId)
+    setDispatchRequestClosingId(null)
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    setDispatchRequests((prev) => prev.filter((r) => r.id !== requestId))
+    showToast('Marked closed.', 'success')
+  }
+
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -1854,6 +1939,102 @@ export default function Dashboard() {
             Builder Review
           </Link>
       </div>
+      )}
+      {authUser?.id && dispatchInboxEligible && (
+        <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+          <button
+            type="button"
+            onClick={() => setDispatchRequestsOpen((o) => !o)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              width: '100%',
+              padding: '0.75rem 1rem',
+              margin: 0,
+              background: '#f9fafb',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span aria-hidden>{dispatchRequestsOpen ? '▼' : '▶'}</span>
+            Dispatch inbox
+            {!dispatchRequestsLoading && dispatchRequests.length > 0 ? (
+              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
+                ({dispatchRequests.length} open)
+              </span>
+            ) : null}
+          </button>
+          {dispatchRequestsOpen && (
+            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              {dispatchRequestsLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+              ) : dispatchRequests.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No open dispatch requests.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {dispatchRequests.map((req) => {
+                    const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
+                    return (
+                      <li
+                        key={req.id}
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          padding: '0.75rem 0',
+                          borderBottom: '1px solid #f3f4f6',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
+                            From {fromLabel}
+                            {req.created_at ? (
+                              <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
+                            ) : null}
+                          </div>
+                          <div style={{ fontWeight: 500 }}>
+                            <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
+                          </div>
+                          {req.reference_summary?.trim() ? (
+                            <div
+                              style={{
+                                marginTop: 6,
+                                fontSize: '0.8125rem',
+                                color: '#4b5563',
+                              }}
+                            >
+                              Ref: {req.reference_summary.trim()}
+                            </div>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => closeDispatchRequest(req.id)}
+                          disabled={dispatchRequestClosingId === req.id}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            background: '#e5e7eb',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
       )}
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>

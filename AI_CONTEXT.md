@@ -276,7 +276,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 - **dev**: System administrator, full access to everything
 - **master_technician** (Master): Project owner/manager, creates customers/projects
 - **assistant**: Support staff, works under masters (must be adopted)
-- **subcontractor** (Sub): External worker, sees only assigned stages
+- **subcontractor** (Sub): External worker, sees only assigned stages. Optional **subcontractor service type restriction**: devs can limit which service types a subcontractor can associate with when clocking in and sending Task Dispatch (job/bid reference); NULL/empty = all types
 - **estimator**: Bid specialist, access to Bids and Materials only (no projects). Optional **estimator service type restriction**: devs can limit an estimator to specific service types (e.g., Electrical only); NULL/empty = all types
 
 ### Project Management
@@ -294,6 +294,7 @@ import { createProjectWithTemplate } from '@/types/database-functions'
 - **Adoption**: Master grants assistant access to their data (many-to-many)
 - **Sharing**: Master grants another master assistant-level access
 - **Estimator service type restriction**: Limits estimators to specific service types (Plumbing, Electrical, HVAC); set via `estimator_service_type_ids` on users; NULL/empty = all types
+- **Subcontractor service type restriction**: Limits which bids a subcontractor can associate with when clocking in and when sending Task Dispatch; set via `subcontractor_service_type_ids` on users; NULL/empty = all types
 - **RLS**: Row Level Security (PostgreSQL security policies)
 - **SECURITY DEFINER**: Function runs with creator's permissions (bypasses RLS)
 

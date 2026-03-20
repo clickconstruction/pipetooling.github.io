@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-03-20
+last_updated: 2026-03-21
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -74,6 +74,7 @@ when_to_read:
 - [Access Control](#access-control)
 - [Workflow Concepts](#workflow-concepts)
 - [Checklist](#checklist)
+- [Task Dispatch](#task-dispatch)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
 - [Database Concepts](#database-concepts)
@@ -106,7 +107,7 @@ Support staff who work under masters. Must be "adopted" by a master to access th
 ### subcontractor (Sub/Subcontractor)
 External worker with minimal access. Only sees stages they are assigned to by name. Cannot access customer, project, or workflow management pages. Limited to Dashboard and Calendar views.
 
-**Capabilities**: Start/Complete assigned stages only
+**Capabilities**: Start/Complete assigned stages only; **Task Dispatch** (send title + links to Dispatch group)
 
 **Key Restriction**: Cannot see any stage they're not explicitly assigned to
 
@@ -286,6 +287,12 @@ Collapsible section in Dashboard Recently Completed Tasks where devs move task t
 
 ---
 
+## Task Dispatch
+
+Short messages to internal **Dispatch** (a dev-configured set of **assistants**), separate from recurring checklist tasks. Any signed-in user can open **Task Dispatch** in the header. The modal titled **Message the Dispatch team** has: **Task** (required), **Reference (optional)** (job/bid search), and **Links (optional)** (URLs for `[1]`, `[2]` placeholders in the task text). Rows live in `dispatch_requests`. **Dispatch group** membership is `dispatch_group_members` (assistant users only; trigger-enforced). Devs edit the group in Settings. Dispatch members and devs see the **Dispatch inbox** on the Dashboard for open requests and can **mark closed**. Push notifications use Edge Function `notify-dispatch-request` so the member list is not exposed to clients.
+
+---
+
 ## Bids System
 
 ### Bid / Bid Board
@@ -296,7 +303,7 @@ The main bid management system. Bid Board is the first tab showing all bids in a
 **6 Tabs**: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup
 
 ### Bid Number
-Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `bids.bid_number`. Displayed as `B456` in Clock In/Update Focus search and People Hours clock session displays. Used in unified job/bid search alongside HCP #.
+Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `bids.bid_number`. Auto-generated for new bids via `bids_bid_number_seq`; backfilled for existing bids (oldest first). Displayed as `B456` in Clock In/Update Focus search and People Hours clock session displays. **Edit restriction**: Only dev, master_technician, and assistant can edit; estimator and primary see it read-only (enforced by UI and database trigger).
 
 ### GC / Builder / General Contractor
 Customer in the bids context. The entity requesting the bid (can be actual GC, homeowner, developer, etc.).

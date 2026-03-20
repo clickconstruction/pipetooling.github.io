@@ -375,6 +375,43 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.117)
+
+**Date**: 2026-04-21
+
+### Task Dispatch Modal UI
+
+- **Modal title**: "Message the Dispatch team" (replaces "Task Dispatch")
+- **Fields**: Task (required), Reference (optional), Links (optional) — Reference moved above Links
+- **Hint**: "Use [1], [2] in the title for link placeholders." moved below [+ add] in Links section
+
+### Subcontractor Service Type Restrictions
+
+- **Settings → Active Accounts**: Devs can restrict subcontractors to specific service types (Plumbing, Electrical, HVAC) when editing a user or manually adding one. Same pattern as estimator/primary.
+- **Clock In / Update Focus**: Restricted subcontractors see only bids matching their allowed service types in the job/bid search. Unrestricted (NULL/empty) = all types.
+- **Task Dispatch**: Same restriction applies when attaching a job/bid reference in the Dispatch modal.
+- **Database**: `subcontractor_service_type_ids UUID[]` on `users`; `search_bids_for_clock` extended with optional `p_service_type_ids` for multi-type filtering.
+- **create-user Edge Function**: Accepts `service_type_ids` when role is subcontractor.
+
+**Files**: `src/pages/Settings.tsx`, `src/components/ClockInOutButton.tsx`, `src/components/DispatchTaskModal.tsx`, `supabase/functions/create-user/index.ts`, `supabase/migrations/20260421120000_add_subcontractor_service_type_ids.sql`, `supabase/migrations/20260421120001_search_bids_for_clock_service_type_ids.sql`
+
+---
+
+## Latest Updates (v2.116)
+
+**Date**: 2026-03-19
+
+### Task Dispatch (messages to Dispatch group)
+
+- **`dispatch_requests` / `dispatch_group_members`**: Any signed-in user can send a short request (task + optional reference + optional links, same `[1]` placeholders as checklist). Modal titled "Message the Dispatch team". Devs pick which **assistants** are Dispatch in Settings. Dispatch members and devs see **Dispatch inbox** on Dashboard and can mark requests closed.
+- **Header**: **Task Dispatch** button (cyan) for all roles; mobile header includes compact **Dispatch**.
+- **Edge Function `notify-dispatch-request`**: After insert, notifies all group members via Web Push without exposing the member list to the client; logs `notification_history` with `template_type: dispatch_request`.
+- **Migration**: `20260419120000_dispatch_group_and_requests.sql`
+
+**Files**: `src/components/DispatchTaskModal.tsx`, `src/contexts/DispatchTaskModalContext.tsx`, `src/components/Layout.tsx`, `src/pages/Settings.tsx`, `src/pages/Dashboard.tsx`, `supabase/functions/notify-dispatch-request/index.ts`
+
+---
+
 ## Latest Updates (v2.115)
 
 **Date**: 2026-03-20

@@ -92,6 +92,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
+   - [notify-dispatch-request](#notify-dispatch-request)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
@@ -712,6 +713,49 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 4. Sends Web Push via `web-push` library using VAPID keys
 5. Returns count of notifications sent (0 if no subscriptions)
 6. Used by: Checklist completion flow, Settings "Test notification" button
+
+---
+
+### notify-dispatch-request
+
+**Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group).
+
+**Endpoint**: `POST /functions/v1/notify-dispatch-request`
+
+**Required Role**: Authenticated user who is the request author (`from_user_id` on the row)
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+
+**Verify JWT**: `true` (recommended; function validates caller matches `from_user_id`)
+
+#### Request body
+
+```json
+{ "dispatch_request_id": "<uuid>" }
+```
+
+#### Success response
+
+```json
+{
+  "success": true,
+  "message": "Dispatch notifications processed",
+  "push_sent": 2,
+  "recipients": 3
+}
+```
+
+When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `message`.
+
+#### Implementation notes
+
+1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
+2. Admin client loads all `dispatch_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `dispatch-<request_id>`, `url`: `/dashboard`).
+3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
 
 ---
 

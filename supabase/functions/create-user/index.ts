@@ -12,7 +12,7 @@ interface CreateUserRequest {
   password: string
   role: string
   name?: string
-  /** For estimator role: IDs of service types this estimator can access. Omit or empty = all. */
+  /** For estimator/subcontractor role: IDs of service types to restrict. Omit or empty = all. */
   service_type_ids?: string[]
 }
 
@@ -94,9 +94,10 @@ serve(async (req) => {
       )
     }
 
-    // Validate and resolve estimator_service_type_ids when role is estimator
+    // Validate and resolve service_type_ids when role is estimator or subcontractor
     let estimatorServiceTypeIds: string[] | null = null
-    if (role === 'estimator' && service_type_ids && service_type_ids.length > 0) {
+    let subcontractorServiceTypeIds: string[] | null = null
+    if ((role === 'estimator' || role === 'subcontractor') && service_type_ids && service_type_ids.length > 0) {
       const { data: validTypes, error: typesError } = await supabase
         .from('service_types')
         .select('id')
@@ -115,7 +116,8 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      estimatorServiceTypeIds = validIds
+      if (role === 'estimator') estimatorServiceTypeIds = validIds
+      if (role === 'subcontractor') subcontractorServiceTypeIds = validIds
     }
 
     // Check if user already exists
@@ -182,6 +184,9 @@ serve(async (req) => {
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userRecord.estimator_service_type_ids = estimatorServiceTypeIds
     }
+    if (role === 'subcontractor' && subcontractorServiceTypeIds !== null) {
+      userRecord.subcontractor_service_type_ids = subcontractorServiceTypeIds
+    }
     const { error: createUserError } = await adminClient
       .from('users')
       .upsert(userRecord, {
@@ -206,6 +211,9 @@ serve(async (req) => {
     }
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userResponse.estimator_service_type_ids = estimatorServiceTypeIds
+    }
+    if (role === 'subcontractor' && subcontractorServiceTypeIds !== null) {
+      userResponse.subcontractor_service_type_ids = subcontractorServiceTypeIds
     }
     return new Response(
       JSON.stringify({

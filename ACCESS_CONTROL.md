@@ -106,6 +106,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 - Export all data
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
+- Manage **Task Dispatch** group in Settings: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
 **Use Cases**:
@@ -253,6 +254,13 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 ### subcontractor (Subcontractor/Sub)
 
 **Purpose**: External workers assigned to specific stages
+
+**Service Type Filtering**:
+- Devs can restrict a subcontractor to specific service types (e.g., Plumbing only, Electrical only) for Clock In and Task Dispatch job/bid association
+- Set via `subcontractor_service_type_ids` on the user record when creating or editing a subcontractor
+- **NULL or empty array** = subcontractor sees all service types when associating with jobs/bids
+- **Non-empty array** = subcontractor sees only bids matching those service types in Clock In and Dispatch modals
+- Configurable in Settings → Manual Add User (when role is subcontractor) or Edit User (when editing a subcontractor)
 
 **Access**:
 - Dashboard, Checklist, Settings, Tally
@@ -437,6 +445,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 |---------|-----|--------|-----------|-----|-----------|---------|
 | View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ |
 
 ### Customer Management
 
@@ -498,6 +508,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 |---------|-----|--------|-----------|-----|-----------|---------|
 | View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Edit bid number | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Bid Board tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Builder Review tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |

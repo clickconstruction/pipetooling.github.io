@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-03-20
+last_updated: 2026-03-21
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -757,6 +757,16 @@ WHERE proname IN (
 - **RLS**: Devs can SELECT/INSERT/DELETE own rows only
 - **Usage**: Dashboard Recently Completed Tasks; main section excludes ignored types; collapsible Ignored section with Un-ignore
 
+#### `public.dispatch_group_members`
+- **Purpose**: Assistants who receive Task Dispatch push notifications and see the Dispatch inbox on Dashboard. Dev assigns membership in Settings.
+- **Key Fields**: `user_id` (uuid, PK, FK → users ON DELETE CASCADE) — must be `users.role = assistant` (enforced by trigger)
+- **RLS**: SELECT dev or own row (`user_id = auth.uid()`); INSERT/DELETE dev only
+
+#### `public.dispatch_requests`
+- **Purpose**: Task Dispatch messages (task text + optional links, same `[1]`/`[2]` placeholders as checklist). Modal titled "Message the Dispatch team" with Task, Reference (optional), Links (optional). Any authenticated user may create (`from_user_id = auth.uid()`). Dev and dispatch group members see open requests on Dashboard and may mark closed.
+- **Key Fields**: `title`, `links` (text[], same `[1]`/`[2]` pattern as checklist_items), `status` (`open` | `closed`), `closed_at`, `closed_by_user_id`; optional `job_ledger_id` **or** `bid_id` (not both, FKs to `jobs_ledger` / `bids`); `reference_summary` (nullable text, client-set at send time, same “J… · …” / “B… · …” format as Clock In unified search — informational for inbox and push)
+- **RLS**: SELECT if author, dev, or dispatch group member; INSERT authenticated as self; UPDATE dev or dispatch member (body columns protected from non-dev by trigger)
+
 #### `public.people_labor_jobs`
 - **Purpose**: Labor jobs from Jobs page (Labor tab); displayed in Sub Sheet Ledger tab on Jobs
 - **Key Fields**:
@@ -1134,7 +1144,7 @@ uuid3           | Supply House C    | 0
   - `gc_builder_id` (uuid, FK → `bids_gc_builders.id` ON DELETE SET NULL, nullable) - Legacy GC/Builder
   - `customer_id` (uuid, FK → `customers.id` ON DELETE SET NULL, nullable) - Customer (GC/Builder); same list as Customers page
   - `project_name` (text, nullable) - **Required in UI**
-  - `bid_number` (text, nullable) - Short identifier (e.g. "456"); displayed as B456 in search and clock displays
+  - `bid_number` (text, nullable) - Short identifier (e.g. "456"); auto-generated for new bids; displayed as B456 in search and clock displays; editable only by dev/master/assistant
   - `address` (text, nullable)
   - `gc_contact_name` (text, nullable) - Project contact person for this bid
   - `gc_contact_phone` (text, nullable) - Project contact phone for this bid
@@ -1165,7 +1175,7 @@ uuid3           | Supply House C    | 0
   - Legacy `gc_builder_id` retained for backward compatibility
   - Clicking GC/Builder name opens modal with customer details and all bid statuses
   - "Save and start Counts" button in New Bid modal
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `20260320120002_bid_number_auto_generate.sql`, `20260320120003_prevent_estimator_primary_edit_bid_number.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)
