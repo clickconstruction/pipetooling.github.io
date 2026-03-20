@@ -1169,6 +1169,7 @@ export type Database = {
           address: string | null
           contact_info: Json | null
           created_at: string | null
+          customer_type: 'commercial' | 'residential' | null
           date_met: string | null
           id: string
           master_user_id: string
@@ -1179,6 +1180,7 @@ export type Database = {
           address?: string | null
           contact_info?: Json | null
           created_at?: string | null
+          customer_type?: 'commercial' | 'residential' | null
           date_met?: string | null
           id?: string
           master_user_id: string
@@ -1189,6 +1191,7 @@ export type Database = {
           address?: string | null
           contact_info?: Json | null
           created_at?: string | null
+          customer_type?: 'commercial' | 'residential' | null
           date_met?: string | null
           id?: string
           master_user_id?: string
@@ -1693,6 +1696,7 @@ export type Database = {
         Row: {
           created_at: string | null
           customer_email: string | null
+          customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
           estimated_completion_date: string | null
@@ -1713,6 +1717,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           estimated_completion_date?: string | null
@@ -1733,6 +1738,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           estimated_completion_date?: string | null
@@ -1751,6 +1757,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_master_user_id_fkey"
             columns: ["master_user_id"]
