@@ -6,6 +6,14 @@
  */
 
 /**
+ * Parameters for update_bids_count_rows_order function (Counts drag reorder)
+ */
+export interface UpdateBidsCountRowsOrderParams {
+  p_bid_id: string
+  p_ordered_ids: string[]
+}
+
+/**
  * Parameters for create_project_with_template function
  */
 export interface CreateProjectWithTemplateParams {

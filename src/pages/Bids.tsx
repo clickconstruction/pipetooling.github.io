@@ -1,6 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -999,6 +1003,7 @@ export default function Bids() {
   const [selectedBidForCounts, setSelectedBidForCounts] = useState<BidWithBuilder | null>(null)
   const [countRows, setCountRows] = useState<BidCountRow[]>([])
   const [movingCountRow, setMovingCountRow] = useState(false)
+  const countRowsSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [lastMovedId, setLastMovedId] = useState<string | null>(null)
   const [addingCountRow, setAddingCountRow] = useState(false)
   const [countsImportOpen, setCountsImportOpen] = useState(false)
@@ -1530,6 +1535,49 @@ export default function Bids() {
     if (selectedBidForCostEstimate?.id === bidId) loadCostEstimateData(bidId, selectedLaborBookVersionId)
   }
 
+  async function saveCountRowsOrder(orderedRows: BidCountRow[]) {
+    const bidId = selectedBidForCounts?.id
+    if (!bidId || orderedRows.length === 0) return
+    await withSupabaseRetry(
+      async () => {
+        const result = await supabase.rpc('update_bids_count_rows_order', {
+          p_bid_id: bidId,
+          p_ordered_ids: orderedRows.map((r) => r.id),
+        })
+        return result
+      },
+      'save count rows order'
+    )
+    refreshAfterCountsChange({ skipCountRows: true })
+  }
+
+  async function handleCountsDragEnd(event: { active: { id: unknown }; over: { id: unknown } | null }) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const bidId = selectedBidForCounts?.id
+    if (!bidId || movingCountRow) return
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const oldIndex = countRows.findIndex((r) => r.id === activeId)
+    const newIndex = countRows.findIndex((r) => r.id === overId)
+    if (oldIndex === -1 || newIndex === -1) return
+    const newOrder = arrayMove(countRows, oldIndex, newIndex)
+    setMovingCountRow(true)
+    setCountRows(newOrder)
+    setLastMovedId(activeId)
+    setTimeout(() => setLastMovedId(null), 800)
+    skipNextLoadCountRowsRef.current = true
+    try {
+      await saveCountRowsOrder(newOrder)
+    } catch {
+      setCountRows([...countRows])
+      showToast('Failed to save row order', 'error')
+    } finally {
+      setMovingCountRow(false)
+      setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
+    }
+  }
+
   async function moveCountRowById(rowId: string, direction: 'up' | 'down') {
     const bidId = selectedBidForCounts?.id
     if (!bidId || movingCountRow) return
@@ -1542,28 +1590,20 @@ export default function Bids() {
     const row = countRows[idx]
     if (!row) return
 
-    const newOrder = [...countRows]
-    const [removed] = newOrder.splice(idx, 1)
-    if (removed) newOrder.splice(targetIdx, 0, removed)
+    const newOrder = arrayMove(countRows, idx, targetIdx)
     setLastMovedId(row.id)
     setTimeout(() => setLastMovedId(null), 800)
     setMovingCountRow(true)
     setCountRows(newOrder)
-    for (let seq = 0; seq < newOrder.length; seq++) {
-      const r = newOrder[seq]
-      if (!r) continue
-      const { error } = await supabase.from('bids_count_rows').update({ sequence_order: seq }).eq('id', r.id)
-      if (error) {
-        setCountRows([...countRows])
-        showToast('Failed to save row order', 'error')
-        setMovingCountRow(false)
-        skipNextLoadCountRowsRef.current = false
-        return
-      }
+    try {
+      await saveCountRowsOrder(newOrder)
+    } catch {
+      setCountRows([...countRows])
+      showToast('Failed to save row order', 'error')
+    } finally {
+      setMovingCountRow(false)
+      setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
     }
-    refreshAfterCountsChange({ skipCountRows: true })
-    setMovingCountRow(false)
-    setTimeout(() => { skipNextLoadCountRowsRef.current = false }, 300)
   }
 
   function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>; skippedCount: number } {
@@ -8064,42 +8104,52 @@ export default function Bids() {
                 </div>
               </div>
               <div ref={contactTableRef} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#f9fafb' }}>
-                    <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Group/Tag</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {countRows.map((row, index) => (
-                      <CountRow
-                        key={row.id}
-                        row={row}
-                        index={index}
-                        totalCount={countRows.length}
-                        moveDisabled={movingCountRow}
-                        highlight={lastMovedId === row.id}
-                        onUpdate={refreshAfterCountsChange}
-                        onDelete={refreshAfterCountsChange}
-                        onMoveUp={() => moveCountRowById(row.id, 'up')}
-                        onMoveDown={() => moveCountRowById(row.id, 'down')}
-                      />
-                    ))}
-                    {addingCountRow && (
-                      <NewCountRow
-                        bidId={selectedBidForCounts.id}
-                        serviceTypeId={selectedBidForCounts.service_type_id ?? undefined}
-                        onSaved={() => { setAddingCountRow(false); refreshAfterCountsChange() }}
-                        onCancel={() => setAddingCountRow(false)}
-                        onSavedAndAddAnother={refreshAfterCountsChange}
-                      />
-                    )}
-                  </tbody>
-                </table>
+                <DndContext
+                  sensors={countRowsSensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleCountsDragEnd}
+                >
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} aria-label="Reorder"></th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Group/Tag</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <SortableContext items={countRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+                        {countRows.map((row, index) => (
+                          <SortableCountRow
+                            key={row.id}
+                            row={row}
+                            index={index}
+                            totalCount={countRows.length}
+                            moveDisabled={movingCountRow}
+                            highlight={lastMovedId === row.id}
+                            onUpdate={refreshAfterCountsChange}
+                            onDelete={refreshAfterCountsChange}
+                            onMoveUp={() => moveCountRowById(row.id, 'up')}
+                            onMoveDown={() => moveCountRowById(row.id, 'down')}
+                          />
+                        ))}
+                        {addingCountRow && (
+                          <NewCountRow
+                            bidId={selectedBidForCounts.id}
+                            serviceTypeId={selectedBidForCounts.service_type_id ?? undefined}
+                            onSaved={() => { setAddingCountRow(false); refreshAfterCountsChange() }}
+                            onCancel={() => setAddingCountRow(false)}
+                            onSavedAndAddAnother={refreshAfterCountsChange}
+                            showDragHandleColumn
+                          />
+                        )}
+                      </SortableContext>
+                    </tbody>
+                  </table>
+                </DndContext>
               </div>
               {!addingCountRow && (
                 <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
@@ -14817,7 +14867,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
   )
 }
 
-function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown }: {
+function SortableCountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown }: {
   row: BidCountRow
   index: number
   totalCount: number
@@ -14827,6 +14877,56 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
   onDelete: () => void
   onMoveUp: () => void
   onMoveDown: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id })
+  const dragHandle = (
+    <span
+      {...attributes}
+      {...listeners}
+      style={{ cursor: 'grab', display: 'inline-flex', padding: '0.25rem', color: '#9ca3af' }}
+      title="Drag to reorder"
+      aria-label="Drag to reorder"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
+        <path d="M8 6h2v2H8V6zm0 4h2v2H8v-2zm0 4h2v2H8v-2zm4-8h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z" />
+      </svg>
+    </span>
+  )
+  return (
+    <CountRow
+      row={row}
+      index={index}
+      totalCount={totalCount}
+      moveDisabled={moveDisabled}
+      highlight={highlight}
+      onUpdate={onUpdate}
+      onDelete={onDelete}
+      onMoveUp={onMoveUp}
+      onMoveDown={onMoveDown}
+      dragHandle={dragHandle}
+      trRef={setNodeRef}
+      trStyle={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    />
+  )
+}
+
+function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, onDelete, onMoveUp, onMoveDown, dragHandle, trRef, trStyle }: {
+  row: BidCountRow
+  index: number
+  totalCount: number
+  moveDisabled?: boolean
+  highlight?: boolean
+  onUpdate: () => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  dragHandle?: React.ReactNode
+  trRef?: React.Ref<HTMLTableRowElement>
+  trStyle?: React.CSSProperties
 }) {
   const [fixture, setFixture] = useState(row.fixture ?? '')
   const [count, setCount] = useState(String(row.count))
@@ -14853,9 +14953,11 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
   }
 
   const rowStyle = highlight ? { borderBottom: '1px solid #e5e7eb', background: '#dcfce7' } : { borderBottom: '1px solid #e5e7eb' }
+  const mergedStyle = { ...rowStyle, ...trStyle }
   if (editing) {
     return (
-      <tr style={rowStyle}>
+      <tr ref={trRef} style={mergedStyle}>
+        {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
         <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
           <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }} />
         </td>
@@ -14876,7 +14978,8 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
     )
   }
   return (
-    <tr style={rowStyle}>
+    <tr ref={trRef} style={mergedStyle}>
+      {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
       <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
       <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
       <td style={{ padding: '0.75rem' }}>{row.group_tag ?? '—'}</td>
@@ -14901,7 +15004,7 @@ function CountRow({ row, index, totalCount, moveDisabled, highlight, onUpdate, o
   )
 }
 
-function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void }) {
+function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
   const { showToast } = useToastContext()
   const [fixture, setFixture] = useState('')
   const [count, setCount] = useState('')
@@ -14983,6 +15086,7 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
   return (
     <>
       <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid #e5e7eb' }}>
+        {showDragHandleColumn && <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: 32, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }} />}
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
             <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
