@@ -73,7 +73,11 @@ export default function DispatchTaskModal() {
               : me?.role === 'subcontractor' && subIds && subIds.length > 0
                 ? types.filter((t) => subIds.includes(t.id))
                 : types
-        setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+        if (filtered.length === 1) {
+          setSelectedBidServiceTypeId(filtered[0]!.id)
+        } else {
+          setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+        }
         setServiceTypes(filtered)
       } else {
         setSelectedBidServiceTypeId('')
@@ -227,7 +231,11 @@ export default function DispatchTaskModal() {
           </label>
           <div style={{ marginBottom: 0 }}>
             <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reference (optional)</span>
-            {serviceTypes.length > 0 && (
+            {serviceTypes.length === 1 ? (
+              <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Filtering by: {serviceTypes[0]!.name}
+              </p>
+            ) : serviceTypes.length > 1 ? (
               <select
                 value={selectedBidServiceTypeId}
                 onChange={(e) => {
@@ -250,7 +258,7 @@ export default function DispatchTaskModal() {
                   </option>
                 ))}
               </select>
-            )}
+            ) : null}
             {selectedReference && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <span

@@ -183,28 +183,6 @@ export default function Layout() {
         <NavLink to="/dashboard" style={iconLinkStyle} end title="Dashboard" aria-label="Dashboard">
           {dashboardIcon}
         </NavLink>
-        {role != null && (
-          <button
-            type="button"
-            onClick={() => dispatchTaskModal?.openDispatchModal()}
-            title="Task Dispatch"
-            aria-label="Task Dispatch"
-            style={{
-              padding: '0.35rem 0.45rem',
-              background: '#0ea5e9',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.7rem',
-              lineHeight: 1.1,
-              maxWidth: '3.2rem',
-            }}
-          >
-            Dispatch
-          </button>
-        )}
         {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
           <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}

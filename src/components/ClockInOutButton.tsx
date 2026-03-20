@@ -220,7 +220,11 @@ export default function ClockInOutButton({ userId, userName }: Props) {
             : (me?.role === 'subcontractor' && subIds && subIds.length > 0)
               ? types.filter((t) => subIds.includes(t.id))
               : types
-        setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+        if (filtered.length === 1) {
+          setSelectedBidServiceTypeId(filtered[0]!.id)
+        } else {
+          setSelectedBidServiceTypeId((prev) => (prev === '' || (prev && filtered.some((t) => t.id === prev)) ? prev : ''))
+        }
         setServiceTypes(filtered)
       } else {
         setSelectedBidServiceTypeId('')
@@ -522,8 +526,13 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
-              {serviceTypes.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
+                {serviceTypes.length === 1 && (
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Filtering by: {serviceTypes[0]!.name}</span>
+                )}
+              </div>
+              {serviceTypes.length > 1 && (
                 <select
                   value={selectedBidServiceTypeId}
                   onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
@@ -675,7 +684,11 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                 disabled={updateFocusLoading}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               />
-              {serviceTypes.length > 0 && (
+              {serviceTypes.length === 1 ? (
+                <p style={{ marginBottom: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  Filtering by: {serviceTypes[0]!.name}
+                </p>
+              ) : serviceTypes.length > 1 ? (
                 <select
                   value={selectedBidServiceTypeId}
                   onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
@@ -687,7 +700,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                     <option key={st.id} value={st.id}>{st.name}</option>
                   ))}
                 </select>
-              )}
+              ) : null}
               {unifiedSearchResults.length > 0 && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
                   {unifiedSearchResults.map((r) => (

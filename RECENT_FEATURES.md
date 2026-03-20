@@ -336,6 +336,13 @@ when_to_read:
 
 **Files**: `src/pages/Bids.tsx`, `supabase/migrations/20260423120000_update_bids_count_rows_order_rpc.sql`, `package.json`
 
+### Single Service Type UX
+
+- **Clock In, Update Focus, Dispatch**: When a user has only one service type (e.g. subcontractor with Plumbing only), the modals now show "Filtering by: Plumbing" instead of a dropdown with redundant "All types" + single option. Search automatically uses the single type.
+- **Auto-select**: When `serviceTypes.length === 1`, `selectedBidServiceTypeId` is set to that type so bid search filters correctly.
+
+**Files**: `src/components/ClockInOutButton.tsx`, `src/components/DispatchTaskModal.tsx`
+
 ---
 
 ## Latest Updates (v2.121)
