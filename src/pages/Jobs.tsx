@@ -5,6 +5,7 @@ import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { parseCustomerImport } from '../utils/parseCustomerImport'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AddInspectionModal from '../components/AddInspectionModal'
@@ -422,6 +423,7 @@ export default function Jobs() {
   const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
+  const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
@@ -3049,10 +3051,27 @@ export default function Jobs() {
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
         }
       } else {
+        // Resolve job owner (override for users who create jobs on behalf of others)
+        let effectiveMasterId = authUser.id
+        const override = await withSupabaseRetry(
+          async () => {
+            const result = await supabase
+              .from('app_settings')
+              .select('value_text')
+              .eq('key', `job_owner_override_${authUser.id}`)
+              .maybeSingle()
+            return { data: result.data, error: result.error }
+          },
+          'fetch job owner override'
+        )
+        if (override?.value_text) {
+          effectiveMasterId = override.value_text
+        }
+
         const { data: inserted, error: insertErr } = await supabase
           .from('jobs_ledger')
           .insert({
-            master_user_id: authUser.id,
+            master_user_id: effectiveMasterId,
             hcp_number: hcpNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
@@ -3829,7 +3848,7 @@ export default function Jobs() {
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Stage Notes</th>
                         {showPctComplete && (
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Value Created<br />/ % Complete</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>% Complete<br />/ Value Created</th>
                         )}
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>{showRemaining ? <>Remaining<br />/ Total Bill</> : showFinalBill ? 'Final Bill' : 'Revenue'}</th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
@@ -4016,11 +4035,6 @@ export default function Jobs() {
                             {showPctComplete && (
                               <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                  <div style={{ fontSize: '0.8125rem' }}>
-                                    {j.pct_complete != null
-                                      ? formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)
-                                      : '—'}
-                                  </div>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.15rem' }}>
                                     <input
                                       key={`pct-${j.id}-${j.pct_complete ?? 'null'}`}
@@ -4059,6 +4073,22 @@ export default function Jobs() {
                                     />
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>%</span>
                                   </div>
+                                  <div style={{ fontSize: '0.8125rem' }}>
+                                    {j.pct_complete != null
+                                      ? `${formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)} done`
+                                      : '—'}
+                                  </div>
+                                  {(() => {
+                                    const totalBill = Number(j.revenue ?? 0)
+                                    const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
+                                    const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
+                                    const toBill = valueCreated - (totalBill - remaining)
+                                    return (
+                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                        {valueCreated === 0 || toBill === 0 ? '—' : `${formatCurrencyNoCents(toBill)} to bill`}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               </td>
                             )}
@@ -4069,8 +4099,9 @@ export default function Jobs() {
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0
                                     return (
                                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                        <span>{rev > 0 || pm > 0 ? formatCurrencyNoCents(rev - pm) : '—'}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatCurrencyNoCents(pm)} paid` : '—'}</span>
+                                        <span>{rev > 0 || pm > 0 ? `${formatCurrencyNoCents(rev - pm)} left` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatCurrencyNoCents(Number(j.revenue))} bid` : '—'}</span>
                                       </div>
                                     )
                                   })()
@@ -4420,16 +4451,20 @@ export default function Jobs() {
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                    {showRemaining && (() => {
+                                      const pm = j.payments_made != null ? Number(j.payments_made) : 0
+                                      return <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatCurrencyNoCents(pm)} paid` : '—'}</span>
+                                    })()}
                                     <span>
                                       {showRemaining
                                         ? (() => {
                                             const rev = j.revenue != null ? Number(j.revenue) : 0
                                             const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                            return rev > 0 || pm > 0 ? formatCurrencyNoCents(rev - pm) : '—'
+                                            return rev > 0 || pm > 0 ? `${formatCurrencyNoCents(rev - pm)} left` : '—'
                                           })()
                                         : (j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—')}
                                     </span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—'}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatCurrencyNoCents(Number(j.revenue))} bid` : '—'}</span>
                                     {sendBackBelowRemaining && onJobSendBack && (
                                       <button
                                         type="button"
@@ -4619,8 +4654,11 @@ export default function Jobs() {
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <span>{formatCurrencyNoCents(Number(inv.amount))}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? formatCurrencyNoCents(Number(job.revenue)) : '—'}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                      {Number(job.payments_made ?? 0) > 0 ? `${formatCurrencyNoCents(Number(job.payments_made ?? 0))} paid` : '—'}
+                                    </span>
+                                    <span>{`${formatCurrencyNoCents(Number(inv.amount))} left`}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? `${formatCurrencyNoCents(Number(job.revenue))} bid` : '—'}</span>
                                     {sendBackBelowRemaining && (
                                       <button
                                         type="button"
@@ -4738,6 +4776,13 @@ export default function Jobs() {
             }
 
             const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+            const capableToBillTotal = working.reduce((s, j) => {
+              const totalBill = Number(j.revenue ?? 0)
+              const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
+              const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
+              const toBill = valueCreated - (totalBill - remaining)
+              return s + Math.max(0, toBill)
+            }, 0)
             const readyToBillTotal =
               readyToBillJobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0) +
               readyToBillInvoices.reduce((s, i) => s + Number(i.amount), 0)
@@ -4746,15 +4791,24 @@ export default function Jobs() {
               billedInvoices.reduce((s, i) => s + Number(i.amount), 0)
             return (
               <>
-                <button
-                  type="button"
-                  onClick={() => toggleStages('working')}
-                  aria-expanded={stagesSectionOpen.working}
-                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                >
-                  <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
-                  Working ({working.length}) - ${formatCurrency(workingTotal)}
-                </button>
+                <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleStages('working')}
+                    aria-expanded={stagesSectionOpen.working}
+                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                  >
+                    <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
+                    Working ({working.length}) - ${formatCurrency(workingTotal)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCapableToBillModalOpen(true)}
+                    style={{ fontSize: '0.9375rem', color: '#6b7280', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  >
+                    Capable of Being Billed {formatCurrency(capableToBillTotal)}
+                  </button>
+                </div>
                 {stagesSectionOpen.working && renderStagesTable(
                   working,
                   'Ready to Bill',
@@ -4868,6 +4922,91 @@ export default function Jobs() {
                             take me to Job: Stages: Billed
                           </button>
                           <button type="button" onClick={() => setBilledTotalByNameModalOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+                {capableToBillModalOpen && (() => {
+                  const rows = working
+                    .map((j) => {
+                      const totalBill = Number(j.revenue ?? 0)
+                      const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
+                      const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
+                      const toBill = valueCreated - (totalBill - remaining)
+                      return { job: j, toBill, valueCreated }
+                    })
+                    .filter((r) => r.toBill > 0)
+                    .sort((a, b) => b.toBill - a.toBill)
+                  return (
+                    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+                      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
+                        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          Jobs in Working with billable value. Sorted by amount.
+                        </p>
+                        {rows.length === 0 ? (
+                          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs with billable amount</p>
+                        ) : (
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Job</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>%</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Done</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>To Bill</th>
+                                <th style={{ padding: '0.5rem 0.75rem', width: 80 }} />
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map(({ job, toBill, valueCreated }) => (
+                                <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    <div>{job.job_name || '—'}</div>
+                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{job.hcp_number || '—'}</div>
+                                  </td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(Number(job.payments_made ?? 0))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(toBill)}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditing(job)
+                                        setCapableToBillModalOpen(false)
+                                      }}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                    >
+                                      View
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                                <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(capableToBillTotal)}</td>
+                                <td />
+                              </tr>
+                            </tfoot>
+                          </table>
+                        )}
+                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCapableToBillModalOpen(false)
+                              setStagesSectionOpen((prev) => ({ ...prev, working: true }))
+                              setTimeout(() => document.getElementById('stages-working')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                            }}
+                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                          >
+                            take me to Job: Stages: Working
+                          </button>
+                          <button type="button" onClick={() => setCapableToBillModalOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
                         </div>
                       </div>
                     </div>
@@ -7546,7 +7685,7 @@ export default function Jobs() {
                 <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Billing</div>
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Total Bill ($)</label>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total / Bid ($)</label>
                     <input
                       type="number"
                       min={0}

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-04-23
+last_updated: 2026-03-20
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.122)"
+  - name: "Latest Version (v2.123)"
     line: ~318
+    description: "Stages paid/left/bid labels, to bill formula, Job Total / Bid in Edit/New Job"
+  - name: "v2.122"
+    line: ~345
     description: "Bids Counts drag-and-drop reordering, removed up/down arrows"
   - name: "v2.121"
     line: ~340
@@ -320,6 +323,42 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.124)
+
+**Date**: 2026-04-25
+
+### Jobs – Job Owner Override
+
+- **Create jobs as another user**: When a user creates a new job, it can be assigned to a different owner (master or assistant) instead of themselves. Useful for devs who create jobs on behalf of a master.
+- **app_settings**: Per-user override stored as `job_owner_override_<user_id>` = target user ID in `app_settings`.
+- **Settings → Job creation overrides**: Dev-only section to configure which user each creator (dev, master, assistant) creates jobs as. Dropdown: Self (default) or pick a master/assistant.
+- **Migration**: `20260425120000_add_job_owner_override_robert.sql` sets Robert (dev) to create jobs as Malachi (by name matching).
+
+**Files**: `src/pages/Jobs.tsx`, `src/pages/Settings.tsx`, `supabase/migrations/20260425120000_add_job_owner_override_robert.sql`
+
+---
+
+## Latest Updates (v2.123)
+
+**Date**: 2026-03-20
+
+### Jobs – Stages: Paid / Left / Bid Column
+
+- **Paid, left, bid labels**: Remaining / Total Bill column now shows three labeled lines: "[value] paid" (or "—" when 0), "[value] left", "[value] bid". Paid line always visible; shows "—" when payments_made is 0.
+- **To bill formula**: "To bill" = Value Created - (Total Bill - Remaining) = Value Created - payments_made. Always shown below Value Created; displays "—" when value created is 0 or toBill is 0.
+- **Value Created**: Appends "done" after the currency value (e.g. 76,632 done).
+- **% Complete above Value Created**: Column order and header updated to "% Complete / Value Created".
+
+**Files**: `src/pages/Jobs.tsx`
+
+### Jobs – Edit/New Job Form
+
+- **Job Total / Bid ($)**: Billing section label changed from "Total Bill ($)" to "Job Total / Bid ($)".
+
+**Files**: `src/pages/Jobs.tsx`
 
 ---
 

@@ -490,6 +490,15 @@ export default function Settings() {
   const [convertSubmitting, setConvertSubmitting] = useState(false)
   const [convertError, setConvertError] = useState<string | null>(null)
   const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
+  const [jobOwnerOverridesSectionOpen, setJobOwnerOverridesSectionOpen] = useState(false)
+  const [jobOwnerOverrideByUserId, setJobOwnerOverrideByUserId] = useState<Record<string, string>>({})
+  const [jobOwnerOverridesSaving, setJobOwnerOverridesSaving] = useState(false)
+  const [jobCountByUserId, setJobCountByUserId] = useState<Record<string, number>>({})
+  const [reassignTargetByUserId, setReassignTargetByUserId] = useState<Record<string, string>>({})
+  const [reassignConfirmOpen, setReassignConfirmOpen] = useState(false)
+  const [reassignSourceUserId, setReassignSourceUserId] = useState<string | null>(null)
+  const [reassignTargetUserId, setReassignTargetUserId] = useState<string | null>(null)
+  const [reassignSubmitting, setReassignSubmitting] = useState(false)
   const [activeAccountsSectionOpen, setActiveAccountsSectionOpen] = useState(false)
   const [roleSharingSectionOpen, setRoleSharingSectionOpen] = useState(false)
   const [managePartsSectionOpen, setManagePartsSectionOpen] = useState(false)
@@ -1415,6 +1424,20 @@ export default function Settings() {
       const { data: dgm, error: dgmErr } = await supabase.from('dispatch_group_members').select('user_id')
       if (dgmErr) setError(dgmErr.message)
       else setDispatchMemberIds(new Set((dgm ?? []).map((r: { user_id: string }) => r.user_id)))
+      const { data: jobOwnerOverrides } = await supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%')
+      const overrides: Record<string, string> = {}
+      for (const row of jobOwnerOverrides ?? []) {
+        const userId = row.key.replace(/^job_owner_override_/, '')
+        if (userId && row.value_text) overrides[userId] = row.value_text
+      }
+      setJobOwnerOverrideByUserId(overrides)
+      const { data: jobCountRows } = await supabase.from('jobs_ledger').select('master_user_id')
+      const counts: Record<string, number> = {}
+      for (const row of jobCountRows ?? []) {
+        const id = (row as { master_user_id: string }).master_user_id
+        if (id) counts[id] = (counts[id] ?? 0) + 1
+      }
+      setJobCountByUserId(counts)
       await loadArchivedUsers()
     }
     
@@ -1452,6 +1475,54 @@ export default function Settings() {
       }
     } finally {
       setDispatchGroupSavingUserId(null)
+    }
+  }
+
+  async function saveJobOwnerOverrides(e: React.FormEvent) {
+    e.preventDefault()
+    if (myRole !== 'dev') return
+    setJobOwnerOverridesSaving(true)
+    try {
+      const creators = users.filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
+      for (const u of creators) {
+        const key = `job_owner_override_${u.id}`
+        const selected = jobOwnerOverrideByUserId[u.id]
+        if (!selected || selected === '') {
+          await supabase.from('app_settings').delete().eq('key', key)
+        } else {
+          await supabase.from('app_settings').upsert({ key, value_text: selected }, { onConflict: 'key' })
+        }
+      }
+      showToast('Job creation overrides saved.', 'success')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setJobOwnerOverridesSaving(false)
+    }
+  }
+
+  async function confirmReassignJobs() {
+    if (!reassignSourceUserId || !reassignTargetUserId) return
+    setReassignSubmitting(true)
+    try {
+      const { error } = await supabase
+        .from('jobs_ledger')
+        .update({ master_user_id: reassignTargetUserId })
+        .eq('master_user_id', reassignSourceUserId)
+      setReassignConfirmOpen(false)
+      setReassignSourceUserId(null)
+      setReassignTargetUserId(null)
+      if (error) setError(error.message)
+      else {
+        showToast('Jobs reassigned.', 'success')
+        setJobCountByUserId((prev) => ({
+          ...prev,
+          [reassignSourceUserId]: 0,
+          [reassignTargetUserId]: (prev[reassignTargetUserId] ?? 0) + (prev[reassignSourceUserId] ?? 0),
+        }))
+      }
+    } finally {
+      setReassignSubmitting(false)
     }
   }
 
@@ -5622,6 +5693,167 @@ export default function Settings() {
             </div>
             )}
           </div>
+
+          {/* Job creation overrides */}
+          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <button
+              type="button"
+              onClick={() => setJobOwnerOverridesSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{jobOwnerOverridesSectionOpen ? '▼' : '▶'}</span>
+              Job creation overrides
+            </button>
+            {jobOwnerOverridesSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  When a user creates a job, assign it to another user instead of themselves.
+                </p>
+                <form onSubmit={saveJobOwnerOverrides}>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>User</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Create jobs as</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Re-assign all to</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users
+                          .filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
+                          .map((u) => (
+                            <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <select
+                                  value={jobOwnerOverrideByUserId[u.id] ?? ''}
+                                  onChange={(e) =>
+                                    setJobOwnerOverrideByUserId((prev) => ({
+                                      ...prev,
+                                      [u.id]: e.target.value,
+                                    }))
+                                  }
+                                  disabled={jobOwnerOverridesSaving}
+                                  style={{ padding: '0.25rem 0.5rem', minWidth: 160 }}
+                                >
+                                  <option value="">Self</option>
+                                  {users
+                                    .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                    .map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {o.name || o.email}
+                                      </option>
+                                    ))}
+                                </select>
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>{jobCountByUserId[u.id] ?? 0}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                  <select
+                                    value={reassignTargetByUserId[u.id] ?? ''}
+                                    onChange={(e) =>
+                                      setReassignTargetByUserId((prev) => ({
+                                        ...prev,
+                                        [u.id]: e.target.value,
+                                      }))
+                                    }
+                                    disabled={reassignSubmitting || (jobCountByUserId[u.id] ?? 0) === 0}
+                                    style={{ padding: '0.25rem 0.5rem', minWidth: 140 }}
+                                  >
+                                    <option value="">—</option>
+                                    {users
+                                      .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                      .map((o) => (
+                                        <option key={o.id} value={o.id}>
+                                          {o.name || o.email}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const target = reassignTargetByUserId[u.id]
+                                      if (target) {
+                                        setReassignSourceUserId(u.id)
+                                        setReassignTargetUserId(target)
+                                        setReassignConfirmOpen(true)
+                                      }
+                                    }}
+                                    disabled={
+                                      reassignSubmitting ||
+                                      (jobCountByUserId[u.id] ?? 0) === 0 ||
+                                      !reassignTargetByUserId[u.id]
+                                    }
+                                    style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                                  >
+                                    Re-assign
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={jobOwnerOverridesSaving}
+                    style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}
+                  >
+                    {jobOwnerOverridesSaving ? 'Saving…' : 'Save job creation overrides'}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+
+          {reassignConfirmOpen && reassignSourceUserId && reassignTargetUserId && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+                <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Re-assign jobs</h2>
+                <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                  Re-assign {jobCountByUserId[reassignSourceUserId] ?? 0} jobs from {users.find((u) => u.id === reassignSourceUserId)?.name || 'Unknown'} to {users.find((u) => u.id === reassignTargetUserId)?.name || 'Unknown'}? This cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReassignConfirmOpen(false)
+                      setReassignSourceUserId(null)
+                      setReassignTargetUserId(null)
+                    }}
+                    disabled={reassignSubmitting}
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmReassignJobs}
+                    disabled={reassignSubmitting}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
+                  >
+                    {reassignSubmitting ? 'Re-assigning…' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button

@@ -120,6 +120,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### April 2026
 
+#### April 25, 2026
+
+**`20260425120000_add_job_owner_override_robert.sql`**
+- **Purpose**: Job owner override so devs (e.g., Robert) can create jobs assigned to another user (e.g., Malachi)
+- **Changes**: Insert `app_settings` row `job_owner_override_<robert_id>` = Malachi's user ID (by name matching)
+- **Impact**: Jobs page New Job uses override when present; Settings → Job creation overrides (dev-only) to configure
+- **Category**: Jobs / Settings
+
 #### April 23, 2026
 
 **`20260423120000_update_bids_count_rows_order_rpc.sql`**
@@ -443,7 +451,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260309120000_add_pct_complete_to_jobs_ledger.sql`**
 - **Purpose**: Job completeness percentage for Jobs Stages Working section; Value Created = Total Bill × (% complete / 100)
 - **Changes**: Add `pct_complete INTEGER CHECK (pct_complete >= 0 AND pct_complete <= 100)` to `jobs_ledger`
-- **Impact**: Jobs → Stages → Working shows new column "Value Created / % Complete"; user can enter 0–100; Value Created displayed above input
+- **Impact**: Jobs → Stages → Working shows new column "% Complete / Value Created"; user can enter 0–100; % Complete input above Value Created
 - **Category**: Jobs / Stages
 
 #### March 31, 2026
