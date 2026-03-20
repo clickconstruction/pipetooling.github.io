@@ -13420,14 +13420,15 @@ export default function Bids() {
                   <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
               )}
-              <div className="bid-form-grid-2 bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
+              <div className="bid-form-grid-2 bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '3fr minmax(7rem, 1fr) 1fr', gap: '1rem', marginBottom: '1rem', width: '100%' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
                   <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <label style={{ fontWeight: 500, margin: 0 }}>Distance to<br />Office (miles)</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to<br />Office (miles)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                     {address && (
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
@@ -13452,7 +13453,6 @@ export default function Bids() {
                       </a>
                     )}
                   </div>
-                  <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Plan<br />Pages</label>

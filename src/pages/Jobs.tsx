@@ -93,6 +93,15 @@ function formatCurrencyNoCents(n: number): string {
   return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+function buildClickToolingUrl(job: JobWithDetails): string {
+  const params = new URLSearchParams()
+  params.set('name', (job.customer_name ?? '').trim())
+  params.set('email', (job.customer_email ?? '').trim())
+  params.set('phone', (job.customer_phone ?? '').trim())
+  params.set('location', (job.job_address ?? '').trim())
+  return `https://clicktooling.com/?${params.toString()}`
+}
+
 function formatTimeSince(iso: string | null): string {
   if (!iso) return '—'
   const now = new Date()
@@ -220,6 +229,10 @@ export default function Jobs() {
   const [hcpNumber, setHcpNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
+  const [customerExpanded, setCustomerExpanded] = useState(false)
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('')
   const jobFormMissingFields: string[] = []
   if (!jobName.trim()) jobFormMissingFields.push('Job Name')
@@ -232,6 +245,9 @@ export default function Jobs() {
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([{ id: crypto.randomUUID(), name: '', count: 1 }])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  const [contractorsSearch, setContractorsSearch] = useState('')
+  const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
+  const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
@@ -640,6 +656,17 @@ export default function Jobs() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [assignedEditJobId])
+
+  useEffect(() => {
+    if (!contractorsDropdownOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (contractorsDropdownRef.current && !contractorsDropdownRef.current.contains(e.target as Node)) {
+        setContractorsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [contractorsDropdownOpen])
 
   async function loadUsers() {
     if (!authUser?.id) return
@@ -2172,12 +2199,19 @@ export default function Jobs() {
       setHcpNumber('')
       setJobName('')
       setJobAddress('')
+      setCustomerName('')
+      setCustomerEmail('')
+      setCustomerPhone('')
+      setCustomerExpanded(true)
+      setEstimatedCompletionDate('')
       setGoogleDriveLink('')
       setJobPlansLink('')
       setRevenue('')
       setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
       setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
       setTeamMemberIds([])
+      setContractorsSearch('')
+      setContractorsDropdownOpen(false)
       setFormOpen(true)
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -2633,6 +2667,10 @@ export default function Jobs() {
     setHcpNumber('')
     setJobName('')
     setJobAddress('')
+    setCustomerName('')
+    setCustomerEmail('')
+    setCustomerPhone('')
+    setCustomerExpanded(true)
     setEstimatedCompletionDate('')
     setGoogleDriveLink('')
     setJobPlansLink('')
@@ -2641,6 +2679,8 @@ export default function Jobs() {
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1 }])
     setTeamMemberIds([])
+    setContractorsSearch('')
+    setContractorsDropdownOpen(false)
     setFormOpen(true)
   }
 
@@ -2649,6 +2689,10 @@ export default function Jobs() {
     setHcpNumber(job.hcp_number ?? '')
     setJobName(job.job_name ?? '')
     setJobAddress(job.job_address ?? '')
+    setCustomerName(job.customer_name ?? '')
+    setCustomerEmail(job.customer_email ?? '')
+    setCustomerPhone(job.customer_phone ?? '')
+    setCustomerExpanded(!!(job.customer_name || job.customer_email || job.customer_phone))
     setEstimatedCompletionDate(job.estimated_completion_date ? job.estimated_completion_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
@@ -2669,6 +2713,8 @@ export default function Jobs() {
         : [{ id: crypto.randomUUID(), name: '', count: 1 }]
     )
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
+    setContractorsSearch('')
+    setContractorsDropdownOpen(false)
     setFormOpen(true)
   }
 
@@ -2831,7 +2877,7 @@ export default function Jobs() {
       if (editing) {
         await supabase
           .from('jobs_ledger')
-          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), estimated_completion_date: estimatedCompletionDate.trim() || null, google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
+          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), customer_name: customerName.trim() || null, customer_email: customerEmail.trim() || null, customer_phone: customerPhone.trim() || null, estimated_completion_date: estimatedCompletionDate.trim() || null, google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
           .eq('id', editing.id)
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
         for (const [i, p] of validPayments.entries()) {
@@ -2878,6 +2924,9 @@ export default function Jobs() {
             hcp_number: hcpNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
+            customer_name: customerName.trim() || null,
+            customer_email: customerEmail.trim() || null,
+            customer_phone: customerPhone.trim() || null,
             estimated_completion_date: estimatedCompletionDate.trim() || null,
             google_drive_link: googleDriveLink.trim() || null,
             job_plans_link: jobPlansLink.trim() || null,
@@ -3918,6 +3967,17 @@ export default function Jobs() {
                                     )}
                                   </div>
                                   <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
+                                      title="Open Click Tooling report (pre-fill customer info)"
+                                      aria-label="Open Click Tooling"
+                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                        <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+                                      </svg>
+                                    </button>
                                     {(() => {
                                       const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
                                       return (
@@ -3951,7 +4011,12 @@ export default function Jobs() {
                               </td>
                             <td style={{ padding: '0.75rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                                <span style={{
+                                  fontSize: '0.8125rem',
+                                  color: ((j.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                  fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
+                                  textAlign: 'center',
+                                }}>
                                   {(j.report_count ?? 0)} report{(j.report_count ?? 0) !== 1 ? 's' : ''}
                                 </span>
                                 <button
@@ -4257,6 +4322,17 @@ export default function Jobs() {
                                       )}
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
+                                        title="Open Click Tooling report (pre-fill customer info)"
+                                        aria-label="Open Click Tooling"
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                          <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+                                        </svg>
+                                      </button>
                                       {showCreatePartialInvoice && (() => {
                                         const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
                                         return (
@@ -4290,7 +4366,12 @@ export default function Jobs() {
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                                    <span style={{
+                                      fontSize: '0.8125rem',
+                                      color: ((j.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                      fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
+                                      textAlign: 'center',
+                                    }}>
                                       {(j.report_count ?? 0)} report{(j.report_count ?? 0) !== 1 ? 's' : ''}
                                     </span>
                                     <button
@@ -4425,22 +4506,40 @@ export default function Jobs() {
                                         </button>
                                       )}
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => openEdit(job)}
-                                      title="Edit"
-                                      aria-label="Edit"
-                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                        <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                      </svg>
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                                      <button
+                                        type="button"
+                                        onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
+                                        title="Open Click Tooling report (pre-fill customer info)"
+                                        aria-label="Open Click Tooling"
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                          <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openEdit(job)}
+                                        title="Edit"
+                                        aria-label="Edit"
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                          <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                                        </svg>
+                                      </button>
+                                    </div>
                                   </div>
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                                    <span style={{
+                                      fontSize: '0.8125rem',
+                                      color: ((job.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                      fontWeight: ((job.report_count ?? 0) > 0) ? 600 : 400,
+                                      textAlign: 'center',
+                                    }}>
                                       {(job.report_count ?? 0)} report{(job.report_count ?? 0) !== 1 ? 's' : ''}
                                     </span>
                                     <button
@@ -6758,45 +6857,88 @@ export default function Jobs() {
                   </div>
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '0 0 auto', minWidth: 140 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Estimated Completion Date</label>
                   <input
-                    ref={jobAddressInputRef}
-                    type="text"
-                    value={jobAddress}
-                    onChange={(e) => setJobAddress(e.target.value)}
-                    placeholder="Address"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    type="date"
+                    value={estimatedCompletionDate}
+                    onChange={(e) => setEstimatedCompletionDate(e.target.value)}
+                    style={{ width: '100%', minWidth: 140, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                   />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      jobAddressInputRef.current?.focus()
-                      if (!document.execCommand('paste')) {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setJobAddress(text)
-                        } catch {
-                          /* clipboard not available */
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <input
+                      ref={jobAddressInputRef}
+                      type="text"
+                      value={jobAddress}
+                      onChange={(e) => setJobAddress(e.target.value)}
+                      placeholder="Address"
+                      style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        jobAddressInputRef.current?.focus()
+                        if (!document.execCommand('paste')) {
+                          try {
+                            const text = await navigator.clipboard.readText()
+                            setJobAddress(text)
+                          } catch {
+                            /* clipboard not available */
+                          }
                         }
-                      }
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="Paste from clipboard"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                  </button>
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      title="Paste from clipboard"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Estimated Completion Date</label>
-                <input
-                  type="date"
-                  value={estimatedCompletionDate}
-                  onChange={(e) => setEstimatedCompletionDate(e.target.value)}
-                  style={{ width: '100%', maxWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
+              <div style={{ marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  aria-expanded={customerExpanded}
+                  onClick={() => setCustomerExpanded((p) => !p)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: 0,
+                    marginBottom: customerExpanded ? '0.5rem' : 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: 'inherit',
+                    color: 'inherit',
+                    width: '100%',
+                    textAlign: 'left',
+                  }}
+                >
+                  <span aria-hidden>{customerExpanded ? '\u25BC' : '\u25B6'}</span>
+                  Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
+                </button>
+                {customerExpanded && (
+                  <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
+                      <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Phone</label>
+                      <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: 0 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Email</label>
+                      <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
@@ -6829,176 +6971,287 @@ export default function Jobs() {
                   />
                 </div>
               </div>
-              <div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Billed Materials (Line Items)</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount ($)</th>
-                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {materials.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <input
-                              type="text"
-                              value={row.description}
-                              onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
-                              placeholder="Item description"
-                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              min={0}
-                              step={0.01}
-                              value={row.amount || ''}
-                              onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
-                              placeholder="0"
-                              style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
+              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
+              <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Contractors</div>
+                <div ref={contractorsDropdownRef} style={{ position: 'relative' }}>
+                  {teamMemberIds.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                      {teamMemberIds.map((id) => {
+                        const u = users.find((x) => x.id === id)
+                        return (
+                          <span
+                            key={id}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.25rem 0.5rem',
+                              background: '#eff6ff',
+                              borderRadius: 6,
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            {u?.name ?? id}
                             <button
                               type="button"
-                              onClick={() => removeMaterialRow(row.id)}
-                              disabled={materials.length <= 1}
+                              onClick={() => setTeamMemberIds((prev) => prev.filter((x) => x !== id))}
+                              title="Remove"
                               style={{
-                                padding: '0.25rem',
-                                background: materials.length <= 1 ? '#f3f4f6' : '#fee2e2',
-                                color: materials.length <= 1 ? '#9ca3af' : '#991b1c',
+                                padding: 0,
+                                background: 'none',
                                 border: 'none',
-                                borderRadius: 4,
-                                cursor: materials.length <= 1 ? 'not-allowed' : 'pointer',
-                                fontSize: '0.8125rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: '#6b7280',
+                                fontSize: '0.875rem',
                               }}
                             >
-                              Remove
+                              ×
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    value={contractorsSearch}
+                    onChange={(e) => setContractorsSearch(e.target.value)}
+                    onFocus={() => setContractorsDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setContractorsDropdownOpen(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setContractorsDropdownOpen(false)
+                      if (e.key === 'Enter') {
+                        const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
+                        const first = filtered[0]
+                        if (first) {
+                          e.preventDefault()
+                          setTeamMemberIds((prev) => [...prev, first.id])
+                          setContractorsSearch('')
+                        }
+                      }
+                    }}
+                    placeholder="Search contractors…"
+                    style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                  />
+                  {contractorsDropdownOpen && (() => {
+                    const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
+                    if (filtered.length === 0 && !contractorsSearch.trim()) return null
+                    return (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          background: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: 4,
+                          marginTop: 2,
+                          maxHeight: 200,
+                          overflowY: 'auto',
+                          zIndex: 9999,
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                        }}
+                      >
+                        {filtered.length > 0 ? (
+                          filtered.map((u, idx) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                setTeamMemberIds((prev) => [...prev, u.id])
+                                setContractorsSearch('')
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '0.5rem 0.75rem',
+                                textAlign: 'left',
+                                background: 'white',
+                                border: 'none',
+                                borderBottom: idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                cursor: 'pointer',
+                                color: '#111827',
+                                fontSize: '0.875rem',
+                              }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                            >
+                              {u.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                            No matching contractors
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
-                <button type="button" onClick={addMaterialRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+              </div>
+              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
+              <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem', overflow: 'hidden' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Billed Materials</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                      <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materials.map((row, idx) => (
+                      <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                          <input
+                            type="text"
+                            value={row.description}
+                            onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
+                            placeholder="Item description"
+                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={row.amount || ''}
+                            onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+                            placeholder="0"
+                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeMaterialRow(row.id)}
+                            disabled={materials.length <= 1}
+                            title="Remove"
+                            style={{
+                              padding: '0.35rem',
+                              background: materials.length <= 1 ? '#f3f4f6' : 'transparent',
+                              color: materials.length <= 1 ? '#9ca3af' : '#991b1c',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: materials.length <= 1 ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button type="button" onClick={addMaterialRow} style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                   Add Billed Material
                 </button>
               </div>
-              <div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work (Line Items)</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: 80 }}>Count</th>
-                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+              <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', overflow: 'hidden' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work (Fixtures / Tie-ins)</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600, width: 80 }}>Count</th>
+                      <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fixtures.map((row, idx) => (
+                      <tr key={row.id} style={{ borderBottom: idx < fixtures.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                        <td style={{ padding: '0.625rem 0.75rem' }}>
+                          <input
+                            type="text"
+                            value={row.name}
+                            onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                            placeholder="Fixture or tie-in name"
+                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'center' }}>
+                          <input
+                            type="number"
+                            min={1}
+                            value={row.count}
+                            onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                            style={{ width: '4rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'center' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.625rem 0.5rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => removeFixtureRow(row.id)}
+                            disabled={fixtures.length <= 1}
+                            title="Remove"
+                            style={{
+                              padding: '0.35rem',
+                              background: fixtures.length <= 1 ? '#f3f4f6' : 'transparent',
+                              color: fixtures.length <= 1 ? '#9ca3af' : '#991b1c',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: fixtures.length <= 1 ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                          </button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {fixtures.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <input
-                              type="text"
-                              value={row.name}
-                              onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
-                              placeholder="Fixture or tie-in name"
-                              style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              min={1}
-                              value={row.count}
-                              onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
-                              style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'center' }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => removeFixtureRow(row.id)}
-                              disabled={fixtures.length <= 1}
-                              style={{
-                                padding: '0.25rem',
-                                background: fixtures.length <= 1 ? '#f3f4f6' : '#fee2e2',
-                                color: fixtures.length <= 1 ? '#9ca3af' : '#991b1c',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: fixtures.length <= 1 ? 'not-allowed' : 'pointer',
-                                fontSize: '0.8125rem',
-                              }}
-                            >
-                              Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <button type="button" onClick={addFixtureRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
+                    ))}
+                  </tbody>
+                </table>
+                <button type="button" onClick={addFixtureRow} style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
                   Add Fixture /Tie-in
                 </button>
               </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Contractors</label>
-                <select
-                  multiple
-                  value={teamMemberIds}
-                  onChange={(e) => {
-                    const opts = Array.from(e.target.selectedOptions, (o) => o.value)
-                    setTeamMemberIds(opts)
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    fontSize: '0.875rem',
-                    minHeight: 100,
-                  }}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Hold Ctrl/Cmd to select multiple.</p>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Total Bill ($)</label>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={revenue}
-                  onChange={(e) => setRevenue(e.target.value)}
-                  placeholder="Optional"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Payments Made ($)</label>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
+              <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: '1rem', marginBottom: '1rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Billing</div>
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Total Bill ($)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={revenue}
+                      onChange={(e) => setRevenue(e.target.value)}
+                      placeholder="Optional"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                    />
+                  </div>
+                  <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
+                    <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151', background: '#f9fafb', borderRadius: 6 }}>
+                      ${formatCurrency(Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Payments received ($)</label>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead style={{ background: '#f9fafb' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount ($)</th>
-                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
+                        <th style={{ padding: '0.625rem 0.5rem', width: 48, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
                     </thead>
                     <tbody>
-                      {payments.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                      {payments.map((row, idx) => (
+                        <tr key={row.id} style={{ borderBottom: idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
                             <input
                               type="number"
                               min={0}
@@ -7006,78 +7259,77 @@ export default function Jobs() {
                               value={row.amount || ''}
                               onChange={(e) => updatePaymentRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
                               placeholder="0"
-                              style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                              style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
                             />
                           </td>
-                          <td style={{ padding: '0.5rem' }}>
+                          <td style={{ padding: '0.625rem 0.5rem' }}>
                             <button
                               type="button"
                               onClick={() => removePaymentRow(row.id)}
                               disabled={payments.length <= 1}
+                              title="Remove"
                               style={{
-                                padding: '0.25rem',
-                                background: payments.length <= 1 ? '#f3f4f6' : '#fee2e2',
+                                padding: '0.35rem',
+                                background: payments.length <= 1 ? '#f3f4f6' : 'transparent',
                                 color: payments.length <= 1 ? '#9ca3af' : '#991b1c',
                                 border: 'none',
                                 borderRadius: 4,
                                 cursor: payments.length <= 1 ? 'not-allowed' : 'pointer',
-                                fontSize: '0.8125rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                               }}
                             >
-                              Remove
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
                             </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #f3f4f6' }}>
+                    <button type="button" onClick={addPaymentRow} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', fontWeight: 500, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                      Add Payment
+                    </button>
+                    {editing && (
+                      <>
+                        <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>or</span>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                          Create invoice: $
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={newInvoiceAmount}
+                            onChange={(e) => setNewInvoiceAmount(e.target.value)}
+                            placeholder="0"
+                            title="Break off an amount to send through Ready to Bill. Job stays in Working."
+                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={createInvoice}
+                          disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.875rem',
+                            fontWeight: 500,
+                            background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {creatingInvoice ? '…' : 'Create invoice'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <button type="button" onClick={addPaymentRow} style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
-                  Add Payment
-                </button>
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
-                <div style={{ padding: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
-                  ${formatCurrency(Math.max(0, (parseFloat(revenue) || 0) - payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)))}
-                </div>
-              </div>
               {editing && (
                 <>
-                  <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '1rem', paddingTop: '1rem' }}>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Create partial invoice</h4>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>Break off an invoice amount to send through Ready to Bill and Billed. Job stays in Working.</p>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <label style={{ fontSize: '0.875rem' }}>
-                        Amount: $
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={newInvoiceAmount}
-                          onChange={(e) => setNewInvoiceAmount(e.target.value)}
-                          placeholder="0"
-                          style={{ width: '6rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', marginLeft: 4 }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={createInvoice}
-                        disabled={creatingInvoice || !(parseFloat(newInvoiceAmount) > 0)}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          background: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: creatingInvoice || !(parseFloat(newInvoiceAmount) > 0) ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {creatingInvoice ? '…' : 'Create invoice'}
-                      </button>
-                    </div>
-                  </div>
                   {((editing.invoices ?? []).filter((i) => i.status === 'ready_to_bill' || i.status === 'billed').length > 0) && (
                     <div style={{ marginTop: '0.75rem' }}>
                       <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Open invoices</h4>
@@ -7109,6 +7361,7 @@ export default function Jobs() {
                   )}
                 </>
               )}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button

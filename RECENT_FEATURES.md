@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.115)"
+  - name: "Latest Version (v2.121)"
     line: ~318
+    description: "Stages ClickTooling icon, Billing UX refactor, Report count styling"
+  - name: "v2.115"
+    line: ~340
     description: "Cover Letter trip charge, Customers search, Layout mobile"
   - name: "v2.111"
     line: ~330
@@ -223,7 +226,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
+1. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
+2. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
 2. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
 3. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
 3. [Latest Updates (v2.88)](#latest-updates-v288) - People Review: Total Labor fix, Rest of Teams Labor, Sub Labor label, User on Job Rev/hr Profit/hr
@@ -313,6 +317,27 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.121)
+
+**Date**: 2026-03-19
+
+### Jobs – Stages: ClickTooling Icon, Report Count Styling
+
+- **ClickTooling wrench icon**: Safety-orange wrench icon added to the left of Edit and Create partial invoice in all Stages sections (Working, Ready to Bill, Billed Awaiting Payment, Paid in Full). Click opens https://clicktooling.com/ in a new tab with job customer name, email, phone, and address pre-filled as URL query params (`?name=...&email=...&phone=...&location=...`).
+- **View Reports column**: When a job has reports (count > 0), the "X report(s)" text displays in bold and darker color (#111); when 0 reports, remains muted gray.
+
+**Files**: `src/pages/Jobs.tsx`
+
+### Jobs – Billing Section UX Refactor
+
+- **Payments received**: Label changed from "Payments Made ($)" to "Payments received ($)".
+- **Total Bill + Remaining**: Remaining ($) moved next to Total Bill ($) in a flex row (side by side).
+- **Create invoice inline**: Create partial invoice block compacted; Amount input and Create invoice button placed inline with Add Payment button in a single action row, with subtle separator above. Long description moved to input `title` tooltip.
+
+**Files**: `src/pages/Jobs.tsx`
 
 ---
 

@@ -1692,6 +1692,9 @@ export type Database = {
       jobs_ledger: {
         Row: {
           created_at: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
           estimated_completion_date: string | null
           google_drive_link: string | null
           hcp_number: string
@@ -1709,6 +1712,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
@@ -1726,6 +1732,9 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           estimated_completion_date?: string | null
           google_drive_link?: string | null
           hcp_number?: string
