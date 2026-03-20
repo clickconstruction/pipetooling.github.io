@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()
@@ -20,6 +21,7 @@ type OpenSession = {
   clocked_in_at: string
   notes: string
   job_ledger_id: string | null
+  bid_id: string | null
 }
 
 type TodaySession = {
@@ -28,9 +30,23 @@ type TodaySession = {
   clocked_out_at: string | null
   notes: string
   job_ledger_id: string | null
+  bid_id: string | null
 }
 
 type JobSearchResult = { id: string; hcp_number: string; job_name: string; job_address: string }
+type BidSearchResult = { id: string; bid_number: string; project_name: string; address: string; customer_name: string }
+type UnifiedSearchResult =
+  | { source: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
+  | { source: 'bid'; id: string; bid_number: string; project_name: string; address: string; customer_name: string }
+
+function formatUnifiedResult(r: UnifiedSearchResult): string {
+  if (r.source === 'job') {
+    const prefix = `J${(r.hcp_number || '').trim() || '—'}`
+    return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
+  }
+  const prefix = `B${(r.bid_number || '').trim() || '—'}`
+  return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
+}
 
 function computeTotalSecondsToday(sessions: TodaySession[]): number {
   const now = Date.now()
@@ -47,6 +63,7 @@ type Props = {
 }
 
 export default function ClockInOutButton({ userId, userName }: Props) {
+  const { user: authUser } = useAuth()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -62,16 +79,18 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [updateFocusError, setUpdateFocusError] = useState<string | null>(null)
   const [updateFocusLoading, setUpdateFocusLoading] = useState(false)
   const updateFocusNotesRef = useRef<HTMLTextAreaElement>(null)
-  const [selectedJob, setSelectedJob] = useState<JobSearchResult | null>(null)
-  const [jobSearchText, setJobSearchText] = useState('')
-  const [jobSearchResults, setJobSearchResults] = useState<JobSearchResult[]>([])
+  const [unifiedSearchText, setUnifiedSearchText] = useState('')
+  const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
+  const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
+  const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedBidServiceTypeId, setSelectedBidServiceTypeId] = useState<string>('')
 
   const fetchSessions = useCallback(async () => {
     if (!userId) return
     const today = toLocalDateString(new Date())
     const { data, error: err } = await supabase
       .from('clock_sessions')
-      .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id')
+      .select('id, clocked_in_at, clocked_out_at, notes, job_ledger_id, bid_id')
       .eq('user_id', userId)
       .eq('work_date', today)
     if (err) {
@@ -84,7 +103,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     const sessions = (data ?? []) as TodaySession[]
     setTodaySessions(sessions)
     const open = sessions.find((s) => !s.clocked_out_at)
-    setOpenSession(open ? { id: open.id, clocked_in_at: open.clocked_in_at, notes: open.notes, job_ledger_id: open.job_ledger_id } : null)
+    setOpenSession(open ? { id: open.id, clocked_in_at: open.clocked_in_at, notes: open.notes, job_ledger_id: open.job_ledger_id, bid_id: open.bid_id } : null)
     if (sessions.length > 0) {
       setTotalSecondsToday(computeTotalSecondsToday(sessions))
     }
@@ -111,9 +130,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
     if (clockInModalOpen) {
       setClockInNotes('')
       setClockInError(null)
-      setSelectedJob(null)
-      setJobSearchText('')
-      setJobSearchResults([])
+      setUnifiedSearchText('')
+      setUnifiedSearchResults([])
+      setSelectedAssociation(null)
     }
   }, [clockInModalOpen])
 
@@ -153,24 +172,59 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   useEffect(() => {
     if (updateFocusModalOpen) {
       setUpdateFocusError(null)
-      setSelectedJob(null)
-      setJobSearchText('')
-      setJobSearchResults([])
+      setUnifiedSearchText('')
+      setUnifiedSearchResults([])
+      setSelectedAssociation(null)
     }
   }, [updateFocusModalOpen])
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if ((clockInModalOpen || updateFocusModalOpen) && jobSearchText.trim()) {
-        supabase.rpc('search_jobs_ledger', { search_text: jobSearchText.trim() }).then(({ data }) => {
-          setJobSearchResults((data ?? []) as JobSearchResult[])
-        })
-      } else {
-        setJobSearchResults([])
+      if (!(clockInModalOpen || updateFocusModalOpen) || !unifiedSearchText.trim()) {
+        setUnifiedSearchResults([])
+        return
       }
+      const q = unifiedSearchText.trim()
+      Promise.all([
+        supabase.rpc('search_jobs_ledger', { search_text: q }),
+        supabase.rpc('search_bids_for_clock', { p_search_text: q, p_service_type_id: selectedBidServiceTypeId || undefined }),
+      ]).then(([jobsRes, bidsRes]) => {
+        const jobs = (jobsRes.data ?? []) as JobSearchResult[]
+        const bids = (bidsRes.data ?? []) as BidSearchResult[]
+        const merged: UnifiedSearchResult[] = [
+          ...jobs.map((j) => ({ source: 'job' as const, ...j })),
+          ...bids.map((b) => ({ source: 'bid' as const, ...b })),
+        ]
+        setUnifiedSearchResults(merged)
+      })
     }, 300)
     return () => clearTimeout(t)
-  }, [clockInModalOpen, updateFocusModalOpen, jobSearchText])
+  }, [clockInModalOpen, updateFocusModalOpen, unifiedSearchText, selectedBidServiceTypeId])
+
+  useEffect(() => {
+    if (!(clockInModalOpen || updateFocusModalOpen)) return
+    const load = async () => {
+      const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+      const types = (stData ?? []) as Array<{ id: string; name: string }>
+      setServiceTypes(types)
+      if (authUser?.id) {
+        const { data: meData } = await supabase.from('users').select('role, estimator_service_type_ids, primary_service_type_ids').eq('id', authUser.id).single()
+        const me = meData as { role?: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null
+        const estIds = me?.estimator_service_type_ids
+        const primIds = me?.primary_service_type_ids
+        const filtered = (me?.role === 'estimator' && estIds && estIds.length > 0)
+          ? types.filter((t) => estIds.includes(t.id))
+          : (me?.role === 'primary' && primIds && primIds.length > 0)
+            ? types.filter((t) => primIds.includes(t.id))
+            : types
+        const firstId = filtered[0]?.id ?? ''
+        setSelectedBidServiceTypeId((prev) => (prev && filtered.some((t) => t.id === prev) ? prev : firstId))
+      } else {
+        setSelectedBidServiceTypeId(types[0]?.id ?? '')
+      }
+    }
+    void load()
+  }, [clockInModalOpen, updateFocusModalOpen, authUser?.id])
 
   useEffect(() => {
     if (updateFocusModalOpen) {
@@ -238,7 +292,8 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         clocked_in_at: now.toISOString(),
         work_date: toLocalDateString(now),
         notes: clockInNotes.trim(),
-        job_ledger_id: selectedJob?.id ?? null,
+        job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
+        bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
         ...(clockInLat != null &&
           clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
       })
@@ -339,7 +394,8 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         clocked_in_at: now.toISOString(),
         work_date: toLocalDateString(now),
         notes: updateFocusNotes.trim(),
-        job_ledger_id: selectedJob?.id ?? null,
+        job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
+        bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
         ...(clockInLat != null &&
           clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
       })
@@ -461,16 +517,27 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job (optional)</span>
-              {selectedJob && (
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
+              {serviceTypes.length > 1 && (
+                <select
+                  value={selectedBidServiceTypeId}
+                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
+                  disabled={actionLoading}
+                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  {serviceTypes.map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+              )}
+              {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>
-                    {(selectedJob.hcp_number || '—')} · {selectedJob.job_name || '—'}
-                    {selectedJob.job_address ? ` — ${selectedJob.job_address}` : ''}
+                    {formatUnifiedResult(selectedAssociation)}
                   </span>
                   <button
                     type="button"
-                    onClick={() => { setSelectedJob(null); setJobSearchResults([]) }}
+                    onClick={() => { setSelectedAssociation(null); setUnifiedSearchResults([]) }}
                     disabled={actionLoading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                   >
@@ -480,23 +547,22 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               )}
               <input
                 type="text"
-                value={jobSearchText}
-                onChange={(e) => { setJobSearchText(e.target.value); setSelectedJob(null) }}
-                placeholder="Search by HCP #, project name, or address"
+                value={unifiedSearchText}
+                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null) }}
+                placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={actionLoading}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               />
-              {jobSearchResults.length > 0 && (
+              {unifiedSearchResults.length > 0 && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {jobSearchResults.map((r) => (
+                  {unifiedSearchResults.map((r) => (
                     <button
-                      key={r.id}
+                      key={`${r.source}-${r.id}`}
                       type="button"
-                      onClick={() => { setSelectedJob(r); setJobSearchResults([]); setJobSearchText('') }}
-                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                      onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
+                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                     >
-                      {(r.hcp_number || '—')} · {r.job_name || '—'}
-                      {r.job_address ? ` — ${r.job_address}` : ''}
+                      {formatUnifiedResult(r)}
                     </button>
                   ))}
                 </div>
@@ -555,16 +621,15 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job (optional)</span>
-              {selectedJob && (
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
+              {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>
-                    {(selectedJob.hcp_number || '—')} · {selectedJob.job_name || '—'}
-                    {selectedJob.job_address ? ` — ${selectedJob.job_address}` : ''}
+                    {formatUnifiedResult(selectedAssociation)}
                   </span>
                   <button
                     type="button"
-                    onClick={() => { setSelectedJob(null); setJobSearchResults([]) }}
+                    onClick={() => setSelectedAssociation(null)}
                     disabled={updateFocusLoading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
                   >
@@ -574,23 +639,34 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               )}
               <input
                 type="text"
-                value={jobSearchText}
-                onChange={(e) => { setJobSearchText(e.target.value); setSelectedJob(null) }}
-                placeholder="Search by HCP #, project name, or address"
+                value={unifiedSearchText}
+                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null) }}
+                placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={updateFocusLoading}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
               />
-              {jobSearchResults.length > 0 && (
+              {serviceTypes.length > 1 && (
+                <select
+                  value={selectedBidServiceTypeId}
+                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
+                  disabled={updateFocusLoading}
+                  style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  {serviceTypes.map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+              )}
+              {unifiedSearchResults.length > 0 && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
-                  {jobSearchResults.map((r) => (
+                  {unifiedSearchResults.map((r) => (
                     <button
-                      key={r.id}
+                      key={`${r.source}-${r.id}`}
                       type="button"
-                      onClick={() => { setSelectedJob(r); setJobSearchResults([]); setJobSearchText('') }}
-                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                      onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
+                      style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                     >
-                      {(r.hcp_number || '—')} · {r.job_name || '—'}
-                      {r.job_address ? ` — ${r.job_address}` : ''}
+                      {formatUnifiedResult(r)}
                     </button>
                   ))}
                 </div>

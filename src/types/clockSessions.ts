@@ -6,6 +6,7 @@ export type ClockSessionRow = {
   work_date: string
   notes: string
   job_ledger_id: string | null
+  bid_id: string | null
   clock_in_lat: number | null
   clock_in_lng: number | null
   clock_out_lat: number | null
@@ -21,4 +22,5 @@ export type ClockSessionRow = {
   rejected_by_user: { name: string | null } | null
   revoked_by_user: { name: string | null } | null
   jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
+  bids: { bid_number: string | null; project_name: string | null; address: string | null; customers: { name: string | null } | null } | null
 }

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-17
+last_updated: 2026-03-21
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,7 +15,7 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.113)"
+  - name: "Latest Version (v2.115)"
     line: ~318
     description: "Cover Letter trip charge, Customers search, Layout mobile"
   - name: "v2.111"
@@ -372,6 +372,59 @@ when_to_read:
 - **Settings "Muted Tasks" list**: Shows per-task mutes with Unmute/Change; replaces global mute modal.
 - **`send-checklist-notification` Edge Function**: Parses checklist_instance_id from tag, gets checklist_item_id; queries `user_checklist_item_mute_preferences` for (recipient, checklist_item_id) where muted_until > now; skips sending if match found (returns success with `push_sent: 0`).
 - **Migrations**: `20260417120000_create_user_checklist_item_mute_preferences.sql`, `20260417120001_drop_user_completed_task_mute_preferences.sql`
+
+---
+
+## Latest Updates (v2.115)
+
+**Date**: 2026-03-20
+
+### Bids – Bid # Auto-Generate, Backfill, Edit Restriction
+
+- **Auto-generation**: New bids get the next sequential number via `bids_bid_number_seq` and `set_bid_number_if_empty` trigger. Bid # field is read-only ("Auto") when creating.
+- **Backfill**: Existing bids assigned numbers 1, 2, 3... by `created_at` (oldest first).
+- **Edit restriction**: Only dev, master_technician, and assistant can edit Bid #. Estimator and primary see Bid # as read-only when editing; database trigger blocks their updates.
+- **Migrations**: `20260320120002_bid_number_auto_generate.sql`, `20260320120003_prevent_estimator_primary_edit_bid_number.sql`
+
+**Files**: `src/pages/Bids.tsx`
+
+---
+
+## Latest Updates (v2.114)
+
+**Date**: 2026-03-20
+
+### Bids – Bid Number (like HCP for Jobs)
+
+- **`bid_number` column**: Added to `bids` table for short identifiers (e.g. "456"). Displayed as `B456` in search and clock session displays.
+- **Bids page**: Bid # input in create/edit form (near Project Name); Bid # column in bid board table; included in bid detail view and search filter.
+- **Migrations**: `20260320120000_add_bid_number_to_bids.sql`, `20260320120001_search_bids_for_clock_add_bid_number.sql`
+
+**Files**: `src/pages/Bids.tsx`, `src/types/database.ts`
+
+### Clock In / Update Focus – Unified Job and Bid Search
+
+- **Single search**: Replaced Job/Bid/None toggle with one search input. Searches both jobs (via `search_jobs_ledger`) and bids (via `search_bids_for_clock`) in parallel.
+- **Display format**: Jobs show as `J123 · [job name] - [job address]`; bids show as `B456 · [project name] - [project address]`.
+- **Placeholder**: "Search by HCP #, bid #, project name, or address"
+- **Optional service type**: Dropdown filters bid results for estimator/primary roles.
+- **Selected chip**: Shows formatted result with Clear button; stores full result so display persists after results clear.
+
+**Files**: `src/components/ClockInOutButton.tsx`
+
+### People / Hours – Clock Session Job and Bid Display
+
+- **`bid_number` in selects**: People and HoursSection clock session queries include `bid_number` in bids join.
+- **Display format**: Jobs as `J123 · [name] - [address]`; bids as `B456 · [project name] - [address]` in ClockSessionsTable.
+
+**Files**: `src/pages/People.tsx`, `src/components/quickfill/HoursSection.tsx`, `src/components/clock-sessions/ClockSessionsTable.tsx`, `src/types/clockSessions.ts`
+
+### People – get_archived_user_names Type Fix
+
+- **RPC in types**: Added `get_archived_user_names` to `database.ts` Functions (Args: none, Returns: string[]).
+- **Type guard**: `loadArchivedUserNames` uses `arr.filter((x): x is string => typeof x === 'string' && x.trim() !== '')` so `setArchivedUserNames` receives `Set<string>`.
+
+**Files**: `src/types/database.ts`, `src/pages/People.tsx`
 
 ---
 

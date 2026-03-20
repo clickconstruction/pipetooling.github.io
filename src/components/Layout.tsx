@@ -334,7 +334,9 @@ export default function Layout() {
             {renderMobileHeaderLinks()}
           </div>
         ) : (
-          renderNavLinks()
+          <span style={{ display: 'flex', alignItems: 'center', gap: '.9rem' }}>
+            {renderNavLinks()}
+          </span>
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (

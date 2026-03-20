@@ -109,6 +109,7 @@ export default function People() {
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
   const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
+  const [archivedUserNames, setArchivedUserNames] = useState<Set<string>>(new Set())
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
@@ -336,7 +337,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']),
+      supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
@@ -345,7 +346,7 @@ export default function People() {
     const myRole = (meRes.data as { role?: string } | null)?.role ?? null
     setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes').eq('role', 'dev')
+      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).eq('role', 'dev')
       if (devUsers && devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
@@ -359,7 +360,7 @@ export default function People() {
     const peopleData = (peopleRes.data as Person[]) ?? []
     const creatorIds = [...new Set(peopleData.filter((p) => p.master_user_id !== authUser.id).map((p) => p.master_user_id))]
     if (creatorIds.length > 0) {
-      const { data: creators } = await supabase.from('users').select('id, name, email').in('id', creatorIds)
+      const { data: creators } = await supabase.from('users').select('id, name, email').is('archived_at', null).in('id', creatorIds)
       const map: Record<string, string> = {}
       for (const c of (creators as Array<{ id: string; name: string | null; email: string | null }>) ?? []) {
         map[c.id] = c.name ?? c.email ?? 'Unknown'
@@ -566,6 +567,7 @@ export default function People() {
     const { data: usersData } = await supabase
       .from('users')
       .select('id, name')
+      .is('archived_at', null)
     
     // Case-insensitive comparison
     const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false
@@ -676,6 +678,7 @@ export default function People() {
     const { data: usersData } = await supabase
       .from('users')
       .select('id, email, name')
+      .is('archived_at', null)
       .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary'])
     const usersAfterInvite = (usersData ?? []) as Array<{ id: string; email: string | null; name: string }>
     const dups = findPersonUserDuplicates(people, usersAfterInvite, payConfig)
@@ -766,6 +769,15 @@ export default function People() {
     setPayConfigDraft({})
   }
 
+  async function loadArchivedUserNames() {
+    if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
+    const { data, error } = await supabase.rpc('get_archived_user_names')
+    if (error) return
+    const arr = Array.isArray(data) ? data : []
+    const names = arr.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    setArchivedUserNames(new Set(names))
+  }
+
   async function loadPeopleHours(start: string, end: string) {
     if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
     const { data, error } = await supabase
@@ -780,7 +792,7 @@ export default function People() {
     setPeopleHours((data ?? []) as HoursRow[])
   }
 
-  const clockSessionSelect = 'id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by, users!clock_sessions_user_id_fkey(name), approved_by_user:users!clock_sessions_approved_by_fkey(name), rejected_by_user:users!clock_sessions_rejected_by_fkey(name), revoked_by_user:users!clock_sessions_revoked_by_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address)'
+  const clockSessionSelect = 'id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by, users!clock_sessions_user_id_fkey(name), approved_by_user:users!clock_sessions_approved_by_fkey(name), rejected_by_user:users!clock_sessions_rejected_by_fkey(name), revoked_by_user:users!clock_sessions_revoked_by_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
 
   async function loadPendingClockSessions(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
@@ -1370,7 +1382,7 @@ export default function People() {
   async function loadCostMatrixShares() {
     if (!isDev) return
     const [candidatesRes, sharesRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').in('role', ['master_technician', 'assistant', 'dev']).order('name'),
+      supabase.from('users').select('id, name, email, role').is('archived_at', null).in('role', ['master_technician', 'assistant', 'dev']).order('name'),
       supabase.from('cost_matrix_teams_shares').select('shared_with_user_id'),
     ])
     if (candidatesRes.data) setCostMatrixShareCandidates(candidatesRes.data as Array<{ id: string; name: string; email: string | null; role: string }>)
@@ -1424,6 +1436,7 @@ export default function People() {
           loadHoursDisplayOrder(),
           loadCostMatrixTags(),
           loadCostMatrixTagColors(),
+          loadArchivedUserNames(),
         ]).finally(() => setPayTabLoading(false))
       }, 80)
       return () => clearTimeout(t)
@@ -1599,7 +1612,7 @@ export default function People() {
     }
     const userIds = [...new Set((possData ?? []).map((p: { user_id: string }) => p.user_id))]
     const { data: usersData } = userIds.length > 0
-      ? await supabase.from('users').select('id, name').in('id', userIds)
+      ? await supabase.from('users').select('id, name').is('archived_at', null).in('id', userIds)
       : { data: [] }
     const userNames: Record<string, string> = {}
     for (const u of (usersData ?? []) as { id: string; name: string }[]) {
@@ -2120,14 +2133,14 @@ export default function People() {
   }
 
   const showPeopleForHours = Object.keys(payConfig)
-    .filter((n) => payConfig[n]?.show_in_hours ?? false)
+    .filter((n) => (payConfig[n]?.show_in_hours ?? false) && !archivedUserNames.has(n.trim()))
     .sort((a, b) => {
       const orderA = hoursDisplayOrder[a] ?? 999999
       const orderB = hoursDisplayOrder[b] ?? 999999
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
   const showPeopleForMatrixBase = Object.keys(payConfig)
-    .filter((n) => payConfig[n]?.show_in_cost_matrix ?? false)
+    .filter((n) => (payConfig[n]?.show_in_cost_matrix ?? false) && !archivedUserNames.has(n.trim()))
     .sort((a, b) => {
       const orderA = hoursDisplayOrder[a] ?? 999999
       const orderB = hoursDisplayOrder[b] ?? 999999
@@ -2152,7 +2165,22 @@ export default function People() {
           })
         : [...showPeopleForMatrixBase].sort((a, b) => a.localeCompare(b))
 
-  const showPeopleForReview = useMemo(() => [...Object.keys(payConfig)].sort((a, b) => a.localeCompare(b)), [payConfig])
+  const showPeopleForReview = useMemo(
+    () =>
+      [...Object.keys(payConfig)]
+        .filter((n) => !archivedUserNames.has(n.trim()))
+        .sort((a, b) => a.localeCompare(b)),
+    [payConfig, archivedUserNames]
+  )
+
+  const teamsFiltered = useMemo(
+    () =>
+      teams.map((t) => ({
+        ...t,
+        members: t.members.filter((m) => !archivedUserNames.has(m.trim())),
+      })),
+    [teams, archivedUserNames]
+  )
 
   function getReviewDateRange(): [string, string] {
     const today = new Date()
@@ -3994,11 +4022,11 @@ export default function People() {
               </section>
             )
           })()}
-          {teams.length > 0 && (
+          {teamsFiltered.length > 0 && (
             <section style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9375rem' }}>Due by Team:</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
-                {teams.map((team) => {
+                {teamsFiltered.map((team) => {
                   const costForRange = (start: string, end: string) =>
                     team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
                   const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
@@ -4444,7 +4472,7 @@ export default function People() {
               {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {teams.map((team) => {
+              {teamsFiltered.map((team) => {
                 const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
                 const costForRange = (start: string, end: string) =>
                   team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)

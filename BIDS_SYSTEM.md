@@ -148,6 +148,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 #### Search Functionality
 - **Full-width search input** filters bids in real-time
 - **Searches across**:
+  - Bid number
   - Project name
   - Project address
   - Customer name (GC/Builder)
@@ -164,15 +165,16 @@ Column order (left to right):
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
 2. **Job Plans** - Document icon linking to plans (or dash if none)
 3. **GC/Builder** - Customer name (clickable for details)
-4. **Project Name** - Bid identifier
-5. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
-6. **Account Man** - Account manager or estimator name
-7. **Bid** - Total bid amount (short format)
-8. **Bid Date** - Bid due date (date and bracket on separate lines)
-9. **Distance to Office** - Miles (rounded)
-10. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
-11. **Counts** - Hexagon icon button; clicking opens that bid in the Counts tab
-12. **Edit** - Gear icon button (header hidden, only icon visible)
+4. **Bid #** - Short identifier (e.g. 456); displayed as B456 in Clock In search
+5. **Project Name** - Bid identifier
+6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
+7. **Account Man** - Account manager or estimator name
+8. **Bid** - Total bid amount (short format)
+9. **Bid Date** - Bid due date (date and bracket on separate lines)
+10. **Distance to Office** - Miles (rounded)
+11. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
+12. **Counts** - Hexagon icon button; clicking opens that bid in the Counts tab
+13. **Edit** - Gear icon button (header hidden, only icon visible)
 
 **Note**: Removed columns from earlier versions:
 - Notes (removed)
@@ -188,21 +190,22 @@ Column order (left to right):
 - **Cancel button** in top-right next to modal title
 - **Field order**:
   1. Project Name* (required, first field)
-  2. Project Address (renamed from "Address")
-  3. Project Folder
-  4. Job Plans
-  5. GC/Builder (customer selector)
-  6. Project Contact Name
-  7. Project Contact Phone
-  8. Project Contact Email
-  9. Estimator
-  10. Bid Due Date
-  11. Bid Date Sent
-  12. Submitted to (name, phone, email)
-  13. Distance to Office
-  14. Outcome (Won, Lost, Started or Complete, etc.)
-  15. Loss Reason (when outcome is "Lost")
-  16. Estimated Job Start Date (when outcome is "Won")
+  2. Bid # (optional short identifier; near Project Name)
+  3. Project Address (renamed from "Address")
+  4. Project Folder
+  5. Job Plans
+  6. GC/Builder (customer selector)
+  7. Project Contact Name
+  8. Project Contact Phone
+  9. Project Contact Email
+  10. Estimator
+  11. Bid Due Date
+  12. Bid Date Sent
+  13. Submitted to (name, phone, email)
+  14. Distance to Office
+  15. Outcome (Won, Lost, Started or Complete, etc.)
+  16. Loss Reason (when outcome is "Lost")
+  17. Estimated Job Start Date (when outcome is "Won")
 
 **Delete Bid Confirmation**:
 - **"Delete bid" button** in Edit Bid modal opens separate confirmation modal

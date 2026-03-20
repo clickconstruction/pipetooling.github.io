@@ -75,11 +75,15 @@ export function ClockSessionsTable({
             sessions.map((s) => {
               const personName = s.users?.name?.trim() ?? 'Unknown'
               const jobTitle = s.jobs_ledger
-                ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}`
-                : undefined
+                ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+                : s.bids
+                  ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+                  : undefined
               const jobDisplay = s.jobs_ledger
-                ? `${s.jobs_ledger.hcp_number || '—'} · ${s.jobs_ledger.job_name || '—'}${s.jobs_ledger.job_address ? ` — ${s.jobs_ledger.job_address}` : ''}`
-                : '—'
+                ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+                : s.bids
+                  ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+                  : '—'
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={tdStyle}>{personName}</td>

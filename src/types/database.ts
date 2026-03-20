@@ -188,6 +188,7 @@ export type Database = {
           agreed_value: number | null
           bid_date_sent: string | null
           bid_due_date: string | null
+          bid_number: string | null
           bid_submission_link: string | null
           bid_value: number | null
           count_tooling_link: string | null
@@ -225,6 +226,7 @@ export type Database = {
           agreed_value?: number | null
           bid_date_sent?: string | null
           bid_due_date?: string | null
+          bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
           count_tooling_link?: string | null
@@ -262,6 +264,7 @@ export type Database = {
           agreed_value?: number | null
           bid_date_sent?: string | null
           bid_due_date?: string | null
+          bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
           count_tooling_link?: string | null
@@ -721,6 +724,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          bid_id: string | null
           clock_in_lat: number | null
           clock_in_lng: number | null
           clock_out_lat: number | null
@@ -741,6 +745,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -761,6 +766,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          bid_id?: string | null
           clock_in_lat?: number | null
           clock_in_lng?: number | null
           clock_out_lat?: number | null
@@ -4955,6 +4961,10 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: boolean
       }
+      get_archived_user_names: {
+        Args: Record<string, never>
+        Returns: string[]
+      }
       get_invoice_amounts_for_jobs: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -5205,6 +5215,16 @@ export type Database = {
         Returns: {
           error_message: string
           revoked_count: number
+        }[]
+      }
+      search_bids_for_clock: {
+        Args: { p_search_text?: string; p_service_type_id?: string }
+        Returns: {
+          address: string
+          bid_number: string
+          customer_name: string
+          id: string
+          project_name: string
         }[]
       }
       search_jobs_for_reports: {

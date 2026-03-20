@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-18
+last_updated: 2026-03-20
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -168,7 +168,7 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 **Access**: Only dev can create/edit templates
 
 ### Clock Sessions / Pending Clock Sessions
-User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` for job-level reporting. **Pending** sessions are clocked out but not yet approved or rejected. **Approved** sessions have hours merged into `people_hours`; **Rejected** sessions are in a separate section. Pay-access users approve, reject, or revoke in People Hours tab (and Quickfill Hours section). `approve_clock_sessions` RPC merges hours into `people_hours`; `revoke_clock_sessions` subtracts hours and moves back to Pending. Rows show accountability: "Approved by [name] at [time]", "Rejected by [name] at [time]", or "Revoked by [name] at [time]". Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid.
+User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` or `bid_id` for job/bid-level reporting (mutually exclusive). **Pending** sessions are clocked out but not yet approved or rejected. **Approved** sessions have hours merged into `people_hours`; **Rejected** sessions are in a separate section. Pay-access users approve, reject, or revoke in People Hours tab (and Quickfill Hours section). `approve_clock_sessions` RPC merges hours into `people_hours`; `revoke_clock_sessions` subtracts hours and moves back to Pending. Rows show accountability: "Approved by [name] at [time]", "Rejected by [name] at [time]", or "Revoked by [name] at [time]". Job/Bid column displays `J123 · [job name] - [address]` for jobs or `B456 · [project name] - [address]` for bids. Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid.
 
 **Database**: `clock_sessions`
 
@@ -294,6 +294,9 @@ The main bid management system. Bid Board is the first tab showing all bids in a
 **Database**: `bids` table
 
 **6 Tabs**: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup
+
+### Bid Number
+Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `bids.bid_number`. Displayed as `B456` in Clock In/Update Focus search and People Hours clock session displays. Used in unified job/bid search alongside HCP #.
 
 ### GC / Builder / General Contractor
 Customer in the bids context. The entity requesting the bid (can be actual GC, homeowner, developer, etc.).

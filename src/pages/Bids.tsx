@@ -961,6 +961,7 @@ export default function Bids() {
   const [countToolingLink, setCountToolingLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
+  const [bidNumber, setBidNumber] = useState('')
   const bidFormMissingFields: string[] = []
   if (!projectName.trim()) bidFormMissingFields.push('Project Name')
   const bidFormCanSubmit = bidFormMissingFields.length === 0
@@ -6374,6 +6375,7 @@ export default function Bids() {
     setGcCustomerId('')
     setGcCustomerSearch('')
     setProjectName('')
+    setBidNumber('')
     setAddress('')
     setGcContactName('')
     setGcContactPhone('')
@@ -6408,6 +6410,7 @@ export default function Bids() {
     setGcCustomerId(customer.id)
     setGcCustomerSearch(getCustomerDisplay(customer))
     setProjectName('')
+    setBidNumber('')
     setAddress(customer.address ?? '')
     setGcContactName('')
     setGcContactPhone('')
@@ -6448,6 +6451,7 @@ export default function Bids() {
       setGcCustomerSearch('')
     }
     setProjectName(bid.project_name ?? '')
+    setBidNumber((bid as { bid_number?: string | null }).bid_number ?? '')
     setAddress(bid.address ?? '')
     setGcContactName(bid.gc_contact_name ?? '')
     setGcContactPhone(bid.gc_contact_phone ?? '')
@@ -6507,6 +6511,7 @@ export default function Bids() {
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
+      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
@@ -6576,6 +6581,7 @@ export default function Bids() {
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
+      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
@@ -6740,6 +6746,7 @@ export default function Bids() {
     ? bids.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
+          ((b as { bid_number?: string | null }).bid_number?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(bidBoardSearchQuery.toLowerCase()) ?? false)
@@ -7270,6 +7277,7 @@ export default function Bids() {
                   <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count<br />Tool</th>
                   <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid<br />Sub</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>GC/Builder</th>
+                  <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Address</th>
                   <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Account<br />Man</th>
@@ -7284,7 +7292,7 @@ export default function Bids() {
               <tbody>
                 {bidsForBidBoardDisplay.length === 0 ? (
                   <tr>
-                    <td colSpan={14} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={15} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                       {filteredBidsForBidBoard.length === 0
                         ? (bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.')
                         : 'No bids to show (all matching bids are lost).'}
@@ -7349,6 +7357,9 @@ export default function Bids() {
                         ) : (
                           '-'
                         )}
+                      </td>
+                      <td style={{ padding: '0.0625rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        {(bid as { bid_number?: string | null }).bid_number ? `B${(bid as { bid_number?: string | null }).bid_number}` : '-'}
                       </td>
                       <td style={{ padding: '0.0625rem', maxWidth: 200, whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>
                         {bid.project_name ?? '-'}
@@ -13199,9 +13210,29 @@ export default function Bids() {
               </button>
             </div>
             <form onSubmit={saveBid}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
-                <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
+                  <input
+                    type="text"
+                    value={editingBid ? bidNumber : ''}
+                    onChange={(e) => { if (editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant')) { setBidNumber(e.target.value); setError(null) } }}
+                    placeholder={editingBid ? 'e.g. 456' : 'Auto'}
+                    readOnly={!editingBid || myRole === 'estimator' || myRole === 'primary'}
+                    disabled={!editingBid || myRole === 'estimator' || myRole === 'primary'}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      ...((!editingBid || myRole === 'estimator' || myRole === 'primary') && { background: '#f3f4f6', color: '#6b7280', cursor: 'not-allowed' }),
+                    }}
+                  />
+                </div>
+                <div style={{ flex: 2, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Name *</label>
+                  <input type="text" value={projectName} onChange={(e) => { setProjectName(e.target.value); setError(null) }} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </div>
               </div>
               <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>

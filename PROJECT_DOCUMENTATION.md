@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-04-18
+last_updated: 2026-03-20
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -703,6 +703,7 @@ WHERE proname IN (
   - `work_date` (date, required) - derived from clock-in date (local timezone)
   - `notes` (text, required) - "What are you working on?"
   - `job_ledger_id` (uuid, nullable, FK → `jobs_ledger.id` ON DELETE SET NULL) - Optional job for job-level hour reporting
+  - `bid_id` (uuid, nullable, FK → `bids.id` ON DELETE SET NULL) - Optional bid for pre-job work; mutually exclusive with job_ledger_id
   - `clock_in_lat`, `clock_in_lng` (numeric, nullable) - GPS at clock-in
   - `clock_out_lat`, `clock_out_lng` (numeric, nullable) - GPS at clock-out
   - `approved_at` (timestamptz, nullable)
@@ -1133,6 +1134,7 @@ uuid3           | Supply House C    | 0
   - `gc_builder_id` (uuid, FK → `bids_gc_builders.id` ON DELETE SET NULL, nullable) - Legacy GC/Builder
   - `customer_id` (uuid, FK → `customers.id` ON DELETE SET NULL, nullable) - Customer (GC/Builder); same list as Customers page
   - `project_name` (text, nullable) - **Required in UI**
+  - `bid_number` (text, nullable) - Short identifier (e.g. "456"); displayed as B456 in search and clock displays
   - `address` (text, nullable)
   - `gc_contact_name` (text, nullable) - Project contact person for this bid
   - `gc_contact_phone` (text, nullable) - Project contact phone for this bid
@@ -1163,7 +1165,7 @@ uuid3           | Supply House C    | 0
   - Legacy `gc_builder_id` retained for backward compatibility
   - Clicking GC/Builder name opens modal with customer details and all bid statuses
   - "Save and start Counts" button in New Bid modal
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)
@@ -1996,7 +1998,7 @@ user_id = auth.uid()
   - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
   - **Review Tab** (dev-only): Per-person metrics for a selected period (today, yesterday, last week, etc.): Profit for this period, Revenue per Man Hour, Profit per Man Hour; Jobs Worked list; Hours and Pay. **Team Summary** button opens a new window with per-person table (Name, Period Profit, Rev/MH, Profit/MH). **Only Count Jobs Marked Paid in Full** checkbox: when checked, revenue, profit, and labor hours exclude non-paid jobs; uses paid-only RPCs and filters labor/crew jobs to paid jobs only.
   - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
-  - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by)
+  - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by). Job/Bid display: `J123 · [name] - [address]` for jobs, `B456 · [project name] - [address]` for bids.
 - **Pay roster**: `allRosterNames()` builds the Pay tab roster from assistants, master_technicians, subs, estimators (people + users), and primaries. **Devs are excluded**—they do not appear in People Pay config. If a dev's clock session is approved, hours go to `people_hours` but are not visible in the Hours grid.
 - **Cross-midnight work**: `work_date` is set from clock-in date. All session hours are attributed to that date; hours after midnight are not split across days.
 - **Note**: Labor and Sub Sheet Ledger (labor jobs) were moved to the **Jobs** page; see section 6.
@@ -2042,7 +2044,7 @@ user_id = auth.uid()
 - **Page**: `Dashboard.tsx`
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
-  - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on?" notes and optional job search/select below. When clocked in, shows total hours worked today (sum of all sessions), solid red Clock Out button (white text), and solid blue Update Focus button (white text). Update Focus modal starts blank with cursor in notes; includes same optional job picker. Body scroll lock when modal open (iOS/Android). Requires user name in Settings. Optionally captures GPS location at clock-in and clock-out (shown in People Hours pending sessions).
+  - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on?" notes and optional unified job/bid search below. Single search input searches both jobs (`search_jobs_ledger`) and bids (`search_bids_for_clock`); results show as `J123 · [job name] - [address]` or `B456 · [project name] - [address]`. Optional service type dropdown filters bids (estimator/primary). When clocked in, shows total hours worked today (sum of all sessions), solid red Clock Out button (white text), and solid blue Update Focus button (white text). Update Focus modal starts blank with cursor in notes; includes same unified job/bid search. Body scroll lock when modal open (iOS/Android). Requires user name in Settings. Optionally captures GPS location at clock-in and clock-out (shown in People Hours pending sessions).
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **Pinned Links** (from Settings or Layout Pin): Dev can pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Pins show labels: "Billed Awaiting Payment (count) - $total", "Supply Houses: $X", "Sub Labor Due: $X,XXX", "Internal Team: $X,XXX". Billed pin navigates to Jobs Stages and opens Total by Name modal. Supply Houses link navigates to Materials Supply Houses, Sub Labor Due to Jobs Sub Labor tab, Cost matrix to People Pay Cost matrix.
   - **Upcoming inspection (3 days)** (assistant, dev, master, primary): Next 3 days of inspections (address, type, date) for jobs the user can access; links to Jobs Inspections tab.
@@ -2379,7 +2381,7 @@ user_id = auth.uid()
 
 **Tables**:
 - `bids_gc_builders` – Legacy GC/Builder entities (name, address, contact_number, email, notes, created_by)
-- `bids` – Main bids (drive_link, plans_link, **bid_submission_link**, **design_drawing_plan_date**, gc_builder_id, customer_id, project_name, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id, selected_*_book_version_id fields)
+- `bids` – Main bids (drive_link, plans_link, **bid_submission_link**, **design_drawing_plan_date**, gc_builder_id, customer_id, project_name, **bid_number**, address, gc_contact_name, gc_contact_phone, gc_contact_email, bid_due_date, bid_date_sent, outcome, bid_value, agreed_value, profit, estimated_job_start_date, distance_from_office, last_contact, notes, created_by, estimator_id, selected_*_book_version_id fields)
 - `bids_count_rows` – Fixture/count per bid (bid_id, fixture, count, page, sequence_order)
 - `bids_submission_entries` – Submission/follow-up entries per bid (bid_id, contact_method, notes, occurred_at)
 - `price_book_versions` – Price book versions (named sets of entries)

@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-17
+last_updated: 2026-03-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -89,6 +89,22 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ---
 
 ## Recent Migrations
+
+### March 2026
+
+#### March 20, 2026
+
+**`20260320120000_add_bid_number_to_bids.sql`**
+- **Purpose**: Add short identifier for bids (like HCP for jobs)
+- **Changes**: Add `bid_number TEXT DEFAULT ''` to `bids`; index `idx_bids_bid_number`
+- **Impact**: Bids page form/list; search_bids_for_clock; clock session displays
+- **Category**: Bids
+
+**`20260320120001_search_bids_for_clock_add_bid_number.sql`**
+- **Purpose**: Include bid_number in search and return
+- **Changes**: Add `bid_number` to `search_bids_for_clock` SELECT and WHERE (ILIKE search)
+- **Impact**: Clock In/Update Focus unified search; bid results show B456 format
+- **Category**: Bids / Clock Sessions
 
 ### April 2026
 
