@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-21
+last_updated: 2026-04-23
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.121)"
+  - name: "Latest Version (v2.122)"
     line: ~318
+    description: "Bids Counts drag-and-drop reordering, removed up/down arrows"
+  - name: "v2.121"
+    line: ~340
     description: "Stages ClickTooling icon, Billing UX refactor, Report count styling"
   - name: "v2.115"
     line: ~340
@@ -317,6 +320,21 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.122)
+
+**Date**: 2026-04-23
+
+### Bids – Counts: Drag-and-Drop Reordering
+
+- **Drag handle**: Each count row has a grip icon (⋮⋮) in a new Reorder column; drag to reorder rows.
+- **Batch RPC**: New `update_bids_count_rows_order` RPC persists order in one database call instead of N sequential updates.
+- **Removed up/down arrows**: The previous ▲/▼ move buttons were removed; drag-and-drop is the sole reorder method.
+- **Dependencies**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` for sortable table rows.
+
+**Files**: `src/pages/Bids.tsx`, `supabase/migrations/20260423120000_update_bids_count_rows_order_rpc.sql`, `package.json`
 
 ---
 

@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-21
+last_updated: 2026-04-23
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -121,6 +121,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### April 2026
 
 #### April 23, 2026
+
+**`20260423120000_update_bids_count_rows_order_rpc.sql`**
+- **Purpose**: Batch-update sequence_order for Bids Counts drag-and-drop reordering
+- **Changes**: Create `update_bids_count_rows_order(p_bid_id uuid, p_ordered_ids uuid[])` SECURITY DEFINER RPC; uses `can_access_bid_for_pricing` for access check; updates sequence_order (0-based) from array index via unnest WITH ORDINALITY
+- **Impact**: Counts tab drag reorder persists in one RPC call instead of N sequential updates
+- **Category**: Bids / Counts
 
 **`20260423120000_people_crew_bids.sql`**
 - **Purpose**: Bid-level team labor (parallel to `people_crew_jobs`); synced from approved clock sessions with `bid_id`
@@ -361,9 +367,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### March 10, 2025
 
 **`20250310120000_normalize_bids_count_rows_sequence_order.sql`**
-- **Purpose**: Fix non-deterministic ordering when duplicate sequence_order exists; enables correct Count row move up/down
+- **Purpose**: Fix non-deterministic ordering when duplicate sequence_order exists; enables correct Count row ordering
 - **Changes**: Data migration; assign unique sequence_order (0,1,2,...) per bid to all bids_count_rows
-- **Impact**: Counts tab move ▲▼ buttons now swap only the clicked row with its neighbor; refetch returns deterministic order
+- **Impact**: Counts tab refetch returns deterministic order; used by drag-and-drop reordering (v2.122)
 - **Category**: Bids / Counts
 
 **`20250310120000_optimize_bid_pricing_rls.sql`**

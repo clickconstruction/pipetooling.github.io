@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-03-13
+last_updated: 2026-04-23
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -251,13 +251,18 @@ Enter fixture and tie-in counts for each bid. Counts form the foundation for mat
 ### Count Entry Interface
 
 #### Table Headers
-- **Fixture*** - Fixture or tie-in name (required)
+- **Reorder** - Drag handle (grip icon) for reordering rows
 - **Count*** - Quantity (required)
+- **Fixture*** - Fixture or tie-in name (required)
 - **Group/Tag** - Optional group or tag (e.g., area label)
 - **Plan Page** - Optional reference to plan sheet
 - **Actions** - Edit/Delete buttons
 
 All headers are centered.
+
+#### Row Reordering
+- **Drag handle**: Each row has a grip icon in the Reorder column; drag to move the row to a new position
+- **Batch save**: Order is persisted in one database call via `update_bids_count_rows_order` RPC
 
 #### Fixture Quick-Select Buttons
 
