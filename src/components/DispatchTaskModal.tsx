@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
   formatUnifiedResult,
+  getBidServiceTypeTag,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
@@ -259,8 +260,19 @@ export default function DispatchTaskModal() {
                     background: '#f3f4f6',
                     borderRadius: 4,
                     fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
                   }}
                 >
+                  {selectedReference.source === 'bid' && (() => {
+                    const t = getBidServiceTypeTag(selectedReference.service_type_name)
+                    return t ? (
+                      <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                        [{t.tag}]
+                      </span>
+                    ) : null
+                  })()}
                   {formatUnifiedResult(selectedReference)}
                 </span>
                 <button
@@ -334,6 +346,14 @@ export default function DispatchTaskModal() {
                       fontSize: '0.875rem',
                     }}
                   >
+                    {r.source === 'bid' && (() => {
+                      const t = getBidServiceTypeTag(r.service_type_name)
+                      return t ? (
+                        <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                          [{t.tag}]
+                        </span>
+                      ) : null
+                    })()}
                     {formatUnifiedResult(r)}
                   </button>
                 ))}

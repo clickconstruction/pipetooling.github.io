@@ -9,6 +9,7 @@ import {
   type JobDetails,
   type BidDetails,
 } from '../utils/crewAssignments'
+import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 
 type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
@@ -50,7 +51,7 @@ export function HoursUnassignedModal({
   const [jobSearchResults, setJobSearchResults] = useState<
     Array<
       | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_name?: string }
     >
   >([])
   const [commonJobs, setCommonJobs] = useState<Array<{ id: string; job_id: string; hcp_number: string; job_name: string; job_address: string }>>([])
@@ -277,7 +278,7 @@ export function HoursUnassignedModal({
           supabase.rpc('search_bids_for_clock', { p_search_text: q }),
         ]).then(([jobsRes, bidsRes]) => {
           const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string; service_type_name?: string }>
           const bids = bidsRaw.map((b) => ({ type: 'bid' as const, ...b, bid_number: b.bid_number ?? '' }))
           const merged = [
             ...jobs.map((j) => ({ type: 'job' as const, ...j })),
@@ -664,7 +665,15 @@ export function HoursUnassignedModal({
                                   }}
                                   style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                 >
-                                  <div style={{ fontWeight: 500 }}>
+                                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                    {item.type === 'bid' && (() => {
+                                      const t = getBidServiceTypeTag(item.service_type_name)
+                                      return t ? (
+                                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                                          [{t.tag}]
+                                        </span>
+                                      ) : null
+                                    })()}
                                     {item.type === 'job'
                                       ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
                                       : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}

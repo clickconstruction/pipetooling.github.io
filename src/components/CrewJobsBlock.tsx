@@ -11,6 +11,7 @@ import {
   type JobDetails,
   type BidDetails,
 } from '../utils/crewAssignments'
+import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 
 type PayConfigRow = {
   person_name: string
@@ -66,7 +67,7 @@ export function CrewJobsBlock({
   const [crewJobSearchResults, setCrewJobSearchResults] = useState<
     Array<
       | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string }
+      | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_name?: string }
     >
   >([])
   const [teamLaborSearch, setTeamLaborSearch] = useState('')
@@ -419,7 +420,7 @@ export function CrewJobsBlock({
           supabase.rpc('search_bids_for_clock', { p_search_text: q }),
         ]).then(([jobsRes, bidsRes]) => {
           const jobs = (jobsRes.data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string }>
+          const bidsRaw = (bidsRes.data ?? []) as Array<{ id: string; bid_number?: string; project_name: string; address: string; service_type_name?: string }>
           const bids = bidsRaw.map((b) => ({ ...b, bid_number: b.bid_number ?? '' }))
           const merged = [
             ...jobs.map((j) => ({ type: 'job' as const, ...j })),
@@ -898,7 +899,15 @@ export function CrewJobsBlock({
                     fontSize: '0.875rem',
                   }}
                 >
-                  <div style={{ fontWeight: 500 }}>
+                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {item.type === 'bid' && (() => {
+                      const t = getBidServiceTypeTag(item.service_type_name)
+                      return t ? (
+                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                          [{t.tag}]
+                        </span>
+                      ) : null
+                    })()}
                     {item.type === 'job'
                       ? `J${(item.hcp_number || '').trim() || '—'} · ${item.job_name || '—'}`
                       : `B${(item.bid_number || '').trim() || '—'} · ${item.project_name || '—'}`}

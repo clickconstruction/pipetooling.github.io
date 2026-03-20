@@ -1371,6 +1371,7 @@ export default function Bids() {
     const { data, error } = await supabase
       .from('customers')
       .select('id, name, address, master_user_id, contact_info')
+      .or('customer_type.is.null,customer_type.eq.commercial')
       .order('name')
     if (error) {
       setError(`Failed to load customers: ${error.message}`)
@@ -1605,15 +1606,10 @@ export default function Bids() {
     return { rows, skippedCount }
   }
 
-  async function handleCountsImport() {
-    setCountsImportError(null)
-    const { rows, skippedCount } = parseCountsImportText(countsImportText)
-    if (rows.length === 0) {
-      setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
-      return
-    }
-    const bidId = selectedBidForCounts?.id
-    if (!bidId) return
+  async function insertCountRows(
+    bidId: string,
+    rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>
+  ): Promise<{ inserted: number; error?: string }> {
     const { data: maxSeqData } = await supabase
       .from('bids_count_rows')
       .select('sequence_order')
@@ -1622,7 +1618,6 @@ export default function Bids() {
       .limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
     let inserted = 0
-    let failed = 0
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       if (!row) continue
@@ -1634,13 +1629,26 @@ export default function Bids() {
         page: row.page,
         sequence_order: maxSeq + 1 + i,
       })
-      if (error) {
-        failed++
-        setCountsImportError(`Failed to insert ${failed} row(s): ${error.message}`)
-        if (inserted > 0) { refreshAfterCountsChange() }
-        return
-      }
+      if (error) return { inserted, error: error.message }
       inserted++
+    }
+    return { inserted }
+  }
+
+  async function handleCountsImport() {
+    setCountsImportError(null)
+    const { rows, skippedCount } = parseCountsImportText(countsImportText)
+    if (rows.length === 0) {
+      setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
+      return
+    }
+    const bidId = selectedBidForCounts?.id
+    if (!bidId) return
+    const { inserted, error } = await insertCountRows(bidId, rows)
+    if (error) {
+      setCountsImportError(`Failed to insert: ${error}`)
+      if (inserted > 0) refreshAfterCountsChange()
+      return
     }
     setCountsImportText('')
     setCountsImportOpen(false)
@@ -1649,48 +1657,34 @@ export default function Bids() {
     showToast(msg, 'success')
   }
 
-  async function handleCountsImportFromTooling() {
+  async function handleCountsImportClick() {
     const bidId = selectedBidForCounts?.id
     if (!bidId) return
     try {
       const text = await navigator.clipboard.readText()
-      const { rows, skippedCount } = parseCountsImportText(text)
-      if (rows.length === 0) {
-        showToast(skippedCount > 0 ? 'No valid rows in clipboard. Use tab-delimited: Fixture, Count, Plan Page' : 'Clipboard is empty. Copy from /Tooling first.', 'error')
-        return
-      }
-      const { data: maxSeqData } = await supabase
-        .from('bids_count_rows')
-        .select('sequence_order')
-        .eq('bid_id', bidId)
-        .order('sequence_order', { ascending: false })
-        .limit(1)
-      const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-      let inserted = 0
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i]
-        if (!row) continue
-        const { error } = await supabase.from('bids_count_rows').insert({
-          bid_id: bidId,
-          fixture: row.fixture,
-          count: row.count,
-          group_tag: row.group_tag,
-          page: row.page,
-          sequence_order: maxSeq + 1 + i,
-        })
+      const trimmed = text.trim()
+      const { rows, skippedCount } = parseCountsImportText(trimmed)
+      if (rows.length > 0) {
+        const { inserted, error } = await insertCountRows(bidId, rows)
         if (error) {
-          showToast(`Failed to insert: ${error.message}`, 'error')
+          showToast(`Failed to insert: ${error}`, 'error')
           if (inserted > 0) refreshAfterCountsChange()
           return
         }
-        inserted++
+        refreshAfterCountsChange()
+        const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
+        showToast(msg, 'success')
+        return
       }
-      refreshAfterCountsChange()
-      const msg = skippedCount > 0 ? `Imported ${inserted} rows from /Tooling. ${skippedCount} lines skipped.` : `Imported ${inserted} rows from /Tooling.`
-      showToast(msg, 'success')
-    } catch (err) {
-      showToast('Could not read clipboard. Paste into Import instead.', 'error')
+      if (trimmed && skippedCount > 0) {
+        showToast('No valid rows in clipboard. Use tab-delimited: Fixture, Count, Plan Page', 'error')
+      }
+    } catch {
+      /* clipboard unavailable */
     }
+    setCountsImportText('')
+    setCountsImportError(null)
+    setCountsImportOpen(true)
   }
 
   async function loadSubmissionEntries(bidId: string) {
@@ -8048,17 +8042,19 @@ export default function Bids() {
         <div>
           {selectedBidForCounts && (
             <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>{bidDisplayName(selectedBidForCounts) || 'Bid'}</h2>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <button
                     type="button"
-                    onClick={handleCountsImportFromTooling}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                    title="Copy from /Tooling first, then click to import tab-delimited rows (Fixture, Count, Plan Page)"
+                    onClick={handleCountsImportClick}
+                    style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
+                    title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"
                   >
                     Import from /Tooling
                   </button>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                   <button
                     type="button"
                     onClick={() => openEditBid(selectedBidForCounts)}
@@ -8126,13 +8122,6 @@ export default function Bids() {
                     style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Add row
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCountsImportText(''); setCountsImportError(null); setCountsImportOpen(true) }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Import
                   </button>
                 </div>
               )}

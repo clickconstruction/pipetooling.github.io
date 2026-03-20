@@ -75,6 +75,7 @@ export type NewCustomerFormPayload = {
   name: string
   address: string | null
   contact_info: { phone: string | null; email: string | null } | null
+  customer_type: 'commercial' | 'residential' | null
   date_met: string | null
   master_user_id: string
 }
@@ -106,6 +107,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const [mastersLoading, setMastersLoading] = useState(false)
   const [quickFillExpanded, setQuickFillExpanded] = useState(false)
   const [customerMasterExpanded, setCustomerMasterExpanded] = useState(false)
+  const [customerType, setCustomerType] = useState<'commercial' | 'residential'>('commercial')
 
   function handleQuickFill() {
     const parsed = parseQuickFill(quickFill)
@@ -218,6 +220,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
+      customer_type: customerType,
       date_met: dateMet.trim() || null,
       master_user_id: customerMasterId,
     }
@@ -348,6 +351,18 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
             onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="ncf-customerType" style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
+          <select
+            id="ncf-customerType"
+            value={customerType}
+            onChange={(e) => setCustomerType(e.target.value as 'commercial' | 'residential')}
+            style={{ width: '100%', padding: '0.5rem' }}
+          >
+            <option value="commercial">Commercial</option>
+            <option value="residential">Residential</option>
+          </select>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="ncf-dateMet" style={{ display: 'block', marginBottom: 4 }}>Date Met</label>

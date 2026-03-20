@@ -13,6 +13,7 @@ import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
+type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
 type JobsLedgerFixture = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -235,7 +236,14 @@ export default function Jobs() {
   const [customerName, setCustomerName] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerId, setCustomerId] = useState<string | null>(null)
+  const [customers, setCustomers] = useState<CustomerRow[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  const [customersLoading, setCustomersLoading] = useState(false)
+  const [creatingCustomerFromJob, setCreatingCustomerFromJob] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
+  const [dateMet, setDateMet] = useState('')
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('')
   const jobFormMissingFields: string[] = []
   if (!jobName.trim()) jobFormMissingFields.push('Job Name')
@@ -450,6 +458,21 @@ export default function Jobs() {
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
 
+  function getCustomerDisplay(c: CustomerRow): string {
+    if (c.address) return `${c.name} - ${c.address}`
+    return c.name
+  }
+
+  function extractContactFromCustomer(c: CustomerRow): { phone: string; email: string } {
+    const ci = c.contact_info
+    if (ci == null || typeof ci !== 'object') return { phone: '', email: '' }
+    const obj = ci as Record<string, unknown>
+    return {
+      phone: typeof obj.phone === 'string' ? obj.phone : '',
+      email: typeof obj.email === 'string' ? obj.email : '',
+    }
+  }
+
   async function loadJobs() {
     if (!authUser?.id) {
       setLoading(false)
@@ -457,10 +480,12 @@ export default function Jobs() {
     }
     setLoading(true)
     setError(null)
-    const { data: jobsData, error: jobsErr } = await supabase
-      .from('jobs_ledger')
-      .select('*')
-      .order('hcp_number', { ascending: false })
+    const customerFilter = searchParams.get('customer')
+    let query = supabase.from('jobs_ledger').select('*').order('hcp_number', { ascending: false })
+    if (customerFilter) {
+      query = query.eq('customer_id', customerFilter)
+    }
+    const { data: jobsData, error: jobsErr } = await query
     if (jobsErr) {
       setError(jobsErr.message)
       setLoading(false)
@@ -2056,7 +2081,31 @@ export default function Jobs() {
     if (authLoading || !authUser?.id) return
     loadJobs()
     loadUsers()
-  }, [authUser?.id, authLoading])
+  }, [authUser?.id, authLoading, searchParams])
+
+  useEffect(() => {
+    if (!formOpen || !authUser?.id) return
+    setCustomersLoading(true)
+    ;(async () => {
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, address, contact_info, date_met')
+        .or('customer_type.is.null,customer_type.eq.residential')
+        .order('name')
+      setCustomers((data as CustomerRow[]) ?? [])
+      setCustomersLoading(false)
+    })()
+  }, [formOpen, authUser?.id])
+
+  useEffect(() => {
+    if (customerId && customers.length > 0) {
+      const c = customers.find((x) => x.id === customerId)
+      if (c) {
+        setCustomerSearch(getCustomerDisplay(c))
+        setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
+      }
+    }
+  }, [customerId, customers])
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -2205,6 +2254,9 @@ export default function Jobs() {
       setCustomerName('')
       setCustomerEmail('')
       setCustomerPhone('')
+      setCustomerId(null)
+      setCustomerSearch('')
+      setDateMet('')
       setCustomerExpanded(true)
       setEstimatedCompletionDate('')
       setGoogleDriveLink('')
@@ -2673,6 +2725,9 @@ export default function Jobs() {
     setCustomerName('')
     setCustomerEmail('')
     setCustomerPhone('')
+    setCustomerId(null)
+    setCustomerSearch('')
+    setDateMet('')
     setCustomerExpanded(true)
     setEstimatedCompletionDate('')
     setGoogleDriveLink('')
@@ -2695,7 +2750,9 @@ export default function Jobs() {
     setCustomerName(job.customer_name ?? '')
     setCustomerEmail(job.customer_email ?? '')
     setCustomerPhone(job.customer_phone ?? '')
-    setCustomerExpanded(!!(job.customer_name || job.customer_email || job.customer_phone))
+    setCustomerId(job.customer_id ?? null)
+    setCustomerSearch('')
+    setCustomerExpanded(!!(job.customer_name || job.customer_email || job.customer_phone || job.customer_id))
     setEstimatedCompletionDate(job.estimated_completion_date ? job.estimated_completion_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPlansLink(job.job_plans_link ?? '')
@@ -2719,6 +2776,55 @@ export default function Jobs() {
     setContractorsSearch('')
     setContractorsDropdownOpen(false)
     setFormOpen(true)
+  }
+
+  async function handleCreateCustomerFromJob() {
+    if (!authUser?.id) return
+    const name = customerName.trim()
+    if (!name) {
+      showToast('Enter customer name first', 'error')
+      return
+    }
+    setCreatingCustomerFromJob(true)
+    setError(null)
+    try {
+      const contactInfo = (customerEmail.trim() || customerPhone.trim())
+        ? { phone: customerPhone.trim() || null, email: customerEmail.trim() || null }
+        : null
+      const { data: newCustomer, error: custErr } = await supabase
+        .from('customers')
+        .insert({
+          name,
+          address: jobAddress.trim() || null,
+          contact_info: contactInfo,
+          customer_type: 'residential',
+          date_met: dateMet.trim() || null,
+          master_user_id: authUser.id,
+        })
+        .select('id')
+        .single()
+      if (custErr) throw custErr
+      const cid = (newCustomer as { id: string })?.id
+      if (!cid) throw new Error('Failed to create customer')
+      setCustomerId(cid)
+      const c = { id: cid, name, address: jobAddress.trim() || null, contact_info: contactInfo, date_met: dateMet.trim() || null } as CustomerRow
+      setCustomers((prev) => [...prev.filter((x) => x.id !== cid), c].sort((a, b) => (a.name || '').localeCompare(b.name || '')))
+      setCustomerSearch(getCustomerDisplay(c))
+      if (editing) {
+        const { error: updErr } = await supabase.from('jobs_ledger').update({ customer_id: cid }).eq('id', editing.id)
+        if (updErr) throw updErr
+        const updated = await loadJobs()
+        const found = updated?.find((j) => j.id === editing.id)
+        if (found) setEditing(found)
+      }
+      showToast('Customer created and linked', 'success')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to create customer'
+      setError(msg)
+      showToast(msg, 'error')
+    } finally {
+      setCreatingCustomerFromJob(false)
+    }
   }
 
   async function handleCustomerImport() {
@@ -2903,7 +3009,7 @@ export default function Jobs() {
       if (editing) {
         await supabase
           .from('jobs_ledger')
-          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), customer_name: customerName.trim() || null, customer_email: customerEmail.trim() || null, customer_phone: customerPhone.trim() || null, estimated_completion_date: estimatedCompletionDate.trim() || null, google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
+          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), customer_id: customerId || null, customer_name: customerName.trim() || null, customer_email: customerEmail.trim() || null, customer_phone: customerPhone.trim() || null, estimated_completion_date: estimatedCompletionDate.trim() || null, google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
           .eq('id', editing.id)
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
         for (const [i, p] of validPayments.entries()) {
@@ -2950,6 +3056,7 @@ export default function Jobs() {
             hcp_number: hcpNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
+            customer_id: customerId || null,
             customer_name: customerName.trim() || null,
             customer_email: customerEmail.trim() || null,
             customer_phone: customerPhone.trim() || null,
@@ -2991,6 +3098,12 @@ export default function Jobs() {
           for (const uid of teamMemberIds) {
             await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
           }
+        }
+      }
+      if (customerId && dateMet.trim()) {
+        const c = customers.find((x) => x.id === customerId)
+        if (c && !c.date_met) {
+          await supabase.from('customers').update({ date_met: dateMet.trim() }).eq('id', customerId)
         }
       }
       closeForm()
@@ -3247,6 +3360,19 @@ export default function Jobs() {
         </div>
         <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
       </div>
+
+      {searchParams.get('customer') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.875rem' }}>
+          <span style={{ color: '#1e40af' }}>Filtered by customer</span>
+          <button
+            type="button"
+            onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('customer'); return n })}
+            style={{ padding: '0.25rem 0.5rem', background: 'white', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer', color: '#1e40af', fontSize: '0.8125rem' }}
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
 
       {activeTab === 'reports' && (
         <ErrorBoundary>
@@ -3678,6 +3804,21 @@ export default function Jobs() {
               )
             }
 
+            function renderJobCustomerLine(job: JobWithDetails) {
+              const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
+              if (!hasCustomerInfo) return null
+              return (
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <span>Customer: {(job.customer_name ?? '').trim() || '—'}</span>
+                  {!job.customer_id ? (
+                    <span style={{ padding: '0.1rem 0.3rem', fontSize: '0.6875rem', fontWeight: 500, background: '#fef3c7', color: '#92400e', borderRadius: 4 }}>
+                      Not in Customers
+                    </span>
+                  ) : null}
+                </div>
+              )
+            }
+
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
@@ -3845,6 +3986,7 @@ export default function Jobs() {
                                   </div>
                                 )
                               })()}
+                              {renderJobCustomerLine(j)}
                             </td>
                             <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                               <textarea
@@ -3872,50 +4014,55 @@ export default function Jobs() {
                               />
                             </td>
                             {showPctComplete && (
-                              <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'top' }}>
+                              <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                   <div style={{ fontSize: '0.8125rem' }}>
                                     {j.pct_complete != null
                                       ? formatCurrencyNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)
                                       : '—'}
                                   </div>
-                                  <input
-                                    key={`pct-${j.id}-${j.pct_complete ?? 'null'}`}
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    defaultValue={j.pct_complete != null ? j.pct_complete : ''}
-                                    onBlur={(e) => {
-                                      const v = e.target.value.trim()
-                                      if (v === '') {
-                                        updateJobPctComplete(j.id, null)
-                                        return
-                                      }
-                                      const n = Math.round(Number(v))
-                                      if (!Number.isNaN(n) && n >= 0 && n <= 100) {
-                                        updateJobPctComplete(j.id, n)
-                                      }
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.currentTarget.blur()
-                                      }
-                                    }}
-                                    disabled={pctCompleteSavingId === j.id}
-                                    placeholder="%"
-                                    style={{
-                                      width: '3.5rem',
-                                      padding: '0.25rem 0.35rem',
-                                      fontSize: '0.8125rem',
-                                      textAlign: 'center',
-                                      border: '1px solid #d1d5db',
-                                      borderRadius: 4,
-                                    }}
-                                  />
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.15rem' }}>
+                                    <input
+                                      key={`pct-${j.id}-${j.pct_complete ?? 'null'}`}
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      defaultValue={j.pct_complete != null ? j.pct_complete : ''}
+                                      onBlur={(e) => {
+                                        const v = e.target.value.trim()
+                                        if (v === '') {
+                                          updateJobPctComplete(j.id, null)
+                                          return
+                                        }
+                                        const n = Math.round(Number(v))
+                                        if (!Number.isNaN(n) && n >= 0 && n <= 100) {
+                                          updateJobPctComplete(j.id, n)
+                                        }
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.currentTarget.blur()
+                                        }
+                                      }}
+                                      disabled={pctCompleteSavingId === j.id}
+                                      placeholder=""
+                                      style={{
+                                        width: '3.5rem',
+                                        padding: '0.25rem 0.35rem',
+                                        fontSize: '0.8125rem',
+                                        textAlign: 'center',
+                                        border: 'none',
+                                        borderBottom: '1px solid #d1d5db',
+                                        borderRadius: 0,
+                                        background: 'transparent',
+                                      }}
+                                    />
+                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>%</span>
+                                  </div>
                                 </div>
                               </td>
                             )}
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                               {showRemaining
                                 ? (() => {
                                     const rev = j.revenue != null ? Number(j.revenue) : 0
@@ -4244,6 +4391,7 @@ export default function Jobs() {
                                       </div>
                                     )
                                   })()}
+                                  {renderJobCustomerLine(j)}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4270,7 +4418,7 @@ export default function Jobs() {
                                     }}
                                   />
                                 </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span>
                                       {showRemaining
@@ -4442,6 +4590,7 @@ export default function Jobs() {
                                       </div>
                                     )
                                   })()}
+                                  {renderJobCustomerLine(job)}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4468,7 +4617,7 @@ export default function Jobs() {
                                     }}
                                   />
                                 </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span>{formatCurrencyNoCents(Number(inv.amount))}</span>
                                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? formatCurrencyNoCents(Number(job.revenue)) : '—'}</span>
@@ -6948,6 +7097,11 @@ export default function Jobs() {
                   >
                     <span aria-hidden>{customerExpanded ? '\u25BC' : '\u25B6'}</span>
                     Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
+                    {(customerName.trim() || customerEmail.trim() || customerPhone.trim()) && !customerId ? (
+                      <span style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', fontWeight: 500, background: '#fef3c7', color: '#92400e', borderRadius: 4 }}>
+                        Not in Customers
+                      </span>
+                    ) : null}
                   </button>
                   {customerExpanded && (
                     <button
@@ -6968,6 +7122,111 @@ export default function Jobs() {
                 </div>
                 {customerExpanded && (
                   <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+                    <div style={{ marginBottom: '0.75rem', position: 'relative' }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link to customer</label>
+                      <input
+                        type="text"
+                        value={customerSearch}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setCustomerSearch(value)
+                          setCustomerDropdownOpen(true)
+                          if (customerId) {
+                            const selected = customers.find((c) => c.id === customerId)
+                            if (!selected || !value || getCustomerDisplay(selected).toLowerCase() !== value.toLowerCase()) {
+                              setCustomerId(null)
+                            }
+                          }
+                        }}
+                        onFocus={() => setCustomerDropdownOpen(true)}
+                        onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 200)}
+                        placeholder="Search residential customers..."
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      {customerDropdownOpen && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            background: 'white',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 4,
+                            maxHeight: 180,
+                            overflowY: 'auto',
+                            zIndex: 100,
+                            marginTop: 2,
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                          }}
+                        >
+                          {customersLoading ? (
+                            <div style={{ padding: '0.5rem', color: '#6b7280' }}>Loading…</div>
+                          ) : (
+                            (() => {
+                              const q = customerSearch.toLowerCase()
+                              const filtered = customers.filter((c) =>
+                                (c.name || '').toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q)
+                              )
+                              return (
+                                <>
+                                  {filtered.map((c) => (
+                                <div
+                                  key={c.id}
+                                  onClick={() => {
+                                    setCustomerId(c.id)
+                                    setCustomerSearch(getCustomerDisplay(c))
+                                    setCustomerName(c.name)
+                                    setCustomerEmail(extractContactFromCustomer(c).email)
+                                    setCustomerPhone(extractContactFromCustomer(c).phone)
+                                    setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
+                                    if (!jobAddress.trim()) setJobAddress(c.address ?? '')
+                                    setCustomerDropdownOpen(false)
+                                  }}
+                                  style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6' }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                                >
+                                  <div style={{ fontWeight: 500 }}>{c.name}</div>
+                                  {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                                </div>
+                                  ))}
+                                  {filtered.length === 0 && (
+                                    <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
+                                  )}
+                                </>
+                              )
+                            })()
+                          )}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          disabled={creatingCustomerFromJob || !customerName.trim()}
+                          onClick={handleCreateCustomerFromJob}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.875rem',
+                            border: '1px solid #d1d5db',
+                            background: creatingCustomerFromJob || !customerName.trim() ? '#f3f4f6' : '#f9fafb',
+                            borderRadius: 4,
+                            cursor: creatingCustomerFromJob || !customerName.trim() ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {creatingCustomerFromJob ? 'Creating…' : 'Create customer from job'}
+                        </button>
+                        {customerId && (
+                          <button
+                            type="button"
+                            onClick={() => { setCustomerId(null); setCustomerSearch(''); setDateMet('') }}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', color: '#6b7280' }}
+                          >
+                            Clear link
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
                       <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
@@ -6976,9 +7235,32 @@ export default function Jobs() {
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Phone</label>
                       <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                     </div>
-                    <div style={{ marginBottom: 0 }}>
+                    <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Email</label>
                       <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </div>
+                    <div style={{ marginBottom: 0 }}>
+                      <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                        Date Met
+                        {customerId && customers.find((c) => c.id === customerId)?.date_met && (
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 400, marginLeft: 4 }}>(edit in Customers)</span>
+                        )}
+                      </label>
+                      <input
+                        type="date"
+                        value={dateMet}
+                        onChange={(e) => setDateMet(e.target.value)}
+                        disabled={!!(customerId && customers.find((c) => c.id === customerId)?.date_met)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: customerId && customers.find((c) => c.id === customerId)?.date_met ? '#f9fafb' : 'white',
+                          color: customerId && customers.find((c) => c.id === customerId)?.date_met ? '#6b7280' : 'inherit',
+                          cursor: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'not-allowed' : 'text',
+                        }}
+                      />
                     </div>
                   </div>
                 )}

@@ -7,10 +7,22 @@ export type BidSearchResult = {
   project_name: string
   address: string
   customer_name: string
+  service_type_name?: string | null
 }
 export type UnifiedSearchResult =
   | { source: 'job'; id: string; hcp_number: string; job_name: string; job_address: string }
-  | { source: 'bid'; id: string; bid_number: string; project_name: string; address: string; customer_name: string }
+  | { source: 'bid'; id: string; bid_number: string; project_name: string; address: string; customer_name: string; service_type_name?: string | null }
+
+export const BID_SERVICE_TYPE_TAGS: Record<string, { tag: string; color: string }> = {
+  Plumbing: { tag: 'plum', color: '#e17235' },
+  Electrical: { tag: 'elec', color: '#FFD700' },
+  HVAC: { tag: 'hvac', color: '#06b6d4' },
+}
+
+export function getBidServiceTypeTag(serviceTypeName: string | null | undefined): { tag: string; color: string } | null {
+  if (!serviceTypeName?.trim()) return null
+  return BID_SERVICE_TYPE_TAGS[serviceTypeName.trim()] ?? null
+}
 
 export function formatUnifiedResult(r: UnifiedSearchResult): string {
   if (r.source === 'job') {

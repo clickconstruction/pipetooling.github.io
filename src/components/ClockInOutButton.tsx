@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
   formatUnifiedResult,
+  getBidServiceTypeTag,
   type JobSearchResult,
   type BidSearchResult,
   type UnifiedSearchResult,
@@ -537,7 +538,15 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               )}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>
+                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {selectedAssociation.source === 'bid' && (() => {
+                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                      return t ? (
+                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                          [{t.tag}]
+                        </span>
+                      ) : null
+                    })()}
                     {formatUnifiedResult(selectedAssociation)}
                   </span>
                   <button
@@ -567,6 +576,14 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                       onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
                       style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                     >
+                      {r.source === 'bid' && (() => {
+                        const t = getBidServiceTypeTag(r.service_type_name)
+                        return t ? (
+                          <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                            [{t.tag}]
+                          </span>
+                        ) : null
+                      })()}
                       {formatUnifiedResult(r)}
                     </button>
                   ))}
@@ -629,7 +646,15 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>
+                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    {selectedAssociation.source === 'bid' && (() => {
+                      const t = getBidServiceTypeTag(selectedAssociation.service_type_name)
+                      return t ? (
+                        <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                          [{t.tag}]
+                        </span>
+                      ) : null
+                    })()}
                     {formatUnifiedResult(selectedAssociation)}
                   </span>
                   <button
@@ -672,6 +697,14 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                       onClick={() => { setSelectedAssociation(r); setUnifiedSearchResults([]); setUnifiedSearchText('') }}
                       style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
                     >
+                      {r.source === 'bid' && (() => {
+                        const t = getBidServiceTypeTag(r.service_type_name)
+                        return t ? (
+                          <span style={{ marginRight: '0.35rem', padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: t.color, color: '#fff', borderRadius: 4 }}>
+                            [{t.tag}]
+                          </span>
+                        ) : null
+                      })()}
                       {formatUnifiedResult(r)}
                     </button>
                   ))}

@@ -49,7 +49,11 @@ export default function ProjectForm() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('customers').select('id, name, address, master_user_id').order('name')
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, address, master_user_id')
+        .or('customer_type.is.null,customer_type.eq.commercial')
+        .order('name')
       setCustomers((data as CustomerRow[]) ?? [])
       setCustomersLoading(false)
     })()

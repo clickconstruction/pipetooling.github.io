@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -24,9 +24,12 @@ function extractContactInfo(ci: Json | null): { phone: string; email: string } {
   return { phone: '', email: '' }
 }
 
+type CustomerTypeFilter = 'all' | 'commercial' | 'residential'
+
 export default function Customers() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const newCustomerModal = useNewCustomerModal()
   const editCustomerModal = useEditCustomerModal()
   const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
@@ -36,6 +39,7 @@ export default function Customers() {
   const [bidsForCustomer, setBidsForCustomer] = useState<BidRow[]>([])
   const [loadingBids, setLoadingBids] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const typeFilter = (searchParams.get('type') as CustomerTypeFilter) || 'all'
 
   async function fetchCustomers() {
     const { data, error: err } = await supabase
@@ -101,8 +105,13 @@ export default function Customers() {
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
   const q = searchQuery.trim().toLowerCase()
+  const byType = customers.filter((c) => {
+    if (typeFilter === 'all') return true
+    if (typeFilter === 'commercial') return c.customer_type === 'commercial' || c.customer_type == null
+    return c.customer_type === 'residential'
+  })
   const filteredCustomers = q
-    ? customers.filter((c) => {
+    ? byType.filter((c) => {
         const name = (c.name ?? '').toLowerCase()
         const address = (c.address ?? '').toLowerCase()
         const masterName = (c.master_user?.name ?? '').toLowerCase()
@@ -119,7 +128,7 @@ export default function Customers() {
           emailLower.includes(q)
         )
       })
-    : customers
+    : byType
 
   return (
     <div>
@@ -134,6 +143,27 @@ export default function Customers() {
         </button>
       </div>
       {customers.length > 0 && (
+        <>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+          {(['all', 'commercial', 'residential'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); if (t === 'all') n.delete('type'); else n.set('type', t); return n })}
+              style={{
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: typeFilter === t ? '#2563eb' : 'white',
+                color: typeFilter === t ? 'white' : '#374151',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+              }}
+            >
+              {t === 'all' ? 'All' : t === 'commercial' ? 'Commercial' : 'Residential'}
+            </button>
+          ))}
+        </div>
         <div style={{ width: '100%', marginBottom: '0.25rem' }}>
           <input
             type="search"
@@ -147,6 +177,7 @@ export default function Customers() {
             style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
           />
         </div>
+        </>
       )}
       {customers.length === 0 ? (
         <p>No customers yet.{' '}
@@ -270,6 +301,7 @@ export default function Customers() {
               </div>
               <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
                 <Link to={`/projects?customer=${c.id}`}>Projects</Link>
+                <Link to={`/jobs?customer=${c.id}`}>Jobs</Link>
                 <button
                   onClick={() => {
                     setViewingBidsForCustomer(c.id)

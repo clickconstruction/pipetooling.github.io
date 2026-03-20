@@ -42,6 +42,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [dateMet, setDateMet] = useState('')
+  const [customerType, setCustomerType] = useState<'commercial' | 'residential' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(true)
@@ -126,6 +127,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
+      setCustomerType(row.customer_type ?? null)
       setMasterUserId(row.master_user_id ?? '')
       setFetching(false)
     })()
@@ -141,6 +143,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
+      customer_type: customerType,
       date_met: dateMet.trim() || null,
     }
     if (customerMasterId) {
@@ -201,6 +204,19 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
             onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-customerType" style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
+          <select
+            id="edit-customerType"
+            value={customerType ?? ''}
+            onChange={(e) => setCustomerType(e.target.value ? (e.target.value as 'commercial' | 'residential') : null)}
+            style={{ width: '100%', padding: '0.5rem' }}
+          >
+            <option value="">—</option>
+            <option value="commercial">Commercial</option>
+            <option value="residential">Residential</option>
+          </select>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>Date Met</label>
