@@ -37,6 +37,27 @@ function formatDatetime(iso: string | null): string {
   return `${weekday}, ${dateTime}`
 }
 
+function formatDateShort(iso: string | null): string {
+  if (!iso) return '\u2014'
+  return new Date(iso).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' })
+}
+
+function daysOpen(startedAt: string | null, endedAt: string | null): number | null {
+  if (!startedAt || endedAt) return null
+  const start = new Date(startedAt)
+  const end = new Date()
+  const result = Math.floor((end.getTime() - start.getTime()) / 86400000)
+  return result < 0 ? null : result
+}
+
+function daysBetween(startedAt: string | null, endedAt: string | null): number | null {
+  if (!startedAt || !endedAt) return null
+  const start = new Date(startedAt)
+  const end = new Date(endedAt)
+  const result = Math.floor((end.getTime() - start.getTime()) / 86400000)
+  return result < 0 ? null : result
+}
+
 function formatAmount(amount: number | null | undefined): string {
   const value = amount || 0
   const absValue = Math.abs(value)
@@ -114,29 +135,52 @@ export default function Workflow() {
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [creatingFromTemplate, setCreatingFromTemplate] = useState(false)
-  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | null>(null)
+  const [userRole, setUserRole] = useState<'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent' | null>(null)
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
   const [editingLineItem, setEditingLineItem] = useState<{ stepId: string; item: LineItem | null; link: string; memo: string; amount: string } | null>(null)
+  const [confirmDeleteLineItem, setConfirmDeleteLineItem] = useState<{ item: LineItem; stepName: string } | null>(null)
+  const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
+  const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
   const [projections, setProjections] = useState<Projection[]>([])
   const [viewingPO, setViewingPO] = useState<{ id: string; name: string; items: Array<{ part: { name: string }; quantity: number; supply_house: { name: string } | null; price_at_time: number }> } | null>(null)
   const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
   const [availablePOs, setAvailablePOs] = useState<Array<{ id: string; name: string; total: number }>>([])
+  const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
+  const [availableInvoices, setAvailableInvoices] = useState<Array<{ id: string; invoice_number: string; supply_house_name: string; amount: number; invoice_date: string; due_date: string | null; is_paid: boolean; purchase_order_number: string | null }>>([])
+  const [invoiceSearchText, setInvoiceSearchText] = useState('')
+  const [viewingInvoice, setViewingInvoice] = useState<{ id: string; invoice_number: string; supply_house_name: string; amount: number; link: string | null } | null>(null)
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
+  const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
+  const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
+  const [projectSuperintendents, setProjectSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
+  const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
+  const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
+  const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
 
-  const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
+  const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
+  const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent'
+  const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
 
-  function isSectionDefaultExpanded(step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
-    const inProgress = step.status === 'in_progress'
+  function isRowDefaultCollapsed(step: Step): boolean {
+    return step.status === 'completed' || step.status === 'approved'
+  }
+
+  function isStepEmpty(step: Step): boolean {
+    const hasAssignee = !!(step.assigned_to_name?.trim())
     const hasNotes = !!(step.notes?.trim())
     const hasPrivateNotes = !!(step.private_notes?.trim())
-    const hasLineItems = !!(lineItems[step.id]?.length)
+    const hasLineItems = (lineItems[step.id]?.length ?? 0) > 0
+    const hasStarted = !!step.started_at
+    const isPending = step.status === 'pending'
+    return !hasAssignee && !hasNotes && !hasPrivateNotes && !hasLineItems && !hasStarted && isPending
+  }
+
+  function isSectionDefaultExpanded(_step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
     if (section === 'notify') return false
-    if (section === 'notes') return inProgress || hasNotes
-    if (section === 'privateNotes') return inProgress || hasPrivateNotes
-    if (section === 'lineItems') return inProgress || hasLineItems
+    if (section === 'notes' || section === 'privateNotes' || section === 'lineItems') return true
     return false
   }
 
@@ -247,6 +291,62 @@ export default function Workflow() {
       setProjectMaster(null)
     }
     return true
+  }
+
+  async function loadProjectSuperintendents(pid: string) {
+    const { data: psData, error } = await supabase.from('project_superintendents').select('superintendent_id').eq('project_id', pid)
+    if (error) {
+      console.error('Error loading project superintendents:', error)
+      setProjectSuperintendents([])
+      return
+    }
+    const ids = (psData ?? []).map((r) => r.superintendent_id).filter(Boolean)
+    if (ids.length === 0) {
+      setProjectSuperintendents([])
+      return
+    }
+    const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', ids)
+    const users = (usersData ?? []) as Array<{ id: string; name: string | null; email: string | null }>
+    setProjectSuperintendents(users)
+  }
+
+  async function loadAllSuperintendents() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('role', 'superintendent')
+      .is('archived_at', null)
+      .order('name')
+    if (error) {
+      console.error('Error loading superintendents:', error)
+      setAllSuperintendents([])
+      return
+    }
+    setAllSuperintendents((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
+  }
+
+  async function addProjectSuperintendent(superintendentId: string) {
+    if (!projectId) return
+    setProjectSuperintendentSaving(true)
+    const { error } = await supabase.from('project_superintendents').insert({ project_id: projectId, superintendent_id: superintendentId })
+    if (error) {
+      setError(`Failed to assign superintendent: ${error.message}`)
+    } else {
+      await loadProjectSuperintendents(projectId)
+    }
+    setProjectSuperintendentSaving(false)
+  }
+
+  async function removeProjectSuperintendent(superintendentId: string) {
+    if (!projectId) return
+    setProjectSuperintendentSaving(true)
+    const { error } = await supabase.from('project_superintendents').delete().eq('project_id', projectId).eq('superintendent_id', superintendentId)
+    if (error) {
+      setError(`Failed to remove superintendent: ${error.message}`)
+    } else {
+      setProjectSuperintendents((prev) => prev.filter((s) => s.id !== superintendentId))
+    }
+    setProjectSuperintendentSaving(false)
   }
 
   async function loadSteps(wfId: string) {
@@ -371,6 +471,52 @@ export default function Workflow() {
     setAvailablePOs(posWithTotals)
   }
 
+  async function loadSupplyHouseInvoices() {
+    if (userRole !== 'dev' && userRole !== 'master_technician') return
+    const { data, error } = await supabase
+      .from('supply_house_invoices')
+      .select(`
+        id,
+        invoice_number,
+        invoice_date,
+        due_date,
+        amount,
+        is_paid,
+        purchase_order_number,
+        supply_house_id,
+        supply_houses(name)
+      `)
+      .order('invoice_date', { ascending: false })
+      .limit(100)
+
+    if (error) {
+      console.error('Error loading supply house invoices:', error)
+      setAvailableInvoices([])
+      return
+    }
+
+    const rows = (data as Array<{
+      id: string
+      invoice_number: string
+      invoice_date: string
+      due_date: string | null
+      amount: number
+      is_paid: boolean
+      purchase_order_number: string | null
+      supply_houses: { name: string } | null
+    }>) ?? []
+    setAvailableInvoices(rows.map((r) => ({
+      id: r.id,
+      invoice_number: r.invoice_number,
+      supply_house_name: r.supply_houses?.name ?? 'Unknown',
+      amount: r.amount,
+      invoice_date: r.invoice_date,
+      due_date: r.due_date,
+      is_paid: r.is_paid,
+      purchase_order_number: r.purchase_order_number,
+    })))
+  }
+
   async function loadPODetails(poId: string) {
     const { data: poData, error: poError } = await supabase
       .from('purchase_orders')
@@ -404,6 +550,28 @@ export default function Workflow() {
         supply_house: item.supply_houses as { name: string } | null,
         price_at_time: item.price_at_time,
       })),
+    })
+  }
+
+  async function loadInvoiceDetails(invoiceId: string) {
+    const { data, error } = await supabase
+      .from('supply_house_invoices')
+      .select('*, supply_houses(name)')
+      .eq('id', invoiceId)
+      .single()
+
+    if (error) {
+      setError(`Failed to load invoice: ${error.message}`)
+      return
+    }
+
+    const row = data as { id: string; invoice_number: string; amount: number; link: string | null; supply_houses: { name: string } | null }
+    setViewingInvoice({
+      id: row.id,
+      invoice_number: row.invoice_number,
+      supply_house_name: row.supply_houses?.name ?? 'Unknown',
+      amount: row.amount,
+      link: row.link ?? null,
     })
   }
 
@@ -443,6 +611,48 @@ export default function Workflow() {
       setError(`Failed to add PO to step: ${error.message}`)
     } else {
       setAddingPOToStep(null)
+      await refreshSteps()
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+        const stepIds = steps.map(s => s.id)
+        await loadLineItemsForSteps(stepIds)
+      }
+    }
+  }
+
+  async function addInvoiceToStep(stepId: string, invoiceId: string) {
+    setError(null)
+
+    const { data: invData, error: invError } = await supabase
+      .from('supply_house_invoices')
+      .select('*, supply_houses(name)')
+      .eq('id', invoiceId)
+      .single()
+
+    if (invError || !invData) {
+      setError(`Failed to load invoice: ${invError?.message ?? 'Not found'}`)
+      return
+    }
+
+    const inv = invData as { invoice_number: string; amount: number; supply_houses: { name: string } | null }
+    const supplyHouseName = inv.supply_houses?.name ?? 'Unknown'
+    const memo = `Invoice #${inv.invoice_number} - ${supplyHouseName} - $${Number(inv.amount).toFixed(2)}`
+
+    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
+    const { error } = await supabase
+      .from('workflow_step_line_items')
+      .insert({
+        step_id: stepId,
+        memo,
+        amount: inv.amount,
+        sequence_order: maxOrder + 1,
+        supply_house_invoice_id: invoiceId,
+      })
+
+    if (error) {
+      setError(`Failed to add invoice to step: ${error.message}`)
+    } else {
+      setAddingInvoiceToStep(null)
+      setInvoiceSearchText('')
       await refreshSteps()
       if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
         const stepIds = steps.map(s => s.id)
@@ -559,13 +769,27 @@ export default function Workflow() {
     }
   }, [workflow?.id, userRole])
 
-  // Load finalized purchase orders for adding to steps (staggered to run after projections)
+  // Load finalized purchase orders and supply house invoices for adding to steps (staggered to run after projections)
   useEffect(() => {
     if (userRole === 'dev' || userRole === 'master_technician') {
-      const t = setTimeout(() => loadFinalizedPOs(), 200)
+      const t = setTimeout(() => {
+        loadFinalizedPOs()
+        loadSupplyHouseInvoices()
+      }, 200)
       return () => clearTimeout(t)
     }
   }, [userRole])
+
+  // Load project superintendents and all superintendents when can assign
+  useEffect(() => {
+    if (projectId && canAssignSuperintendents) {
+      loadProjectSuperintendents(projectId)
+      loadAllSuperintendents()
+    } else {
+      setProjectSuperintendents([])
+      setAllSuperintendents([])
+    }
+  }, [projectId, canAssignSuperintendents])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -688,15 +912,33 @@ export default function Workflow() {
         .eq('id', authUser.id)
         .single()
       if (userData) {
-        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' }).role)
+        setUserRole((userData as { role: 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent' }).role)
         const userName = (userData as { name: string | null; email: string | null }).name || (userData as { name: string | null; email: string | null }).email
         setCurrentUserName(userName)
       }
-      
-      const [peopleRes, usersRes] = await Promise.all([
-        supabase.from('people').select('name, email, phone').eq('master_user_id', authUser.id).order('name'),
-        supabase.from('users').select('name, email'),
-      ])
+
+      const role = (userData as { role: string } | null)?.role
+      let peopleRes: { data: { name: string; email: string | null; phone: string | null }[] | null }
+      let usersRes: { data: { name: string | null; email: string | null }[] | null }
+
+      if (role === 'superintendent') {
+        const { data: adopted } = await supabase
+          .from('master_superintendents')
+          .select('master_id')
+          .eq('superintendent_id', authUser.id)
+        const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
+        ;[peopleRes, usersRes] = await Promise.all([
+          adoptedMasterIds.length > 0
+            ? supabase.from('people').select('name, email, phone').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
+            : { data: [] as { name: string; email: string | null; phone: string | null }[] },
+          supabase.from('users').select('name, email').in('role', ['subcontractor', 'primary']),
+        ])
+      } else {
+        ;[peopleRes, usersRes] = await Promise.all([
+          supabase.from('people').select('name, email, phone').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
+          supabase.from('users').select('name, email'),
+        ])
+      }
       const fromPeople = (peopleRes.data as { name: string; email: string | null; phone: string | null }[] | null) ?? []
       const fromUsers = (usersRes.data as { name: string; email: string | null }[] | null) ?? []
       const names = [...fromUsers.map((r) => r.name), ...fromPeople.map((r) => r.name)].filter(Boolean).sort()
@@ -792,6 +1034,50 @@ export default function Workflow() {
       })
     })
     return total
+  }
+
+  type UnifiedRow = {
+    stageName: string
+    memo: string
+    projectionAmount: number | null
+    projection: Projection | null
+    ledgerAmount: number | null
+    ledgerItem: LineItem | null
+    ledgerStepName: string | null
+  }
+
+  function buildUnifiedRows(): UnifiedRow[] {
+    const stageNames = new Set<string>([
+      ...projections.map((p) => p.stage_name.trim()),
+      ...steps.filter((s) => (lineItems[s.id]?.length ?? 0) > 0).map((s) => s.name),
+    ])
+    const rows: UnifiedRow[] = []
+    for (const stageName of [...stageNames].sort()) {
+      const projLines = projections
+        .filter((p) => p.stage_name.trim() === stageName)
+        .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
+      const ledgerSteps = steps.filter((s) => s.name === stageName)
+      const ledgerLines: Array<{ item: LineItem; stepName: string }> = []
+      ledgerSteps.forEach((s) => {
+        ;(lineItems[s.id] || []).forEach((item) => ledgerLines.push({ item, stepName: s.name }))
+      })
+      const maxRows = Math.max(projLines.length, ledgerLines.length) || 1
+      for (let i = 0; i < maxRows; i++) {
+        const proj = projLines[i] ?? null
+        const ledger = ledgerLines[i] ?? null
+        const memo = [proj?.memo, ledger?.item?.memo].filter(Boolean).join(' / ') || '\u2014'
+        rows.push({
+          stageName: i === 0 ? stageName : '',
+          memo,
+          projectionAmount: proj?.amount ?? null,
+          projection: proj,
+          ledgerAmount: ledger?.item?.amount ?? null,
+          ledgerItem: ledger?.item ?? null,
+          ledgerStepName: ledger?.stepName ?? null,
+        })
+      }
+    }
+    return rows
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -927,6 +1213,7 @@ export default function Workflow() {
       const { data: people } = await supabase
         .from('people')
         .select('email')
+        .is('archived_at', null)
         .eq('name', trimmedName)
         .limit(1)
       if (people && people.length > 0 && people[0]?.email) {
@@ -1636,7 +1923,6 @@ export default function Workflow() {
   }
 
   async function deleteStep(step: Step) {
-    if (!confirm('Delete this step?')) return
     setError(null)
     
     try {
@@ -1707,207 +1993,331 @@ export default function Workflow() {
   if (!project || !workflow) return <p>Project or workflow not found.</p>
 
   return (
-    <div>
-      <div style={{ marginBottom: '1rem' }}>
+    <div className="workflow">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <Link to="/projects">{"\u2190"} Projects</Link>
+        <Link
+          to={`/projects/${project.id}/edit`}
+          style={{
+            fontSize: '0.875rem',
+            padding: '0.25rem 0.5rem',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            borderRadius: 4,
+            textDecoration: 'none',
+            fontWeight: 500,
+            display: 'inline-block',
+          }}
+        >
+          Project: {project.name}
+        </Link>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
-          {projectMaster && (
-            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>
-              Project Master: {projectMaster.name || projectMaster.email || 'Unknown'}
-            </div>
-          )}
-          {steps.length > 0 && (
-            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-              {steps.map((s, i) => {
-                let color = '#6b7280' // default gray
-                let fontWeight: 'normal' | 'bold' = 'normal'
-                if (s.status === 'completed' || s.status === 'approved') {
-                  color = '#059669' // green
-                } else if (s.status === 'rejected') {
-                  color = '#b91c1c' // red
-                } else if (s.status === 'in_progress') {
-                  color = '#E87600' // strong orange
-                  fontWeight = 'bold' // bold if started but not completed
-                }
-                const scrollToStep = () => {
-                  const element = document.getElementById(`step-${s.id}`)
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                }
-                return (
-                  <span key={s.id}>
-                    <span
-                      onClick={scrollToStep}
-                      style={{ color, fontWeight, cursor: 'pointer', textDecoration: 'underline' }}
+      <div style={{ marginBottom: '1.5rem', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
+            {projectMaster && (
+              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>
+                Project Master: {projectMaster.name || projectMaster.email || 'Unknown'}
+              </div>
+            )}
+            {canAssignSuperintendents && (
+              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500 }}>Superintendents:</span>
+                {projectSuperintendents.length === 0 && (
+                  <span style={{ color: '#9ca3af' }}>None</span>
+                )}
+                {projectSuperintendents.map((s) => (
+                  <span
+                    key={s.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.15rem 0.4rem',
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      borderRadius: 4,
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    {s.name || s.email || 'Unknown'}
+                    <button
+                      type="button"
+                      onClick={() => removeProjectSuperintendent(s.id)}
+                      disabled={projectSuperintendentSaving}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer', color: 'inherit', fontSize: '0.9em', lineHeight: 1 }}
+                      title="Remove"
                     >
-                      {s.name}
-                    </span>
-                    {i < steps.length - 1 && <span> → </span>}
+                      {"\u00d7"}
+                    </button>
                   </span>
-                )
-              })}
-            </div>
+                ))}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value
+                    if (id) {
+                      addProjectSuperintendent(id)
+                      e.target.value = ''
+                    }
+                  }}
+                  disabled={projectSuperintendentSaving}
+                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white', minWidth: 140 }}
+                >
+                  <option value="">Add superintendent...</option>
+                  {allSuperintendents
+                    .filter((s) => !projectSuperintendents.some((ps) => ps.id === s.id))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name || s.email || s.id}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+          </div>
+          {canManageStages && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {(steps.filter(s => s.status === 'completed' || s.status === 'approved').length >= 2) && (
+                <button
+                  type="button"
+                  onClick={() => setOldStagesCollapsed(v => !v)}
+                  className="wf-btn-ghost"
+                  style={{ fontSize: '0.8125rem' }}
+                >
+                  {oldStagesCollapsed ? 'Expand old stages' : 'Collapse old stages'}
+                </button>
+              )}
+              <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Add step
+              </button>
+            </span>
           )}
         </div>
-        {canManageStages && (
-          <button type="button" onClick={() => openAddStep()} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            Add step
-          </button>
+        {steps.length > 0 && (
+          <div
+            style={{
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              marginTop: '0.5rem',
+              overflowWrap: 'break-word',
+              paddingBottom: '0.25rem',
+              lineHeight: 1.4,
+            }}
+          >
+            <span>
+            {steps.map((s, i) => {
+              let color = '#6b7280' // default gray
+              let fontWeight: 'normal' | 'bold' = 'normal'
+              if (s.status === 'completed' || s.status === 'approved') {
+                color = '#059669' // green
+              } else if (s.status === 'rejected') {
+                color = '#b91c1c' // red
+              } else if (s.status === 'in_progress') {
+                color = '#E87600' // strong orange
+                fontWeight = 'bold' // bold if started but not completed
+              }
+              const scrollToStep = () => {
+                const element = document.getElementById(`step-${s.id}`)
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+              }
+              return (
+                <span key={s.id}>
+                  <span
+                    onClick={scrollToStep}
+                    style={{ color, fontWeight, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {s.name}
+                  </span>
+                  {i < steps.length - 1 && <span> → </span>}
+                </span>
+              )
+            })}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Projections - Only visible to devs and masters */}
-      {isDevOrMaster && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
-          {/* Projections */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ marginTop: 0, marginBottom: 0, fontSize: '1.125rem', fontWeight: 600 }}>Projections (Draw Schedule and Change Orders)</h2>
+      {/* Projections + Ledger - Summary bar and unified table */}
+      {(isDevOrMaster || canManageStages) && (
+        <div style={{ marginBottom: '1rem' }}>
+          {/* Collapsible summary bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+            {isDevOrMaster && (
+              <>
+                <span style={{ fontSize: '0.875rem', color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                  Projections: {formatAmount(calculateProjectionsTotal())}
+                </span>
+                <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>|</span>
+              </>
+            )}
+            {canManageStages && (
+              <span style={{ fontSize: '0.875rem', color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                Ledger: {formatAmount(calculateLedgerTotal())}
+              </span>
+            )}
+            {isDevOrMaster && (
+              <>
+                <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>|</span>
+                <span
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    color: (() => {
+                      const left = calculateProjectionsTotal() - calculateLedgerTotal()
+                      return left < 0 ? '#b91c1c' : '#047857'
+                    })(),
+                  }}
+                >
+                  Left: {formatAmount(calculateProjectionsTotal() - calculateLedgerTotal())}
+                </span>
+              </>
+            )}
+            {isDevOrMaster && (
+              <button
+                type="button"
+                onClick={() => openEditProjection(null)}
+                className="wf-btn-success"
+                style={{ marginLeft: 'auto' }}
+              >
+                + Add Projection
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => openEditProjection(null)}
-              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              onClick={() => setProjectionsLedgerExpanded((v) => !v)}
+              className="wf-btn-secondary wf-btn-secondary-blue"
+              style={{ marginLeft: 'auto' }}
             >
-              + Add Projection
+              {projectionsLedgerExpanded ? '\u25b2 Hide details' : '\u25be Details'}
             </button>
           </div>
-          {projections.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No projections yet. Click "Add Projection" to add one.</p>
-          ) : (
-            <>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #bae6fd' }}>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
-                    <th style={{ textAlign: 'center', padding: '0.5rem', fontWeight: 600, width: 120 }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projections.map((proj) => (
-                    <tr key={proj.id} style={{ borderBottom: '1px solid #e0f2fe' }}>
-                      <td style={{ padding: '0.5rem', color: '#111827' }}>{proj.stage_name}</td>
-                      <td style={{ padding: '0.5rem', color: '#374151' }}>{proj.memo}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right', color: (proj.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
-                        {formatAmount(proj.amount)}
-                      </td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => openEditProjection(proj)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteProjection(proj.id)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #0ea5e9' }}>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827' }}>
-                  Projections Total: {formatAmount(calculateProjectionsTotal())}
-                </div>
-              </div>
-            </>
-          )}
 
-          {/* Total Left on Job */}
-          <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-            {(() => {
-              const left = calculateProjectionsTotal() - calculateLedgerTotal()
+          {/* Expanded unified table */}
+          {projectionsLedgerExpanded && (() => {
+            const unifiedRows = buildUnifiedRows()
+            const hasProjections = projections.length > 0
+            const hasLedger = Object.keys(lineItems).length > 0 && !Object.values(lineItems).every((items) => items.length === 0)
+            const hasAnyData = hasProjections || hasLedger
+
+            if (!hasAnyData) {
               return (
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: left < 0 ? '#b91c1c' : '#047857' }}>
-                  Total Left on Job: Projections - Ledger = {formatAmount(left)}
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  No projections or ledger items.
+                  {isDevOrMaster && (
+                    <button
+                      type="button"
+                      onClick={() => openEditProjection(null)}
+                      className="wf-btn-success"
+                      style={{ marginLeft: '0.5rem' }}
+                    >
+                      Add Projection
+                    </button>
+                  )}
                 </div>
               )
-            })()}
-          </div>
-        </div>
-      )}
+            }
 
-      {/* Ledger - Visible to devs, masters, and assistants */}
-      {canManageStages && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>Ledger (Incurred Charges and Payments)</h2>
-          {Object.keys(lineItems).length === 0 || Object.values(lineItems).every(items => items.length === 0) ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No line items yet. Add line items in the Private Notes section of each stage.</p>
-          ) : (
-            <>
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Stage</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', fontWeight: 600 }}>Memo</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem', fontWeight: 600 }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {steps.map((step) => {
-                    const items = lineItems[step.id] || []
-                    if (items.length === 0) return null
-                    return items.map((item, idx) => (
-                      <tr key={item.id} style={{ borderBottom: idx === items.length - 1 ? '2px solid #e5e7eb' : '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '0.5rem', color: idx === 0 ? '#111827' : '#6b7280', fontWeight: idx === 0 ? 500 : 'normal' }}>
-                          {idx === 0 ? step.name : ''}
-                        </td>
-                        <td style={{ padding: '0.5rem', color: '#374151' }}>
+            return (
+              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #bae6fd' }}>
+                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Stage</th>
+                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Memo</th>
+                      {isDevOrMaster && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
+                      <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Ledger</th>
+                      {isDevOrMaster && <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600, width: 90 }}>Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unifiedRows.map((row, idx) => (
+                      <tr key={row.projection?.id ?? row.ledgerItem?.id ?? `row-${idx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
+                        <td style={{ padding: '0.35rem 0.5rem', color: '#111827', fontWeight: row.stageName ? 500 : 'normal' }}>{row.stageName || '\u00a0'}</td>
+                        <td style={{ padding: '0.35rem 0.5rem', color: '#374151' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>{item.memo}</span>
-                            {item.link && (
+                            <span>{row.memo}</span>
+                            {row.ledgerItem?.link && (
                               <a
-                                href={normalizeUrl(item.link)}
+                                href={normalizeUrl(row.ledgerItem.link)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                                title={item.link}
+                                title={row.ledgerItem.link}
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  const normalizedLink = normalizeUrl(item.link)
+                                  const normalizedLink = normalizeUrl(row.ledgerItem!.link)
                                   if (normalizedLink) {
                                     window.open(normalizedLink, '_blank', 'noopener,noreferrer')
                                   }
                                 }}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
-                                  <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '12px', height: '12px', fill: 'currentColor' }}>
+                                  <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z" />
                                 </svg>
                               </a>
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
-                          {formatAmount(item.amount)}
+                        {isDevOrMaster && (
+                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                            {row.projectionAmount != null ? formatAmount(row.projectionAmount) : '\u2014'}
+                          </td>
+                        )}
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                          {row.ledgerAmount != null ? formatAmount(row.ledgerAmount) : '\u2014'}
                         </td>
+                        {isDevOrMaster && (
+                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center' }}>
+                            {row.projection ? (
+                              <div style={{ display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditProjection(row.projection)}
+                                  className="wf-btn-secondary"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => row.projection && deleteProjection(row.projection.id)}
+                                  className="wf-btn-danger"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            ) : (
+                              '\u00a0'
+                            )}
+                          </td>
+                        )}
                       </tr>
-                    ))
-                  })}
-                </tbody>
-              </table>
-              {/* Ledger Total - Only visible to devs and masters */}
-              {isDevOrMaster && (
-                <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '0.75rem', borderTop: '2px solid #111827' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
-                    Ledger Total: {formatAmount(calculateLedgerTotal())}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '2px solid #0ea5e9' }}>
+                      <td style={{ padding: '0.5rem 0.5rem', fontWeight: 600 }} colSpan={isDevOrMaster ? 2 : 2}>
+                        Total
+                      </td>
+                      {isDevOrMaster && (
+                        <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                          {formatAmount(calculateProjectionsTotal())}
+                        </td>
+                      )}
+                      <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                        {formatAmount(calculateLedgerTotal())}
+                      </td>
+                      {isDevOrMaster && <td style={{ padding: '0.5rem 0.5rem' }} />}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1936,7 +2346,7 @@ export default function Workflow() {
                         onClick={createFromTemplate}
                         disabled={!selectedTemplateId || creatingFromTemplate}
                         title={!selectedTemplateId ? 'Select a template' : undefined}
-                        style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6 }}
+                        className="wf-btn-primary"
                       >
                         {creatingFromTemplate ? 'Creating...' : 'Create from template'}
                       </button>
@@ -1946,100 +2356,225 @@ export default function Workflow() {
                     </div>
                   </div>
                 )}
-                <p>Or <button type="button" onClick={() => openAddStep()} style={{ padding: 0, background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', font: 'inherit' }}>add a step</button> to build from scratch.</p>
+                <p>Or <button type="button" onClick={() => openAddStep()} className="wf-btn-link">add a step</button> to build from scratch.</p>
               </>
             ) : (
               <p style={{ marginBottom: '1rem' }}>No stages assigned to you in this workflow.</p>
             )}
           </div>
-        ) : (
-          steps.map((s, i) => (
+        ) : (() => {
+          const completedSteps = steps
+            .filter(s => s.status === 'completed' || s.status === 'approved')
+            .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
+          const oldCompletedSteps = completedSteps.slice(0, -1)
+          const oldStepIds = new Set(oldCompletedSteps.map(s => s.id))
+          type DisplayItem = { type: 'step'; step: (typeof steps)[0] } | { type: 'summary'; count: number; firstStarted: string | null }
+          const displayItems: DisplayItem[] = []
+          if (!oldStagesCollapsed || oldCompletedSteps.length === 0) {
+            displayItems.push(...steps.map(s => ({ type: 'step' as const, step: s })))
+          } else {
+            let summaryEmitted = false
+            for (const s of steps) {
+              if (oldStepIds.has(s.id)) {
+                if (!summaryEmitted) {
+                  displayItems.push({
+                    type: 'summary',
+                    count: oldCompletedSteps.length,
+                    firstStarted: oldCompletedSteps[0]?.started_at ?? null,
+                  })
+                  summaryEmitted = true
+                }
+              } else {
+                displayItems.push({ type: 'step', step: s })
+              }
+            }
+          }
+          return displayItems.map((item, index) => {
+            if (item.type === 'summary') {
+              return (
+                <div key="old-stages-summary" id="old-stages-summary">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOldStagesCollapsed(false)}
+                    onKeyDown={(e) => e.key === 'Enter' && setOldStagesCollapsed(false)}
+                    style={{
+                      padding: '0.5rem 0',
+                      marginBottom: '0.25rem',
+                      fontSize: '0.8125rem',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {item.count} previous {item.count === 1 ? 'stage' : 'stages'} · Started {formatDateShort(item.firstStarted)}
+                  </div>
+                </div>
+              )
+            }
+            const s = item.step
+            return (
             <div key={s.id} id={`step-${s.id}`}>
               <div
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid #bae6fd',
                   borderRadius: 8,
-                  padding: '1rem',
+                  padding: '0.5rem 0.75rem',
                   marginBottom: '0.25rem',
-                  background: s.status === 'rejected' ? '#fef2f2' : s.status === 'approved' || s.status === 'completed' ? '#f0fdf4' : '#fff',
+                  background: 'white',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: 4 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Stage title */}
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{s.name}</div>
-                    {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
-                      <div style={{ fontSize: '0.875rem', color: '#E87600', marginBottom: 8, fontStyle: 'italic' }}>
-                        (next card rejected: {s.next_step_rejected_notice})
-                        {s.next_step_rejection_reason && (
-                          <div style={{ marginTop: 4, color: '#b91c1c', fontStyle: 'normal' }}>
-                            Reason: {s.next_step_rejection_reason}
+                {(() => {
+                  const isCollapsed = rowCollapsed[s.id] ?? isRowDefaultCollapsed(s)
+                  const toggleRow = () => setRowCollapsed((p) => ({ ...p, [s.id]: !(p[s.id] ?? isRowDefaultCollapsed(s)) }))
+                  return (
+                    <>
+                {/* Row 1: Chevron · Title · status · Assigned [Assign] [Notify] */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { if (!(e.target as HTMLElement).closest('button, [data-stop]')) toggleRow() }}
+                      onKeyDown={(e) => e.key === 'Enter' && toggleRow()}
+                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: 4, fontSize: '0.8125rem', cursor: 'pointer' }}
+                    >
+                      <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isCollapsed ? '\u25B6' : '\u25BC'}</span>
+                      <span style={{ fontWeight: 600, color: '#111827' }}>{s.name}</span>
+                      <span style={{ color: '#9ca3af' }}>·</span>
+                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                        {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'in_progress' && (() => {
+                          const d = daysOpen(s.started_at, s.ended_at)
+                          return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
+                        })()}
+                      </span>
+                      <span style={{ color: '#9ca3af' }}>·</span>
+                      <span style={{ color: '#374151' }}>
+                        <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
+                      </span>
+                      {canManageStages && !isCollapsed && (
+                        <button type="button" data-stop onClick={(e) => { e.stopPropagation(); setAssignPersonStep(s) }} className="wf-btn-ghost">Assign</button>
+                      )}
+                      {((canManageStages || s.assigned_to_name === currentUserName) || (stepActions[s.id]?.length ?? 0) > 0) && !isCollapsed && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                          {(canManageStages || s.assigned_to_name === currentUserName) && (() => {
+                            const key = `${s.id}-notify`
+                            const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
+                            const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                            return (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                data-stop
+                                onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
+                                onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: '#6b7280' }}
+                              >
+                                <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                                <span>Notify</span>
+                              </span>
+                            )
+                          })()}
+                          {stepActions[s.id] && stepActions[s.id]!.length > 0 && (() => {
+                            const key = `${s.id}-actionLedger`
+                            const isExpanded = sectionExpanded[key] ?? false
+                            const count = stepActions[s.id]!.length
+                            return (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                data-stop
+                                onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
+                                onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: '#6b7280' }}
+                              >
+                                <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                                <span>Action Ledger ({count})</span>
+                              </span>
+                            )
+                          })()}
+                        </span>
+                      )}
+                      {isCollapsed && (() => {
+                        const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: '#6b7280', background: '#f3f4f6' }
+                        const items = lineItems[s.id] || []
+                        const count = items.length
+                        const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
+                        const notesWords = (s.notes ?? '').trim().split(/\s+/).filter(Boolean).length
+                        const privateWords = (s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length
+                        const daysSuffix = s.status === 'in_progress' ? null : (() => {
+                          const d = daysBetween(s.started_at, s.ended_at)
+                          return d != null ? ` · open for ${d === 1 ? '1 day' : `${d} days`}` : null
+                        })()
+                        return (
+                          <div style={{ flexBasis: '100%', width: '100%', marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={pillStyle}>
+                              {formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}{daysSuffix ?? ''}
+                            </span>
+                            {canManageStages && count > 0 && (
+                              <span style={pillStyle}>
+                                {count} {count === 1 ? 'item' : 'items'} · {formatAmount(total)}
+                              </span>
+                            )}
+                            {notesWords > 0 && (
+                              <span style={pillStyle}>Notes: {notesWords}</span>
+                            )}
+                            {canSeePrivateNotesAndApprove && privateWords > 0 && (
+                              <span style={pillStyle}>Office: {privateWords}</span>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        )
+                      })()}
+                    </div>
+                {/* Row 2: Action buttons - always visible when user can act (including when collapsed) */}
+                {((canManageStages || s.assigned_to_name === currentUserName) || !isCollapsed) && (
+                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
+                    {s.status === 'pending' && (
+                      <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} className="wf-btn-info">
+                        Set Start
+                      </button>
                     )}
-
-                    {/* Actions (top-left) */}
-                    {(canManageStages || s.assigned_to_name === currentUserName) && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                        {s.status === 'pending' && (
-                          <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
-                            Set Start
-                          </button>
-                        )}
-                        {(s.status === 'pending' || s.status === 'in_progress') && (
-                          <button type="button" onClick={() => markCompleted(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
-                            Complete
-                          </button>
-                        )}
-                        {(s.status === 'pending' || s.status === 'in_progress') && canManageStages && (
-                          <button type="button" onClick={() => markApproved(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
-                            Approve
-                          </button>
-                        )}
-                        {(s.status === 'pending' || s.status === 'in_progress') && canManageStages && (
-                          <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}>
-                            Reject
-                          </button>
-                        )}
-                      </div>
+                    {(s.status === 'pending' || s.status === 'in_progress') && (
+                      <button type="button" onClick={() => markCompleted(s)} className="wf-btn-success">
+                        Mark Complete
+                      </button>
+                    )}
+                    {canSeePrivateNotesAndApprove && (s.status === 'pending' || s.status === 'in_progress') && (
+                      <span style={{ display: 'inline-flex', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
+                        <button type="button" onClick={() => markApproved(s)} className="wf-btn-info">
+                          Approve
+                        </button>
+                        <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} className="wf-btn-danger">
+                          Reject
+                        </button>
+                      </span>
+                    )}
+                    {!isCollapsed && (
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#6b7280' }}>
+                        Start: {formatDateShort(s.started_at)}{' \u00B7 '}End: {formatDateShort(s.ended_at)}
+                        {s.status === 'in_progress' ? null : (() => {
+                          const d = daysBetween(s.started_at, s.ended_at)
+                          return d != null ? ` · open for ${d === 1 ? '1 day' : `${d} days`}` : null
+                        })()}
+                      </span>
                     )}
                   </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                    <div style={{ fontSize: '0.875rem', color: s.status === 'rejected' ? '#b91c1c' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
-                      Status: {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#374151' }}>
-                      <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
-                    </div>
-                    {/* Assign (top-right) */}
-                    {canManageStages && (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={() => setAssignPersonStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Assign</button>
-                      </div>
+                )}
+                {/* Collapsed body - hidden when collapsed */}
+                {!isCollapsed && (
+                <>
+                {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
+                  <div style={{ fontSize: '0.8125rem', color: '#E87600', marginBottom: 4, fontStyle: 'italic' }}>
+                    (next card rejected: {s.next_step_rejected_notice})
+                    {s.next_step_rejection_reason && (
+                      <div style={{ marginTop: 2, color: '#b91c1c', fontStyle: 'normal' }}>Reason: {s.next_step_rejection_reason}</div>
                     )}
-
-                    {/* Only show notification settings for owners and masters, or if user is assigned to this step */}
-                    {(canManageStages || s.assigned_to_name === currentUserName) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8125rem', color: '#6b7280' }}>
-                      {(() => {
-                        const key = `${s.id}-notify`
-                        const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
-                        const isExpanded = sectionExpanded[key] ?? defaultExpanded
-                        return (
-                          <>
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                              onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, cursor: 'pointer' }}
-                            >
-                              <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                              <span>Notify when stage:</span>
-                            </div>
-                            {isExpanded && (
+                  </div>
+                )}
+                {/* Notify expanded content */}
+                {(canManageStages || s.assigned_to_name === currentUserName) && (() => {
+                  const key = `${s.id}-notify`
+                  const defaultExpanded = isSectionDefaultExpanded(s, 'notify')
+                  const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                  return isExpanded ? (
                               <>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                         <thead>
@@ -2140,28 +2675,20 @@ export default function Workflow() {
                         </div>
                       )}
                               </>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  )}
-                  </div>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
-                  Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
-                </div>
+                    ) : null
+                  })()}
                 {s.status === 'approved' && s.approved_by && s.approved_at && (
-                  <div style={{ fontSize: '0.875rem', color: '#059669', marginBottom: 8, fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.8125rem', color: '#059669', marginBottom: 4, fontWeight: 500 }}>
                     Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
                   </div>
                 )}
-                {stepActions[s.id] && stepActions[s.id]!.length > 0 && (
-                  <div style={{ marginBottom: 8, padding: '0.75rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Action Ledger</div>
-                    <div style={{ fontSize: '0.8125rem' }}>
+                {stepActions[s.id] && stepActions[s.id]!.length > 0 && (() => {
+                  const key = `${s.id}-actionLedger`
+                  const isExpanded = sectionExpanded[key] ?? false
+                  return isExpanded ? (
+                    <div style={{ marginBottom: 4, padding: '0.5rem 0.6rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
                       {stepActions[s.id]!.map((action) => (
-                        <div key={action.id} style={{ marginBottom: '0.375rem', color: '#6b7280' }}>
+                        <div key={action.id} style={{ marginBottom: '0.25rem', fontSize: '0.8125rem', color: '#6b7280' }}>
                           <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type}</span>
                           {' by '}
                           <span style={{ fontWeight: 500 }}>{action.performed_by}</span>
@@ -2175,13 +2702,14 @@ export default function Workflow() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-                <div style={{ marginBottom: 8 }}>
+                  ) : null
+                })()}
+                <div style={{ marginBottom: 4 }}>
                   {(() => {
                     const key = `${s.id}-notes`
                     const defaultExpanded = isSectionDefaultExpanded(s, 'notes')
-                    const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                    const stored = sectionExpanded[key]
+                    const isExpanded = stored ?? defaultExpanded
                     return (
                       <>
                         <div
@@ -2189,10 +2717,10 @@ export default function Workflow() {
                           tabIndex={0}
                           onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
                           onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                          style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, cursor: 'pointer' }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                          <span style={{ fontSize: '1rem' }}>Notes</span>
+                          <span>Notes for Tech ({(s.notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
                         </div>
                         {isExpanded && (
                           <textarea
@@ -2200,18 +2728,18 @@ export default function Workflow() {
                             key={`notes-${s.id}-${s.notes ?? ''}`}
                             defaultValue={s.notes ?? ''}
                             onBlur={(e) => updateNotes(s, e.target.value)}
-                            placeholder="Add notes for this stage..."
-                            rows={3}
-                            style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
+                            placeholder="Add notes (visible to everyone who can see this stage, including the assigned technician)"
+                            rows={2}
+                            style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
                           />
                         )}
                       </>
                     )
                   })()}
                 </div>
-                {/* Private Notes - dev/master only */}
-                {isDevOrMaster && (
-                  <div style={{ marginBottom: 8 }}>
+                {/* Notes for Office - dev/master/assistant/superintendent */}
+                {canSeePrivateNotesAndApprove && (
+                  <div style={{ marginBottom: 4 }}>
                     {(() => {
                       const key = `${s.id}-privateNotes`
                       const defaultExpanded = isSectionDefaultExpanded(s, 'privateNotes')
@@ -2223,10 +2751,10 @@ export default function Workflow() {
                             tabIndex={0}
                             onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
                             onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontWeight: 500, color: '#0369a1', cursor: 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: '#0369a1', cursor: 'pointer', fontSize: '0.8125rem' }}
                           >
-                            <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                            <span style={{ fontSize: '1rem' }}>Private Notes (Only you can see this)</span>
+                            <span style={{ fontSize: '0.75rem', minWidth: 16, color: '#111827' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                            <span>Notes for Office ({(s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
                           </div>
                           {isExpanded && (
                             <textarea
@@ -2234,9 +2762,9 @@ export default function Workflow() {
                               key={`private-notes-${s.id}-${s.private_notes ?? ''}`}
                               defaultValue={s.private_notes ?? ''}
                               onBlur={(e) => updatePrivateNotes(s, e.target.value)}
-                              placeholder="Add private notes visible only to owners and master technicians..."
-                              rows={3}
-                              style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
+                              placeholder="Add private notes visible to masters, assistants, and superintendents..."
+                              rows={2}
+                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
                             />
                           )}
                         </>
@@ -2245,13 +2773,14 @@ export default function Workflow() {
                   </div>
                 )}
                 
-                {/* Line Items - dev/master/assistant */}
+                {/* Line Items For Office - dev/master/assistant */}
                 {canManageStages && (
-                  <div style={{ marginBottom: 8 }}>
+                  <div style={{ marginBottom: 4 }}>
                     {(() => {
                       const key = `${s.id}-lineItems`
                       const defaultExpanded = isSectionDefaultExpanded(s, 'lineItems')
-                      const isExpanded = sectionExpanded[key] ?? defaultExpanded
+                      const stored = sectionExpanded[key]
+                      const isExpanded = stored ?? defaultExpanded
                       return (
                         <>
                           <div
@@ -2259,129 +2788,168 @@ export default function Workflow() {
                             tabIndex={0}
                             onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
                             onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', cursor: 'pointer' }}
+                            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 2, cursor: 'pointer' }}
                           >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
                               <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                              <span style={{ fontSize: '1rem', fontWeight: 500, color: '#0369a1' }}>
-                                Line Items (Master and Assistants only)
+                              <span style={{ fontWeight: 500, color: '#0369a1' }}>
+                                Line Items For Office
                                 {!isExpanded && (
                                   <> | {formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))}</>
                                 )}
                               </span>
                             </div>
-                            {isExpanded && (
-                              <div style={{ display: 'flex', gap: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                          </div>
+                          {isExpanded && (
+                            <>
+                    {(lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ fontSize: '0.8125rem', background: 'white', border: '1px solid #bae6fd', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
+                        <table style={{ borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Memo</th>
+                              <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Amount</th>
+                              <th style={{ width: 1, padding: '0.35rem 0.5rem', borderBottom: '1px solid #bae6fd' }}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lineItems[s.id]!.map((item, idx) => {
+                              const isLast = idx === lineItems[s.id]!.length - 1
+                              const rowBorder = isLast ? 'none' : '1px solid #bae6fd'
+                              return (
+                              <tr key={item.id}>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle' }}>
+                                  {item.link && item.link.trim() && normalizeUrl(item.link) ? (
+                                    <a
+                                      href={normalizeUrl(item.link)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                      title={item.link}
+                                    >
+                                      {item.memo}
+                                    </a>
+                                  ) : (
+                                    <span>{item.memo}</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#374151', fontWeight: 500, verticalAlign: 'middle' }}>
+                                  {formatAmount(item.amount)}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                  <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'flex-end' }}>
+                                    {item.purchase_order_id && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); loadPODetails(item.purchase_order_id!) }}
+                                        className="wf-btn-secondary wf-btn-secondary-blue"
+                                      >
+                                        View PO
+                                      </button>
+                                    )}
+                                    {item.supply_house_invoice_id && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); loadInvoiceDetails(item.supply_house_invoice_id!) }}
+                                        className="wf-btn-secondary wf-btn-secondary-blue"
+                                      >
+                                        View Invoice
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openEditLineItem(s.id, item) }}
+                                      title="Edit"
+                                      aria-label="Edit"
+                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                        <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/>
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteLineItem({ item, stepName: s.name }) }}
+                                      title="Delete"
+                                      aria-label="Delete"
+                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                                        <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )})}
+                          </tbody>
+                        </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
+                    ))}
+                              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditLineItem(s.id, null)}
+                                  className="wf-btn-success-soft"
+                                >
+                                  + Add Line Item
+                                </button>
+                                {availableInvoices.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAddingInvoiceToStep(s.id)}
+                                    className="wf-btn-success-soft"
+                                  >
+                                    + Add Supply House Invoice
+                                  </button>
+                                )}
                                 {availablePOs.length > 0 && (
                                   <button
                                     type="button"
                                     onClick={() => setAddingPOToStep(s.id)}
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                    className="wf-btn-success-soft"
                                   >
                                     + Add PO
                                   </button>
                                 )}
-                                <button
-                                  type="button"
-                                  onClick={() => openEditLineItem(s.id, null)}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                                >
-                                  + Add Line Item
-                                </button>
                               </div>
-                            )}
-                          </div>
-                          {isExpanded && (
-                    (lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
-                      <div style={{ fontSize: '0.875rem' }}>
-                        {lineItems[s.id]!.map((item) => (
-                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: 'white', borderRadius: 4, marginBottom: '0.25rem', border: '1px solid #bae6fd' }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 500, color: '#111827', marginBottom: '0.125rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span>{item.memo}</span>
-                                {item.link && (
-                                  <a
-                                    href={normalizeUrl(item.link)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                                    title={item.link}
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      const normalizedLink = normalizeUrl(item.link)
-                                      if (normalizedLink) {
-                                        window.open(normalizedLink, '_blank', 'noopener,noreferrer')
-                                      }
-                                    }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '14px', height: '14px', fill: 'currentColor' }}>
-                                      <path d="M451.5 160C434.9 160 418.8 164.5 404.7 172.7C388.9 156.7 370.5 143.3 350.2 133.2C378.4 109.2 414.3 96 451.5 96C537.9 96 608 166 608 252.5C608 294 591.5 333.8 562.2 363.1L491.1 434.2C461.8 463.5 422 480 380.5 480C294.1 480 224 410 224 323.5C224 322 224 320.5 224.1 319C224.6 301.3 239.3 287.4 257 287.9C274.7 288.4 288.6 303.1 288.1 320.8C288.1 321.7 288.1 322.6 288.1 323.4C288.1 374.5 329.5 415.9 380.6 415.9C405.1 415.9 428.6 406.2 446 388.8L517.1 317.7C534.4 300.4 544.2 276.8 544.2 252.3C544.2 201.2 502.8 159.8 451.7 159.8zM307.2 237.3C305.3 236.5 303.4 235.4 301.7 234.2C289.1 227.7 274.7 224 259.6 224C235.1 224 211.6 233.7 194.2 251.1L123.1 322.2C105.8 339.5 96 363.1 96 387.6C96 438.7 137.4 480.1 188.5 480.1C205 480.1 221.1 475.7 235.2 467.5C251 483.5 269.4 496.9 289.8 507C261.6 530.9 225.8 544.2 188.5 544.2C102.1 544.2 32 474.2 32 387.7C32 346.2 48.5 306.4 77.8 277.1L148.9 206C178.2 176.7 218 160.2 259.5 160.2C346.1 160.2 416 230.8 416 317.1C416 318.4 416 319.7 416 321C415.6 338.7 400.9 352.6 383.2 352.2C365.5 351.8 351.6 337.1 352 319.4C352 318.6 352 317.9 352 317.1C352 283.4 334 253.8 307.2 237.5z"/>
-                                    </svg>
-                                  </a>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '0.8125rem', color: (item.amount || 0) < 0 ? '#b91c1c' : '#6b7280' }}>
-                                {formatAmount(item.amount)}
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.25rem' }}>
-                              {item.purchase_order_id && (
-                                <button
-                                  type="button"
-                                  onClick={() => loadPODetails(item.purchase_order_id!)}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#dbeafe', color: '#1e40af', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                                >
-                                  View PO
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => openEditLineItem(s.id, item)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => deleteLineItem(item.id)}
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
-                    ))
+                            </>
                           )}
                         </>
                       )
                     })()}
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                  {/* Only show management buttons for owners and masters */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
                   {canManageStages && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => openEditStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>Edit</button>
-                      <button type="button" onClick={() => deleteStep(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}>Delete</button>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => openEditStep(s)} className="wf-btn-ghost">Edit</button>
+                      <button type="button" onClick={() => { setConfirmDeleteStep(s); setDeleteStepConfirmText('') }} className="wf-btn-danger">Delete</button>
                     </div>
                   )}
-                  {/* Re-open button - in line with Edit and Delete */}
                   {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && canManageStages && (
-                    <button type="button" onClick={() => markReopened(s)} style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#2563eb' }}>
+                    <button type="button" onClick={() => markReopened(s)} className="wf-btn-ghost">
                       Re-open
                     </button>
                   )}
                 </div>
+                </>
+                )}
+                    </>
+                  )
+                })()}
               </div>
-              {i < steps.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.25rem', color: '#9ca3af' }}>{"\u2193"}</div>}
+              {index < displayItems.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: '#9ca3af' }}>{"\u2193"}</div>}
             </div>
-          ))
-        )}
+            )
+          })
+        })()
+        }
       </div>
 
       {stepForm.open && (
@@ -2398,6 +2966,76 @@ export default function Workflow() {
         />
       )}
 
+      {confirmDeleteLineItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Delete line item?</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {confirmDeleteLineItem.item.memo}
+              {confirmDeleteLineItem.item.amount != null && (
+                <span> — {formatAmount(confirmDeleteLineItem.item.amount)}</span>
+              )}
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteLineItem(confirmDeleteLineItem.item.id)
+                  setConfirmDeleteLineItem(null)
+                }}
+                className="wf-btn-modal-primary wf-btn-danger-style"
+              >
+                Delete
+              </button>
+              <button type="button" onClick={() => setConfirmDeleteLineItem(null)} className="wf-btn-modal-secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Delete step: {confirmDeleteStep.name}?</h3>
+            {isStepEmpty(confirmDeleteStep) ? (
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>This step has no assignee, notes, or line items.</p>
+            ) : (
+              <>
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  This step has content (assignee, notes, line items, or has been started). Deleting will permanently remove it and related data.
+                </p>
+                <p style={{ marginBottom: 8, fontSize: '0.875rem' }}>Type &quot;{confirmDeleteStep.name}&quot; to confirm:</p>
+                <input
+                  value={deleteStepConfirmText}
+                  onChange={(e) => setDeleteStepConfirmText(e.target.value)}
+                  placeholder={confirmDeleteStep.name}
+                  style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+                />
+              </>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  await deleteStep(confirmDeleteStep)
+                  setConfirmDeleteStep(null)
+                  setDeleteStepConfirmText('')
+                }}
+                disabled={!isStepEmpty(confirmDeleteStep) && deleteStepConfirmText.trim() !== confirmDeleteStep.name}
+                className="wf-btn-modal-primary wf-btn-danger-style"
+              >
+                Delete
+              </button>
+              <button type="button" onClick={() => { setConfirmDeleteStep(null); setDeleteStepConfirmText('') }} className="wf-btn-modal-secondary">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rejectStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -2411,8 +3049,8 @@ export default function Workflow() {
               placeholder="What is wrong and how should it be fixed (optional)"
             />
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitReject} style={{ padding: '0.5rem 1rem', color: '#E87600' }}>Reject</button>
-              <button type="button" onClick={() => setRejectStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button type="button" onClick={submitReject} className="wf-btn-modal-primary wf-btn-danger-style">Reject</button>
+              <button type="button" onClick={() => setRejectStep(null)} className="wf-btn-modal-secondary">Cancel</button>
             </div>
           </div>
         </div>
@@ -2431,8 +3069,8 @@ export default function Workflow() {
               style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
             />
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitSetStart} style={{ padding: '0.5rem 1rem' }}>Set Start</button>
-              <button type="button" onClick={() => setSetStartStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button type="button" onClick={submitSetStart} className="wf-btn-modal-primary">Set Start</button>
+              <button type="button" onClick={() => setSetStartStep(null)} className="wf-btn-modal-secondary">Cancel</button>
             </div>
           </div>
         </div>
@@ -2500,8 +3138,8 @@ export default function Workflow() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-              <button type="button" onClick={() => assignPerson(assignPersonStep, null)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6 }}>Clear</button>
-              <button type="button" onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#111827', cursor: 'pointer', background: '#e5e7eb', border: '1px solid #d1d5db', borderRadius: 6 }}>Cancel</button>
+              <button type="button" onClick={() => assignPerson(assignPersonStep, null)} className="wf-btn-modal-secondary">Clear</button>
+              <button type="button" onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }} className="wf-btn-modal-secondary">Cancel</button>
             </div>
           </div>
         </div>
@@ -2560,8 +3198,8 @@ export default function Workflow() {
                 />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
-                <button type="button" onClick={() => setEditingLineItem(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                <button type="submit" className="wf-btn-modal-primary">Save</button>
+                <button type="button" onClick={() => setEditingLineItem(null)} className="wf-btn-modal-secondary">Cancel</button>
               </div>
             </form>
           </div>
@@ -2616,8 +3254,8 @@ export default function Workflow() {
                 />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
-                <button type="button" onClick={() => setEditingProjection(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+                <button type="submit" className="wf-btn-modal-primary">Save</button>
+                <button type="button" onClick={() => setEditingProjection(null)} className="wf-btn-modal-secondary">Cancel</button>
               </div>
             </form>
           </div>
@@ -2658,7 +3296,84 @@ export default function Workflow() {
               <button
                 type="button"
                 onClick={() => setAddingPOToStep(null)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                className="wf-btn-modal-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Supply House Invoice to Step Modal */}
+      {addingInvoiceToStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <h3 style={{ marginTop: 0 }}>Add Supply House Invoice to Step</h3>
+            {availableInvoices.length === 0 ? (
+              <p style={{ color: '#6b7280' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
+            ) : (
+              <div style={{ marginTop: '1rem' }}>
+                <input
+                  type="search"
+                  placeholder="Search by invoice #, supply house, amount, date, PO #, paid/unpaid..."
+                  value={invoiceSearchText}
+                  onChange={(e) => setInvoiceSearchText(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                />
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
+                  {(() => {
+                    const q = invoiceSearchText.trim().toLowerCase()
+                    const filtered = q
+                      ? availableInvoices.filter(inv =>
+                          inv.invoice_number.toLowerCase().includes(q) ||
+                          inv.supply_house_name.toLowerCase().includes(q) ||
+                          String(inv.amount).includes(q) ||
+                          inv.invoice_date.toLowerCase().includes(q) ||
+                          (inv.purchase_order_number?.toLowerCase().includes(q) ?? false) ||
+                          (q === 'paid' && inv.is_paid) ||
+                          (q === 'unpaid' && !inv.is_paid)
+                        )
+                      : availableInvoices
+                    if (filtered.length === 0) {
+                      return <p style={{ padding: '1rem', color: '#6b7280' }}>No matching invoices.</p>
+                    }
+                    return filtered.map(inv => (
+                      <div
+                        key={inv.id}
+                        onClick={() => addInvoiceToStep(addingInvoiceToStep, inv.id)}
+                        style={{
+                          padding: '1rem',
+                          borderBottom: '1px solid #e5e7eb',
+                          cursor: 'pointer',
+                          background: 'white',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      >
+                        {/* Primary: supply house, date, amount, PO */}
+                        <div style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                          {inv.supply_house_name}
+                          <span style={{ color: '#6b7280', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
+                          {inv.purchase_order_number && <span style={{ color: '#6b7280', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
+                        </div>
+                        {/* Secondary: invoice #, due, paid */}
+                        <div style={{ fontSize: '0.8125rem', color: '#9ca3af', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                          <span>#{inv.invoice_number}</span>
+                          {inv.due_date && <span>Due {formatDateShort(inv.due_date)}</span>}
+                          {inv.is_paid && <span style={{ color: '#059669', fontWeight: 500 }}>Paid</span>}
+                        </div>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </div>
+            )}
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => { setAddingInvoiceToStep(null); setInvoiceSearchText('') }}
+                className="wf-btn-modal-secondary"
               >
                 Cancel
               </button>
@@ -2708,7 +3423,36 @@ export default function Workflow() {
               <button
                 type="button"
                 onClick={() => setViewingPO(null)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                className="wf-btn-modal-secondary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Supply House Invoice Details Modal */}
+      {viewingInvoice && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
+            <h2 style={{ marginBottom: '1rem' }}>Invoice #{viewingInvoice.invoice_number}</h2>
+            <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
+              <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {viewingInvoice.supply_house_name}</div>
+              <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> {formatAmount(viewingInvoice.amount)}</div>
+              {viewingInvoice.link && (
+                <div>
+                  <a href={normalizeUrl(viewingInvoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                    View invoice link
+                  </a>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setViewingInvoice(null)}
+                className="wf-btn-modal-secondary"
               >
                 Close
               </button>
@@ -2774,18 +3518,31 @@ function StepFormModal({
 
   async function loadMastersAndSubs() {
     if (!authUser?.id) return
-    
-    const [usersRes, peopleRes] = await Promise.all([
-      supabase
-        .from('users')
-        .select('name, role')
-        .in('role', ['master_technician', 'subcontractor', 'primary']),
-      supabase
-        .from('people')
-        .select('name, kind')
-        .eq('master_user_id', authUser.id)
-        .in('kind', ['master_technician', 'sub'])
-    ])
+
+    const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
+    const role = (me as { role: string } | null)?.role
+
+    let usersRes: { data: Array<{ name: string | null; role: string }> | null }
+    let peopleRes: { data: Array<{ name: string; kind: string }> | null }
+
+    if (role === 'superintendent') {
+      const { data: adopted } = await supabase
+        .from('master_superintendents')
+        .select('master_id')
+        .eq('superintendent_id', authUser.id)
+      const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
+      ;[usersRes, peopleRes] = await Promise.all([
+        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'primary']),
+        adoptedMasterIds.length > 0
+          ? supabase.from('people').select('name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub'])
+          : { data: [] as Array<{ name: string; kind: string }> },
+      ])
+    } else {
+      ;[usersRes, peopleRes] = await Promise.all([
+        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'primary']),
+        supabase.from('people').select('name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub']),
+      ])
+    }
     
     const fromUsers = ((usersRes.data as Array<{name: string | null, role: string}> | null) ?? [])
       .filter((u): u is {name: string, role: string} => !!u.name)
@@ -2851,7 +3608,7 @@ function StepFormModal({
     if (!trimmedName) return false
     
     const [peopleRes, usersRes] = await Promise.all([
-      supabase.from('people').select('id, name'),
+      supabase.from('people').select('id, name').is('archived_at', null),
       supabase.from('users').select('id, name')
     ])
     
@@ -2945,7 +3702,7 @@ function StepFormModal({
               style={{ width: '100%', padding: '0.5rem' }}
             />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: 6 }}>
-              <button type="button" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+              <button type="button" className="wf-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                 change order:
               </button>
               {[
@@ -2962,7 +3719,8 @@ function StepFormModal({
                   key={phrase}
                   type="button"
                   onClick={() => setName((prev: string | undefined) => (prev ? `${prev}, ${phrase}` : phrase))}
-                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                  className="wf-btn-secondary"
+                  style={{ whiteSpace: 'nowrap' }}
                 >
                   {phrase}
                 </button>
@@ -3120,13 +3878,13 @@ function StepFormModal({
             </div>
           )}
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="submit" style={{ padding: '0.5rem 1rem' }}>Save</button>
+            <button type="submit" className="wf-btn-modal-primary">Save</button>
             {onCopy && (
-              <button type="button" onClick={onCopy} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4 }}>
+              <button type="button" onClick={onCopy} className="wf-btn-modal-primary">
                 Copy
               </button>
             )}
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            <button type="button" onClick={onClose} className="wf-btn-modal-secondary">Cancel</button>
           </div>
         </form>
       </div>
@@ -3185,7 +3943,7 @@ function StepFormModal({
                 />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={savingPerson} style={{ padding: '0.5rem 1rem' }}>
+                <button type="submit" disabled={savingPerson} className="wf-btn-modal-primary">
                   {savingPerson ? 'Saving...' : 'Save'}
                 </button>
                 <button
@@ -3196,7 +3954,7 @@ function StepFormModal({
                     setAddPersonError(null)
                   }}
                   disabled={savingPerson}
-                  style={{ padding: '0.5rem 1rem' }}
+                  className="wf-btn-modal-secondary"
                 >
                   Cancel
                 </button>

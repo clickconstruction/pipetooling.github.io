@@ -13,7 +13,7 @@ type SupplyHouseInvoiceWithAllocations = SupplyHouseInvoice & { job_allocations?
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
 type POItemWithDetails = PurchaseOrderItem & {
   part: MaterialPart

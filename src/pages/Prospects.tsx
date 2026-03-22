@@ -601,6 +601,7 @@ export default function Prospects() {
     const { data: peopleData } = await supabase
       .from('people')
       .select('phone')
+      .is('archived_at', null)
       .eq('master_user_id', authUser.id)
       .not('phone', 'is', null)
       .limit(1)

@@ -244,6 +244,74 @@ Allows estimators to see all customers (for the Bids GC/Builder dropdown and joi
 
 **When to run**: When enabling estimators to use the Bids page GC/Builder dropdown (see and select customers, or add new customers from "+ Add new customer" and assign them to a master). Estimators still have no access to the `/customers` or `/projects` pages (enforced by Layout redirect).
 
+### Primary role and access
+
+Run these when introducing the **primary** role. Order: add role enum first, then create adoption table, then RLS migrations. For a full step-by-step guide to adding any new role, see [ADDING_A_NEW_ROLE.md](../ADDING_A_NEW_ROLE.md).
+
+#### `add_user_role_primary.sql`
+
+Adds the `primary` value to the `user_role` enum so users can be assigned the primary role.
+
+**What it does**:
+- `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'primary'`
+- Updates type comment to include primary
+
+**When to run**: Before any primary RLS migrations. Required for `create-user` Edge Function to accept `role: 'primary'`.
+
+#### `20260223100000_create_master_primaries.sql`
+
+Creates the `master_primaries` junction table for master–primary adoption (masters adopt primaries to grant access).
+
+**What it does**:
+- Creates `master_primaries(master_id, primary_id)` with FKs to `users`
+- RLS: Masters and devs can read/manage; primaries can read who adopted them
+
+**When to run**: When primaries need adoption-based access (like assistants). Run after `add_user_role_primary.sql`.
+
+#### Primary RLS migrations (run in dependency order)
+
+- `20260221210001_primary_reports_access.sql` — Reports table and `list_reports_with_job_info`
+- `20260221210002_primary_materials_access.sql` — Materials tables (parts, templates, POs, supply houses)
+- `20260223100000_create_master_primaries.sql` — Adoption junction table
+- `20260224000000_add_primary_service_type_ids.sql` — Service type filtering on users
+- `20260224100000_primary_bids_bid_board_access.sql` — Bids Bid Board (initial)
+- `20260224110000_primary_bids_adoption_access.sql` — Bids adoption-based access
+- `20260224120000_primary_projects_adoption_access.sql` — Projects via adoption
+- `20260224130000_allow_users_see_primaries.sql` — Users table visibility
+- `20260224140000_primary_supply_houses_read.sql` — Supply houses
+- `20260224150000_primary_assembly_book_read.sql` — Assembly book
+- `20260225000000_primary_jobs_tally_parts.sql` — Jobs tally parts
+- `20260231000023_primary_bids_see_adopted_master_bids.sql` — Bids from adopted masters
+- `20260311000000_primary_bids_count_rows_access.sql` — Bids count rows
+- `20260311000001_primary_cost_estimates_access.sql` — Cost estimates
+- `20260311000002_primary_cost_estimate_labor_rows_access.sql` — Cost estimate labor rows
+- `20260312000010_primary_price_book_access.sql` — Price book
+- `20260312000001_primary_bid_count_row_custom_prices_access.sql` — Custom prices
+- `20260312000002_primary_fixture_types_access.sql` — Fixture types
+- `20260230000015_primaries_see_adopted_masters.sql` — Users: primaries see adopted masters
+- `20260410130000_primaries_full_bids_access.sql` — Full Bids access
+- `20260410140000_fix_bid_pricing_assignments_primary_rls.sql` — Bid pricing assignments
+
+**When to run**: Apply in order when enabling the primary role. See [ADDING_A_NEW_ROLE.md](../ADDING_A_NEW_ROLE.md) for the complete guide.
+
+### Superintendent role and access
+
+Run these when introducing the **superintendent** role. Order: add role enum first, then create adoption table, then service type IDs, then RLS migrations. See [ADDING_A_NEW_ROLE.md](../ADDING_A_NEW_ROLE.md) for the complete guide.
+
+#### Superintendent migrations (run in dependency order)
+
+- `20260520120000_add_user_role_superintendent.sql` — Add superintendent to user_role enum
+- `20260520120001_create_master_superintendents.sql` — Adoption junction table
+- `20260520120002_add_superintendent_service_type_ids.sql` — Service type filtering on users
+- `20260520120003_superintendent_project_and_adoption_access.sql` — Projects and can_access_project_row, master_adopted_current_user
+- `20260520120004_workflow_rls_superintendent.sql` — Workflow tables (project_workflow_steps, workflow_step_line_items)
+- `20260520120005_superintendent_jobs_and_reports_rls.sql` — Jobs, reports, ledger tables
+- `20260520120006_superintendent_people_rls.sql` — People table (for Workflow roster)
+- `20260520120007_superintendent_bids_and_customers_rls.sql` — Bids tables and customers (SELECT + INSERT for Bids)
+- `20260520120008_superintendent_materials_rls.sql` — Materials tables
+
+**When to run**: Apply in order when enabling the superintendent role. Superintendents have adoption-based access via `master_superintendents`; no People page; Jobs tabs: Reports, Stages, Billing, Sub Sheet Ledger; Bids tabs: draft flow only (no Pricing, Cover Letter, Submission).
+
 ### Revert price book and bids.job_type
 
 #### `revert_price_book_and_bids_job_type.sql`

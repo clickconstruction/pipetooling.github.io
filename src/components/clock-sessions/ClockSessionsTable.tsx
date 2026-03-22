@@ -9,6 +9,7 @@ type ClockSessionsTableProps = {
   sessions: ClockSessionRow[]
   showActionsColumn?: boolean
   renderActions?: (session: ClockSessionRow) => ReactNode
+  renderJob?: (session: ClockSessionRow) => ReactNode
   renderDuration?: (session: ClockSessionRow) => ReactNode
   locationVariant?: 'compact' | 'full'
   emptyMessage?: string
@@ -23,7 +24,14 @@ function defaultRenderDuration(s: ClockSessionRow): ReactNode {
   const hrs = (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
   const isActive = s.clocked_out_at == null
   const dateStr = new Date(s.work_date + 'T12:00:00').toLocaleDateString(undefined, dateOpts)
-  return `${hrs.toFixed(2)}h | ${inDate.toLocaleTimeString(undefined, timeOpts)} | ${isActive ? '—' : outDate.toLocaleTimeString(undefined, timeOpts)} | ${dateStr}`
+  const inStr = inDate.toLocaleTimeString(undefined, timeOpts)
+  const outStr = isActive ? '—' : outDate.toLocaleTimeString(undefined, timeOpts)
+  const durationStr = `${hrs.toFixed(2)}h`
+  return (
+    <>
+      {dateStr} | {inStr} | {outStr} | <span style={{ fontWeight: 600 }}>{durationStr}</span>
+    </>
+  )
 }
 
 function formatAccountability(s: ClockSessionRow): string {
@@ -46,6 +54,7 @@ export function ClockSessionsTable({
   sessions,
   showActionsColumn = false,
   renderActions,
+  renderJob,
   renderDuration = defaultRenderDuration,
   locationVariant = 'compact',
   emptyMessage = 'No sessions',
@@ -56,12 +65,12 @@ export function ClockSessionsTable({
         <thead style={{ background: '#f3f4f6' }}>
           <tr>
             <th style={thStyle}>Person</th>
-            <th style={thStyle}>Duration | In | Out | Date</th>
+            <th style={thStyle}>Date | In | Out | Duration</th>
             <th style={thStyle}>Notes</th>
-            <th style={thStyle}>Job</th>
-            <th style={thStyle}>Location</th>
-            <th style={thStyle}>Action</th>
+            <th style={thStyle}>Job or Bid</th>
+            <th style={thStyle}>Status</th>
             {showActionsColumn && <th style={thStyle}>Actions</th>}
+            <th style={thStyle}>Location</th>
           </tr>
         </thead>
         <tbody>
@@ -84,12 +93,21 @@ export function ClockSessionsTable({
                 : s.bids
                   ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
                   : '—'
+              const jobCellContent = renderJob ? renderJob(s) : jobDisplay
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={tdStyle}>{personName}</td>
                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{renderDuration(s)}</td>
                   <td style={{ ...tdStyle, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.notes || undefined}>{s.notes || '—'}</td>
-                  <td style={{ ...tdStyle, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={jobTitle}>{jobDisplay}</td>
+                  <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={jobTitle}>{jobCellContent}</td>
+                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'nowrap', color: '#6b7280' }}>
+                    {formatAccountability(s)}
+                  </td>
+                  {showActionsColumn && (
+                    <td style={tdStyle}>
+                      {renderActions?.(s)}
+                    </td>
+                  )}
                   <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                     <ClockSessionLocationCell
                       clockInLat={s.clock_in_lat}
@@ -99,14 +117,6 @@ export function ClockSessionsTable({
                       variant={locationVariant}
                     />
                   </td>
-                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'nowrap', color: '#6b7280' }}>
-                    {formatAccountability(s)}
-                  </td>
-                  {showActionsColumn && (
-                    <td style={tdStyle}>
-                      {renderActions?.(s)}
-                    </td>
-                  )}
                 </tr>
               )
             })

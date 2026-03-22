@@ -11,7 +11,7 @@
 - **Domain**: Commercial/residential plumbing project management + bid estimation
 - **Stack**: React + TypeScript + Supabase (PostgreSQL + Auth + RLS + Edge Functions)
 - **Deployment**: GitHub Pages (static hosting)
-- **Users**: 5 roles with complex access control (dev, master, assistant, subcontractor, estimator)
+- **Users**: 7 roles with complex access control (dev, master, assistant, subcontractor, estimator, primary, superintendent)
 - **4 Major Systems** (+ significant subsystems):
   1. Projects/Workflows (ongoing work tracking)
   2. Bids (estimation system: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release)
@@ -62,6 +62,8 @@ Customer (has master_user_id)
 - **Sharing**: `master_shares(sharing_master_id, viewing_master_id)` - grants view access
 - **Cost Matrix Shares**: `cost_matrix_teams_shares(shared_with_user_id)` - dev grants view-only Cost matrix and Teams to masters/assistants
 - **Ownership**: Foreign keys to `users.id` as `master_user_id` or `created_by`
+- **Project Superintendent Assignment**: `project_superintendents(project_id, superintendent_id)` - devs/masters/assistants assign superintendents to specific projects; superintendents gain access via adoption OR project assignment
+- **Job–Project Link**: `jobs_ledger.project_id` (nullable FK → projects) - Jobs can optionally link to projects for multi-phase billing; not all jobs need projects; job owner must match project owner when linked (trigger); Edit Job auto-updates master_user_id to project owner when linking
 - **Cascading**: Customer master changes propagate to projects automatically
 
 ---
@@ -133,7 +135,8 @@ pipetooling.github.io/
 - **`src/hooks/useAuth.ts`** - Authentication state and user role; used throughout app
 - **`src/hooks/usePushNotifications.ts`** - Push notification subscriptions for Checklist
 - **`src/contexts/ToastContext.tsx`** - Shared toast notifications (success, info, warning, error); use `useToastContext()` to show toasts from any component
-- **`src/lib/supabase.ts`** - Supabase client configuration
+- **`src/lib/supabase.ts`** - Supabase client configuration (includes `db: { schema: 'public' }`)
+- **`src/lib/approveClockSessions.ts`** - RPC helper for approve_clock_sessions with explicit schema and fetch fallback
 - **`src/utils/errorHandling.ts`** - Retry wrappers and error utilities
 
 ### Documentation (Start Here)
@@ -143,6 +146,7 @@ pipetooling.github.io/
 - **`PROJECT_DOCUMENTATION.md`** - Complete technical reference (3000+ lines)
 - **`BIDS_SYSTEM.md`** - Bids system documentation (all tabs)
 - **`ACCESS_CONTROL.md`** - Complete role permissions matrix
+- **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
 - **`EDGE_FUNCTIONS.md`** - Edge Functions API reference
 - **`RECENT_FEATURES.md`** - Chronological feature log
 
@@ -156,7 +160,7 @@ pipetooling.github.io/
 2. **Write SQL**: CREATE TABLE + RLS policies + constraints + foreign keys
 3. **Apply locally**: `supabase migration up`
 4. **Update types**: `supabase gen types typescript --local > src/types/database.ts`
-5. **Test RLS**: Verify policies work for all 5 roles
+5. **Test RLS**: Verify policies work for all 6 roles
 6. **Document**: Add to `PROJECT_DOCUMENTATION.md` and `MIGRATIONS.md`
 
 ### Adding a New Page/Route
@@ -188,7 +192,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 1. **Prerequisites**: Dev server running (`npm run dev`); Supabase functions running; test user exists in Supabase
 2. **Env vars**: Add to `.env.local`: `VITE_DEV_LOGIN_SECRET=your-secret`
 3. **Edge Function secret**: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
-4. **URL**: Open `http://localhost:5175/dev-login?as=test@example.com` or use the form at `/dev-login`
+4. **URL**: Open `http://localhost:5173/dev-login?as=test@example.com` or use the form at `/dev-login` (Vite default port 5173)
 5. **Flow**: Frontend calls `dev-login` Edge Function with email + secret; function returns magic link; browser redirects; user lands authenticated
 
 **Security**: Only active when `import.meta.env.DEV` is true. Production builds redirect `/dev-login` to sign-in.
@@ -203,6 +207,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 |------|---------------|
 | Database schema, tables, columns | `PROJECT_DOCUMENTATION.md` → "Database Schema" section |
 | User role permissions | `ACCESS_CONTROL.md` → Page/Feature access matrices |
+| Adding a new role | `ADDING_A_NEW_ROLE.md` → Step-by-step guide |
 | Term definitions | `GLOSSARY.md` → All domain terms and concepts |
 | Recent changes and features | `RECENT_FEATURES.md` → Chronological updates |
 | Bids system | `BIDS_SYSTEM.md` → Complete workflow documentation |

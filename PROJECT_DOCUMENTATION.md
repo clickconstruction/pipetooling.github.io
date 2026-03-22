@@ -585,8 +585,21 @@ WHERE proname IN (
   - Address auto-fills from customer but can be overridden
   - Active stage displayed in project list
   - Project owner (master) displayed in project list and workflow page
+  - **Projects page master/superintendents display**: Each project row shows Master badge (blue) and Superintendents with access (adoption + project assignment) as badges
+  - **Projects page linked jobs**: Each project row shows linked jobs (from `jobs_ledger.project_id`); "Create Job" link opens New Job form with project pre-filled
   - **Project owner automatically matches customer owner** - cannot be changed or selected separately
   - Clicking project name navigates to workflow page (not edit page)
+  - **Assigned Superintendents**: Devs, masters, and assistants can assign superintendents to projects via Workflow page; see `project_superintendents` table
+
+#### `public.project_superintendents`
+- **Purpose**: Junction table for project-level superintendent assignment
+- **Key Fields**:
+  - `project_id` (uuid, FK → `projects.id` ON DELETE CASCADE)
+  - `superintendent_id` (uuid, FK → `users.id` ON DELETE CASCADE)
+  - `created_at` (timestamptz, nullable)
+- **Primary Key**: `(project_id, superintendent_id)`
+- **RLS**: Devs, masters, assistants can SELECT/INSERT/DELETE for projects they can access (`can_access_project_row`); superintendents can SELECT rows where they are assigned
+- **Purpose**: Superintendents gain access to specific projects via assignment (in addition to adoption via `master_superintendents`); UI on Workflow page
 
 #### `public.project_workflows`
 - **Purpose**: Workflow instances for projects
@@ -691,6 +704,7 @@ WHERE proname IN (
   - `email` (text, nullable)
   - `phone` (text, nullable)
   - `notes` (text, nullable)
+  - `archived_at` (timestamptz, nullable) – when set, person is archived (hidden from roster); can be restored
 - **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
 
 #### `public.clock_sessions`
@@ -764,8 +778,14 @@ WHERE proname IN (
 
 #### `public.dispatch_requests`
 - **Purpose**: Task Dispatch messages (task text + optional links, same `[1]`/`[2]` placeholders as checklist). Modal titled "Message the Dispatch team" with Task, Reference (optional), Links (optional). Any authenticated user may create (`from_user_id = auth.uid()`). Dev and dispatch group members see open requests on Dashboard and may mark closed.
-- **Key Fields**: `title`, `links` (text[], same `[1]`/`[2]` pattern as checklist_items), `status` (`open` | `closed`), `closed_at`, `closed_by_user_id`; optional `job_ledger_id` **or** `bid_id` (not both, FKs to `jobs_ledger` / `bids`); `reference_summary` (nullable text, client-set at send time, same “J… · …” / “B… · …” format as Clock In unified search — informational for inbox and push)
+- **Key Fields**: `title`, `links` (text[], same `[1]`/`[2]` pattern as checklist_items), `status` (`open` | `closed`), `closed_at`, `closed_by_user_id`, `closed_note` (text, nullable — required when closing, enforced in app); optional `job_ledger_id` **or** `bid_id` (not both, FKs to `jobs_ledger` / `bids`); `reference_summary` (nullable text, client-set at send time, same “J… · …” / “B… · …” format as Clock In unified search — informational for inbox and push)
 - **RLS**: SELECT if author, dev, or dispatch group member; INSERT authenticated as self; UPDATE dev or dispatch member (body columns protected from non-dev by trigger)
+
+#### `public.dispatch_request_dismissals`
+- **Purpose**: Per-user dismissals of closed dispatch requests. When a dispatch user dismisses a closed request, it is hidden from their inbox; other users still see it until they dismiss it.
+- **Key Fields**: `user_id` (uuid, FK → auth.users ON DELETE CASCADE), `request_id` (uuid, FK → dispatch_requests ON DELETE CASCADE), `dismissed_at` (timestamptz, default now())
+- **Primary Key**: `(user_id, request_id)`
+- **RLS**: SELECT/INSERT own rows only (`user_id = auth.uid()`)
 
 #### `public.people_labor_jobs`
 - **Purpose**: Labor jobs from Jobs page (Labor tab); displayed in Sub Sheet Ledger tab on Jobs
@@ -815,6 +835,7 @@ WHERE proname IN (
   - `memo` (text, required) - Description of the line item
   - `amount` (numeric(10, 2), required) - **Supports negative numbers** for credits/refunds
   - `purchase_order_id` (uuid, FK → `purchase_orders.id` ON DELETE SET NULL, nullable) - Link to purchase order if added from Materials
+  - `supply_house_invoice_id` (uuid, FK → `supply_house_invoices.id` ON DELETE SET NULL, nullable) - Link to supply house invoice if added from Materials
   - `sequence_order` (integer) - Order within the step
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: 
@@ -832,11 +853,16 @@ WHERE proname IN (
   - **Purchase Order Integration**: Can be linked to finalized purchase orders from Materials system
     - Shows "View PO" button when linked to a purchase order
     - PO details displayed in modal when clicked
+  - **Supply House Invoice Integration**: Can be linked to supply house invoices from Materials system
+    - "Add Supply House Invoice" button when supply house invoices exist; modal with search by invoice #, supply house name, amount, date, PO #, paid/unpaid
+    - Clicking a row adds line item with memo and amount from invoice; links via `supply_house_invoice_id`
+    - "View Invoice" button on linked line items opens modal with invoice #, supply house, amount, link
   - Assistants can view Ledger table but cannot see financial totals
 - **Migrations**: 
   - `supabase/migrations/optimize_workflow_step_line_items_rls.sql` - RLS optimization
   - `supabase/migrations/add_link_to_line_items.sql` - Added link field
   - `supabase/migrations/add_purchase_order_to_line_items.sql` - Added purchase_order_id field
+  - `supabase/migrations/add_supply_house_invoice_to_line_items.sql` - Added supply_house_invoice_id field
 
 #### `public.workflow_projections`
 - **Purpose**: Project cost projections for entire workflow
@@ -1175,7 +1201,7 @@ uuid3           | Supply House C    | 0
   - Legacy `gc_builder_id` retained for backward compatibility
   - Clicking GC/Builder name opens modal with customer details and all bid statuses
   - "Save and start Counts" button in New Bid modal
-- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `20260320120002_bid_number_auto_generate.sql`, `20260320120003_prevent_estimator_primary_edit_bid_number.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
+- **Migrations**: `create_bids.sql`, `add_bids_customer_id.sql`, `split_bids_project_name_and_address.sql`, `add_bids_estimated_job_start_date.sql`, `add_bids_gc_contact.sql`, `add_bids_estimator_id.sql`, `add_bids_loss_reason.sql`, `add_bids_outcome_started_or_complete.sql`, `20260231000000_add_bids_submitted_to.sql`, `20260320120000_add_bid_number_to_bids.sql`, `20260320120002_bid_number_auto_generate.sql`, `20260320120004_prevent_estimator_primary_edit_bid_number.sql`, `allow_assistants_access_bids.sql`, `allow_estimators_access_bids.sql`
 
 #### `public.bids_count_rows`
 - **Purpose**: Fixture and count rows per bid (Counts tab)
@@ -1374,7 +1400,9 @@ customers (id)
   └── bids.customer_id
 
 projects (id)
-  └── project_workflows.project_id
+  ├── project_workflows.project_id
+  ├── project_superintendents.project_id
+  └── jobs_ledger.project_id
 
 project_workflows (id)
   └── project_workflow_steps.workflow_id
@@ -1557,7 +1585,7 @@ counts_fixture_groups (id)
   - Assistants can only see customers/projects from masters who adopted them
 - **Master-Sharing Relationship**:
   - Masters can "share" with other masters via checkboxes in Settings
-  - Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials)
+  - Shared masters receive assistant-level access (can see but not modify, cannot see financial totals)
   - Shared masters can see customers/projects from masters who shared with them
 - **Can**: 
   - **Create and edit customers** (must select a master who adopted them as customer owner)
@@ -1742,7 +1770,7 @@ OR EXISTS (
 )
 ```
 
-**Note**: Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials).
+**Note**: Shared masters receive assistant-level access (can see but not modify, cannot see financial totals).
 
 This pattern is used in:
 - `customers` table: Assistants can see customers from masters who adopted them
@@ -1856,7 +1884,9 @@ user_id = auth.uid()
     - Gray: pending
     - Clickable stage names scroll to specific step cards
   - Step cards displayed in sequence order
-  - Each card shows full stage details, status, assigned person, and actions
+  - Step cards are collapsible; click header to toggle. Completed/approved cards default collapsed.
+  - Collapsed view: Header shows Start/End dates, line item count and total, Notes/Pvt word counts. Action buttons remain visible. Assign and Notify hidden.
+  - Each card shows full stage details, status, assigned person, and actions (collapsible structure)
 
 **Step Management**:
   - Add steps at beginning, end, or after specific step
@@ -1874,12 +1904,12 @@ user_id = auth.uid()
   - Excludes current user from roster list to prevent duplicates
 
 **Step Status Actions**:
-  - **Set Start**: Date/time picker modal to set custom start time (replaces immediate start)
+  - **Set Start** (blue): Date/time picker modal to set custom start time (replaces immediate start)
     - Allows setting historical or future start times
     - Pre-filled with current date/time
-  - **Complete**: Mark stage as finished (sets `ended_at` timestamp)
-  - **Approve**: Owners/masters can approve with tracking (who approved, when)
-  - **Reject**: Owners/masters can reject with reason notes
+  - **Complete** (green): Worker marks stage as finished (sets `ended_at` timestamp). Visible to assigned person or managers.
+  - **Approve** (blue): Managers/owners sign off with audit trail (who approved, when). Dev, master, and assistant; visually separated from Complete.
+  - **Reject** (red): Owners/masters can reject with reason notes. Dev, master, and assistant.
   - **Re-open**: Reopen completed/approved/rejected stages (resets status to pending)
     - Available for completed, approved, or rejected stages via "Re-open" button
     - Visible to devs, masters, and assistants (on Workflow page only)
@@ -1891,7 +1921,7 @@ user_id = auth.uid()
   - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
 
 **Financial Tracking**:
-  - **Line Items**: Track actual expenses/credits per stage
+  - **Line Items For Office**: Track actual expenses/credits per stage
     - Fields: Link (optional URL), Memo (description), Amount (supports negative for credits/refunds)
     - Located within Private Notes section of each stage
     - **Link field**: Optional URL for external resources (Google Sheets, supply house listings)
@@ -1904,6 +1934,9 @@ user_id = auth.uid()
       - "Add PO" button appears when finalized POs are available
       - Creates line item with PO total and links to original PO
       - "View PO" button appears on linked line items
+    - **Supply House Invoice Integration**: Can add supply house invoices as line items
+      - "Add Supply House Invoice" button when invoices exist; modal with search
+      - "View Invoice" button on linked line items
     - **Assistants**: Can add/edit line items but cannot see financial totals
   - **Projections**: Track projected costs for entire workflow (Devs/Masters only)
     - Fields: Stage name, Memo, Amount (supports negative)
@@ -1955,9 +1988,9 @@ user_id = auth.uid()
   - **Owners/Masters**: See all stages, full access to all features
   - **Assistants**: 
     - See ALL stages in workflows they have access to (via master adoption)
-    - Can use Set Start, Complete, and Re-open on assigned stages
-    - Can view and edit line items (but cannot see financial totals)
-    - Cannot see private notes, projections, or financial totals
+    - Can use Set Start, Complete, Approve, Reject, and Re-open on assigned stages
+    - Can view and edit line items and private notes (but cannot see financial totals)
+    - Cannot see projections or financial totals
     - Cannot add, edit, delete, or assign stages
     - Notification settings: "ASSIGNED" column hidden, only "ME" column visible
   - **Subcontractors**: 
@@ -2002,13 +2035,13 @@ user_id = auth.uid()
   - Display shows "(account)" next to people who have user accounts; green dot indicates push notifications enabled (visible to devs, masters, assistants)
   - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
   - **Pay Tab** (dev, approved masters, or shared by dev): Due by Trade, Due by Team, Cost matrix with date range and "← last week" / "next week →" buttons; Teams for combined cost by date range (view-only for shared users); People pay config (collapsible, dev/approved only) for hourly wage, Salary, Show in Hours, Show in Cost Matrix; Share Cost Matrix and Teams (dev-only, in Settings) to grant view-only access to selected masters/assistants; Tag colors. Cost matrix date headers display on two lines (e.g. Mon / 2/16) on mobile (≤640px). **Realtime sync**: When any user updates hours in Hours tab, the Cost matrix updates automatically for all users viewing Pay—no refresh needed.
-  - **Hours Tab** (dev, approved masters, assistants): **Pending clock sessions** (collapsible) above the grid: sessions clocked out but not yet approved. Table: Person, Duration | In | Out | Date, Notes, Job, Location, Action, Actions (Force clock out, Edit, Approve, Reject). Duration format: `0.00h | 1:52 PM | 1:52 PM | Sun, Mar 15`. Location shows map pin icons (In/Out links to Google Maps); when no Out, Out and route icon hidden. Action column shows "Approved by", "Rejected by", or "Revoked by" with name and timestamp. **Approved Sessions** (collapsible) with Revoke button. **Rejected Sessions** (collapsible) with Delete. Approve merges hours via `approve_clock_sessions` RPC (and syncs crew jobs when a job is linked); Revoke subtracts via `revoke_clock_sessions` RPC. Edit modal: clock in/out times and required notes. Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` and `clock_sessions` Realtime; refetches when another user changes hours.
+  - **Hours Tab** (dev, approved masters, assistants): **Pending clock sessions** (collapsible) above the grid: sessions clocked out but not yet approved. Table: Person, Duration | In | Out | Date, Notes, Job or Bid, Location, Action, Actions (Force clock out, Edit, Approve, Reject). Duration format: `0.00h | 1:52 PM | 1:52 PM | Sun, Mar 15`. Location shows map pin icons (In/Out links to Google Maps); when no Out, Out and route icon hidden. Action column shows "Approved by", "Rejected by", or "Revoked by" with name and timestamp. **Approved Sessions** (collapsible) with Revoke button. **Rejected Sessions** (collapsible) with Delete. Approve merges hours via `approve_clock_sessions` RPC (and syncs crew jobs when a job is linked); Revoke subtracts via `revoke_clock_sessions` RPC. Edit modal: clock in/out times and required notes. **Split session**: In Edit modal, "Split session" link opens split mode; pick split time (default midpoint), preview Part 1/Part 2 hours, Split creates two sessions and deletes original; each part can then be assigned a different job via Assign. Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` and `clock_sessions` Realtime; refetches when another user changes hours.
   - **Team Costs Tab** (dev, approved masters, assistants, or shared cost matrix): **Crew Jobs / Bids** table with date picker and prev/next day buttons; per-person crew lead dropdown and job/bid percentage assignments (crew members inherit lead's breakdown). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
   - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
   - **Offsets Tab** (dev, pay-approved masters, assistants): Backcharges and damages per person. Offsets can be Pending (not yet applied) or Applied (linked to a pay stub). Pending offsets appear on pay reports for visibility; applied offsets reduce gross pay to net pay. Apply/Unapply actions to link offsets to pay stubs.
   - **Pay Report** (Pay Stubs tab): Generated pay stubs show Date | Hours | **Jobs / Bids** table with per-day job and bid assignments from `people_crew_jobs` and `people_crew_bids` (e.g. "Job 651 (Dudley Mason) 2.5 hrs, Bid 88 (Hagedorn) 1.5 hrs").
   - **Review Tab** (dev-only): Per-person metrics for a selected period (today, yesterday, last week, etc.): Profit for this period, Revenue per Man Hour, Profit per Man Hour; Jobs Worked list; Hours and Pay. **Team Summary** button opens a new window with per-person table (Name, Period Profit, Rev/MH, Profit/MH). **Only Count Jobs Marked Paid in Full** checkbox: when checked, revenue, profit, and labor hours exclude non-paid jobs; uses paid-only RPCs and filters labor/crew jobs to paid jobs only.
-  - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Remove
+  - **Master Shares**: When a Dev shares with another Master, that Master and their assistants see shared people; shared people show "Created by [name]" instead of Archive
   - **Data**: Name, email, phone, notes, kind; people_pay_config (hourly_wage, is_salary, show_in_hours, show_in_cost_matrix); people_hours (person_name, work_date, hours); people_crew_jobs (work_date, person_name, crew_lead_person_name, job_assignments); people_crew_bids (work_date, person_name, crew_lead_person_name, bid_assignments); people_teams; cost_matrix_teams_shares (shared_with_user_id for view-only Cost matrix and Teams); clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by). Job/Bid display: `J123 · [name] - [address]` for jobs, `B456 · [project name] - [address]` for bids.
 - **Pay roster**: `allRosterNames()` builds the Pay tab roster from assistants, master_technicians, subs, estimators (people + users), and primaries. **Devs are excluded**—they do not appear in People Pay config. If a dev's clock session is approved, hours go to `people_hours` but are not visible in the Hours grid.
 - **Cross-midnight work**: `work_date` is set from clock-in date. All session hours are attributed to that date; hours after midnight are not split across days.
@@ -2028,6 +2061,7 @@ user_id = auth.uid()
   - **Inspections Tab**: Quick links to permit/inspection portals (editable via Edit Quick Inspection Links); Add Inspection modal (job selection, address, type, date); Edit Inspection Types button (add/edit/delete types; anyone who sees the tab can manage); calendar grid with inspection chips per day; Upcoming list (next 14 days); day click opens modal with day's inspections.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
 - **Data**: Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_team_members`; Inspections use `inspections`, `inspection_types` (editable lookup), and `inspection_quick_links` (editable permit portal links). `jobs_receivables` retained for Data backup (dev) export.
+- **Job–Project link**: `jobs_ledger.project_id` (nullable FK → projects). Jobs can optionally link to projects for multi-phase billing; not all jobs need projects. New/Edit Job modal has Project dropdown; job rows show linked project badge; Projects page shows linked jobs and "Create Job" link. When linking a job to a project during edit, `master_user_id` is automatically updated to the project owner (trigger enforces match).
 
 ### 6a. Job Parts Tally
 - **Page**: `JobTally.tsx`
@@ -2069,7 +2103,7 @@ user_id = auth.uid()
     - When People complete Stages, Masters are updated
   - **Sharing** (Masters/Devs only): Explains sharing features
     - Masters can choose to adopt assistants in Settings
-      - → they can manage stages but not see financials or private notes
+      - → they can manage stages and see private notes but not financial totals
     - Masters can choose to share with other Masters
       - → they have the same permissions as assistants
   - **Subcontractors** (Masters/Devs only): Quick summary
@@ -2120,7 +2154,7 @@ user_id = auth.uid()
   - **Share with other Master**: Checkbox list to share/unshare with other masters
     - Shows all other masters in the system (excluding self)
     - Checkbox indicates sharing status
-    - Shared masters receive assistant-level access (cannot see private notes or financials)
+    - Shared masters receive assistant-level access (cannot see financial totals)
     - Viewing masters can see who has shared with them
 - **Features (Dev Only)**:
   - View all users with roles
@@ -2489,6 +2523,11 @@ pipetooling.github.io/
 - Initializes Supabase client
 - Reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from environment
 - Throws error if missing (prevents silent failures)
+- Uses `db: { schema: 'public' }` to avoid RPC schema mismatches (e.g. 404 when PostgREST schema differs)
+
+#### `src/lib/approveClockSessions.ts`
+- RPC helper for `approve_clock_sessions` with explicit `schema('public')` and fetch fallback when RPC returns 404
+- Used by People Hours and Quickfill Hours Approve buttons
 
 #### `src/hooks/useAuth.ts`
 - Provides `{ user, loading }` from Supabase Auth
@@ -3794,7 +3833,7 @@ For questions or issues:
 ### Master-to-Master Sharing
 - ✅ Added `master_shares` table for master-to-master sharing relationships
 - ✅ Updated all RLS policies to support master sharing (customers, projects, workflows, steps, line items, projections)
-- ✅ Shared masters receive assistant-level access (can see but not modify, cannot see private notes/financials)
+- ✅ Shared masters receive assistant-level access (can see but not modify, cannot see financial totals)
 - ✅ UI added to Settings page for managing shares
 
 ### Database RLS Optimizations
@@ -3848,7 +3887,7 @@ For questions or issues:
 ### Major Features Added
 
 #### Workflow Enhancements
-1. **Private Notes**: Owners and masters can add private notes to each stage (separate from public notes)
+1. **Private Notes**: Owners, masters, and assistants can add private notes to each stage (separate from public notes)
 2. **Line Items**: Track expenses/credits per stage with memo and amount fields
 3. **Projections**: Track projected costs for entire workflow (stage, memo, amount)
 4. **Ledger**: Aggregated view of all line items at top of workflow page

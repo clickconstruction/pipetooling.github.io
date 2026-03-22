@@ -18,7 +18,7 @@ import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
 import type { Database } from '../types/database'
 
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
 function formatNotificationDatetime(iso: string | null): string {
@@ -37,6 +37,7 @@ type UserRow = {
   last_sign_in_at: string | null
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
+  superintendent_service_type_ids?: string[] | null
   subcontractor_service_type_ids?: string[] | null
   archived_at?: string | null
 }
@@ -118,20 +119,20 @@ interface AssemblyType {
   updated_at: string
 }
 
-const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary']
+const ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary', 'superintendent']
 
-const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant: string; sub: string; estimator: string; primary: string }> = [
-  { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'yes', primary: 'yes' },
-  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no' },
-  { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no' },
-  { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no' },
-  { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no' },
-  { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only' },
-  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'yes' },
-  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release' },
-  { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes' },
-  { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no' },
-  { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', estimator: 'yes limited', primary: 'yes limited' },
+const PAGE_ACCESS: Array<{ page: string; dev: string; master: string; assistant: string; sub: string; estimator: string; primary: string; superintendent: string }> = [
+  { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
+  { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
+  { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Stages Reports Billing Sub Ledger' },
+  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'no', primary: 'yes', superintendent: 'yes' },
+  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
+  { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
 ]
 
 const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
@@ -287,6 +288,10 @@ export default function Settings() {
   const [adoptedPrimaryIds, setAdoptedPrimaryIds] = useState<Set<string>>(new Set())
   const [primaryAdoptionSaving, setPrimaryAdoptionSaving] = useState(false)
   const [primaryAdoptionError, setPrimaryAdoptionError] = useState<string | null>(null)
+  const [superintendents, setSuperintendents] = useState<UserRow[]>([])
+  const [adoptedSuperintendentIds, setAdoptedSuperintendentIds] = useState<Set<string>>(new Set())
+  const [superintendentAdoptionSaving, setSuperintendentAdoptionSaving] = useState(false)
+  const [superintendentAdoptionError, setSuperintendentAdoptionError] = useState<string | null>(null)
   // Dev-only: which master's adoptions we're managing (null = current user)
   const [selectedMasterIdForAdoptions, setSelectedMasterIdForAdoptions] = useState<string | null>(null)
   const [masters, setMasters] = useState<UserRow[]>([])
@@ -302,6 +307,7 @@ export default function Settings() {
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
   const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
+  const [editSuperintendentServiceTypeIds, setEditSuperintendentServiceTypeIds] = useState<string[]>([])
   const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
@@ -808,15 +814,16 @@ export default function Settings() {
     setExportError(null)
     setExportPeopleLoading(true)
     try {
-      const [r1, r2, r3, r4, r5, r6] = await Promise.all([
+      const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
         supabase.from('users').select('*'),
         supabase.from('people').select('*'),
         supabase.from('master_assistants').select('*'),
         supabase.from('master_shares').select('*'),
         supabase.from('master_primaries').select('*'),
+        supabase.from('master_superintendents').select('*'),
         supabase.from('pay_approved_masters').select('*'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error
       if (err) {
         setExportError(err.message)
         return
@@ -829,7 +836,8 @@ export default function Settings() {
           master_assistants: r3.data ?? [],
           master_shares: r4.data ?? [],
           master_primaries: r5.data ?? [],
-          pay_approved_masters: r6.data ?? [],
+          master_superintendents: r6.data ?? [],
+          pay_approved_masters: r7.data ?? [],
         },
       }
       downloadJson(`people-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
@@ -1288,10 +1296,11 @@ export default function Settings() {
       setEstimatorServiceTypeIds(null)
     }
     
-    // Load assistants, primaries, and adoptions for masters and devs
+    // Load assistants, primaries, superintendents, and adoptions for masters and devs
     if (role === 'master_technician' || role === 'dev') {
       await loadAssistantsAndAdoptions(authUser.id)
       await loadPrimariesAndAdoptions(authUser.id)
+      await loadSuperintendentsAndAdoptions(authUser.id)
       await loadMastersAndShares(authUser.id)
     }
     
@@ -1321,7 +1330,7 @@ export default function Settings() {
     if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, subcontractor_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -1332,8 +1341,9 @@ export default function Settings() {
     const { data: allPeople, error: ePeople } = await supabase
       .from('people')
       .select('id, master_user_id, kind, name, email, phone, notes')
+      .is('archived_at', null)
       .order('name')
-    
+
     if (ePeople) {
       console.error('Error loading people:', ePeople)
       setError(ePeople.message)
@@ -1679,6 +1689,7 @@ export default function Settings() {
     const { data: allPeople, error: ePeople } = await supabase
       .from('people')
       .select('id, master_user_id, kind, name, email, phone, notes')
+      .is('archived_at', null)
       .order('name')
     if (ePeople) {
       setAllPeopleCount(0)
@@ -1813,6 +1824,35 @@ export default function Settings() {
     }
   }
 
+  async function loadSuperintendentsAndAdoptions(masterId: string) {
+    const { data: superintendentsData, error: superintendentsErr } = await supabase
+      .from('users')
+      .select('id, email, name, role')
+      .eq('role', 'superintendent')
+      .order('name')
+
+    if (superintendentsErr) {
+      console.error('Error loading superintendents:', superintendentsErr)
+      setSuperintendentAdoptionError(superintendentsErr.message)
+    } else {
+      setSuperintendents((superintendentsData as UserRow[]) ?? [])
+    }
+
+    const { data: adoptions, error: adoptionsErr } = await supabase
+      .from('master_superintendents')
+      .select('superintendent_id')
+      .eq('master_id', masterId)
+
+    if (adoptionsErr) {
+      console.error('Error loading superintendent adoptions:', adoptionsErr)
+      setSuperintendentAdoptionError(adoptionsErr.message)
+    } else {
+      const adoptedSet = new Set<string>()
+      adoptions?.forEach(a => adoptedSet.add(a.superintendent_id))
+      setAdoptedSuperintendentIds(adoptedSet)
+    }
+  }
+
   // When dev has selected another master, we manage that master's adoptions; otherwise current user's
   const adoptionMasterId = (myRole === 'dev' && selectedMasterIdForAdoptions) ? selectedMasterIdForAdoptions : authUser?.id ?? null
 
@@ -1900,12 +1940,54 @@ export default function Settings() {
     setPrimaryAdoptionSaving(false)
   }
 
+  async function toggleSuperintendentAdoption(superintendentId: string, isAdopted: boolean) {
+    const masterId = adoptionMasterId ?? authUser?.id
+    if (!masterId) return
+
+    setSuperintendentAdoptionSaving(true)
+    setSuperintendentAdoptionError(null)
+
+    if (isAdopted) {
+      const { error } = await supabase
+        .from('master_superintendents')
+        .delete()
+        .eq('master_id', masterId)
+        .eq('superintendent_id', superintendentId)
+
+      if (error) {
+        setSuperintendentAdoptionError(error.message)
+      } else {
+        setAdoptedSuperintendentIds(prev => {
+          const next = new Set(prev)
+          next.delete(superintendentId)
+          return next
+        })
+      }
+    } else {
+      const { error } = await supabase
+        .from('master_superintendents')
+        .insert({
+          master_id: masterId,
+          superintendent_id: superintendentId,
+        })
+
+      if (error) {
+        setSuperintendentAdoptionError(error.message)
+      } else {
+        setAdoptedSuperintendentIds(prev => new Set(prev).add(superintendentId))
+      }
+    }
+
+    setSuperintendentAdoptionSaving(false)
+  }
+
   async function handleAdoptionMasterChange(masterId: string | null) {
     setSelectedMasterIdForAdoptions(masterId)
     if (authUser?.id) {
       const targetMasterId = masterId ?? authUser.id
       await loadAssistantsAndAdoptions(targetMasterId)
       await loadPrimariesAndAdoptions(targetMasterId)
+      await loadSuperintendentsAndAdoptions(targetMasterId)
     }
   }
 
@@ -3613,6 +3695,7 @@ export default function Settings() {
     setEditName(u.name)
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
+    setEditSuperintendentServiceTypeIds(u.role === 'superintendent' ? (u.superintendent_service_type_ids ?? []) : [])
     setEditSubcontractorServiceTypeIds(u.role === 'subcontractor' ? (u.subcontractor_service_type_ids ?? []) : [])
     setEditError(null)
   }
@@ -3623,13 +3706,14 @@ export default function Settings() {
     setEditName('')
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
+    setEditSuperintendentServiceTypeIds([])
     setEditSubcontractorServiceTypeIds([])
     setEditError(null)
   }
 
   async function updateUserProfile(
     id: string,
-    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null },
+    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null },
     oldName?: string,
     userEmail?: string | null
   ) {
@@ -3642,6 +3726,9 @@ export default function Settings() {
     }
     if (updates.primary_service_type_ids !== undefined) {
       updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
+    }
+    if (updates.superintendent_service_type_ids !== undefined) {
+      updatePayload.superintendent_service_type_ids = updates.superintendent_service_type_ids?.length ? updates.superintendent_service_type_ids : null
     }
     if (updates.subcontractor_service_type_ids !== undefined) {
       updatePayload.subcontractor_service_type_ids = updates.subcontractor_service_type_ids?.length ? updates.subcontractor_service_type_ids : null
@@ -3666,7 +3753,7 @@ export default function Settings() {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === id
-            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}), ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}) }
+            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}), ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}), ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}) }
             : u
         ),
       )
@@ -3695,7 +3782,7 @@ export default function Settings() {
       }
     }
 
-    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } = {
+    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } = {
       name: trimmedName,
       email: trimmedEmail,
     }
@@ -3704,6 +3791,9 @@ export default function Settings() {
     }
     if (editingUser?.role === 'primary') {
       updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
+    }
+    if (editingUser?.role === 'superintendent') {
+      updates.superintendent_service_type_ids = editSuperintendentServiceTypeIds.length > 0 ? editSuperintendentServiceTypeIds : null
     }
     if (editingUser?.role === 'subcontractor') {
       updates.subcontractor_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
@@ -4131,10 +4221,11 @@ export default function Settings() {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
     
-    // Check in people table
+    // Check in people table (exclude archived)
     const { data: peopleData } = await supabase
       .from('people')
       .select('id, name')
+      .is('archived_at', null)
     
     // Check in users table (exclude current user when editing)
     const { data: usersData } = await supabase
@@ -4673,7 +4764,7 @@ export default function Settings() {
               <li style={{ marginBottom: '0.5rem' }}>
                 Masters can choose to adopt assistants in Settings
                 <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they can manage stages but not see financials or private notes
+                  → they can manage stages and see private notes but not financial totals
                 </div>
               </li>
               <li>
@@ -5067,7 +5158,7 @@ export default function Settings() {
                       {PAGE_ACCESS.map((row) => (
                         <tr key={row.page}>
                           <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary'] as const).map((role) => {
+                          {(['dev', 'master', 'assistant', 'sub', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
                             const val = row[role]
                             return (
                               <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -5316,7 +5407,14 @@ export default function Settings() {
                                 .filter(Boolean)
                                 .join(', ') || '—')
                             : 'All')
-                          : u.role === 'subcontractor'
+                          : u.role === 'superintendent'
+                            ? (u.superintendent_service_type_ids?.length
+                              ? (u.superintendent_service_type_ids
+                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
+                                  .filter(Boolean)
+                                  .join(', ') || '—')
+                              : 'All')
+                            : u.role === 'subcontractor'
                             ? (u.subcontractor_service_type_ids?.length
                               ? (u.subcontractor_service_type_ids
                                   .map((id) => serviceTypes.find((st) => st.id === id)?.name)
@@ -5426,6 +5524,35 @@ export default function Settings() {
                                       setEditPrimaryServiceTypeIds((prev) => [...prev, st.id])
                                     } else {
                                       setEditPrimaryServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                                    }
+                                  }}
+                                  disabled={updatingId === u.id}
+                                />
+                                {st.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingUserId === u.id && u.role === 'superintendent' && (
+                    <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                        <div style={{ fontSize: '0.875rem' }}>
+                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials, Bids)</div>
+                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                            {serviceTypes.map((st) => (
+                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={editSuperintendentServiceTypeIds.includes(st.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setEditSuperintendentServiceTypeIds((prev) => [...prev, st.id])
+                                    } else {
+                                      setEditSuperintendentServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
                                     }
                                   }}
                                   disabled={updatingId === u.id}
@@ -6097,7 +6224,7 @@ export default function Settings() {
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
             {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
               ? `Adopt or unadopt assistants for the selected master. Changes apply to that master's access.`
-              : 'Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants can not see private notes or financials.'}
+              : 'Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants cannot see financial totals.'}
           </p>
           {adoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{adoptionError}</p>}
           {assistants.length === 0 ? (
@@ -6213,9 +6340,77 @@ export default function Settings() {
               })}
             </div>
           )}
+          <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Superintendents</h2>
+          {myRole === 'dev' && (
+            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+              <label htmlFor="adoption-master-select-superintendents" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
+              <select
+                id="adoption-master-select-superintendents"
+                value={selectedMasterIdForAdoptions ?? ''}
+                onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+              >
+                <option value="">Myself</option>
+                {masters.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name || m.email || m.id}</option>
+                ))}
+              </select>
+            </p>
+          )}
+          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
+              ? `Adopt or unadopt superintendents for the selected master. Changes apply to that master's access.`
+              : 'Adopt superintendents to grant them access to your projects, workflows, jobs, and bids. Superintendents run jobs and manage subcontractors.'}
+          </p>
+          {superintendentAdoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{superintendentAdoptionError}</p>}
+          {superintendents.length === 0 ? (
+            <p style={{ color: '#6b7280' }}>No superintendents found.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
+              {superintendents.map((sup) => {
+                const isAdopted = adoptedSuperintendentIds.has(sup.id)
+                return (
+                  <label
+                    key={sup.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 4,
+                      cursor: superintendentAdoptionSaving ? 'not-allowed' : 'pointer',
+                      background: isAdopted ? '#f0fdf4' : 'white',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isAdopted}
+                      onChange={() => toggleSuperintendentAdoption(sup.id, isAdopted)}
+                      disabled={superintendentAdoptionSaving}
+                      style={{ cursor: superintendentAdoptionSaving ? 'not-allowed' : 'pointer' }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 500 }}>{sup.name || sup.email}</span>
+                      {sup.email && sup.name && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          ({sup.email})
+                        </span>
+                      )}
+                    </span>
+                    {isAdopted && (
+                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        Adopted
+                      </span>
+                    )}
+                  </label>
+                )
+              })}
+            </div>
+          )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Share with other Master</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            Share your customers and projects with another master. They will see your jobs with assistant-level access (cannot see private notes or financials).
+            Share your customers and projects with another master. They will see your jobs with assistant-level access (cannot see financial totals).
           </p>
           {sharingError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{sharingError}</p>}
           {masters.length === 0 ? (
@@ -8325,17 +8520,17 @@ export default function Settings() {
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors, primaries, and estimators selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors and primaries selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
                     <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator' || u.role === 'primary').map((u) => (
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'primary').map((u) => (
                         <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
                           <input type="checkbox" checked={reportEnabledUserIds.has(u.id)} onChange={() => toggleReportEnabledUser(u.id)} />
                           <span>{u.name || u.email}</span>
                           <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({u.role})</span>
                         </label>
                       ))}
-                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'estimator' || u.role === 'primary').length === 0 && (
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors, primaries, or estimators.</p>
+                      {users.filter((u) => u.role === 'subcontractor' || u.role === 'primary').length === 0 && (
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors or primaries.</p>
                       )}
                     </div>
                   </div>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-20
+last_updated: 2026-03-22
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,29 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.123)"
-    line: ~318
+  - name: "Latest Version (v2.136)"
+    line: ~349
+    description: "Line Items For Office, supply house invoice linking, clock pay INSERT, dispatch dismissals"
+  - name: "v2.135"
+    line: ~362
+    description: "Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll"
+  - name: "v2.134"
+    line: ~352
+    description: "Assistants: private notes and Approve/Reject"
+  - name: "v2.133"
+    line: ~352
+    description: "Approve/Reject restricted to dev/master, visual separation"
+  - name: "v2.132"
+    line: ~352
+    description: "Workflow step cards row collapse, button modernization"
+  - name: "v2.131"
+    line: ~352
+    description: "People Contracts tab"
+  - name: "v2.125"
+    line: ~330
+    description: "approve_clock_sessions fix, approveClockSessions helper, db.schema"
+  - name: "v2.123"
+    line: ~330
     description: "Stages paid/left/bid labels, to bill formula, Job Total / Bid in Edit/New Job"
   - name: "v2.122"
     line: ~345
@@ -232,7 +253,9 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
+1. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
+2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
+2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
 2. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
 2. [Latest Updates (v2.94)](#latest-updates-v294) - Bid Board Counts icon, Cover Letter inclusions fix, Apply buttons hidden when synced
 3. [Latest Updates (v2.93)](#latest-updates-v293) - Primaries full Bids access (all tabs, create/edit/delete)
@@ -326,6 +349,208 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.136)
+
+**Date**: 2026-03-22
+
+### Line Items For Office – Rename, UX, Supply House Invoice Integration
+
+- **Renamed**: "Line Items (Master and Assistants only)" → "Line Items For Office"
+- **Fit-content table**: Table box width matches content; centered via flex wrapper (`display: flex`, `justifyContent: center`)
+- **Button styling**: Add Line Item, Add PO buttons use `wf-btn-success-soft` class
+- **Supply House Invoice integration**:
+  - "Add Supply House Invoice" button when supply house invoices exist
+  - Modal with search by invoice #, supply house name, amount, date, PO #, paid/unpaid
+  - Row display: supply house, date, amount, PO #; secondary: invoice #, due date, Paid badge
+  - Line items can link to `supply_house_invoices` via `supply_house_invoice_id`; "View Invoice" button opens details modal
+  - `loadInvoiceDetails` modal shows invoice #, supply house, amount, link
+
+### Clock Sessions Pay INSERT
+
+- **New RLS policy**: Pay-access users (dev, pay-approved master, assistant) can INSERT into `clock_sessions` for split session operation in People Hours Edit modal
+
+### Task Dispatch – Dismissals and Closed Note
+
+- **Per-user dismissals**: `dispatch_request_dismissals` table; when a user dismisses a closed request, it is hidden from their inbox; other users still see it until they dismiss it
+- **Closed note**: `dispatch_requests.closed_note` (text); required when closing (enforced in app)
+
+### Contracts RLS – All Masters
+
+- **RLS expanded**: All masters (not just Pay Approved) can manage contract templates, template documents, person contract assignments, and person contract documents via `is_master_or_dev()`
+
+**Files**: `src/pages/Workflow.tsx`, `src/components/SupplyHousesTab.tsx`, `supabase/migrations/20260320130000_clock_sessions_pay_insert.sql`, `20260321120000_add_supply_house_invoice_to_line_items.sql`, `20260322140000_contracts_rls_all_masters.sql`, `20260621120000_dispatch_request_dismissals.sql`, `20260622120000_add_dispatch_closed_note.sql`
+
+---
+
+## Latest Updates (v2.135)
+
+**Date**: 2026-03-21
+
+### Workflow – Collapse Old Stages Toggle, Breadcrumb Layout, No-Wrap Scroll
+
+- **Collapse old stages toggle**: Replaced "Collapse completed" button with a toggle ("Collapse old stages" / "Expand old stages"). When toggled on, all completed stages except the most recent (by `sequence_order`) are replaced by a single summary row: `X previous stages · Started 8/1/25`. Most recent completed stays visible; summary row is clickable to expand.
+- **Stage breadcrumb below buttons**: Moved the stage list (Initial Site Walk → ... → Warranty) from the left column to a dedicated row below the title and "Expand old stages" / "Add step" buttons. Breadcrumb now has full width.
+- **Prevent breadcrumb wrapping**: Added `overflow: hidden` to header wrapper, `minWidth: 0`, `overflowY: hidden`, `WebkitOverflowScrolling: touch` to breadcrumb container, and wrapped content in `inline-block` span so stages stay on one line with horizontal scroll when needed.
+
+**Files**: `src/pages/Workflow.tsx`
+
+---
+
+## Latest Updates (v2.134)
+
+**Date**: 2026-03-21
+
+### Assistants: Private Notes and Approve/Reject Access
+
+- **Assistants can see and edit private notes** on workflow steps (previously dev/master only).
+- **Assistants can use Approve and Reject** buttons (Workflow page and Dashboard Assigned Stages).
+- Backend already permitted this; changes were frontend-only (`canSeePrivateNotesAndApprove` flag).
+- Settings copy updated: assistants "cannot see financial totals" (not private notes or financials).
+
+**Files**: `src/pages/Workflow.tsx`, `src/pages/Dashboard.tsx`, `src/pages/Settings.tsx`, `ACCESS_CONTROL.md`
+
+---
+
+## Latest Updates (v2.133)
+
+**Date**: 2026-03-21
+
+### Workflow – Approve/Reject Restricted, Visual Separation
+
+- **Approve/Reject restricted to dev and master only** (v2.134 adds assistants). Superintendents do not see Approve/Reject; they use Complete on assigned stages.
+- **Visual separation**: Approve and Reject are wrapped in a bordered group with left divider and extra spacing, distinct from Set Start and Complete (worker actions).
+- **Approve color**: Approve is now blue (wf-btn-info) to distinguish manager sign-off from Complete (green, worker done).
+
+**Files**: `src/pages/Workflow.tsx`, `src/pages/Dashboard.tsx`
+
+---
+
+## Latest Updates (v2.132)
+
+**Date**: 2026-03-21
+
+### Workflow Step Cards – Row Collapse, Collapsed Header, Button Modernization
+
+- **Row collapse**: Each step card can collapse to 1–2 lines; completed/approved cards default collapsed; chevron in header toggles expand/collapse.
+- **Collapsed header**: Shows Start/End dates, line items (count + total amount), Notes/Pvt word counts.
+- **When collapsed**: Assign and Notify hidden; action buttons (Set Start, Complete, Approve, Reject) remain visible.
+- **Notes/Private Notes**: Section labels show word count (e.g. "Notes (12 words)", "Private Notes (5 words)").
+- **Notify**: Right-aligned when expanded.
+- **Button modernization**: Workflow-scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions.
+- **Action button colors**: Set Start blue (initiate), Complete/Approve green (success), Reject red (destructive).
+
+**Files**: `src/pages/Workflow.tsx`, `src/index.css`
+
+---
+
+## Latest Updates (v2.131)
+
+**Date**: 2026-03-21
+
+### People – Contracts Tab
+
+- **Contracts tab**: New tab on People page (next to Licenses) for tracking documents users need to sign. Same access as Licenses: devs, pay-approved masters, assistants.
+- **Templates**: Manage templates (Farm Work, Government Projects, Master Plumber, etc.) with document lists. Create, edit, delete templates; add/remove documents per template.
+- **Assign template**: Assign a template to a person; creates `person_contract_documents` for each template document (status: unsent).
+- **Person rows**: Expandable rows with aggregate status dot (red: any unsent; yellow: any sent; green: all signed). Per-document table: Document, Status, URL, Signed date, Note, Edit.
+- **Edit document modal**: URL, status (unsent/sent/signed), signed date, note. Upsert `person_contract_documents`.
+- **Ad-hoc documents**: "+ Add document" for documents not from a template.
+- **Schema**: `contract_templates`, `contract_template_documents`, `person_contract_assignments`, `person_contract_documents` with RLS (same pattern as person_licenses).
+
+**Files**: `supabase/migrations/20260322120000_create_contract_templates.sql`, `20260322120001_create_contract_template_documents.sql`, `20260322120002_create_person_contract_assignments.sql`, `20260322120003_create_person_contract_documents.sql`, `src/pages/People.tsx`, `src/types/database.ts`, `ACCESS_CONTROL.md`
+
+---
+
+## Latest Updates (v2.130)
+
+**Date**: 2026-03-21
+
+### People – Archive Instead of Remove
+
+- **Archive people**: People page now offers **Archive** instead of **Remove**. Archived people are soft-deleted (hidden from roster) but can be restored.
+- **Schema**: `people.archived_at` (timestamptz, nullable). When set, person is excluded from roster and assign dropdowns.
+- **People page**: Archive button (replaces Remove); collapsible "Archived people" section with Restore button. Creators see their own archived; devs see all archived.
+- **Queries**: All people roster/assign queries now filter `.is('archived_at', null)` (People, Settings, Jobs, Workflow, ReceivablesSection, Prospects, SignUp).
+
+**Files**: `supabase/migrations/20260321120000_add_archived_at_to_people.sql`, `src/pages/People.tsx`, `src/pages/Settings.tsx`, `src/pages/Jobs.tsx`, `src/pages/Workflow.tsx`, `src/components/quickfill/ReceivablesSection.tsx`, `src/pages/Prospects.tsx`, `src/pages/SignUp.tsx`, `src/types/database.ts`
+
+---
+
+## Latest Updates (v2.129)
+
+**Date**: 2026-03-20
+
+### Jobs–Projects Link
+
+- **Schema**: `jobs_ledger.project_id` (nullable FK → projects, ON DELETE SET NULL). Trigger `jobs_ledger_project_master_match`: when project_id is set, job owner must match project owner.
+- **Jobs page**: Project dropdown in Edit/New Job modal; when project selected, auto-fills customer; project badge with link to Workflow on job rows. **Edit**: When linking a job to a project, `master_user_id` is automatically updated to the project owner so the trigger passes.
+- **Projects page**: Linked jobs displayed per project; "Create Job" link opens New Job form with project pre-filled.
+- **RLS**: Superintendents with project-level assignment can see jobs linked to that project; INSERT allows creating jobs for projects user can access.
+- **Create from project**: `/jobs?newJob=true&project=xxx` opens New Job with project and customer pre-filled.
+
+**Files**: `supabase/migrations/20260320140000_add_project_id_to_jobs_ledger.sql`, `src/pages/Jobs.tsx`, `src/pages/Projects.tsx`, `src/types/database.ts`
+
+---
+
+## Latest Updates (v2.128)
+
+**Date**: 2026-03-20
+
+### Projects Page - Master and Superintendents Display
+
+- **Projects list**: Each project row shows Master badge (blue) and Superintendents badges (green) with access.
+- **Superintendents**: Union of adoption (master_superintendents) and project assignment (project_superintendents).
+- **Display**: Dedicated Access row with badge-style layout; Master and Superintendents labels.
+
+**Files**: `src/pages/Projects.tsx`
+
+---
+
+## Latest Updates (v2.127)
+
+**Date**: 2026-03-20
+
+### Project Superintendent Assignment
+
+- **Project-level assignment**: Devs, masters, and assistants can assign superintendents to specific projects via the Workflow page. New "Assigned Superintendents" section between project header and Projections.
+- **Access paths**: Superintendents gain access via adoption (master_superintendents, all master's projects) OR project assignment (project_superintendents, specific projects only).
+- **Table**: `project_superintendents(project_id, superintendent_id)` with RLS; `can_access_project_row` updated to include project assignment.
+- **UI**: Add/remove superintendents from dropdown; list shows assigned superintendents with Remove button.
+
+**Files**: `supabase/migrations/20260520120010_create_project_superintendents.sql`, `src/pages/Workflow.tsx`, `src/types/database.ts`
+
+---
+
+## Latest Updates (v2.126)
+
+**Date**: 2026-03-20
+
+### People Hours – Split Clock Session
+
+- **Split session**: In the Edit clock session modal, pay-access users can split a pending session into two at a chosen time. Enables assigning different jobs to each part (e.g. 4h Job A, 4h Job B).
+- **Flow**: Click Edit on a pending session → "Split session" link → pick split time (default: midpoint) → preview shows Part 1 and Part 2 hours → Split button creates two sessions and deletes the original.
+- **Validation**: Split time must be strictly between clock in and out; each part must be at least 0.01 hours (~36 seconds).
+- **RLS**: New policy allows pay-access (masters, assistants) to INSERT clock sessions for any user (required for split).
+- **sync_crew_jobs_from_clock** already handles multiple sessions per person/day; percentages computed from hours when approved.
+
+**Files**: `src/pages/People.tsx`, `supabase/migrations/20260320130000_clock_sessions_pay_insert.sql`
+
+---
+
+## Latest Updates (v2.125)
+
+**Date**: 2026-04-27
+
+### approve_clock_sessions Fix and Client Helper
+
+- **Bug fix**: "missing FROM-clause entry for table cs" in `approve_clock_sessions` RPC. Replaced `cs.clocked_in_at` with `v_session.clocked_in_at` in loop body (cs alias is only in scope inside the FOR SELECT).
+- **approveClockSessions helper**: New [src/lib/approveClockSessions.ts](src/lib/approveClockSessions.ts) with explicit `schema('public')` and fetch fallback when RPC returns 404.
+- **Supabase client**: Added `db: { schema: 'public' }` to createClient to avoid RPC schema mismatches.
+
+**Files**: `src/lib/approveClockSessions.ts`, `src/lib/supabase.ts`, `src/pages/People.tsx`, `src/components/quickfill/HoursSection.tsx`, `supabase/migrations/20260427120000_fix_approve_clock_sessions_cs_scope.sql`
+
+---
+
 ## Latest Updates (v2.124)
 
 **Date**: 2026-04-25
@@ -373,7 +598,7 @@ when_to_read:
 - **Removed up/down arrows**: The previous ▲/▼ move buttons were removed; drag-and-drop is the sole reorder method.
 - **Dependencies**: `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` for sortable table rows.
 
-**Files**: `src/pages/Bids.tsx`, `supabase/migrations/20260423120000_update_bids_count_rows_order_rpc.sql`, `package.json`
+**Files**: `src/pages/Bids.tsx`, `supabase/migrations/20260423120001_update_bids_count_rows_order_rpc.sql`, `package.json`
 
 ### Single Service Type UX
 
@@ -414,7 +639,7 @@ when_to_read:
 - **Parts Cost includes Billed Materials**: Job Summary Parts Cost and Jobs Parts tab Total Parts Cost now include the sum of Billed Materials (line items from Edit Job) in addition to Parts from Tally and Invoices from Supply Houses.
 - **Parts tab Billed Materials column**: New "Billed Materials" column in Jobs Parts tab shows the billed materials sum per job.
 - **Parts tab Billed Materials section**: When expanding a job row in Parts tab, a "Billed Materials" section appears below the tally parts table when the job has billed materials, listing each line item with Description and Amount.
-- **Link Billed Materials to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120000_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Billed Materials now uses description + amount only.
+- **Link Billed Materials to parts**: Optional `part_id` on `jobs_ledger_materials` links a line item to `material_parts`. Migration: `20260311120002_add_part_id_to_jobs_ledger_materials.sql`. Part picker was removed from Edit Job modal for simplicity; Billed Materials now uses description + amount only.
 
 ### People – Review Tab (Parts Cost)
 
@@ -564,7 +789,7 @@ when_to_read:
 - **Auto-generation**: New bids get the next sequential number via `bids_bid_number_seq` and `set_bid_number_if_empty` trigger. Bid # field is read-only ("Auto") when creating.
 - **Backfill**: Existing bids assigned numbers 1, 2, 3... by `created_at` (oldest first).
 - **Edit restriction**: Only dev, master_technician, and assistant can edit Bid #. Estimator and primary see Bid # as read-only when editing; database trigger blocks their updates.
-- **Migrations**: `20260320120002_bid_number_auto_generate.sql`, `20260320120003_prevent_estimator_primary_edit_bid_number.sql`
+- **Migrations**: `20260320120002_bid_number_auto_generate.sql`, `20260320120004_prevent_estimator_primary_edit_bid_number.sql`
 
 **Files**: `src/pages/Bids.tsx`
 
@@ -710,7 +935,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **Dashboard, Checklist, People**: Fetch instances via `checklist_instance_assignees!inner(user_id)`; Today/History filter by assignee.
 - **FWD and Reschedule flows**: Updated to use junction tables; FWD modal assigns to one user; Manage tab shows comma-separated assignees.
 - **`send-scheduled-reminders` Edge Function**: Uses `checklist_instance_assignees` for assignee lookup.
-- **Migrations**: `20260415120000_create_checklist_item_assignees`, `20260415120001_create_checklist_instance_assignees`, `20260415120002_drop_checklist_assigned_to_user_id`.
+- **Migrations**: `20260415120004_create_checklist_item_assignees`, `20260415120001_create_checklist_instance_assignees`, `20260415120002_drop_checklist_assigned_to_user_id`.
 
 ---
 
@@ -1244,7 +1469,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **Last updated by**: Between Last Contact and Last Successful Contact, shows "Last updated by: [user]" (from most recent comment).
 - **Can't reach expanded**: In Prospect List, "Can't reach (N)" section expanded by default.
 
-**Files**: `src/pages/Quickfill.tsx`, `src/components/quickfill/CrewJobsSection.tsx`, `src/components/quickfill/CantReachSection.tsx`, `src/hooks/useUnpricedFixturesCount.ts`, `src/pages/Prospects.tsx`, `supabase/migrations/20260311000000_quickfill_section_marks.sql`, `src/types/database.ts`
+**Files**: `src/pages/Quickfill.tsx`, `src/components/quickfill/CrewJobsSection.tsx`, `src/components/quickfill/CantReachSection.tsx`, `src/hooks/useUnpricedFixturesCount.ts`, `src/pages/Prospects.tsx`, `supabase/migrations/20260311000010_quickfill_section_marks.sql`, `src/types/database.ts`
 
 ---
 

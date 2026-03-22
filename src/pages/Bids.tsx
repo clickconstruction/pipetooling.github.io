@@ -42,7 +42,7 @@ type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions'][
 type TakeoffBookEntry = Database['public']['Tables']['takeoff_book_entries']['Row']
 type TakeoffBookEntryItem = Database['public']['Tables']['takeoff_book_entry_items']['Row']
 type TakeoffBookEntryWithItems = TakeoffBookEntry & { items: TakeoffBookEntryItem[] }
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 type OutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 type RfiFormData = {
@@ -869,6 +869,7 @@ export default function Bids() {
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [primaryServiceTypeIds, setPrimaryServiceTypeIds] = useState<string[] | null>(null)
+  const [superintendentServiceTypeIds, setSuperintendentServiceTypeIds] = useState<string[] | null>(null)
   const [fixtureTypes, setFixtureTypes] = useState<Array<{ id: string; name: string }>>([])
   
   // Helper function to find fixture_type_id by name
@@ -1330,7 +1331,7 @@ export default function Bids() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids, primary_service_type_ids')
+      .select('role, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -1338,9 +1339,10 @@ export default function Bids() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null } | null)?.role ?? null
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     const primIds = (me as { primary_service_type_ids?: string[] | null } | null)?.primary_service_type_ids
+    const supIds = (me as { superintendent_service_type_ids?: string[] | null } | null)?.superintendent_service_type_ids
     setMyRole(role)
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
@@ -1352,7 +1354,12 @@ export default function Bids() {
     } else {
       setPrimaryServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary') {
+    if (role === 'superintendent' && supIds && supIds.length > 0) {
+      setSuperintendentServiceTypeIds(supIds)
+    } else {
+      setSuperintendentServiceTypeIds(null)
+    }
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
       setLoading(false)
       return
     }
@@ -1394,18 +1401,27 @@ export default function Bids() {
     const types = (data as unknown as ServiceType[]) ?? []
     setServiceTypes(types)
     
-    // For estimators/primaries with restrictions, filter to allowed types
+    // For estimators/primaries/superintendents with restrictions, filter to allowed types
     const visibleTypes = (estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
       ? types.filter((st) => estimatorServiceTypeIds.includes(st.id))
       : (primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
         ? types.filter((st) => primaryServiceTypeIds.includes(st.id))
-        : types
+        : (superintendentServiceTypeIds && superintendentServiceTypeIds.length > 0)
+          ? types.filter((st) => superintendentServiceTypeIds.includes(st.id))
+          : types
     // Fallback: if filter yields no types (e.g. stale primary_service_type_ids), use all
     const typesToUse = visibleTypes.length > 0 ? visibleTypes : types
-    const firstId = typesToUse[0]?.id
-    if (firstId) {
+    const defaultId = (() => {
+      if (typesToUse.length === 1) return typesToUse[0]?.id
+      const plumbing = typesToUse.find((st) => st.name === 'Plumbing')
+      if (plumbing) return plumbing.id
+      const electrical = typesToUse.find((st) => st.name === 'Electrical')
+      if (electrical) return electrical.id
+      return typesToUse[0]?.id
+    })()
+    if (defaultId) {
       setSelectedServiceTypeId((prev) => {
-        if (!prev || !typesToUse.some((st) => st.id === prev)) return firstId
+        if (!prev || !typesToUse.some((st) => st.id === prev)) return defaultId
         return prev
       })
     }
@@ -5713,6 +5729,15 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
+    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup'].includes(tab)) {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      setActiveTab('bid-board')
+      return
+    }
     if (tab === 'builder-review') {
       setActiveTab('builder-review')
       return
@@ -5772,7 +5797,7 @@ export default function Bids() {
   }, [location.search, bids, serviceTypes.length, selectedServiceTypeId, myRole])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
       const load = async () => {
         try {
           // Load service types first
@@ -5784,11 +5809,11 @@ export default function Bids() {
       }
       load()
     }
-  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds])
+  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds, superintendentServiceTypeIds])
   
   // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
-    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
+    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
         await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadPartTypes(), loadSupplyHouses(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
       }, 80)
@@ -5798,7 +5823,7 @@ export default function Bids() {
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
-    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
+    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
         await Promise.all([
           loadCustomers(),
@@ -7051,7 +7076,9 @@ export default function Bids() {
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
     : (myRole === 'primary' && primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
       ? serviceTypes.filter((st) => primaryServiceTypeIds.includes(st.id))
-      : serviceTypes
+      : (myRole === 'superintendent' && superintendentServiceTypeIds && superintendentServiceTypeIds.length > 0)
+        ? serviceTypes.filter((st) => superintendentServiceTypeIds.includes(st.id))
+        : serviceTypes
 
   if (loading) {
     return (
@@ -7061,7 +7088,7 @@ export default function Bids() {
     )
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary') {
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
     return (
       <div style={{ padding: '2rem' }}>
         <p>You do not have access to Bids.</p>
@@ -7226,6 +7253,8 @@ export default function Bids() {
         >
           Cost Estimate
         </button>
+        {myRole !== 'superintendent' && (
+        <>
         <button
           type="button"
           onClick={() => {
@@ -7268,6 +7297,8 @@ export default function Bids() {
         >
           Submission & Followup
         </button>
+        </>
+        )}
         <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
@@ -7907,7 +7938,7 @@ export default function Bids() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            editCustomerModal?.openEditCustomerModal(customer.id, { onSaved: loadCustomers })
+                            editCustomerModal?.openEditCustomerModal(customer.id, { onSaved: loadCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)) })
                           }}
                           style={{
                             padding: '0.35rem 0.75rem',

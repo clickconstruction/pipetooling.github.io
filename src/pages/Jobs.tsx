@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { parseCustomerImport } from '../utils/parseCustomerImport'
+import { nameSimilarity } from '../utils/nameSimilarity'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -30,6 +31,7 @@ type JobWithDetails = JobsLedgerRow & {
   invoices: JobsLedgerInvoice[]
   team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
   report_count?: number
+  project?: { id: string; name: string } | null
 }
 
 type InvoiceWithJob = JobsLedgerInvoice & { job: JobWithDetails }
@@ -238,11 +240,17 @@ export default function Jobs() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerId, setCustomerId] = useState<string | null>(null)
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; customer_id: string; master_user_id: string; customers: { name: string } | null }>>([])
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [customersLoading, setCustomersLoading] = useState(false)
   const [creatingCustomerFromJob, setCreatingCustomerFromJob] = useState(false)
+  const [createCustomerFromJobModalOpen, setCreateCustomerFromJobModalOpen] = useState(false)
+  const [createCustomerFromJobType, setCreateCustomerFromJobType] = useState<'residential' | 'commercial'>('residential')
+  const [similarCustomersForCreate, setSimilarCustomersForCreate] = useState<CustomerRow[]>([])
+  const [createCustomerFromJobModalLoading, setCreateCustomerFromJobModalLoading] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('')
@@ -260,6 +268,7 @@ export default function Jobs() {
   const [contractorsSearch, setContractorsSearch] = useState('')
   const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
   const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
+  const loadJobsInFlightRef = useRef(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
@@ -424,6 +433,8 @@ export default function Jobs() {
   const [stagesSectionOpen, setStagesSectionOpen] = useState({ working: true, readyToBill: true, billed: true, paid: true })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
+  const [whenBilledModalJob, setWhenBilledModalJob] = useState<JobWithDetails | null>(null)
+  const [whenBilledModalDate, setWhenBilledModalDate] = useState('')
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
@@ -480,91 +491,80 @@ export default function Jobs() {
       setLoading(false)
       return
     }
+    if (loadJobsInFlightRef.current) return
+    loadJobsInFlightRef.current = true
     setLoading(true)
     setError(null)
+    try {
     const customerFilter = searchParams.get('customer')
-    let query = supabase.from('jobs_ledger').select('*').order('hcp_number', { ascending: false })
+    let query = supabase
+      .from('jobs_ledger')
+      .select(
+        `
+        *,
+        jobs_ledger_materials(*),
+        jobs_ledger_fixtures(*),
+        jobs_ledger_payments(*),
+        jobs_ledger_invoices(*),
+        jobs_ledger_team_members(*, users(name)),
+        reports(job_ledger_id),
+        projects:project_id(id, name)
+      `
+      )
+      .order('hcp_number', { ascending: false })
     if (customerFilter) {
       query = query.eq('customer_id', customerFilter)
     }
-    const { data: jobsData, error: jobsErr } = await query
+    const { data, error: jobsErr } = await query
     if (jobsErr) {
       setError(jobsErr.message)
       setLoading(false)
       return []
     }
-    const jobList = (jobsData ?? []) as JobsLedgerRow[]
-    if (jobList.length === 0) {
+    const rows = (data ?? []) as Array<
+      JobsLedgerRow & {
+        jobs_ledger_materials?: JobsLedgerMaterial[]
+        jobs_ledger_fixtures?: JobsLedgerFixture[]
+        jobs_ledger_payments?: JobsLedgerPayment[]
+        jobs_ledger_invoices?: JobsLedgerInvoice[]
+        jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+        reports?: Array<{ job_ledger_id: string | null }>
+        projects?: { id: string; name: string } | null
+      }
+    >
+    if (rows.length === 0) {
       setJobs([])
       setLoading(false)
       return []
     }
-    const jobIds = jobList.map((j) => j.id)
-    const [matsRes, fixturesRes, paymentsRes, invoicesRes, teamRes, reportsRes] = await Promise.all([
-      supabase.from('jobs_ledger_materials').select('*').in('job_id', jobIds).order('sequence_order'),
-      supabase.from('jobs_ledger_fixtures').select('*').in('job_id', jobIds).order('sequence_order'),
-      supabase.from('jobs_ledger_payments').select('*').in('job_id', jobIds).order('sequence_order'),
-      supabase.from('jobs_ledger_invoices').select('*').in('job_id', jobIds).order('sequence_order'),
-      supabase
-        .from('jobs_ledger_team_members')
-        .select('*, users(name)')
-        .in('job_id', jobIds),
-      supabase.from('reports').select('job_ledger_id').in('job_ledger_id', jobIds),
-    ])
-    const materialsList = (matsRes.data ?? []) as JobsLedgerMaterial[]
-    const fixturesList = (fixturesRes.data ?? []) as JobsLedgerFixture[]
-    const paymentsList = (paymentsRes.data ?? []) as JobsLedgerPayment[]
-    const invoicesList = (invoicesRes.data ?? []) as JobsLedgerInvoice[]
-    const teamList = (teamRes.data ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]
-    const materialsByJob = new Map<string, JobsLedgerMaterial[]>()
-    for (const m of materialsList) {
-      const arr = materialsByJob.get(m.job_id) ?? []
-      arr.push(m)
-      materialsByJob.set(m.job_id, arr)
-    }
-    const fixturesByJob = new Map<string, JobsLedgerFixture[]>()
-    for (const f of fixturesList) {
-      const arr = fixturesByJob.get(f.job_id) ?? []
-      arr.push(f)
-      fixturesByJob.set(f.job_id, arr)
-    }
-    const paymentsByJob = new Map<string, JobsLedgerPayment[]>()
-    for (const p of paymentsList) {
-      const arr = paymentsByJob.get(p.job_id) ?? []
-      arr.push(p)
-      paymentsByJob.set(p.job_id, arr)
-    }
-    const invoicesByJob = new Map<string, JobsLedgerInvoice[]>()
-    for (const i of invoicesList) {
-      const arr = invoicesByJob.get(i.job_id) ?? []
-      arr.push(i)
-      invoicesByJob.set(i.job_id, arr)
-    }
-    const teamByJob = new Map<string, (JobsLedgerTeamMember & { users: { name: string } | null })[]>()
-    for (const t of teamList) {
-      const arr = teamByJob.get(t.job_id) ?? []
-      arr.push(t)
-      teamByJob.set(t.job_id, arr)
-    }
-    const reportsList = (reportsRes.data ?? []) as Array<{ job_ledger_id: string | null }>
-    const reportCountByJob = new Map<string, number>()
-    for (const r of reportsList) {
-      if (r.job_ledger_id) {
-        reportCountByJob.set(r.job_ledger_id, (reportCountByJob.get(r.job_ledger_id) ?? 0) + 1)
+    const jobsWithDetails: JobWithDetails[] = rows.map((row) => {
+      const {
+        jobs_ledger_materials: mat,
+        jobs_ledger_fixtures: fix,
+        jobs_ledger_payments: pay,
+        jobs_ledger_invoices: inv,
+        jobs_ledger_team_members: team,
+        reports: rep,
+        projects: proj,
+        ...job
+      } = row
+      return {
+        ...job,
+        materials: (mat ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+        fixtures: (fix ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+        payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+        invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+        team_members: team ?? [],
+        report_count: (rep ?? []).length,
+        project: proj ?? null,
       }
-    }
-    const jobsWithDetails: JobWithDetails[] = jobList.map((j) => ({
-      ...j,
-      materials: (materialsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      fixtures: (fixturesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      payments: (paymentsByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      invoices: (invoicesByJob.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      team_members: teamByJob.get(j.id) ?? [],
-      report_count: reportCountByJob.get(j.id) ?? 0,
-    }))
+    })
     setJobs(jobsWithDetails)
     setLoading(false)
     return jobsWithDetails
+    } finally {
+      loadJobsInFlightRef.current = false
+    }
   }
 
   function toggleStagesHamMode() {
@@ -720,7 +720,7 @@ export default function Jobs() {
 
   async function loadRoster() {
     if (!authUser?.id) return
-    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name')
+    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name')
     setPeople((peopleData as Person[]) ?? [])
     await loadUsers()
   }
@@ -729,7 +729,7 @@ export default function Jobs() {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
     const [peopleRes, usersRes] = await Promise.all([
-      supabase.from('people').select('id, name'),
+      supabase.from('people').select('id, name').is('archived_at', null),
       supabase.from('users').select('id, name'),
     ])
     const hasDuplicateInPeople = peopleRes.data?.some((p) => p.name?.toLowerCase() === trimmedName) ?? false
@@ -2081,9 +2081,9 @@ export default function Jobs() {
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
-    loadJobs()
+    if (activeTab === 'stages' || activeTab === 'billing') loadJobs()
     loadUsers()
-  }, [authUser?.id, authLoading, searchParams])
+  }, [authUser?.id, authLoading, searchParams, activeTab])
 
   useEffect(() => {
     if (!formOpen || !authUser?.id) return
@@ -2100,6 +2100,17 @@ export default function Jobs() {
   }, [formOpen, authUser?.id])
 
   useEffect(() => {
+    if (!formOpen || !authUser?.id) return
+    ;(async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name, customer_id, master_user_id, customers(name)')
+        .order('name')
+      setProjects((data as Array<{ id: string; name: string; customer_id: string; master_user_id: string; customers: { name: string } | null }>) ?? [])
+    })()
+  }, [formOpen, authUser?.id])
+
+  useEffect(() => {
     if (customerId && customers.length > 0) {
       const c = customers.find((x) => x.id === customerId)
       if (c) {
@@ -2110,10 +2121,38 @@ export default function Jobs() {
   }, [customerId, customers])
 
   useEffect(() => {
+    if (!createCustomerFromJobModalOpen || !authUser?.id) return
+    setCreateCustomerFromJobModalLoading(true)
+    ;(async () => {
+      const { data } = await supabase
+        .from('customers')
+        .select('id, name, address, contact_info, date_met')
+        .order('name')
+      const all = (data as CustomerRow[]) ?? []
+      const name = customerName.trim()
+      if (!name) {
+        setSimilarCustomersForCreate([])
+        setCreateCustomerFromJobModalLoading(false)
+        return
+      }
+      const nameLower = name.toLowerCase()
+      const withSimilarity = all
+        .map((c) => ({ c, sim: nameSimilarity(name, c.name ?? '') }))
+        .filter(({ c, sim }) => sim >= 0.7 || (c.name ?? '').toLowerCase().includes(nameLower) || nameLower.includes((c.name ?? '').toLowerCase()))
+        .sort((a, b) => b.sim - a.sim)
+        .slice(0, 10)
+        .map(({ c }) => c)
+      setSimilarCustomersForCreate(withSimilarity)
+      setCreateCustomerFromJobModalLoading(false)
+    })()
+  }, [createCustomerFromJobModalOpen, authUser?.id, customerName])
+
+  useEffect(() => {
     const tab = searchParams.get('tab')
     const editJobId = searchParams.get('edit')
     const editLaborHcp = searchParams.get('editLabor')
     const isPrimary = authRole === 'primary' || myRole === 'primary'
+    const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
     // When edit=jobId is present, force Stages tab so jobs load
     if (editJobId) {
       setActiveTab('stages')
@@ -2193,6 +2232,31 @@ export default function Jobs() {
       }, { replace: true })
       return
     }
+    // Redirect superintendent away from Team Labor and Teams tabs
+    if (isSuperintendent && (tab === 'combined-labor' || tab === 'teams-summary')) {
+      setActiveTab('stages')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'stages')
+        return next
+      }, { replace: true })
+      return
+    }
+    // Superintendent: reports, stages, billing, sub_sheet_ledger; default stages
+    if (isSuperintendent) {
+      const superintendentTabs = ['reports', 'stages', 'billing', 'sub_sheet_ledger']
+      if (tab && superintendentTabs.includes(tab)) {
+        setActiveTab(tab as JobsTab)
+      } else if (!tab || !superintendentTabs.includes(tab)) {
+        setActiveTab('stages')
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'stages')
+          return next
+        }, { replace: true })
+      }
+      return
+    }
     // Only primaries default to Reports; primaries only see Reports tab (Billing hidden)
     if (isPrimary) {
       const primaryTabs = ['reports']
@@ -2247,8 +2311,9 @@ export default function Jobs() {
         if (tab === 'labor') next.set('tab', 'sub_sheet_ledger')
         return next
       }, { replace: true })
-    } else if (newJob && tab === 'billing') {
-      setActiveTab('billing')
+    } else if (newJob && (tab === 'billing' || tab === 'stages' || !tab)) {
+      const projectParam = searchParams.get('project')
+      setActiveTab(tab === 'billing' ? 'billing' : 'stages')
       setEditing(null)
       setHcpNumber('')
       setJobName('')
@@ -2257,6 +2322,7 @@ export default function Jobs() {
       setCustomerEmail('')
       setCustomerPhone('')
       setCustomerId(null)
+      setProjectId(projectParam)
       setCustomerSearch('')
       setDateMet('')
       setCustomerExpanded(true)
@@ -2270,9 +2336,30 @@ export default function Jobs() {
       setContractorsSearch('')
       setContractorsDropdownOpen(false)
       setFormOpen(true)
+      if (projectParam) {
+        ;(async () => {
+          const { data } = await supabase.from('projects').select('customer_id, customers(name, address, contact_info, date_met)').eq('id', projectParam).single()
+          if (data && data.customer_id) {
+            setCustomerId(data.customer_id)
+            const c = (data as { customers?: { name: string; address: string | null; contact_info: unknown; date_met: string | null } }).customers
+            if (c) {
+              setCustomerName(c.name ?? '')
+              setJobAddress(c.address ?? '')
+              setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
+              const ci = c.contact_info as { phone?: string; email?: string } | null
+              if (ci) {
+                setCustomerEmail(ci.email ?? '')
+                setCustomerPhone(ci.phone ?? '')
+              }
+            }
+          }
+        })()
+      }
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.delete('newJob')
+        next.delete('project')
+        if (!next.get('tab')) next.set('tab', 'stages')
         return next
       }, { replace: true })
     }
@@ -2362,13 +2449,6 @@ export default function Jobs() {
     if (laborBookEntriesVersionId) loadLaborBookEntries(laborBookEntriesVersionId)
     else setLaborBookEntries([])
   }, [laborBookEntriesVersionId])
-
-  useEffect(() => {
-    if (authLoading || !authUser?.id) return
-    if (activeTab !== 'stages' && activeTab !== 'billing') return
-    const t = setTimeout(() => loadJobs(), 80)
-    return () => clearTimeout(t)
-  }, [activeTab, authUser?.id, authLoading])
 
   useEffect(() => {
     if (activeTab === 'stages' && searchParams.get('showBilledTotalByName') === 'true') {
@@ -2728,6 +2808,7 @@ export default function Jobs() {
     setCustomerEmail('')
     setCustomerPhone('')
     setCustomerId(null)
+    setProjectId(null)
     setCustomerSearch('')
     setDateMet('')
     setCustomerExpanded(true)
@@ -2753,6 +2834,7 @@ export default function Jobs() {
     setCustomerEmail(job.customer_email ?? '')
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
+    setProjectId(job.project_id ?? null)
     setCustomerSearch('')
     setCustomerExpanded(!!(job.customer_name || job.customer_email || job.customer_phone || job.customer_id))
     setEstimatedCompletionDate(job.estimated_completion_date ? job.estimated_completion_date.slice(0, 10) : '')
@@ -2780,7 +2862,7 @@ export default function Jobs() {
     setFormOpen(true)
   }
 
-  async function handleCreateCustomerFromJob() {
+  async function handleCreateCustomerFromJob(customerType: 'residential' | 'commercial') {
     if (!authUser?.id) return
     const name = customerName.trim()
     if (!name) {
@@ -2799,7 +2881,7 @@ export default function Jobs() {
           name,
           address: jobAddress.trim() || null,
           contact_info: contactInfo,
-          customer_type: 'residential',
+          customer_type: customerType,
           date_met: dateMet.trim() || null,
           master_user_id: authUser.id,
         })
@@ -2819,6 +2901,7 @@ export default function Jobs() {
         const found = updated?.find((j) => j.id === editing.id)
         if (found) setEditing(found)
       }
+      setCreateCustomerFromJobModalOpen(false)
       showToast('Customer created and linked', 'success')
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create customer'
@@ -2827,6 +2910,32 @@ export default function Jobs() {
     } finally {
       setCreatingCustomerFromJob(false)
     }
+  }
+
+  async function handleLinkToSimilarCustomer(c: CustomerRow) {
+    setCustomerId(c.id)
+    setCustomerSearch(getCustomerDisplay(c))
+    setCustomerName(c.name ?? '')
+    setCustomerEmail(extractContactFromCustomer(c).email)
+    setCustomerPhone(extractContactFromCustomer(c).phone)
+    setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
+    if (!jobAddress.trim()) setJobAddress(c.address ?? '')
+    setCustomers((prev) => {
+      if (prev.some((x) => x.id === c.id)) return prev
+      return [...prev, c].sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    })
+    if (editing) {
+      const { error: updErr } = await supabase.from('jobs_ledger').update({ customer_id: c.id }).eq('id', editing.id)
+      if (updErr) {
+        showToast(updErr.message, 'error')
+        return
+      }
+      const updated = await loadJobs()
+      const found = updated?.find((j) => j.id === editing.id)
+      if (found) setEditing(found)
+    }
+    setCreateCustomerFromJobModalOpen(false)
+    showToast('Linked to existing customer', 'success')
   }
 
   async function handleCustomerImport() {
@@ -2855,6 +2964,7 @@ export default function Jobs() {
   function closeForm() {
     setFormOpen(false)
     setEditing(null)
+    setProjectId(null)
     setNewInvoiceAmount('')
   }
 
@@ -3009,10 +3119,28 @@ export default function Jobs() {
     const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
     try {
       if (editing) {
-        await supabase
+        const proj = projectId ? projects.find((p) => p.id === projectId) : null
+        const updatePayload = {
+          hcp_number: hcpNumber.trim(),
+          job_name: jobName.trim(),
+          job_address: jobAddress.trim(),
+          customer_id: customerId || null,
+          customer_name: customerName.trim() || null,
+          customer_email: customerEmail.trim() || null,
+          customer_phone: customerPhone.trim() || null,
+          estimated_completion_date: estimatedCompletionDate.trim() || null,
+          google_drive_link: googleDriveLink.trim() || null,
+          job_plans_link: jobPlansLink.trim() || null,
+          revenue: revNum,
+          payments_made: paymentsMadeNum,
+          project_id: projectId || null,
+          ...(projectId && proj ? { master_user_id: proj.master_user_id } : {}),
+        }
+        const { error: updateErr } = await supabase
           .from('jobs_ledger')
-          .update({ hcp_number: hcpNumber.trim(), job_name: jobName.trim(), job_address: jobAddress.trim(), customer_id: customerId || null, customer_name: customerName.trim() || null, customer_email: customerEmail.trim() || null, customer_phone: customerPhone.trim() || null, estimated_completion_date: estimatedCompletionDate.trim() || null, google_drive_link: googleDriveLink.trim() || null, job_plans_link: jobPlansLink.trim() || null, revenue: revNum, payments_made: paymentsMadeNum })
+          .update(updatePayload)
           .eq('id', editing.id)
+        if (updateErr) throw updateErr
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
         for (const [i, p] of validPayments.entries()) {
           await supabase.from('jobs_ledger_payments').insert({
@@ -3051,21 +3179,27 @@ export default function Jobs() {
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
         }
       } else {
-        // Resolve job owner (override for users who create jobs on behalf of others)
+        // Resolve job owner (override for users who create jobs on behalf of others, or project owner when linking to project)
         let effectiveMasterId = authUser.id
-        const override = await withSupabaseRetry(
-          async () => {
-            const result = await supabase
-              .from('app_settings')
-              .select('value_text')
-              .eq('key', `job_owner_override_${authUser.id}`)
-              .maybeSingle()
-            return { data: result.data, error: result.error }
-          },
-          'fetch job owner override'
-        )
-        if (override?.value_text) {
-          effectiveMasterId = override.value_text
+        if (projectId) {
+          const proj = projects.find((p) => p.id === projectId)
+          if (proj) effectiveMasterId = proj.master_user_id
+        }
+        if (!projectId) {
+          const override = await withSupabaseRetry(
+            async () => {
+              const result = await supabase
+                .from('app_settings')
+                .select('value_text')
+                .eq('key', `job_owner_override_${authUser.id}`)
+                .maybeSingle()
+              return { data: result.data, error: result.error }
+            },
+            'fetch job owner override'
+          )
+          if (override?.value_text) {
+            effectiveMasterId = override.value_text
+          }
         }
 
         const { data: inserted, error: insertErr } = await supabase
@@ -3084,6 +3218,7 @@ export default function Jobs() {
             job_plans_link: jobPlansLink.trim() || null,
             revenue: revNum,
             payments_made: paymentsMadeNum,
+            project_id: projectId || null,
           })
           .select('id')
           .single()
@@ -3218,13 +3353,33 @@ export default function Jobs() {
     }
   }
 
+  async function setJobEstimatedCompletionDate(jobId: string, date: string | null) {
+    setEstimatedCompletionDateSavingId(jobId)
+    setError(null)
+    try {
+      const { error: err } = await supabase.from('jobs_ledger').update({ estimated_completion_date: date }).eq('id', jobId)
+      if (err) throw err
+      setJobs((prev) =>
+        prev.map((j) => (j.id === jobId ? { ...j, estimated_completion_date: date } : j))
+      )
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update date')
+    } finally {
+      setEstimatedCompletionDateSavingId(null)
+    }
+  }
+
   // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
   const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
+  const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
   const showTeamsTab = showPrimaryRestrictedTabs &&
     authRole !== 'master_technician' && authRole !== 'assistant' &&
+    authRole !== 'superintendent' && myRole !== 'superintendent' &&
     myRole !== 'master_technician' && myRole !== 'assistant'
-  const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant'
+  const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
+    authRole !== 'superintendent' && myRole !== 'superintendent'
+  const showSuperintendentExtraTabs = !isSuperintendent
 
   return (
     <div>
@@ -3324,6 +3479,7 @@ export default function Jobs() {
           >
             Sub Labor
           </button>
+          {showSuperintendentExtraTabs && (
           <button
             type="button"
             onClick={() => {
@@ -3338,9 +3494,10 @@ export default function Jobs() {
           >
             Parts
           </button>
+          )}
           </>
         )}
-        {showPrimaryRestrictedTabs && (
+        {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
           <button
             type="button"
             onClick={() => {
@@ -3356,7 +3513,7 @@ export default function Jobs() {
             Job Summary
           </button>
         )}
-        {showPrimaryRestrictedTabs && (
+        {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
           <>
           <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
           <button
@@ -3776,8 +3933,33 @@ export default function Jobs() {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderEstimatedCompletionBlock(job: { id: string; estimated_completion_date: string | null }) {
+            function renderEstimatedCompletionBlock(
+              job: JobWithDetails,
+              options?: { showEmptyPrompt?: boolean; onEmptyClick?: (j: JobWithDetails) => void }
+            ) {
               const display = formatEstimatedCompletionDisplay(job.estimated_completion_date)
+              if (!display && options?.showEmptyPrompt && options?.onEmptyClick) {
+                return (
+                  <button
+                    type="button"
+                    onClick={() => options.onEmptyClick!(job)}
+                    style={{
+                      display: 'block',
+                      marginTop: '0.15rem',
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.75rem',
+                      color: '#b91c1c',
+                      border: '2px solid #b91c1c',
+                      borderRadius: 4,
+                      background: 'none',
+                      cursor: 'pointer',
+                      width: 'fit-content',
+                    }}
+                  >
+                    Missing Billed Date
+                  </button>
+                )
+              }
               return (
                 <>
                   {display && (
@@ -4006,6 +4188,16 @@ export default function Jobs() {
                                 )
                               })()}
                               {renderJobCustomerLine(j)}
+                              {j.project && (
+                                <div style={{ marginTop: '0.35rem' }}>
+                                  <Link
+                                    to={`/workflows/${j.project_id}`}
+                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
+                                  >
+                                    Project: {j.project.name}
+                                  </Link>
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                               <textarea
@@ -4253,9 +4445,11 @@ export default function Jobs() {
                 showTimeOpen?: boolean
                 sendBackBelowRemaining?: boolean
                 showCreatePartialInvoice?: boolean
+                showEmptyEstDoneBillDatePrompt?: boolean
+                onEmptyEstDoneBillDateClick?: (j: JobWithDetails) => void
               }
             ) {
-              const { actionLabel, onJobAction, onInvoiceAction, onJobSendBack, onInvoiceSendBack, showRemaining, showTimeOpen, sendBackBelowRemaining, showCreatePartialInvoice } = options
+              const { actionLabel, onJobAction, onInvoiceAction, onJobSendBack, onInvoiceSendBack, showRemaining, showTimeOpen, sendBackBelowRemaining, showCreatePartialInvoice, showEmptyEstDoneBillDatePrompt, onEmptyEstDoneBillDateClick } = options
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4391,13 +4585,17 @@ export default function Jobs() {
                                       )}
                                     </div>
                                     <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
-                                    {renderEstimatedCompletionBlock(j)}
+                                    {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
+                                      ? renderEstimatedCompletionBlock(j, { showEmptyPrompt: true, onEmptyClick: onEmptyEstDoneBillDateClick })
+                                      : renderEstimatedCompletionBlock(j)}
                                   </div>
                                   ) : (
                                     <>
                                       <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{j.hcp_number || '—'}</div>
-                                      {renderEstimatedCompletionBlock(j)}
+                                      {showEmptyEstDoneBillDatePrompt && onEmptyEstDoneBillDateClick
+                                        ? renderEstimatedCompletionBlock(j, { showEmptyPrompt: true, onEmptyClick: onEmptyEstDoneBillDateClick })
+                                        : renderEstimatedCompletionBlock(j)}
                                     </>
                                   )}
                                 </td>
@@ -4423,6 +4621,16 @@ export default function Jobs() {
                                     )
                                   })()}
                                   {renderJobCustomerLine(j)}
+                                  {j.project && (
+                                    <div style={{ marginTop: '0.35rem' }}>
+                                      <Link
+                                        to={`/workflows/${j.project_id}`}
+                                        style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
+                                      >
+                                        Project: {j.project.name}
+                                      </Link>
+                                    </div>
+                                  )}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4626,6 +4834,16 @@ export default function Jobs() {
                                     )
                                   })()}
                                   {renderJobCustomerLine(job)}
+                                  {job.project && (
+                                    <div style={{ marginTop: '0.35rem' }}>
+                                      <Link
+                                        to={`/workflows/${job.project_id}`}
+                                        style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
+                                      >
+                                        Project: {job.project.name}
+                                      </Link>
+                                    </div>
+                                  )}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4804,9 +5022,9 @@ export default function Jobs() {
                   <button
                     type="button"
                     onClick={() => setCapableToBillModalOpen(true)}
-                    style={{ fontSize: '0.9375rem', color: '#6b7280', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ fontSize: '0.9375rem', color: '#6b7280', fontWeight: 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
-                    Capable of Being Billed {formatCurrency(capableToBillTotal)}
+                    Capable of Being Billed: <span style={{ fontWeight: 600 }}>${formatCurrencyNoCents(capableToBillTotal)}</span>
                   </button>
                 </div>
                 {stagesSectionOpen.working && renderStagesTable(
@@ -4864,6 +5082,8 @@ export default function Jobs() {
                   showTimeOpen: true,
                   sendBackBelowRemaining: true,
                   showCreatePartialInvoice: false,
+                  showEmptyEstDoneBillDatePrompt: true,
+                  onEmptyEstDoneBillDateClick: (j) => { setWhenBilledModalJob(j); setWhenBilledModalDate(''); },
                 })}
 
                 <button
@@ -5012,6 +5232,47 @@ export default function Jobs() {
                     </div>
                   )
                 })()}
+                {whenBilledModalJob && (
+                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+                      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>When was this job billed?</h2>
+                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        {whenBilledModalJob.job_name || '—'} ({whenBilledModalJob.hcp_number || '—'})
+                      </p>
+                      <label style={{ display: 'block', marginBottom: '1rem' }}>
+                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Date</span>
+                        <input
+                          type="date"
+                          value={whenBilledModalDate}
+                          onChange={(e) => setWhenBilledModalDate(e.target.value)}
+                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                        />
+                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => { setWhenBilledModalJob(null); setWhenBilledModalDate(''); }}
+                          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={!whenBilledModalDate.trim() || estimatedCompletionDateSavingId === whenBilledModalJob.id}
+                          onClick={async () => {
+                            if (!whenBilledModalDate.trim()) return
+                            await setJobEstimatedCompletionDate(whenBilledModalJob.id, whenBilledModalDate.trim())
+                            setWhenBilledModalJob(null)
+                            setWhenBilledModalDate('')
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: estimatedCompletionDateSavingId === whenBilledModalJob.id ? 'not-allowed' : 'pointer' }}
+                        >
+                          {estimatedCompletionDateSavingId === whenBilledModalJob.id ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )
           })()}
@@ -7125,7 +7386,55 @@ export default function Jobs() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+              {projectId ? (
+                (() => {
+                  const proj = projects.find((p) => p.id === projectId)
+                  return (
+                    <Link
+                      to={`/workflows/${projectId}`}
+                      style={{
+                        fontSize: '0.875rem',
+                        padding: '0.25rem 0.5rem',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        borderRadius: 4,
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                        display: 'inline-block',
+                      }}
+                    >
+                      Project: {proj?.name ?? 'Project'}
+                    </Link>
+                  )
+                })()
+              ) : (
+                (() => {
+                  const projectPrefillParams = new URLSearchParams()
+                  if (customerId) projectPrefillParams.set('customer', customerId)
+                  if (jobName.trim()) projectPrefillParams.set('name', jobName.trim())
+                  if (jobAddress.trim()) projectPrefillParams.set('address', jobAddress.trim())
+                  if (jobPlansLink.trim()) projectPrefillParams.set('plans', jobPlansLink.trim())
+                  if (hcpNumber.trim()) projectPrefillParams.set('hcp', hcpNumber.trim())
+                  if (editing?.id) projectPrefillParams.set('job', editing.id)
+                  const projectNewUrl = projectPrefillParams.toString() ? `/projects/new?${projectPrefillParams.toString()}` : '/projects/new'
+                  return (
+                    <Link
+                      to={projectNewUrl}
+                      style={{
+                        fontSize: '0.875rem',
+                        color: '#2563eb',
+                        textDecoration: 'none',
+                        fontWeight: 500,
+                      }}
+                    >
+                      + Add Project
+                    </Link>
+                  )
+                })()
+              )}
+            </div>
             {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -7173,7 +7482,7 @@ export default function Jobs() {
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
                 <div style={{ flex: '0 0 auto', minWidth: 140 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Estimated Completion Date</label>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Est. Done and Bill Date</label>
                   <input
                     type="date"
                     value={estimatedCompletionDate}
@@ -7340,21 +7649,23 @@ export default function Jobs() {
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          disabled={creatingCustomerFromJob || !customerName.trim()}
-                          onClick={handleCreateCustomerFromJob}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            fontSize: '0.875rem',
-                            border: '1px solid #d1d5db',
-                            background: creatingCustomerFromJob || !customerName.trim() ? '#f3f4f6' : '#f9fafb',
-                            borderRadius: 4,
-                            cursor: creatingCustomerFromJob || !customerName.trim() ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          {creatingCustomerFromJob ? 'Creating…' : 'Create customer from job'}
-                        </button>
+                        {!customerId && (
+                          <button
+                            type="button"
+                            disabled={!customerName.trim()}
+                            onClick={() => setCreateCustomerFromJobModalOpen(true)}
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              fontSize: '0.875rem',
+                              border: '1px solid #d1d5db',
+                              background: !customerName.trim() ? '#f3f4f6' : '#f9fafb',
+                              borderRadius: 4,
+                              cursor: !customerName.trim() ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            Create customer from job
+                          </button>
+                        )}
                         {customerId && (
                           <button
                             type="button"
@@ -7403,6 +7714,34 @@ export default function Jobs() {
                     </div>
                   </div>
                 )}
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Project</label>
+                <select
+                  value={projectId ?? ''}
+                  onChange={(e) => {
+                    const pid = e.target.value || null
+                    setProjectId(pid)
+                    if (pid) {
+                      const proj = projects.find((p) => p.id === pid)
+                      if (proj && !customerId) {
+                        setCustomerId(proj.customer_id)
+                      }
+                    }
+                  }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                >
+                  <option value="">None</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                      {p.customers?.name ? ` (${p.customers.name})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                  Link job to a multi-phase project for billing after each phase
+                </span>
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: 1, minWidth: 200 }}>
@@ -7881,6 +8220,96 @@ export default function Jobs() {
               )}
             </div>
           </div>
+          {createCustomerFromJobModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={() => setCreateCustomerFromJobModalOpen(false)}>
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Create customer from job</h2>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  {customerName.trim() || '—'} · {jobAddress.trim() || '—'}
+                  {(customerEmail.trim() || customerPhone.trim()) && (
+                    <span> · {customerEmail.trim() || customerPhone.trim()}</span>
+                  )}
+                </p>
+                <label style={{ display: 'block', marginBottom: '1rem' }}>
+                  <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Customer type</span>
+                  <div style={{ display: 'flex', gap: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setCreateCustomerFromJobType('residential')}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px 0 0 4px',
+                        background: createCustomerFromJobType === 'residential' ? '#3b82f6' : 'white',
+                        color: createCustomerFromJobType === 'residential' ? 'white' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Residential
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreateCustomerFromJobType('commercial')}
+                      style={{
+                        flex: 1,
+                        padding: '0.5rem 0.75rem',
+                        fontSize: '0.875rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '0 4px 4px 0',
+                        background: createCustomerFromJobType === 'commercial' ? '#3b82f6' : 'white',
+                        color: createCustomerFromJobType === 'commercial' ? 'white' : '#374151',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Commercial
+                    </button>
+                  </div>
+                </label>
+                <div style={{ marginBottom: '1rem' }}>
+                  <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Possible matches – link instead?</span>
+                  {createCustomerFromJobModalLoading ? (
+                    <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>Loading…</div>
+                  ) : similarCustomersForCreate.length > 0 ? (
+                    <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>
+                      {similarCustomersForCreate.map((c) => (
+                        <div
+                          key={c.id}
+                          onClick={() => handleLinkToSimilarCustomer(c)}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                        >
+                          <div style={{ fontWeight: 500 }}>{c.name}</div>
+                          {c.address && <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>No similar customers found</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCreateCustomerFromJobModalOpen(false)}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!customerName.trim() || creatingCustomerFromJob}
+                    onClick={() => handleCreateCustomerFromJob(createCustomerFromJobType)}
+                    style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
+                  >
+                    {creatingCustomerFromJob ? 'Creating…' : 'Create new customer'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
       <NewReportModal

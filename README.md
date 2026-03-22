@@ -35,8 +35,9 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 | Your Task | Documentation to Read |
 |-----------|----------------------|
 | Understanding roles/permissions | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Complete permissions matrix |
+| Adding a new role | [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) - Step-by-step guide |
 | Working with database/schema | [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - "Database Schema" section |
-| Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 6 tabs documented |
+| Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 10 tabs documented |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
 | Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in |
@@ -51,10 +52,10 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 **Key Constraints to Remember**:
 - Never edit existing migrations (append-only)
-- Every new table needs RLS policies for all 5 roles
+- Every new table needs RLS policies for all 6 roles
 - Update TypeScript types after schema changes: `supabase gen types typescript --local > src/types/database.ts`
 - TypeScript strict mode: No `any` types, handle null/undefined
-- Test RLS for all roles: dev, master, assistant, subcontractor, estimator
+- Test RLS for all roles: dev, master, assistant, subcontractor, estimator, primary
 
 ---
 
@@ -67,7 +68,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 - **[WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
 📋 **System-Specific Documentation**:
-- **[BIDS_SYSTEM.md](./BIDS_SYSTEM.md)** - Complete Bids system documentation (6 tabs, book systems, workflows)
+- **[BIDS_SYSTEM.md](./BIDS_SYSTEM.md)** - Complete Bids system documentation (10 tabs, book systems, workflows)
 - **[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
 - **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
 - **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking

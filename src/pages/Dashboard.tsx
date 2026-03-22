@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -113,6 +113,14 @@ function formatDatetime(iso: string | null): string {
   return `${weekday}, ${dateTime}`
 }
 
+function daysOpen(startedAt: string | null, endedAt: string | null): number | null {
+  if (!startedAt || endedAt) return null
+  const start = new Date(startedAt)
+  const end = new Date()
+  const result = Math.floor((end.getTime() - start.getTime()) / 86400000)
+  return result < 0 ? null : result
+}
+
 function personDisplay(name: string | null, userNames: Set<string>): string {
   if (!name || !name.trim()) {
     return 'Assigned to: unknown'
@@ -166,11 +174,13 @@ const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
 const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 
 function getAllowedPathsForRole(role: string | null): Set<string> | null {
   if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
   if (role === 'estimator') return ESTIMATOR_PATHS
   if (role === 'primary' || role === null) return PRIMARY_PATHS
+  if (role === 'superintendent') return SUPERINTENDENT_PATHS
   return null // dev, master_technician, assistant: no filter (all paths allowed)
 }
 
@@ -323,10 +333,32 @@ export default function Dashboard() {
     from_user_id: string
     reference_summary: string | null
     sender: { name: string | null; email: string | null } | null
+    status: 'open' | 'closed'
+    closed_at: string | null
+    closed_by_user_id: string | null
+    closed_by: { name: string | null } | null
+    closed_note: string | null
   }
   const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
   const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
   const [dispatchRequestClosingId, setDispatchRequestClosingId] = useState<string | null>(null)
+  const [dispatchRequestDismissingId, setDispatchRequestDismissingId] = useState<string | null>(null)
+  const [closeNoteModalRequestId, setCloseNoteModalRequestId] = useState<string | null>(null)
+  const [closeNoteText, setCloseNoteText] = useState('')
+  const [closeNoteError, setCloseNoteError] = useState<string | null>(null)
+
+  type MyBidRow = {
+    id: string
+    project_name: string | null
+    bid_due_date: string | null
+    bid_date_sent: string | null
+    outcome: string | null
+    service_type_name: string
+  }
+  const [myBids, setMyBids] = useState<MyBidRow[]>([])
+  const [myBidsLoading, setMyBidsLoading] = useState(false)
+  const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
+  const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
@@ -376,33 +408,64 @@ export default function Dashboard() {
     }
   }, [authUser?.id, role])
 
+  const loadDispatchRequests = useCallback(() => {
+    if (!authUser?.id || !dispatchInboxEligible) {
+      setDispatchRequests([])
+      return
+    }
+    setDispatchRequestsLoading(true)
+    Promise.all([
+      supabase
+        .from('dispatch_requests')
+        .select(
+          'id, title, links, created_at, from_user_id, reference_summary, status, closed_at, closed_by_user_id, closed_note, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)',
+        )
+        .order('created_at', { ascending: false }),
+      supabase.from('dispatch_request_dismissals').select('request_id').eq('user_id', authUser.id),
+    ]).then(([requestsRes, dismissalsRes]) => {
+      setDispatchRequestsLoading(false)
+      if (requestsRes.error) {
+        console.error('Dispatch inbox load:', requestsRes.error)
+        return
+      }
+      const dismissedIds = new Set(
+        (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
+      )
+      const rows = ((requestsRes.data ?? []) as DispatchInboxRow[]).filter(
+        (r) => !dismissedIds.has(r.id),
+      )
+      rows.sort((a, b) => {
+        const aOpen = a.status === 'open' ? 1 : 0
+        const bOpen = b.status === 'open' ? 1 : 0
+        if (aOpen !== bOpen) return bOpen - aOpen
+        const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
+        const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
+        return bDate.localeCompare(aDate)
+      })
+      setDispatchRequests(rows)
+    })
+  }, [authUser?.id, dispatchInboxEligible])
+
   useEffect(() => {
     if (!authUser?.id || !dispatchInboxEligible) {
       setDispatchRequests([])
       return
     }
-    let cancelled = false
-    setDispatchRequestsLoading(true)
-    supabase
-      .from('dispatch_requests')
-      .select(
-        'id, title, links, created_at, from_user_id, reference_summary, sender:users!dispatch_requests_from_user_id_fkey(name, email)',
-      )
-      .eq('status', 'open')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (cancelled) return
-        setDispatchRequestsLoading(false)
-        if (error) {
-          console.error('Dispatch inbox load:', error)
-          return
-        }
-        setDispatchRequests((data ?? []) as DispatchInboxRow[])
+    loadDispatchRequests()
+  }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
+
+  useEffect(() => {
+    if (!authUser?.id || !dispatchInboxEligible) return
+    const channel = supabase
+      .channel('dashboard-dispatch-requests')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'dispatch_requests' }, () => {
+        loadDispatchRequests()
       })
+      .subscribe()
     return () => {
-      cancelled = true
+      supabase.removeChannel(channel)
     }
-  }, [authUser?.id, dispatchInboxEligible])
+  }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -514,7 +577,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authUser?.id) return
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -579,7 +642,76 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
+    const hasBidsAccess = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary' || role === 'superintendent'
+    if (!authUser?.id || !hasBidsAccess) return
+    setMyBidsLoading(true)
+    supabase
+      .from('bids')
+      .select('id, project_name, bid_due_date, bid_date_sent, outcome, service_type:service_types(name)')
+      .eq('estimator_id', authUser.id)
+      .or('outcome.is.null,outcome.neq.lost')
+      .order('bid_due_date', { ascending: true, nullsFirst: false })
+      .limit(15)
+      .then(({ data, error }) => {
+        if (error) {
+          setMyBids([])
+        } else {
+          const rows = (data ?? []) as Array<{
+            id: string
+            project_name: string | null
+            bid_due_date: string | null
+            bid_date_sent: string | null
+            outcome: string | null
+            service_type: { name: string } | null
+          }>
+          setMyBids(
+            rows.map((r) => ({
+              id: r.id,
+              project_name: r.project_name,
+              bid_due_date: r.bid_due_date,
+              bid_date_sent: r.bid_date_sent,
+              outcome: r.outcome,
+              service_type_name: r.service_type?.name ?? '',
+            }))
+          )
+        }
+        setMyBidsLoading(false)
+      })
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem(`dashboard_my_bids_hidden_${authUser.id}`)
+      if (raw) {
+        const arr = JSON.parse(raw) as string[]
+        if (Array.isArray(arr)) setHiddenBidIds(new Set(arr))
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [authUser?.id])
+
+  function hideBid(bidId: string) {
+    const next = new Set(hiddenBidIds)
+    next.add(bidId)
+    setHiddenBidIds(next)
+    if (authUser?.id && typeof window !== 'undefined') {
+      localStorage.setItem(`dashboard_my_bids_hidden_${authUser.id}`, JSON.stringify([...next]))
+    }
+  }
+
+  function unhideBid(bidId: string) {
+    const next = new Set(hiddenBidIds)
+    next.delete(bidId)
+    setHiddenBidIds(next)
+    if (authUser?.id && typeof window !== 'undefined') {
+      localStorage.setItem(`dashboard_my_bids_hidden_${authUser.id}`, JSON.stringify([...next]))
+    }
+  }
+
+  useEffect(() => {
+    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
     if (!showRecent) return
     const channel = supabase
       .channel('dashboard-reports-changes')
@@ -1694,8 +1826,13 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
-  async function closeDispatchRequest(requestId: string) {
+  async function closeDispatchRequest(requestId: string, closedNote: string) {
     if (!authUser?.id) return
+    const note = closedNote?.trim()
+    if (!note) {
+      showToast('Close note is required.', 'error')
+      return
+    }
     setDispatchRequestClosingId(requestId)
     const { error } = await supabase
       .from('dispatch_requests')
@@ -1703,24 +1840,147 @@ export default function Dashboard() {
         status: 'closed',
         closed_at: new Date().toISOString(),
         closed_by_user_id: authUser.id,
+        closed_note: note,
       })
       .eq('id', requestId)
     setDispatchRequestClosingId(null)
+    if (error) {
+      setCloseNoteError(error.message)
+      return
+    }
+    setCloseNoteModalRequestId(null)
+    setCloseNoteText('')
+    setCloseNoteError(null)
+    loadDispatchRequests()
+    showToast('Marked closed.', 'success')
+  }
+
+  async function dismissDispatchRequest(requestId: string) {
+    if (!authUser?.id) return
+    setDispatchRequestDismissingId(requestId)
+    const { error } = await supabase.from('dispatch_request_dismissals').insert({
+      user_id: authUser.id,
+      request_id: requestId,
+    })
+    setDispatchRequestDismissingId(null)
     if (error) {
       showToast(error.message, 'error')
       return
     }
     setDispatchRequests((prev) => prev.filter((r) => r.id !== requestId))
-    showToast('Marked closed.', 'success')
+    showToast('Dismissed.', 'success')
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || ((role === 'subcontractor' || role === 'estimator') && isReportEnabledOnlyUser)
+  const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
+
+  const handleCloseNoteModalClose = () => {
+    setCloseNoteModalRequestId(null)
+    setCloseNoteText('')
+    setCloseNoteError(null)
+  }
+
+  const handleCloseNoteSubmit = () => {
+    const note = closeNoteText.trim()
+    if (!note) {
+      setCloseNoteError('Close note is required.')
+      return
+    }
+    if (closeNoteModalRequestId) {
+      closeDispatchRequest(closeNoteModalRequestId, note)
+    }
+  }
 
   return (
     <div>
+      {closeNoteModalRequestId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 60,
+          }}
+          onClick={(e) => e.target === e.currentTarget && handleCloseNoteModalClose()}
+        >
+          <div
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 480,
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Close dispatch request</h2>
+              <button
+                type="button"
+                onClick={handleCloseNoteModalClose}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleCloseNoteSubmit()
+              }}
+            >
+              <textarea
+                value={closeNoteText}
+                onChange={(e) => setCloseNoteText(e.target.value)}
+                placeholder="Enter close note..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.875rem',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {closeNoteError && (
+                <p style={{ color: '#b91c1c', marginTop: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>{closeNoteError}</p>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={handleCloseNoteModalClose}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dispatchRequestClosingId === closeNoteModalRequestId}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: dispatchRequestClosingId === closeNoteModalRequestId ? '#9ca3af' : '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: dispatchRequestClosingId === closeNoteModalRequestId ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {dispatchRequestClosingId === closeNoteModalRequestId ? '…' : 'Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {[
@@ -1941,6 +2201,201 @@ export default function Dashboard() {
           </Link>
       </div>
       )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.length > 0) && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+          <Link
+            to="/bids?new=true"
+            style={{
+              padding: '0.35rem 0.75rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 6,
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            }}
+          >
+            New Bid
+          </Link>
+        </div>
+          {myBidsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+          ) : (
+            <>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {myBids
+                  .filter((b) => !hiddenBidIds.has(b.id))
+                  .map((b) => {
+                    const status =
+                      !b.bid_date_sent
+                        ? 'Unsent'
+                        : b.outcome === 'won'
+                          ? 'Won'
+                          : b.outcome === 'started_or_complete'
+                            ? 'Started or Complete'
+                            : 'Pending'
+                    const dueStr = b.bid_due_date
+                      ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+                      : '—'
+                    return (
+                      <li key={b.id} style={{ marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Link
+                            to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              display: 'block',
+                              padding: '0.5rem 0.75rem',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: 4,
+                              color: '#1e40af',
+                              textDecoration: 'none',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <div>
+                              <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
+                              {b.service_type_name && (
+                                <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                              )}
+                            </div>
+                            <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
+                              Due {dueStr} · {status}
+                            </div>
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              hideBid(b.id)
+                            }}
+                            style={{
+                              flexShrink: 0,
+                              padding: '0.35rem',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                            }}
+                            title="Hide bid"
+                            aria-label="Hide bid"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
+                              <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+              </ul>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <Link
+                  to="/bids?tab=bid-board"
+                  style={{
+                    fontSize: '0.875rem',
+                    color: '#2563eb',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  View all
+                </Link>
+                {hiddenBidIds.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setHiddenBidsExpanded((x) => !x)}
+                    style={{
+                      padding: 0,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: '#2563eb',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    View hidden ({hiddenBidIds.size})
+                  </button>
+                )}
+              </div>
+              {hiddenBidsExpanded && hiddenBidIds.size > 0 && (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Hidden bids</div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {myBids
+                      .filter((b) => hiddenBidIds.has(b.id))
+                      .map((b) => {
+                        const status =
+                          !b.bid_date_sent
+                            ? 'Unsent'
+                            : b.outcome === 'won'
+                              ? 'Won'
+                              : b.outcome === 'started_or_complete'
+                                ? 'Started or Complete'
+                                : 'Pending'
+                        const dueStr = b.bid_due_date
+                          ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+                          : '—'
+                        return (
+                          <li key={b.id} style={{ marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <Link
+                                to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  display: 'block',
+                                  padding: '0.5rem 0.75rem',
+                                  background: '#f9fafb',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: 4,
+                                  color: '#374151',
+                                  textDecoration: 'none',
+                                  fontSize: '0.875rem',
+                                }}
+                              >
+                                <div>
+                                  <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
+                                  {b.service_type_name && (
+                                    <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                                  )}
+                                </div>
+                                <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
+                                  Due {dueStr} · {status}
+                                </div>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => unhideBid(b.id)}
+                                style={{
+                                  flexShrink: 0,
+                                  padding: '0.2rem 0.5rem',
+                                  fontSize: '0.8125rem',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 4,
+                                  background: 'white',
+                                  color: '#374151',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Add back
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {authUser?.id && dispatchInboxEligible && (
         <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
           <button
@@ -1965,7 +2420,7 @@ export default function Dashboard() {
             Dispatch inbox
             {!dispatchRequestsLoading && dispatchRequests.length > 0 ? (
               <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
-                ({dispatchRequests.length} open)
+                ({dispatchRequests.filter((r) => r.status === 'open').length} open)
               </span>
             ) : null}
           </button>
@@ -1974,11 +2429,13 @@ export default function Dashboard() {
               {dispatchRequestsLoading ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
               ) : dispatchRequests.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No open dispatch requests.</p>
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No dispatch requests.</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {dispatchRequests.map((req) => {
                     const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
+                    const isClosed = req.status === 'closed'
+                    const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
                     return (
                       <li
                         key={req.id}
@@ -1989,6 +2446,8 @@ export default function Dashboard() {
                           gap: '0.5rem',
                           padding: '0.75rem 0',
                           borderBottom: '1px solid #f3f4f6',
+                          opacity: isClosed ? 0.85 : 1,
+                          background: isClosed ? '#f9fafb' : undefined,
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 200 }}>
@@ -2013,21 +2472,53 @@ export default function Dashboard() {
                             </div>
                           ) : null}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => closeDispatchRequest(req.id)}
-                          disabled={dispatchRequestClosingId === req.id}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            background: '#e5e7eb',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
-                        </button>
+                        {isClosed ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => dismissDispatchRequest(req.id)}
+                              disabled={dispatchRequestDismissingId === req.id}
+                              style={{
+                                padding: '0.35rem 0.75rem',
+                                background: '#e5e7eb',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
+                                fontSize: '0.875rem',
+                              }}
+                            >
+                              {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
+                            </button>
+                            <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                              Closed by {closedByLabel}
+                            </div>
+                            {req.closed_note?.trim() ? (
+                              <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
+                                "{req.closed_note.trim()}"
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCloseNoteModalRequestId(req.id)
+                              setCloseNoteText('')
+                              setCloseNoteError(null)
+                            }}
+                            disabled={dispatchRequestClosingId === req.id}
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              background: '#e5e7eb',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
+                          </button>
+                        )}
                       </li>
                     )
                   })}
@@ -3429,6 +3920,10 @@ export default function Dashboard() {
                 )}
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
                   Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
+                  {(() => {
+                    const d = daysOpen(s.started_at, s.ended_at)
+                    return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
+                  })()}
                 </div>
                 {s.project_address && (
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
@@ -3471,29 +3966,29 @@ export default function Dashboard() {
                   {(s.status === 'pending' || s.status === 'in_progress') && (
                     <button 
                       type="button" 
-                      onClick={() => markCompleted(s)} 
+                      onClick={() => markCompleted(s)}
                       style={{ padding: '4px 8px', fontSize: '0.875rem' }}
                     >
-                      Complete
+                      Mark Complete
                     </button>
                   )}
-                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician') && (
-                    <button 
-                      type="button" 
-                      onClick={() => markApproved(s)} 
-                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
-                    >
-                      Approve
-                    </button>
-                  )}
-                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician') && (
-                    <button 
-                      type="button" 
-                      onClick={() => setRejectStep({ step: s, reason: '' })} 
-                      style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#E87600' }}
-                    >
-                      Reject
-                    </button>
+                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+                    <span style={{ display: 'inline-flex', gap: 6, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => markApproved(s)} 
+                        style={{ padding: '4px 8px', fontSize: '0.875rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Approve
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => setRejectStep({ step: s, reason: '' })} 
+                        style={{ padding: '4px 8px', fontSize: '0.875rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Reject
+                      </button>
+                    </span>
                   )}
                 </div>
               </div>

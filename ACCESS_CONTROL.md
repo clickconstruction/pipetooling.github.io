@@ -5,11 +5,11 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-02-26
+last_updated: 2026-03-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
-total_roles: 6
+total_roles: 7
 tables_with_rls: "50+"
 access_patterns: "Ownership, Adoption, Sharing"
 
@@ -17,7 +17,7 @@ key_sections:
   - name: "User Roles"
     line: ~18
     anchor: "#user-roles"
-    description: "Detailed breakdown of all 6 roles"
+    description: "Detailed breakdown of all 7 roles"
   - name: "Page Access Matrix"
     line: ~232
     anchor: "#page-access-matrix"
@@ -70,15 +70,18 @@ when_to_read:
 
 ## Overview
 
-Pipetooling implements comprehensive role-based access control (RBAC) using six distinct user roles, each with specific permissions tailored to their responsibilities.
+Pipetooling implements comprehensive role-based access control (RBAC) using seven distinct user roles, each with specific permissions tailored to their responsibilities.
 
-### Six User Roles
+### Seven User Roles
 1. **dev** - System administrators with full access
 2. **master_technician** - Project managers and business owners
 3. **assistant** - Support staff working under masters
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
 6. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
+7. **superintendent** - Run jobs, manage subcontractors, draft bids (adoption-based; no People page)
+
+**Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
@@ -409,21 +412,80 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ---
 
+### superintendent (Superintendent)
+
+**Purpose**: Run jobs, manage subcontractors, and draft bids. Adoption-based access via `master_superintendents`.
+
+**Access**:
+- Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
+- **Blocked**: Customers (direct), People, Templates, Prospects
+- **Jobs tabs**: Reports, Stages, Billing, Sub Sheet Ledger (hide Team Labor, Teams Summary)
+- **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission)
+- **Customers**: Create from Bids modal only (like estimator)
+- **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
+
+**Service Type Filtering**:
+- Devs can restrict a superintendent to specific service types via `superintendent_service_type_ids` on the user record (like `primary_service_type_ids`)
+- **NULL or empty array** = superintendent sees all service types
+- **Non-empty array** = superintendent sees only those service types in Bids and Materials
+
+**Master-Superintendents Adoption**:
+- Masters can adopt superintendents via `master_superintendents` table (Settings → Adopt superintendents)
+- Adopted superintendents access projects, workflows, jobs, and bids from adopted masters
+- Superintendents can assign people (subcontractors, primaries) to workflow stages
+
+**Project-Level Superintendent Assignment**:
+- Devs, masters, and assistants can assign superintendents to specific projects via the Workflow page (Assigned Superintendents section)
+- `project_superintendents(project_id, superintendent_id)` table; RLS uses `can_access_project_row` for assigners
+- Superintendents gain access via adoption (all master's projects) OR project assignment (specific projects only)
+
+**Permissions**:
+
+**Workflow**:
+- Can see all stages in accessible workflows (like assistant)
+- Can assign people to stages (Assign button visible)
+- Can see private notes
+- Cannot see projections or Ledger Total
+
+**Jobs**:
+- Reports, Stages, Billing, Sub Sheet Ledger tabs
+- Team Labor and Teams Summary tabs hidden
+
+**Bids**:
+- Draft flow: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release
+- Pricing, Cover Letter, Submission tabs hidden
+
+**Materials**:
+- Price book and Assembly book (subject to superintendent_service_type_ids if set)
+- Supply Houses, Templates & PO, Purchase Orders tabs hidden (like primary)
+
+**What They Cannot Do**:
+- No People page (only enough access to support Workflow assignment)
+- No Customers page (create from Bids modal only)
+- No Projects page (access via Workflow)
+- No Pricing, Cover Letter, Submission tabs on Bids
+
+**Layout Behavior**:
+- Navigation shows: Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
+- Attempts to access blocked pages redirect to `/dashboard`
+
+---
+
 ## Page Access Matrix
 
-| Page | dev | master | assistant | sub | estimator | primary |
-|------|-----|--------|-----------|-----|-----------|---------|
-| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
-| **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing |
-| **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited | ✅ limited |
+| Page | dev | master | assistant | sub | estimator | primary | superintendent |
+|------|-----|--------|-----------|-----|-----------|---------|-----------------|
+| **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
+| **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Stages + Billing + Sub Ledger |
+| **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
+| **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
+| **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited | ✅ limited | ✅ limited |
 
 ### Redirection Rules
 
@@ -433,6 +495,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 **Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
+**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Stages, Billing, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
+
 **Assistants**: Can access most pages but see filtered data
 
 ---
@@ -441,123 +505,126 @@ Pipetooling implements comprehensive role-based access control (RBAC) using six 
 
 ### Dashboard
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View dashboard | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ Via Bids | ❌ |
-| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Via Bids modal | ❌ |
-| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
-| Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
-| Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
-| Quick Fill | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View customers | ✅ All | ✅ Own | ✅ Adopted | ❌ | ✅ Via Bids | ❌ | ❌ |
+| Create customers | ✅ | ✅ | ✅ Must select master | ❌ | ✅ Via Bids modal | ❌ | ✅ Via Bids modal |
+| Edit customers | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ❌ |
+| Delete customers | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Change customer owner | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Quick Fill | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Project Management
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
-| Create projects | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ |
-| Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ |
-| View stage summary | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ✅ Adopted |
+| Create projects | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ❌ |
+| Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View stage summary | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 
 ### People Management
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ |
-| Create people | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ |
-| Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ |
-| Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ |
-| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ | ❌ |
-| Pay Stubs tab (ledger, generator) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
-| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
-| Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
-| Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View people (own + shared) | ✅ All | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ | ❌ (Workflow roster only) |
+| Create people | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Edit/delete people | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ | ❌ |
+| Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ | ✅ Adopted |
+| Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ | ❌ |
+| Pay tab (config, cost matrix, teams) | ✅ | ✅ If Pay Approved or shared | ✅ If shared by dev (view-only) | ❌ | ❌ | ❌ | ❌ |
+| Pay Stubs tab (ledger, generator) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Hours tab (timesheet) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
+| Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Workflow Management
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View all stages | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View assigned stages only | - | - | - | ✅ | - | - |
-| Create/edit/delete stages | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Assign people | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Set Start (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Complete (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Approve/Reject | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Re-open | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View private notes | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| View/edit line items | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| View financial totals | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| View/edit projections | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View all stages | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| View assigned stages only | - | - | - | ✅ | - | - | - |
+| Create/edit/delete stages | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Assign people | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Set Start (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Complete (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
+| Approve/Reject | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Re-open | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| View private notes | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| View/edit line items | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
+| View financial totals | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View/edit projections | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Bids System
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Edit bid number | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Bid Board tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Builder Review tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| RFI tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Change Order tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Lien Release tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Create/edit bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Edit bid number | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Delete bids | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Bid Board tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Builder Review tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| RFI tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Change Order tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Lien Release tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 
 ### Materials System
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| View price book | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Edit parts/prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Create/edit supply houses | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Delete supply houses | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Create templates | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Draft POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Finalize POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Confirm prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
-| View price history | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| View price book | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Edit parts/prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Create/edit supply houses | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Delete supply houses | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Create templates | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Draft POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Finalize POs | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Confirm prices | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| View price history | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 
 ### User Management
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| Create users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Delete users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Set user passwords | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Impersonate users | ✅ | ✅ Limited (Settings) | ✅ Limited (Settings) | ❌ | ❌ | ❌ |
-| Impersonate from People (dev-only) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Adopt assistants | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Share with masters | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Change own password | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| Create users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Delete users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Set user passwords | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Impersonate users | ✅ | ✅ Limited (Settings) | ✅ Limited (Settings) | ❌ | ❌ | ❌ | ❌ |
+| Impersonate from People (dev-only) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Adopt assistants | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Adopt superintendents | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Share with masters | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Change own password | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Data Export
 
-| Feature | dev | master | assistant | sub | estimator | primary |
-|---------|-----|--------|-----------|-----|-----------|---------|
-| Export projects | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Export materials | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Export bids | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Cleanup orphaned prices | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| Export projects | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Export materials | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Export bids | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Cleanup orphaned prices | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ---
 

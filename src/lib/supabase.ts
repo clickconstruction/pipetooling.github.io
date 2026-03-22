@@ -11,4 +11,7 @@ if (!url || !anonKey) {
 // Create Supabase client
 // Note: Auth errors are handled by useAuth hook with periodic session checks
 // and automatic sign-out on expiry
-export const supabase = createClient<Database>(url, anonKey)
+// db.schema: explicit public schema for RPC (avoids 404 when PostgREST schema differs)
+export const supabase = createClient<Database>(url, anonKey, {
+  db: { schema: 'public' },
+})

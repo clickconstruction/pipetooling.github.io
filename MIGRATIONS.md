@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-04-23
+last_updated: 2026-03-22
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -112,11 +112,139 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: New bids get next number; Bid # read-only in UI when creating
 - **Category**: Bids
 
-**`20260320120003_prevent_estimator_primary_edit_bid_number.sql`**
+**`20260320120004_prevent_estimator_primary_edit_bid_number.sql`**
 - **Purpose**: Restrict Bid # editing to dev, master_technician, assistant
 - **Changes**: `prevent_bid_number_update_by_estimator_primary` BEFORE UPDATE trigger
 - **Impact**: Estimator and primary cannot change bid_number; UI shows read-only for them
 - **Category**: Bids / Access Control
+
+**`20260320130000_clock_sessions_pay_insert.sql`**
+- **Purpose**: Pay-access can INSERT clock sessions (for split session in People Hours)
+- **Changes**: Add RLS policy "Pay access can insert clock sessions" on `clock_sessions` FOR INSERT WITH CHECK (is_pay_approved_master OR is_assistant_of_pay_approved_master OR is_assistant)
+- **Impact**: People Hours Edit modal can split sessions by creating two new sessions
+- **Category**: Hours / Clock Sessions / RLS
+
+**`20260320140000_add_project_id_to_jobs_ledger.sql`**
+- **Purpose**: Link Jobs (billing) to Projects (multi-phase work)
+- **Changes**: Add `project_id` (nullable FK → projects, ON DELETE SET NULL) to `jobs_ledger`; trigger `jobs_ledger_project_master_match` (job owner must match project owner when linked); RLS updates for superintendent project-level access; reports policy and `list_reports_with_job_info` for jobs with project_id
+- **Impact**: Jobs can optionally belong to a project; Jobs page project selector; Projects page shows linked jobs and "Create Job"; superintendents with project assignment see linked jobs
+- **Category**: Jobs / Projects / RLS
+
+#### March 21, 2026
+
+**`20260321120000_create_person_licenses.sql`**
+- **Purpose**: Licenses per person (plumber, journeyman, etc.)
+- **Changes**: Create `person_licenses` (person_name, license_type, note, date_of_expiry); indexes on person_name and date_of_expiry; RLS same as pay_stubs
+- **Impact**: People Licenses tab; expiring-in-30-days section; person-centric expandable table with Add/Edit/Delete
+- **Category**: People / Licenses
+
+**`20260321130000_add_cost_to_company_to_person_licenses.sql`**
+- **Purpose**: Add optional cost-to-company dollar amount per license (e.g. renewal fee)
+- **Changes**: Add `cost_to_company NUMERIC(10, 2) DEFAULT NULL` to `person_licenses`
+- **Impact**: People Licenses tab shows Cost to Company column; Add/Edit license modal has Cost to Company ($) input
+- **Category**: People / Licenses
+
+**`20260321140000_create_person_license_cost_lines.sql`**
+- **Purpose**: Replace single cost_to_company with multiple cost lines per license (amount, note, date)
+- **Changes**: Create `person_license_cost_lines` (person_license_id, amount, note, date); RLS same as person_licenses
+- **Impact**: Licenses tab Cost to Company column shows sum of cost lines; inline sub-rows for Add/Edit/Delete cost lines
+- **Category**: People / Licenses
+
+**`20260321150000_migrate_cost_to_company_to_lines.sql`**
+- **Purpose**: Migrate existing cost_to_company to cost lines, drop column
+- **Changes**: INSERT one cost line per license where cost_to_company IS NOT NULL; DROP COLUMN cost_to_company
+- **Impact**: Existing cost data preserved in person_license_cost_lines
+- **Category**: People / Licenses
+
+**`20260321120000_add_supply_house_invoice_to_line_items.sql`**
+- **Purpose**: Link workflow step line items to supply house invoices
+- **Changes**: Add `supply_house_invoice_id` (uuid, nullable, FK → supply_house_invoices.id ON DELETE SET NULL) to `workflow_step_line_items`; index on supply_house_invoice_id
+- **Impact**: Workflow Add Supply House Invoice modal; View Invoice button on linked line items
+- **Category**: Workflow / Materials
+
+### June 2026
+
+#### June 21, 2026
+
+**`20260621120000_dispatch_request_dismissals.sql`**
+- **Purpose**: Per-user dismissals of closed dispatch requests
+- **Changes**: Create `dispatch_request_dismissals` (user_id, request_id PK, dismissed_at); RLS SELECT/INSERT own rows; when dismissed, closed request hidden from that user's inbox
+- **Impact**: Dispatch inbox: users can dismiss closed requests; other users still see until they dismiss
+- **Category**: Task Dispatch / Schema
+
+#### June 22, 2026
+
+**`20260622120000_add_dispatch_closed_note.sql`**
+- **Purpose**: Closed note when marking dispatch request closed
+- **Changes**: Add `closed_note` (text, nullable) to `dispatch_requests`; required when closing (enforced in app)
+- **Impact**: Closing a dispatch request requires user to enter a note
+- **Category**: Task Dispatch / Schema
+
+### May 2026
+
+#### May 20, 2026 — Superintendent role
+
+**`20260520120000_add_user_role_superintendent.sql`**
+- **Purpose**: Add superintendent to user_role enum
+- **Changes**: `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'superintendent'`
+- **Impact**: create-user Edge Function can create superintendent users
+- **Category**: Access control / Roles
+
+**`20260520120001_create_master_superintendents.sql`**
+- **Purpose**: Adoption table for superintendents (masters adopt superintendents)
+- **Changes**: Create `master_superintendents(master_id, superintendent_id)` with FKs to users; RLS for devs/masters to manage, superintendents to read who adopted them
+- **Impact**: Superintendents get adoption-based access to projects, workflows, jobs, bids
+- **Category**: Access control / Adoption
+
+**`20260520120002_add_superintendent_service_type_ids.sql`**
+- **Purpose**: Service type filtering for superintendents (like primary_service_type_ids)
+- **Changes**: Add `superintendent_service_type_ids UUID[]` to users
+- **Impact**: Devs can restrict superintendents to specific service types in Bids and Materials
+- **Category**: Access control / Roles
+
+**`20260520120003_superintendent_project_and_adoption_access.sql`**
+- **Purpose**: Projects and adoption helpers for superintendent
+- **Changes**: Update `can_access_project_row` and `master_adopted_current_user` to include master_superintendents
+- **Impact**: Superintendents can access projects/workflows from adopted masters
+- **Category**: Access control / RLS
+
+**`20260520120004_workflow_rls_superintendent.sql`**
+- **Purpose**: Workflow RLS for superintendent
+- **Changes**: Add superintendent to project_workflow_steps and workflow_step_line_items policies
+- **Impact**: Superintendents see stages and line items in accessible workflows
+- **Category**: Access control / Workflow
+
+**`20260520120005_superintendent_jobs_and_reports_rls.sql`**
+- **Purpose**: Jobs and reports RLS for superintendent
+- **Changes**: Add superintendent to list_reports_with_job_info, reports, jobs_ledger, jobs_ledger_materials, jobs_ledger_invoices, jobs_ledger_payments, jobs_tally_parts, jobs_ledger_team_members, job_status_events
+- **Impact**: Superintendents access Reports, Stages, Billing, Sub Sheet Ledger tabs
+- **Category**: Access control / Jobs / Reports
+
+**`20260520120006_superintendent_people_rls.sql`**
+- **Purpose**: People RLS for superintendent (Workflow roster only)
+- **Changes**: Superintendent can SELECT people where master_user_id IN (adopted masters)
+- **Impact**: Superintendents can assign people in Workflow Assign modal
+- **Category**: Access control / People
+
+**`20260520120007_superintendent_bids_and_customers_rls.sql`**
+- **Purpose**: Bids and customers RLS for superintendent
+- **Changes**: Update can_access_bid_for_pricing, superintendent_can_access_bid; add superintendent to bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, bids_takeoff_template_mappings, bid_pricing_assignments, bid_count_row_custom_prices; customers SELECT and INSERT (for Bids modal)
+- **Impact**: Superintendents draft bids (Bid Board, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release); create customers from Bids
+- **Category**: Access control / Bids / Customers
+
+**`20260520120008_superintendent_materials_rls.sql`**
+- **Purpose**: Materials RLS for superintendent
+- **Changes**: Add superintendent to material_parts, material_part_prices, material_part_price_history, material_templates, material_template_items, purchase_orders, purchase_order_items, supply_houses
+- **Impact**: Superintendents access Price book and Assembly book (subject to superintendent_service_type_ids)
+- **Category**: Access control / Materials
+
+**`20260520120010_create_project_superintendents.sql`**
+- **Purpose**: Project-level superintendent assignment
+- **Changes**: Create `project_superintendents(project_id, superintendent_id)` with RLS; update `can_access_project_row` to include project assignment
+- **Impact**: Devs, masters, and assistants can assign superintendents to specific projects via Workflow page; superintendents gain access via adoption OR project assignment
+- **Category**: Access control / Projects / Superintendent
+
+---
 
 ### April 2026
 
@@ -130,7 +258,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 23, 2026
 
-**`20260423120000_update_bids_count_rows_order_rpc.sql`**
+**`20260423120001_update_bids_count_rows_order_rpc.sql`**
 - **Purpose**: Batch-update sequence_order for Bids Counts drag-and-drop reordering
 - **Changes**: Create `update_bids_count_rows_order(p_bid_id uuid, p_ordered_ids uuid[])` SECURITY DEFINER RPC; uses `can_access_bid_for_pricing` for access check; updates sequence_order (0-based) from array index via unnest WITH ORDINALITY
 - **Impact**: Counts tab drag reorder persists in one RPC call instead of N sequential updates
@@ -141,6 +269,22 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `people_crew_bids` (work_date, person_name, crew_lead_person_name, bid_assignments JSONB); RPC `get_bids_by_ids(p_bid_ids UUID[])`; `sync_crew_bids_from_clock(p_person_name, p_work_date)`; extend `approve_clock_sessions` and `revoke_clock_sessions` to sync bid assignments when sessions have `bid_id`
 - **Impact**: Bids Pricing cost breakdown shows "Team Labor (clocked)" when users have clocked in with a bid; `loadTeamLaborDataForBids` powers display
 - **Category**: Bids / Hours / Clock Sessions / Crew Bids
+
+#### April 27, 2026
+
+**`20260427120000_fix_approve_clock_sessions_cs_scope.sql`**
+- **Purpose**: Fix "missing FROM-clause entry for table cs" error in approve_clock_sessions
+- **Changes**: Replace `cs.clocked_in_at` with `v_session.clocked_in_at` in loop body (cs alias is only in scope inside the FOR SELECT)
+- **Impact**: Approve button in People Hours and Quickfill Hours works correctly
+- **Category**: Hours / Clock Sessions / Bugfix
+
+#### April 26, 2026
+
+**`20260426120000_approve_clock_sessions_composite_return.sql`**
+- **Purpose**: Optional fallback if `approve_clock_sessions` returns 404 via REST despite schema reload
+- **Changes**: Create `approve_clock_result` composite type; change `approve_clock_sessions` from `RETURNS TABLE(...)` to `RETURNS SETOF approve_clock_result`; same logic, same response shape (array of one row)
+- **Impact**: Apply only if PostgREST fails to expose the TABLE-returning version; frontend unchanged
+- **Category**: Hours / Clock Sessions / RPC
 
 #### April 22, 2026
 
@@ -163,6 +307,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: DROP 2-arg `search_bids_for_clock(TEXT, UUID)` overload so frontend calls use the 3-arg SECURITY DEFINER version; `search_jobs_ledger` normalizes "J" prefix (J651 matches hcp_number 651); `search_bids_for_clock` normalizes "B" prefix (B88 matches bid_number 88)
 - **Impact**: Bids now appear in search; "J651" finds job 651; "B88" finds bid 88
 - **Category**: Bids / Clock Sessions / Search
+
+**`20260322140000_contracts_rls_all_masters.sql`**
+- **Purpose**: Allow all masters (not just Pay Approved) to manage contracts
+- **Changes**: Update RLS on contract_templates, contract_template_documents, person_contract_assignments, person_contract_documents to include `is_master_or_dev()` in USING/WITH CHECK
+- **Impact**: Non-pay-approved masters can manage contract templates and assignments
+- **Category**: People / Contracts / RLS
 
 #### April 21, 2026
 
@@ -202,19 +352,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: NewReportModal and AdditionalReportModal request geolocation on submit; coordinates stored when permission granted; ReportViewModal shows location icon (dev/master/assistant only)
 - **Category**: Reports
 
-**`20260415120001_insert_report_add_location_params.sql`**
+**`20260415120005_insert_report_add_location_params.sql`**
 - **Purpose**: Allow insert_report RPC to accept optional location params
 - **Changes**: Add `p_reported_at_lat`, `p_reported_at_lng` (DEFAULT NULL) to `insert_report` function
 - **Impact**: Estimators submitting reports can pass location when available
 - **Category**: Reports
 
-**`20260415120002_list_reports_with_job_info_add_location.sql`**
+**`20260415120006_list_reports_with_job_info_add_location.sql`**
 - **Purpose**: Return reported_at_lat/lng in list_reports_with_job_info, role-gated
 - **Changes**: Add reported_at_lat, reported_at_lng to RPC return; only dev/master_technician/assistant receive values; others get NULL
 - **Impact**: ReportViewModal shows location icon only for devs, masters, assistants
 - **Category**: Reports
 
-**`20260415120003_list_my_reports_add_location.sql`**
+**`20260415120007_list_my_reports_add_location.sql`**
 - **Purpose**: Same role-gated location columns for list_my_reports
 - **Changes**: Add reported_at_lat, reported_at_lng with same conditional as list_reports_with_job_info
 - **Impact**: My Reports modal and Dashboard report views respect location visibility by role
@@ -226,7 +376,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Add/Edit modal has Links section; ChecklistTitleWithLinks component; Dashboard, Checklist, People display clickable links
 - **Category**: Checklist
 
-**`20260415120000_create_checklist_item_assignees.sql`**
+**`20260415120004_create_checklist_item_assignees.sql`**
 - **Purpose**: Multi-assignee support for checklist items; junction table replaces single assigned_to_user_id
 - **Changes**: Create `checklist_item_assignees` (checklist_item_id, user_id) PK; RLS for dev/master/assistant/primary + assignees read own; migrate existing data from checklist_items.assigned_to_user_id
 - **Impact**: Add/Edit checklist modal uses checkboxes for multiple assignees
@@ -461,6 +611,30 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `person_offsets` (person_name, type backcharge|damage, amount, description, occurred_date, pay_stub_id nullable); RLS same as pay_stubs
 - **Impact**: People Offsets tab; offsets shown on pay reports (applied reduce net pay, pending listed for visibility)
 - **Category**: People / Offsets
+
+**`20260321120000_create_person_licenses.sql`**
+- **Purpose**: Licenses per person (plumber, journeyman, etc.)
+- **Changes**: Create `person_licenses` (person_name, license_type, note, date_of_expiry); indexes on person_name and date_of_expiry; RLS same as pay_stubs
+- **Impact**: People Licenses tab; expiring-in-30-days section; person-centric expandable table with Add/Edit/Delete
+- **Category**: People / Licenses
+
+**`20260321130000_add_cost_to_company_to_person_licenses.sql`**
+- **Purpose**: Add optional cost-to-company dollar amount per license (e.g. renewal fee)
+- **Changes**: Add `cost_to_company NUMERIC(10, 2) DEFAULT NULL` to `person_licenses`
+- **Impact**: People Licenses tab shows Cost to Company column; Add/Edit license modal has Cost to Company ($) input
+- **Category**: People / Licenses
+
+**`20260321140000_create_person_license_cost_lines.sql`**
+- **Purpose**: Replace single cost_to_company with multiple cost lines per license (amount, note, date)
+- **Changes**: Create `person_license_cost_lines` (person_license_id, amount, note, date); RLS same as person_licenses
+- **Impact**: Licenses tab Cost to Company column shows sum of cost lines; inline sub-rows for Add/Edit/Delete cost lines
+- **Category**: People / Licenses
+
+**`20260321150000_migrate_cost_to_company_to_lines.sql`**
+- **Purpose**: Migrate existing cost_to_company to cost lines, drop column
+- **Changes**: INSERT one cost line per license where cost_to_company IS NOT NULL; DROP COLUMN cost_to_company
+- **Impact**: Existing cost data preserved in person_license_cost_lines
+- **Category**: People / Licenses
 
 **`20260331010000_create_vehicle_replacement_value_entries.sql`**
 - **Purpose**: Replacement value entries per vehicle per date (like odometer)

@@ -1,6 +1,6 @@
-# Private Notes, Line Items, and Projections for Workflows
+# Private Notes, Line Items For Office, and Projections for Workflows
 
-This document describes the private notes, line items, and projections features added to workflows, visible only to devs and master technicians.
+This document describes the private notes, line items (labeled "Line Items For Office" in the UI), and projections features added to workflows, visible to devs, masters, and assistants.
 
 ## Overview
 
@@ -8,7 +8,7 @@ This document describes the private notes, line items, and projections features 
 
 Each workflow stage now has a **Private Notes** section that is only visible to users with `dev` or `master_technician` roles. This is separate from the regular "Notes" field which is visible to all users.
 
-Additionally, each stage includes a **Line Items** section within the private notes area, allowing owners and masters to track expenses, credits, and other financial items with memo and amount fields. All line items are automatically aggregated into a **Ledger** displayed at the top of the workflow page.
+Additionally, each stage includes a **Line Items For Office** section (within the private notes area for devs/masters; assistants also see and can edit line items), allowing owners, masters, and assistants to track expenses, credits, and other financial items with memo and amount fields. Line items can link to purchase orders or supply house invoices from Materials. All line items are automatically aggregated into a **Ledger** displayed at the top of the workflow page.
 
 ### Projections
 
@@ -93,9 +93,10 @@ In the Workflow page (`src/pages/Workflow.tsx`), each stage now displays:
    - Label: "Private Notes (Your account only)"
    - Only shown when `userRole === 'dev' || userRole === 'master_technician'`
 
-3. **Line Items** (within Private Notes section)
+3. **Line Items For Office** (within Private Notes section for devs/masters; assistants see and can edit)
    - Located below the private notes textarea
    - "+ Add Line Item" button to create new items
+   - "Add PO" and "Add Supply House Invoice" buttons to link purchase orders or supply house invoices from Materials
    - Each line item displays:
      - **Memo**: Description of the item
      - **Amount**: Monetary value (supports negative numbers)

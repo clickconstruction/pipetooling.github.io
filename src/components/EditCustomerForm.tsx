@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -33,10 +34,12 @@ type Props = {
   customerId: string
   onSaved: () => void
   onCancel: () => void
+  onDeleted?: (customerId: string) => void
 }
 
-export default function EditCustomerForm({ customerId, onSaved, onCancel }: Props) {
+export default function EditCustomerForm({ customerId, onSaved, onCancel, onDeleted }: Props) {
   const { user } = useAuth()
+  const { showToast } = useToastContext()
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
@@ -53,6 +56,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [advancedExpanded, setAdvancedExpanded] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -127,11 +131,21 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
-      setCustomerType(row.customer_type ?? null)
+      setCustomerType(
+        row.customer_type === 'commercial' || row.customer_type === 'residential'
+          ? row.customer_type
+          : null
+      )
       setMasterUserId(row.master_user_id ?? '')
       setFetching(false)
     })()
   }, [customerId])
+
+  useEffect(() => {
+    if (mastersLoading || availableMasters.length !== 1) return
+    if (masterUserId) return
+    setMasterUserId(availableMasters[0]!.id)
+  }, [mastersLoading, availableMasters, masterUserId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -206,19 +220,6 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="edit-customerType" style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
-          <select
-            id="edit-customerType"
-            value={customerType ?? ''}
-            onChange={(e) => setCustomerType(e.target.value ? (e.target.value as 'commercial' | 'residential') : null)}
-            style={{ width: '100%', padding: '0.5rem' }}
-          >
-            <option value="">—</option>
-            <option value="commercial">Commercial</option>
-            <option value="residential">Residential</option>
-          </select>
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>Date Met</label>
           <input
             id="edit-dateMet"
@@ -228,39 +229,104 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
+          <div style={{ display: 'flex', gap: 0 }}>
+            <button
+              type="button"
+              onClick={() => setCustomerType('residential')}
+              style={{
+                flex: 1,
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px 0 0 4px',
+                background: customerType === 'residential' ? '#3b82f6' : 'white',
+                color: customerType === 'residential' ? 'white' : '#374151',
+                cursor: 'pointer',
+              }}
+            >
+              Residential
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerType('commercial')}
+              style={{
+                flex: 1,
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: '0 4px 4px 0',
+                background: customerType === 'commercial' ? '#3b82f6' : 'white',
+                color: customerType === 'commercial' ? 'white' : '#374151',
+                cursor: 'pointer',
+              }}
+            >
+              Commercial
+            </button>
+          </div>
+        </div>
         {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician') && (
           <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="edit-master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
-            {mastersLoading ? (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
-            ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
-              <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
-                {myRole === 'assistant'
-                  ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
-                  : 'No masters found.'}
-              </p>
-            ) : (
-              <>
-                <select
-                  id="edit-master"
-                  value={masterUserId}
-                  onChange={(e) => setMasterUserId(e.target.value)}
-                  disabled={myRole === 'master_technician'}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select a master...</option>
-                  {availableMasters.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.email}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
-                  {myRole === 'master_technician'
-                    ? 'You are automatically assigned as the customer owner.'
-                    : 'Select which master this customer belongs to.'}
-                </div>
-              </>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: advancedExpanded ? 4 : 0 }}>
+              <button
+                type="button"
+                onClick={() => setAdvancedExpanded((prev) => !prev)}
+                style={{
+                  padding: 0,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  lineHeight: 1,
+                  color: '#374151',
+                }}
+                aria-expanded={advancedExpanded}
+              >
+                {advancedExpanded ? '\u25BC' : '\u25B6'}
+              </button>
+              <span style={{ cursor: 'pointer' }} onClick={() => setAdvancedExpanded((prev) => !prev)}>Advanced</span>
+              {!advancedExpanded && masterUserId && (
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  (Customer Master: {availableMasters.find((m) => m.id === masterUserId)?.name ?? availableMasters.find((m) => m.id === masterUserId)?.email ?? 'Selected'})
+                </span>
+              )}
+            </div>
+            {advancedExpanded && (
+              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+                <label htmlFor="edit-master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
+                {mastersLoading ? (
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+                ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
+                  <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                    {myRole === 'assistant'
+                      ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
+                      : 'No masters found.'}
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      id="edit-master"
+                      value={masterUserId}
+                      onChange={(e) => setMasterUserId(e.target.value)}
+                      disabled={myRole === 'master_technician'}
+                      style={{ width: '100%', padding: '0.5rem' }}
+                    >
+                      <option value="">Select a master...</option>
+                      {availableMasters.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name || m.email}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                      {myRole === 'master_technician'
+                        ? 'You are automatically assigned as the customer owner.'
+                        : 'Select which master this customer belongs to.'}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -332,21 +398,24 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel }: Prop
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
-                onClick={async () => {
+                onClick={() => {
                   if (deleteConfirm.trim() !== name.trim()) return
                   setDeleting(true)
                   setError(null)
-                  const { error: delErr } = await supabase
+                  onDeleted?.(customerId)
+                  onCancel()
+                  setDeleteOpen(false)
+                  setDeleting(false)
+                  supabase
                     .from('customers')
                     .delete()
                     .eq('id', customerId)
-                  setDeleting(false)
-                  if (delErr) {
-                    setError(delErr.message)
-                    return
-                  }
-                  setDeleteOpen(false)
-                  onSaved()
+                    .then(({ error: delErr }) => {
+                      if (delErr) {
+                        showToast(delErr.message, 'error')
+                        onSaved()
+                      }
+                    })
                 }}
                 disabled={deleting || deleteConfirm.trim() !== name.trim()}
                 style={{ padding: '0.5rem 1rem', color: '#b91c1c', background: 'white', border: '1px solid #b91c1c', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}

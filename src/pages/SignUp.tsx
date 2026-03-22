@@ -15,10 +15,11 @@ export default function SignUp() {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
     
-    // Check in people table
+    // Check in people table (exclude archived)
     const { data: peopleData } = await supabase
       .from('people')
       .select('id, name')
+      .is('archived_at', null)
     const peopleMatch = peopleData?.some(p => p.name?.toLowerCase() === trimmedName)
     
     // Check in users table

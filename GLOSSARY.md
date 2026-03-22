@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-03-21
+last_updated: 2026-03-22
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -139,6 +139,9 @@ A client or General Contractor (GC) who provides work. Customers have an owner (
 ### Project
 A job site or construction project for a specific customer. Each project has one workflow. The project owner automatically matches the customer owner (enforced by database trigger).
 
+### Job–Project Link
+Optional association between a Job (billing) and a Project (multi-phase work). Jobs can optionally belong to a project; not all jobs need projects. When linked, the job owner must match the project owner (enforced by trigger). When editing a job and linking it to a project, the job's owner is automatically updated to the project owner.
+
 **Database**: `projects` table
 
 **Key Fields**: name, description, status, customer_id, master_user_id, address
@@ -221,13 +224,13 @@ Relationship where a user owns a resource (customer, project, purchase order). I
 ## Workflow Concepts
 
 ### Line Item
-Financial entry on a workflow stage representing materials, labor, or expenses. Has memo, amount, and optional link to external resources.
+Financial entry on a workflow stage representing materials, labor, or expenses. Has memo, amount, and optional link to external resources. Also called **Line Items For Office** in the UI.
 
 **Database**: `workflow_step_line_items` table
 
 **Access**: Masters and assistants can add/edit; assistants cannot see totals
 
-**Optional**: Can link to purchase order for material tracking
+**Optional**: Can link to purchase order for material tracking. Can link to supply house invoices; "View Invoice" button opens invoice details.
 
 ### Projection
 Forward-looking financial estimate for a workflow. Represents expected future costs or revenue.
@@ -289,7 +292,7 @@ Collapsible section in Dashboard Recently Completed Tasks where devs move task t
 
 ## Task Dispatch
 
-Short messages to internal **Dispatch** (a dev-configured set of **assistants**), separate from recurring checklist tasks. Any signed-in user can open **Task Dispatch** in the header. The modal titled **Message the Dispatch team** has: **Task** (required), **Reference (optional)** (job/bid search), and **Links (optional)** (URLs for `[1]`, `[2]` placeholders in the task text). Rows live in `dispatch_requests`. **Dispatch group** membership is `dispatch_group_members` (assistant users only; trigger-enforced). Devs edit the group in Settings. Dispatch members and devs see the **Dispatch inbox** on the Dashboard for open requests and can **mark closed**. Push notifications use Edge Function `notify-dispatch-request` so the member list is not exposed to clients.
+Short messages to internal **Dispatch** (a dev-configured set of **assistants**), separate from recurring checklist tasks. Any signed-in user can open **Task Dispatch** in the header. The modal titled **Message the Dispatch team** has: **Task** (required), **Reference (optional)** (job/bid search), and **Links (optional)** (URLs for `[1]`, `[2]` placeholders in the task text). Rows live in `dispatch_requests`. **Dispatch group** membership is `dispatch_group_members` (assistant users only; trigger-enforced). Devs edit the group in Settings. Dispatch members and devs see the **Dispatch inbox** on the Dashboard for open requests and can **mark closed**. When marking closed, user enters a **closed_note** (required in app). Closed requests can be **dismissed** per-user (hidden from that user's inbox); `dispatch_request_dismissals` table. Push notifications use Edge Function `notify-dispatch-request` so the member list is not exposed to clients.
 
 ---
 

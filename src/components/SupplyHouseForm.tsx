@@ -1,7 +1,7 @@
 import type { Database } from '../types/database'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
 export interface SupplyHouseFormData {
   name: string

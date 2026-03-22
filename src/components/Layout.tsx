@@ -37,6 +37,7 @@ const IMPERSONATION_KEY = 'impersonation_original'
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/checklist', '/settings', '/tally']
 const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/prospects', '/calendar', '/checklist', '/settings', '/tally']
 const PRIMARY_PATHS = ['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
+const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally']
 
 export default function Layout() {
   const navigate = useNavigate()
@@ -97,6 +98,9 @@ export default function Layout() {
       navigate('/bids', { replace: true })
     }
     if (role === 'primary' && (location.pathname === '/' || (!PRIMARY_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
+      navigate('/dashboard', { replace: true })
+    }
+    if (role === 'superintendent' && (location.pathname === '/' || (!SUPERINTENDENT_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
       navigate('/dashboard', { replace: true })
     }
   }, [role, location.pathname, navigate])

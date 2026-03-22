@@ -855,6 +855,59 @@ export type Database = {
           },
         ]
       }
+      contract_template_documents: {
+        Row: {
+          created_at: string | null
+          document_name: string
+          id: string
+          sequence_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          document_name: string
+          id?: string
+          sequence_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          document_name?: string
+          id?: string
+          sequence_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_template_documents_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_templates: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          sequence_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          sequence_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          sequence_order?: number
+        }
+        Relationships: []
+      }
       cost_estimate_labor_rows: {
         Row: {
           cost_estimate_id: string
@@ -976,6 +1029,21 @@ export type Database = {
           },
         ]
       }
+      cost_matrix_tag_colors: {
+        Row: {
+          color: string
+          tag: string
+        }
+        Insert: {
+          color?: string
+          tag: string
+        }
+        Update: {
+          color?: string
+          tag?: string
+        }
+        Relationships: []
+      }
       cost_matrix_teams_shares: {
         Row: {
           shared_with_user_id: string
@@ -995,21 +1063,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      cost_matrix_tag_colors: {
-        Row: {
-          tag: string
-          color: string
-        }
-        Insert: {
-          tag: string
-          color?: string
-        }
-        Update: {
-          tag?: string
-          color?: string
-        }
-        Relationships: []
       }
       counts_fixture_group_items: {
         Row: {
@@ -1169,7 +1222,7 @@ export type Database = {
           address: string | null
           contact_info: Json | null
           created_at: string | null
-          customer_type: 'commercial' | 'residential' | null
+          customer_type: string | null
           date_met: string | null
           id: string
           master_user_id: string
@@ -1180,7 +1233,7 @@ export type Database = {
           address?: string | null
           contact_info?: Json | null
           created_at?: string | null
-          customer_type?: 'commercial' | 'residential' | null
+          customer_type?: string | null
           date_met?: string | null
           id?: string
           master_user_id: string
@@ -1191,7 +1244,7 @@ export type Database = {
           address?: string | null
           contact_info?: Json | null
           created_at?: string | null
-          customer_type?: 'commercial' | 'residential' | null
+          customer_type?: string | null
           date_met?: string | null
           id?: string
           master_user_id?: string
@@ -1280,11 +1333,38 @@ export type Database = {
           },
         ]
       }
+      dispatch_request_dismissals: {
+        Row: {
+          dismissed_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          dismissed_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          dismissed_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_request_dismissals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_requests: {
         Row: {
           bid_id: string | null
           closed_at: string | null
           closed_by_user_id: string | null
+          closed_note: string | null
           created_at: string
           from_user_id: string
           id: string
@@ -1298,6 +1378,7 @@ export type Database = {
           bid_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
+          closed_note?: string | null
           created_at?: string
           from_user_id: string
           id?: string
@@ -1311,6 +1392,7 @@ export type Database = {
           bid_id?: string | null
           closed_at?: string | null
           closed_by_user_id?: string | null
+          closed_note?: string | null
           created_at?: string
           from_user_id?: string
           id?: string
@@ -1709,6 +1791,7 @@ export type Database = {
           master_user_id: string
           payments_made: number | null
           pct_complete: number | null
+          project_id: string | null
           revenue: number | null
           stage_notes: string | null
           status: string
@@ -1730,6 +1813,7 @@ export type Database = {
           master_user_id: string
           payments_made?: number | null
           pct_complete?: number | null
+          project_id?: string | null
           revenue?: number | null
           stage_notes?: string | null
           status?: string
@@ -1751,6 +1835,7 @@ export type Database = {
           master_user_id?: string
           payments_made?: number | null
           pct_complete?: number | null
+          project_id?: string | null
           revenue?: number | null
           stage_notes?: string | null
           status?: string
@@ -1769,6 +1854,13 @@ export type Database = {
             columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2228,6 +2320,39 @@ export type Database = {
           {
             foreignKeyName: "master_shares_viewing_master_id_fkey"
             columns: ["viewing_master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_superintendents: {
+        Row: {
+          created_at: string | null
+          master_id: string
+          superintendent_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          master_id: string
+          superintendent_id: string
+        }
+        Update: {
+          created_at?: string | null
+          master_id?: string
+          superintendent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_superintendents_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_superintendents_superintendent_id_fkey"
+            columns: ["superintendent_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -2750,6 +2875,7 @@ export type Database = {
       }
       people: {
         Row: {
+          archived_at: string | null
           created_at: string | null
           email: string | null
           id: string
@@ -2761,6 +2887,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -2772,6 +2899,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
           email?: string | null
           id?: string
@@ -3096,6 +3224,136 @@ export type Database = {
         }
         Relationships: []
       }
+      person_contract_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          person_name: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          person_name: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          person_name?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_contract_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_contract_documents: {
+        Row: {
+          created_at: string | null
+          document_name: string
+          id: string
+          note: string | null
+          person_name: string
+          sent_at: string | null
+          signed_at: string | null
+          status: string
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          document_name: string
+          id?: string
+          note?: string | null
+          person_name: string
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          document_name?: string
+          id?: string
+          note?: string | null
+          person_name?: string
+          sent_at?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: []
+      }
+      person_license_cost_lines: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          id: string
+          note: string | null
+          person_license_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          id?: string
+          note?: string | null
+          person_license_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          id?: string
+          note?: string | null
+          person_license_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_license_cost_lines_person_license_id_fkey"
+            columns: ["person_license_id"]
+            isOneToOne: false
+            referencedRelation: "person_licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_licenses: {
+        Row: {
+          created_at: string | null
+          date_of_expiry: string
+          id: string
+          license_type: string
+          note: string | null
+          person_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          date_of_expiry: string
+          id?: string
+          license_type: string
+          note?: string | null
+          person_name: string
+        }
+        Update: {
+          created_at?: string | null
+          date_of_expiry?: string
+          id?: string
+          license_type?: string
+          note?: string | null
+          person_name?: string
+        }
+        Relationships: []
+      }
       person_offsets: {
         Row: {
           amount: number
@@ -3213,6 +3471,39 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_superintendents: {
+        Row: {
+          created_at: string | null
+          project_id: string
+          superintendent_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          project_id: string
+          superintendent_id: string
+        }
+        Update: {
+          created_at?: string | null
+          project_id?: string
+          superintendent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_superintendents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_superintendents_superintendent_id_fkey"
+            columns: ["superintendent_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4632,6 +4923,7 @@ export type Database = {
           primary_service_type_ids: string[] | null
           role: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids: string[] | null
+          superintendent_service_type_ids: string[] | null
           updated_at: string | null
         }
         Insert: {
@@ -4647,6 +4939,7 @@ export type Database = {
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
+          superintendent_service_type_ids?: string[] | null
           updated_at?: string | null
         }
         Update: {
@@ -4662,6 +4955,7 @@ export type Database = {
           primary_service_type_ids?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
+          superintendent_service_type_ids?: string[] | null
           updated_at?: string | null
         }
         Relationships: []
@@ -4898,6 +5192,7 @@ export type Database = {
           purchase_order_id: string | null
           sequence_order: number
           step_id: string
+          supply_house_invoice_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -4909,6 +5204,7 @@ export type Database = {
           purchase_order_id?: string | null
           sequence_order?: number
           step_id: string
+          supply_house_invoice_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -4920,6 +5216,7 @@ export type Database = {
           purchase_order_id?: string | null
           sequence_order?: number
           step_id?: string
+          supply_house_invoice_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -4935,6 +5232,13 @@ export type Database = {
             columns: ["step_id"]
             isOneToOne: false
             referencedRelation: "project_workflow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_step_line_items_supply_house_invoice_id_fkey"
+            columns: ["supply_house_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
             referencedColumns: ["id"]
           },
         ]
@@ -5372,30 +5676,21 @@ export type Database = {
           revoked_count: number
         }[]
       }
-      search_bids_for_clock:
-        | {
-            Args: { p_search_text?: string; p_service_type_id?: string }
-            Returns: {
-              address: string
-              customer_name: string
-              id: string
-              project_name: string
-            }[]
-          }
-        | {
-            Args: {
-              p_search_text?: string
-              p_service_type_id?: string
-              p_service_type_ids?: string[]
-            }
-            Returns: {
-              address: string
-              bid_number: string
-              customer_name: string
-              id: string
-              project_name: string
-            }[]
-          }
+      search_bids_for_clock: {
+        Args: {
+          p_search_text?: string
+          p_service_type_id?: string
+          p_service_type_ids?: string[]
+        }
+        Returns: {
+          address: string
+          bid_number: string
+          customer_name: string
+          id: string
+          project_name: string
+          service_type_name: string
+        }[]
+      }
       search_jobs_for_reports: {
         Args: { search_text?: string }
         Returns: {
@@ -5415,6 +5710,10 @@ export type Database = {
           job_name: string
         }[]
       }
+      superintendent_can_access_bid: {
+        Args: { b: Database["public"]["Tables"]["bids"]["Row"] }
+        Returns: boolean
+      }
       sync_crew_bids_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
@@ -5424,10 +5723,15 @@ export type Database = {
         Returns: undefined
       }
       touch_last_sign_in: { Args: never; Returns: undefined }
-      update_bids_count_rows_order: {
-        Args: { p_bid_id: string; p_ordered_ids: string[] }
-        Returns: undefined
-      }
+      update_bids_count_rows_order:
+        | {
+            Args: { p_bid_id: string; p_ordered_ids: string[] }
+            Returns: undefined
+          }
+        | {
+            Args: { p_bids_count_id: string; p_new_order: number }
+            Returns: undefined
+          }
       update_job_status: {
         Args: { p_job_id: string; p_to_status: string }
         Returns: Json
@@ -5463,6 +5767,7 @@ export type Database = {
         | "dev"
         | "estimator"
         | "primary"
+        | "superintendent"
       workflow_status: "draft" | "active" | "completed"
     }
     CompositeTypes: {
@@ -5609,6 +5914,7 @@ export const Constants = {
         "dev",
         "estimator",
         "primary",
+        "superintendent",
       ],
       workflow_status: ["draft", "active", "completed"],
     },

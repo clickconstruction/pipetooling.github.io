@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, Fragment } from 'react'
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -45,6 +45,11 @@ function toLocalDateString(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+function formatDatetime(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString()
+}
+
 export default function Checklist() {
   const { user: authUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -81,6 +86,30 @@ export default function Checklist() {
 
   const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const [editItemId, setEditItemId] = useState<string | null>(null)
+  const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setDispatchInboxEligible(false)
+      return
+    }
+    if (role === 'dev') {
+      setDispatchInboxEligible(true)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('dispatch_group_members')
+      .select('user_id')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setDispatchInboxEligible(!!data)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
 
   if (loading) return <p style={{ padding: '2rem' }}>Loading…</p>
 
@@ -157,7 +186,7 @@ export default function Checklist() {
         <ChecklistHistoryTab authUserId={authUser?.id ?? null} canViewOthers={canManageChecklists} canEditHistory={role === 'dev'} setError={setError} />
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} dispatchInboxEligible={dispatchInboxEligible} setError={setError} setEditItemId={setEditItemId} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} />
@@ -1017,7 +1046,20 @@ type OutstandingInstance = {
   checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string; reminder_scope?: string | null } | null
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
+type ClosedDispatchRow = {
+  id: string
+  title: string
+  links: string[] | null
+  created_at: string | null
+  closed_at: string | null
+  closed_by_user_id: string | null
+  closed_note: string | null
+  reference_summary: string | null
+  sender: { name: string | null; email: string | null } | null
+  closed_by: { name: string | null } | null
+}
+
+function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, dispatchInboxEligible, setError, setEditItemId }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; dispatchInboxEligible: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1032,6 +1074,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [deletingInstanceId, setDeletingInstanceId] = useState<string | null>(null)
   const [completingInstanceId, setCompletingInstanceId] = useState<string | null>(null)
   const [movingItemId, setMovingItemId] = useState<string | null>(null)
+  const [closedDispatchRequests, setClosedDispatchRequests] = useState<ClosedDispatchRow[]>([])
+  const [closedDispatchLoading, setClosedDispatchLoading] = useState(false)
+  const [closedDispatchExpanded, setClosedDispatchExpanded] = useState(false)
 
   const fwdMissingFields: string[] = []
   if (!fwdTitle.trim()) fwdMissingFields.push('Title')
@@ -1057,6 +1102,31 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
       })
     }
   }, [isDev])
+
+  const loadClosedDispatchRequests = useCallback(() => {
+    if (!authUserId || !dispatchInboxEligible) {
+      setClosedDispatchRequests([])
+      return
+    }
+    setClosedDispatchLoading(true)
+    supabase
+      .from('dispatch_requests')
+      .select('id, title, links, created_at, closed_at, closed_by_user_id, closed_note, reference_summary, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false })
+      .then(({ data, error }) => {
+        setClosedDispatchLoading(false)
+        if (error) {
+          console.error('Closed dispatch load:', error)
+          return
+        }
+        setClosedDispatchRequests((data ?? []) as ClosedDispatchRow[])
+      })
+  }, [authUserId, dispatchInboxEligible])
+
+  useEffect(() => {
+    loadClosedDispatchRequests()
+  }, [loadClosedDispatchRequests])
 
   function openFwd(inst: OutstandingInstance, rowUserId: string) {
     const title = inst.checklist_items?.title ?? 'Untitled'
@@ -1374,6 +1444,92 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
 
   return (
     <div>
+      {authUserId && dispatchInboxEligible && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setClosedDispatchExpanded((o) => !o)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: 0,
+              margin: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 600,
+              textAlign: 'left',
+            }}
+          >
+            <span aria-hidden>{closedDispatchExpanded ? '▼' : '▶'}</span>
+            Closed dispatch items
+            {!closedDispatchLoading && closedDispatchRequests.length > 0 ? (
+              <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
+                ({closedDispatchRequests.length} closed)
+              </span>
+            ) : null}
+          </button>
+          {closedDispatchExpanded && (
+            <div style={{ padding: '0.75rem 0 1rem 0' }}>
+              {closedDispatchLoading ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+              ) : closedDispatchRequests.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No closed dispatch items.</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {closedDispatchRequests.map((req) => {
+                    const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
+                    const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
+                    return (
+                      <li
+                        key={req.id}
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          alignItems: 'flex-start',
+                          gap: '0.5rem',
+                          padding: '0.75rem 0',
+                          borderBottom: '1px solid #f3f4f6',
+                          background: '#f9fafb',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
+                            From {fromLabel}
+                            {req.created_at ? (
+                              <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
+                            ) : null}
+                          </div>
+                          <div style={{ fontWeight: 500 }}>
+                            <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
+                          </div>
+                          {req.reference_summary?.trim() ? (
+                            <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
+                              Ref: {req.reference_summary.trim()}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                            Closed by {closedByLabel}
+                          </div>
+                          {req.closed_note?.trim() ? (
+                            <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
+                              "{req.closed_note.trim()}"
+                            </div>
+                          ) : null}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0 }}>Outstanding by person</h3>
         <div style={{ display: 'flex', gap: '0.25rem' }}>

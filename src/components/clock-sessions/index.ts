@@ -1,3 +1,4 @@
+export { AssignSessionJobPopover } from './AssignSessionJobPopover'
 export { ClockSessionLocationCell } from './ClockSessionLocationCell'
 export { ClockSessionsTable } from './ClockSessionsTable'
 export { ClockSessionsSection } from './ClockSessionsSection'

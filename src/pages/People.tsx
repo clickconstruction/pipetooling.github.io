@@ -11,7 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
-import { ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
+import { AssignSessionJobPopover, ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -45,7 +45,7 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'offsets' | 'review'
+type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'offsets' | 'licenses' | 'contracts' | 'review'
 
 type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
 type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
@@ -53,6 +53,13 @@ type VehicleReplacementValueEntry = { id: string; vehicle_id: string; replacemen
 type VehiclePossession = { id: string; vehicle_id: string; user_id: string; start_date: string; end_date: string | null; created_at: string | null }
 
 type PersonOffset = { id: string; person_name: string; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
+
+type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
+type PersonLicense = { id: string; person_name: string; license_type: string; note: string | null; date_of_expiry: string; created_at: string | null; person_license_cost_lines?: PersonLicenseCostLine[] }
+
+function costLinesTotal(lines: PersonLicenseCostLine[] | undefined): number {
+  return (lines ?? []).reduce((s, l) => s + l.amount, 0)
+}
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -70,7 +77,10 @@ export default function People() {
   const [phone, setPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const [archivedPeople, setArchivedPeople] = useState<Array<Person & { archived_at: string }>>([])
+  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
@@ -83,10 +93,14 @@ export default function People() {
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
+  const [canAccessLicenses, setCanAccessLicenses] = useState(false)
+  const [canAccessContracts, setCanAccessContracts] = useState(false)
   const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
   const [isDev, setIsDev] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
+  const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
+  const [documentUrlStatusByPersonName, setDocumentUrlStatusByPersonName] = useState<Record<string, 'green' | 'yellow' | 'red'>>({})
   type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
@@ -120,6 +134,8 @@ export default function People() {
   const [editClockSessionOut, setEditClockSessionOut] = useState('')
   const [editClockSessionNotes, setEditClockSessionNotes] = useState('')
   const [editClockSessionSaving, setEditClockSessionSaving] = useState(false)
+  const [editClockSessionSplitMode, setEditClockSessionSplitMode] = useState(false)
+  const [editClockSessionSplitAt, setEditClockSessionSplitAt] = useState('')
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [matrixStartDate, setMatrixStartDate] = useState(() => {
     const d = new Date()
@@ -250,6 +266,56 @@ export default function People() {
   const [possessionStartDate, setPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [possessionEndDate, setPossessionEndDate] = useState('')
 
+  // Licenses tab state
+  const [licenses, setLicenses] = useState<PersonLicense[]>([])
+  const [licensesLoading, setLicensesLoading] = useState(false)
+  const [licensesError, setLicensesError] = useState<string | null>(null)
+  const [licensesExpiringSoon, setLicensesExpiringSoon] = useState<PersonLicense[]>([])
+  const [selectedLicensePersonName, setSelectedLicensePersonName] = useState<string | null>(null)
+  const [licenseFormOpen, setLicenseFormOpen] = useState(false)
+  const [editingLicense, setEditingLicense] = useState<PersonLicense | null>(null)
+  const [licensePersonName, setLicensePersonName] = useState('')
+  const [licenseType, setLicenseType] = useState('')
+  const [licenseNote, setLicenseNote] = useState('')
+  const [licenseDateOfExpiry, setLicenseDateOfExpiry] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [costLineFormOpen, setCostLineFormOpen] = useState(false)
+  const [editingCostLine, setEditingCostLine] = useState<PersonLicenseCostLine | null>(null)
+  const [costLineLicenseId, setCostLineLicenseId] = useState<string | null>(null)
+  const [costLineAmount, setCostLineAmount] = useState('')
+  const [costLineNote, setCostLineNote] = useState('')
+  const [costLineDate, setCostLineDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [expandedCostLinesLicenseId, setExpandedCostLinesLicenseId] = useState<string | null>(null)
+
+  // Contracts tab state
+  type ContractTemplate = { id: string; name: string; sequence_order: number; created_at: string | null }
+  type ContractTemplateDocument = { id: string; template_id: string; document_name: string; sequence_order: number }
+  type PersonContractAssignment = { id: string; person_name: string; template_id: string }
+  type PersonContractDocument = { id: string; person_name: string; document_name: string; url: string | null; status: string; signed_at: string | null; sent_at: string | null; note: string | null }
+  const [contractTemplates, setContractTemplates] = useState<ContractTemplate[]>([])
+  const [contractTemplateDocuments, setContractTemplateDocuments] = useState<ContractTemplateDocument[]>([])
+  const [personContractAssignments, setPersonContractAssignments] = useState<PersonContractAssignment[]>([])
+  const [personContractDocuments, setPersonContractDocuments] = useState<PersonContractDocument[]>([])
+  const [contractsLoading, setContractsLoading] = useState(false)
+  const [contractsError, setContractsError] = useState<string | null>(null)
+  const [selectedContractsPersonName, setSelectedContractsPersonName] = useState<string | null>(null)
+  const [contractsTemplateModalOpen, setContractsTemplateModalOpen] = useState(false)
+  const [contractsAssignModalOpen, setContractsAssignModalOpen] = useState(false)
+  const [editingContractDocument, setEditingContractDocument] = useState<PersonContractDocument | null>(null)
+  const [contractDocumentFormPersonName, setContractDocumentFormPersonName] = useState('')
+  const [contractDocumentFormDocumentName, setContractDocumentFormDocumentName] = useState('')
+  const [contractDocumentFormUrl, setContractDocumentFormUrl] = useState('')
+  const [contractDocumentFormStatus, setContractDocumentFormStatus] = useState<'unsent' | 'sent' | 'signed'>('unsent')
+  const [contractDocumentFormSignedAt, setContractDocumentFormSignedAt] = useState('')
+  const [contractDocumentFormNote, setContractDocumentFormNote] = useState('')
+  const [contractDocumentFormSaving, setContractDocumentFormSaving] = useState(false)
+  const [contractDocumentModalOpen, setContractDocumentModalOpen] = useState(false)
+  const [editingContractTemplate, setEditingContractTemplate] = useState<ContractTemplate | null>(null)
+  const [templateFormName, setTemplateFormName] = useState('')
+  const [templateFormDocumentNames, setTemplateFormDocumentNames] = useState<string[]>([])
+  const [templateFormNewDocumentName, setTemplateFormNewDocumentName] = useState('')
+  const [templateFormSaving, setTemplateFormSaving] = useState(false)
+  const [templateFormMode, setTemplateFormMode] = useState<'none' | 'create' | 'edit'>('none')
+
   // Review tab state
   type ReviewPeriod = 'today' | 'yesterday' | 'last_week' | 'last_two_weeks' | 'last_month'
   const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState(0)
@@ -338,8 +404,8 @@ export default function People() {
     }
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
-      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary']),
+      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name'),
+      supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
@@ -375,6 +441,7 @@ export default function People() {
     // Load active projects for all people
     await loadPersonProjects()
     
+    await loadArchivedPeople(myRole === 'dev')
     setLoading(false)
   }
 
@@ -459,7 +526,7 @@ export default function People() {
         return next
       }, { replace: true })
       setActiveTab('hours')
-    } else if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'vehicles' || tab === 'offsets' || tab === 'review') {
+    } else if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'vehicles' || tab === 'offsets' || tab === 'licenses' || tab === 'contracts' || tab === 'review') {
       setActiveTab(tab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -493,20 +560,26 @@ export default function People() {
       if (role === 'dev') {
         setCanAccessPay(true)
         setCanAccessHours(true)
+        setCanAccessLicenses(true)
+        setCanAccessContracts(true)
         setIsDev(true)
         setCanSeePushStatus(true)
         return
       }
       if (role === 'assistant') {
         setCanAccessHours(true)
+        setCanAccessLicenses(true)
+        setCanAccessContracts(true)
         setCanSeePushStatus(true)
         return
       }
       if (role === 'master_technician') {
         setCanSeePushStatus(true)
+        setCanAccessContracts(true)
         if (approvedIds.has(authUser.id)) {
           setCanAccessPay(true)
           setCanAccessHours(true)
+          setCanAccessLicenses(true)
         }
       }
     }
@@ -525,6 +598,43 @@ export default function People() {
         setPushEnabledUserIds(ids)
       })
   }, [canSeePushStatus])
+
+  useEffect(() => {
+    if (!isDev) return
+    supabase
+      .from('clock_sessions')
+      .select('user_id')
+      .or('clock_in_lat.not.is.null,clock_out_lat.not.is.null')
+      .then(({ data }) => {
+        const ids = new Set((data ?? []).map((r: { user_id: string }) => r.user_id))
+        setLocationEnabledUserIds(ids)
+      })
+  }, [isDev])
+
+  useEffect(() => {
+    if (!canAccessContracts) return
+    supabase
+      .from('person_contract_documents')
+      .select('person_name, url')
+      .then(({ data }) => {
+        const rows = (data ?? []) as Array<{ person_name: string; url: string | null }>
+        const byPerson = new Map<string, { total: number; withUrl: number }>()
+        for (const r of rows) {
+          const p = byPerson.get(r.person_name) ?? { total: 0, withUrl: 0 }
+          p.total++
+          if (r.url?.trim()) p.withUrl++
+          byPerson.set(r.person_name, p)
+        }
+        const map: Record<string, 'green' | 'yellow' | 'red'> = {}
+        for (const [name, { total, withUrl }] of byPerson) {
+          if (total === 0) continue
+          if (withUrl === total) map[name] = 'green'
+          else if (withUrl > 0) map[name] = 'yellow'
+          else map[name] = 'red'
+        }
+        setDocumentUrlStatusByPersonName(map)
+      })
+  }, [canAccessContracts])
 
   function openAdd(k: PersonKind) {
     setEditing(null)
@@ -556,10 +666,11 @@ export default function People() {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
     
-    // Check in people table (excluding current person if editing)
+    // Check in people table (excluding current person if editing, exclude archived)
     const peopleQuery = supabase
       .from('people')
       .select('id, name')
+      .is('archived_at', null)
     if (excludeId) {
       peopleQuery.neq('id', excludeId)
     }
@@ -628,14 +739,39 @@ export default function People() {
     setSaving(false)
   }
 
-  async function deletePerson(id: string) {
-    if (!confirm('Remove this person from the list?')) return
-    setDeletingId(id)
+  async function archivePerson(id: string) {
+    if (!confirm('Archive this person? They will be hidden from the roster but can be restored.')) return
+    setArchivingId(id)
     setError(null)
-    const { error: err } = await supabase.from('people').delete().eq('id', id)
+    const { error: err } = await supabase.from('people').update({ archived_at: new Date().toISOString() }).eq('id', id)
     if (err) setError(err.message)
     else setPeople((prev) => prev.filter((p) => p.id !== id))
-    setDeletingId(null)
+    setArchivingId(null)
+    await loadArchivedPeople()
+  }
+
+  async function loadArchivedPeople(showAll?: boolean) {
+    if (!authUser?.id) return
+    const { data } = await supabase
+      .from('people')
+      .select('id, master_user_id, kind, name, email, phone, notes, archived_at')
+      .not('archived_at', 'is', null)
+      .order('archived_at', { ascending: false })
+    const list = (data ?? []) as Array<Person & { archived_at: string }>
+    const visible = (showAll ?? isDev) ? list : list.filter((p) => p.master_user_id === authUser.id)
+    setArchivedPeople(visible)
+  }
+
+  async function restorePerson(id: string) {
+    setRestoringId(id)
+    setError(null)
+    const { error: err } = await supabase.from('people').update({ archived_at: null }).eq('id', id)
+    if (err) setError(err.message)
+    else {
+      setArchivedPeople((prev) => prev.filter((p) => p.id !== id))
+      await loadPeople()
+    }
+    setRestoringId(null)
   }
 
   function isAlreadyUser(email: string | null): boolean {
@@ -681,7 +817,7 @@ export default function People() {
       .from('users')
       .select('id, email, name')
       .is('archived_at', null)
-      .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary'])
+      .in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent'])
     const usersAfterInvite = (usersData ?? []) as Array<{ id: string; email: string | null; name: string }>
     const dups = findPersonUserDuplicates(people, usersAfterInvite, payConfig)
     const invitedDup = dups.find((d) => d.email.toLowerCase() === p.email?.trim().toLowerCase())
@@ -1948,6 +2084,402 @@ export default function People() {
     else loadOffsets()
   }
 
+  async function loadLicenses() {
+    setLicensesLoading(true)
+    setLicensesError(null)
+    const { data, error } = await supabase.from('person_licenses').select('*, person_license_cost_lines(id, amount, note, date)').order('date_of_expiry', { ascending: true })
+    setLicensesLoading(false)
+    if (error) setLicensesError(error.message)
+    else {
+      const list = (data ?? []) as PersonLicense[]
+      setLicenses(list)
+      const today = new Date().toLocaleDateString('en-CA')
+      const in30 = new Date()
+      in30.setDate(in30.getDate() + 30)
+      const todayPlus30 = in30.toLocaleDateString('en-CA')
+      setLicensesExpiringSoon(list.filter((l) => l.date_of_expiry >= today && l.date_of_expiry <= todayPlus30))
+    }
+  }
+
+  async function loadContracts() {
+    setContractsLoading(true)
+    setContractsError(null)
+    const [templatesRes, templateDocsRes, assignmentsRes, documentsRes] = await Promise.all([
+      supabase.from('contract_templates').select('id, name, sequence_order, created_at').order('sequence_order'),
+      supabase.from('contract_template_documents').select('id, template_id, document_name, sequence_order').order('template_id').order('sequence_order'),
+      supabase.from('person_contract_assignments').select('id, person_name, template_id'),
+      supabase.from('person_contract_documents').select('id, person_name, document_name, url, status, signed_at, sent_at, note'),
+    ])
+    setContractsLoading(false)
+    if (templatesRes.error) setContractsError(templatesRes.error.message)
+    else if (templateDocsRes.error) setContractsError(templateDocsRes.error.message)
+    else if (assignmentsRes.error) setContractsError(assignmentsRes.error.message)
+    else if (documentsRes.error) setContractsError(documentsRes.error.message)
+    else {
+      setContractTemplates((templatesRes.data ?? []) as ContractTemplate[])
+      setContractTemplateDocuments((templateDocsRes.data ?? []) as ContractTemplateDocument[])
+      setPersonContractAssignments((assignmentsRes.data ?? []) as PersonContractAssignment[])
+      setPersonContractDocuments((documentsRes.data ?? []) as PersonContractDocument[])
+    }
+  }
+
+  function getDocumentsForPersonByTemplate(personName: string, templateId: string): { document_name: string; doc: PersonContractDocument | null }[] {
+    const templateDocNames = new Set(contractTemplateDocuments.filter((d) => d.template_id === templateId).map((d) => d.document_name))
+    const existingByDoc = new Map(personContractDocuments.filter((d) => d.person_name === personName).map((d) => [d.document_name, d]))
+    return Array.from(templateDocNames).sort().map((document_name) => ({
+      document_name,
+      doc: existingByDoc.get(document_name) ?? null,
+    }))
+  }
+
+  function getAggregateStatusForTemplate(personName: string, templateId: string): 'red' | 'yellow' | 'green' | null {
+    return getAggregateStatus(getDocumentsForPersonByTemplate(personName, templateId))
+  }
+
+  function getDocumentsForPerson(personName: string): { document_name: string; doc: PersonContractDocument | null; templateNames: string[] }[] {
+    const assignedTemplateIds = personContractAssignments.filter((a) => a.person_name === personName).map((a) => a.template_id)
+    const docNamesFromTemplates = new Set<string>()
+    const docToTemplateNames = new Map<string, string[]>()
+    for (const tid of assignedTemplateIds) {
+      const template = contractTemplates.find((t) => t.id === tid)
+      const templateName = template?.name ?? ''
+      for (const td of contractTemplateDocuments.filter((d) => d.template_id === tid)) {
+        docNamesFromTemplates.add(td.document_name)
+        const arr = docToTemplateNames.get(td.document_name) ?? []
+        if (!arr.includes(templateName)) arr.push(templateName)
+        docToTemplateNames.set(td.document_name, arr)
+      }
+    }
+    const existingByDoc = new Map(personContractDocuments.filter((d) => d.person_name === personName).map((d) => [d.document_name, d]))
+    const allDocNames = new Set([...docNamesFromTemplates, ...existingByDoc.keys()])
+    return Array.from(allDocNames).sort().map((document_name) => ({
+      document_name,
+      doc: existingByDoc.get(document_name) ?? null,
+      templateNames: docToTemplateNames.get(document_name) ?? [],
+    }))
+  }
+
+  function getAggregateStatus(docs: { document_name: string; doc: PersonContractDocument | null }[]): 'red' | 'yellow' | 'green' | null {
+    if (docs.length === 0) return null
+    const statuses = docs.map((d) => d.doc?.status ?? 'unsent')
+    if (statuses.some((s) => s === 'unsent')) return 'red'
+    if (statuses.some((s) => s === 'sent')) return 'yellow'
+    return 'green'
+  }
+
+  async function saveContractDocument() {
+    const personName = contractDocumentFormPersonName.trim()
+    const documentName = contractDocumentFormDocumentName.trim()
+    if (!personName || !documentName) {
+      setContractsError('Person and document name are required.')
+      return
+    }
+    setContractDocumentFormSaving(true)
+    setContractsError(null)
+    const payload = {
+      person_name: personName,
+      document_name: documentName,
+      url: contractDocumentFormUrl.trim() || null,
+      status: contractDocumentFormStatus as 'unsent' | 'sent' | 'signed',
+      signed_at: contractDocumentFormSignedAt.trim() || null,
+      note: contractDocumentFormNote.trim() || null,
+    }
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('person_contract_documents').upsert(payload, {
+            onConflict: 'person_name,document_name',
+          }),
+        'save contract document'
+      )
+      setContractDocumentModalOpen(false)
+      loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to save document')
+    } finally {
+      setContractDocumentFormSaving(false)
+    }
+  }
+
+  function openTemplateForm(template?: ContractTemplate) {
+    setEditingContractTemplate(template ?? null)
+    setTemplateFormName(template?.name ?? '')
+    setTemplateFormDocumentNames(
+      template ? contractTemplateDocuments.filter((d) => d.template_id === template.id).map((d) => d.document_name).sort() : []
+    )
+    setTemplateFormNewDocumentName('')
+    setTemplateFormMode(template ? 'edit' : 'create')
+  }
+
+  function closeTemplateForm() {
+    setEditingContractTemplate(null)
+    setTemplateFormName('')
+    setTemplateFormDocumentNames([])
+    setTemplateFormNewDocumentName('')
+    setTemplateFormMode('none')
+  }
+
+  async function saveTemplate() {
+    const name = templateFormName.trim()
+    if (!name) {
+      setContractsError('Template name is required.')
+      return
+    }
+    setTemplateFormSaving(true)
+    setContractsError(null)
+    try {
+      if (editingContractTemplate) {
+        const templateId = editingContractTemplate.id
+        await withSupabaseRetry(
+          async () => supabase.from('contract_templates').update({ name }).eq('id', templateId),
+          'update contract template'
+        )
+        const existing = contractTemplateDocuments.filter((d) => d.template_id === templateId).map((d) => d.document_name)
+        const toAdd = templateFormDocumentNames.filter((n) => !existing.includes(n))
+        const toRemove = existing.filter((n) => !templateFormDocumentNames.includes(n))
+        const assignees = personContractAssignments.filter((a) => a.template_id === templateId)
+        for (const docName of toRemove) {
+          for (const a of assignees) {
+            const pcd = personContractDocuments.find((d) => d.person_name === a.person_name && d.document_name === docName)
+            const hasData = pcd && (!!pcd.url?.trim() || !!pcd.signed_at || !!pcd.note?.trim())
+            if (pcd && !hasData) {
+              await withSupabaseRetry(
+                async () => supabase.from('person_contract_documents').delete().eq('id', pcd.id),
+                'remove empty person contract document'
+              )
+            }
+          }
+          const doc = contractTemplateDocuments.find((d) => d.template_id === templateId && d.document_name === docName)
+          if (doc) {
+            await withSupabaseRetry(
+              async () => supabase.from('contract_template_documents').delete().eq('id', doc.id),
+              'remove template document'
+            )
+          }
+        }
+        for (let i = 0; i < toAdd.length; i++) {
+          await withSupabaseRetry(
+            async () =>
+              supabase.from('contract_template_documents').insert({
+                template_id: templateId,
+                document_name: toAdd[i]!,
+                sequence_order: i,
+              }),
+            'add template document'
+          )
+        }
+        for (const docName of toAdd) {
+          for (const a of assignees) {
+            await withSupabaseRetry(
+              async () =>
+                supabase.from('person_contract_documents').upsert(
+                  { person_name: a.person_name, document_name: docName, status: 'unsent' },
+                  { onConflict: 'person_name,document_name' }
+                ),
+              'backfill person contract documents'
+            )
+          }
+        }
+      } else {
+        const inserted = await withSupabaseRetry(
+          async () => supabase.from('contract_templates').insert({ name, sequence_order: contractTemplates.length }).select('id').single(),
+          'create contract template'
+        )
+        const templateId = (inserted as { id: string } | null)?.id
+        if (templateId) {
+          const tid = templateId
+          for (let i = 0; i < templateFormDocumentNames.length; i++) {
+            await withSupabaseRetry(
+              async () =>
+                supabase.from('contract_template_documents').insert({
+                  template_id: tid,
+                  document_name: templateFormDocumentNames[i]!,
+                  sequence_order: i,
+                }),
+              'add template document'
+            )
+          }
+        }
+      }
+      closeTemplateForm()
+      loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to save template')
+    } finally {
+      setTemplateFormSaving(false)
+    }
+  }
+
+  async function deleteContractTemplate(template: ContractTemplate) {
+    if (!confirm(`Delete template "${template.name}"? This will remove the template and its document list.`)) return
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('contract_templates').delete().eq('id', template.id),
+        'delete contract template'
+      )
+      loadContracts()
+      if (editingContractTemplate?.id === template.id) closeTemplateForm()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to delete template')
+    }
+  }
+
+  const [assignTemplateSelectedId, setAssignTemplateSelectedId] = useState<string | null>(null)
+  const [assignTemplateSaving, setAssignTemplateSaving] = useState(false)
+
+  async function assignTemplateToPerson() {
+    const personName = selectedContractsPersonName
+    const templateId = assignTemplateSelectedId
+    if (!personName || !templateId) {
+      setContractsError('Please select a template.')
+      return
+    }
+    const alreadyAssigned = personContractAssignments.some((a) => a.person_name === personName && a.template_id === templateId)
+    if (alreadyAssigned) {
+      setContractsError('This template is already assigned to this person.')
+      return
+    }
+    setAssignTemplateSaving(true)
+    setContractsError(null)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('person_contract_assignments').insert({ person_name: personName, template_id: templateId }),
+        'assign template to person'
+      )
+      const templateDocs = contractTemplateDocuments.filter((d) => d.template_id === templateId)
+      for (const td of templateDocs) {
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('person_contract_documents').upsert(
+              { person_name: personName, document_name: td.document_name, status: 'unsent' },
+              { onConflict: 'person_name,document_name' }
+            ),
+          'create person contract documents'
+        )
+      }
+      setContractsAssignModalOpen(false)
+      setAssignTemplateSelectedId(null)
+      loadContracts()
+    } catch (e) {
+      setContractsError(e instanceof Error ? e.message : 'Failed to assign template')
+    } finally {
+      setAssignTemplateSaving(false)
+    }
+  }
+
+  function openLicenseForm(personName?: string, license?: PersonLicense) {
+    setEditingLicense(license ?? null)
+    setLicensePersonName(personName ?? license?.person_name ?? '')
+    setLicenseType(license?.license_type ?? '')
+    setLicenseNote(license?.note ?? '')
+    setLicenseDateOfExpiry(license?.date_of_expiry ?? new Date().toLocaleDateString('en-CA'))
+    setLicenseFormOpen(true)
+  }
+
+  function closeLicenseForm() {
+    setLicenseFormOpen(false)
+    setEditingLicense(null)
+    setLicensePersonName('')
+    setLicenseType('')
+    setLicenseNote('')
+    setLicenseDateOfExpiry(new Date().toLocaleDateString('en-CA'))
+  }
+
+  function openCostLineForm(licenseId: string, line?: PersonLicenseCostLine) {
+    setCostLineLicenseId(licenseId)
+    setEditingCostLine(line ?? null)
+    setCostLineAmount(line ? String(line.amount) : '')
+    setCostLineNote(line?.note ?? '')
+    setCostLineDate(line?.date ?? new Date().toLocaleDateString('en-CA'))
+    setCostLineFormOpen(true)
+  }
+
+  function closeCostLineForm() {
+    setCostLineFormOpen(false)
+    setEditingCostLine(null)
+    setCostLineLicenseId(null)
+    setCostLineAmount('')
+    setCostLineNote('')
+    setCostLineDate(new Date().toLocaleDateString('en-CA'))
+  }
+
+  async function addCostLine(licenseId: string, amount: number, note: string, date: string) {
+    const { error: err } = await supabase.from('person_license_cost_lines').insert({ person_license_id: licenseId, amount, note: note.trim() || null, date })
+    if (err) setLicensesError(err.message)
+    else {
+      setLicensesError(null)
+      closeCostLineForm()
+      loadLicenses()
+    }
+  }
+
+  async function updateCostLine(line: PersonLicenseCostLine, amount: number, note: string, date: string) {
+    const { error: err } = await supabase.from('person_license_cost_lines').update({ amount, note: note.trim() || null, date }).eq('id', line.id)
+    if (err) setLicensesError(err.message)
+    else {
+      setLicensesError(null)
+      closeCostLineForm()
+      loadLicenses()
+    }
+  }
+
+  async function deleteCostLine(line: PersonLicenseCostLine) {
+    if (!window.confirm(`Delete cost line $${line.amount}?`)) return
+    const { error: err } = await supabase.from('person_license_cost_lines').delete().eq('id', line.id)
+    if (err) setLicensesError(err.message)
+    else {
+      setLicensesError(null)
+      loadLicenses()
+    }
+  }
+
+  async function upsertLicense() {
+    if (!licensePersonName.trim()) {
+      setLicensesError('Select a person')
+      return
+    }
+    if (!licenseType.trim()) {
+      setLicensesError('License type is required')
+      return
+    }
+    if (!licenseDateOfExpiry) {
+      setLicensesError('Date of expiry is required')
+      return
+    }
+    if (editingLicense) {
+      const { error: err } = await supabase
+        .from('person_licenses')
+        .update({ person_name: licensePersonName.trim(), license_type: licenseType.trim(), note: licenseNote.trim() || null, date_of_expiry: licenseDateOfExpiry })
+        .eq('id', editingLicense.id)
+      if (err) setLicensesError(err.message)
+      else {
+        setLicensesError(null)
+        closeLicenseForm()
+        loadLicenses()
+      }
+    } else {
+      const { error: err } = await supabase
+        .from('person_licenses')
+        .insert({ person_name: licensePersonName.trim(), license_type: licenseType.trim(), note: licenseNote.trim() || null, date_of_expiry: licenseDateOfExpiry })
+      if (err) setLicensesError(err.message)
+      else {
+        setLicensesError(null)
+        closeLicenseForm()
+        loadLicenses()
+      }
+    }
+  }
+
+  async function deleteLicense(l: PersonLicense) {
+    if (!window.confirm(`Delete ${l.license_type} for ${l.person_name}?`)) return
+    const { error: err } = await supabase.from('person_licenses').delete().eq('id', l.id)
+    if (err) setLicensesError(err.message)
+    else {
+      setLicensesError(null)
+      loadLicenses()
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'vehicles' && canAccessPay) {
       const t = setTimeout(() => loadVehicles(), 80)
@@ -1964,6 +2496,24 @@ export default function People() {
       return () => clearTimeout(t)
     }
   }, [activeTab, canAccessPay])
+
+  useEffect(() => {
+    if (activeTab === 'licenses' && canAccessLicenses) {
+      const t = setTimeout(() => {
+        loadLicenses()
+      }, 80)
+      return () => clearTimeout(t)
+    }
+  }, [activeTab, canAccessLicenses])
+
+  useEffect(() => {
+    if (activeTab === 'contracts' && canAccessContracts) {
+      const t = setTimeout(() => {
+        loadContracts()
+      }, 80)
+      return () => clearTimeout(t)
+    }
+  }, [activeTab, canAccessContracts])
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
@@ -3186,6 +3736,38 @@ export default function People() {
             Offsets
           </button>
         )}
+        {canAccessLicenses && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('licenses')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'licenses')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'licenses')}
+          >
+            Licenses
+          </button>
+        )}
+        {canAccessContracts && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('contracts')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'contracts')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'contracts')}
+          >
+            Contracts
+          </button>
+        )}
         {isDev && (
           <button
             type="button"
@@ -3234,18 +3816,49 @@ export default function People() {
                         <div style={{ flex: 1 }}>
                           <div>
                             {pushEnabledUserIds.has(u.id) && (
-                              <span
-                                title="Push notifications enabled"
-                                style={{
-                                  display: 'inline-block',
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  backgroundColor: '#22c55e',
-                                  marginRight: '0.35rem',
-                                  verticalAlign: 'middle',
-                                }}
-                              />
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 640 640"
+                                width={14}
+                                height={14}
+                                fill="#22c55e"
+                                role="img"
+                                aria-hidden
+                                style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                              >
+                                <title>Push notifications enabled</title>
+                                <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C265.1 555.6 290.2 576 320 576C349.8 576 374.9 555.6 382 528L258 528z" />
+                              </svg>
+                            )}
+                            {locationEnabledUserIds.has(u.id) && (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 640 640"
+                                width={14}
+                                height={14}
+                                fill="#22c55e"
+                                role="img"
+                                aria-hidden
+                                style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                              >
+                                <title>Location service enabled</title>
+                                <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                              </svg>
+                            )}
+                            {canAccessContracts && documentUrlStatusByPersonName[u.name] && (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 640 640"
+                                width={14}
+                                height={14}
+                                fill={documentUrlStatusByPersonName[u.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[u.name] === 'yellow' ? '#eab308' : '#ef4444'}
+                                role="img"
+                                aria-hidden
+                                style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                              >
+                                <title>{documentUrlStatusByPersonName[u.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[u.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
+                                <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
+                              </svg>
                             )}
                             <span style={{ fontWeight: 500 }}>{u.name}</span>
                             <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
@@ -3401,6 +4014,116 @@ export default function People() {
               </ul>
             )}
           </section>
+          <section style={{ marginBottom: '2rem' }}>
+            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Superintendents</h2>
+            {users.filter((u) => u.role === 'superintendent').length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {users
+                  .filter((u) => u.role === 'superintendent')
+                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                  .map((u) => (
+                    <li
+                      key={u.id}
+                      style={{
+                        padding: '0.5rem 0',
+                        borderBottom: '1px solid #e5e7eb',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div>
+                          {isDev && u.email && (
+                            <>
+                              {window.location.hostname === 'pipetooling.com' && (
+                                <button
+                                  type="button"
+                                  title="imitate (pipetooling.com)"
+                                  onClick={async () => {
+                                    setLoggingInAsId(u.id)
+                                    setError(null)
+                                    try {
+                                      await loginAsUser(u, 'https://pipetooling.com/dashboard')
+                                    } catch (e) {
+                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                    } finally {
+                                      setLoggingInAsId(null)
+                                    }
+                                  }}
+                                  disabled={loggingInAsId === u.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 0,
+                                    marginRight: '0.35rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
+                                    verticalAlign: 'middle',
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                    <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
+                                  </svg>
+                                </button>
+                              )}
+                              {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                <button
+                                  type="button"
+                                  title="imitate (localhost)"
+                                  onClick={async () => {
+                                    setLoggingInAsId(u.id)
+                                    setError(null)
+                                    try {
+                                      await loginAsUser(u, 'http://localhost:5173/dashboard')
+                                    } catch (e) {
+                                      setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                    } finally {
+                                      setLoggingInAsId(null)
+                                    }
+                                  }}
+                                  disabled={loggingInAsId === u.id}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: 0,
+                                    marginRight: '0.35rem',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: loggingInAsId === u.id ? 'not-allowed' : 'pointer',
+                                    verticalAlign: 'middle',
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                    <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
+                                  </svg>
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
+                          <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+                          {u.email && (
+                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                              <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                {u.email}
+                              </a>
+                            </span>
+                          )}
+                          {u.notes && (
+                            <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </section>
           {KINDS.map((k) => (
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -3428,18 +4151,49 @@ export default function People() {
                   <div style={{ flex: 1 }}>
                     <div>
                       {item.source === 'user' && canSeePushStatus && pushEnabledUserIds.has(item.id) && (
-                        <span
-                          title="Push notifications enabled"
-                          style={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            backgroundColor: '#22c55e',
-                            marginRight: '0.35rem',
-                            verticalAlign: 'middle',
-                          }}
-                        />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={14}
+                          height={14}
+                          fill="#22c55e"
+                          role="img"
+                          aria-hidden
+                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                        >
+                          <title>Push notifications enabled</title>
+                          <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C265.1 555.6 290.2 576 320 576C349.8 576 374.9 555.6 382 528L258 528z" />
+                        </svg>
+                      )}
+                      {item.source === 'user' && isDev && locationEnabledUserIds.has(item.id) && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={14}
+                          height={14}
+                          fill="#22c55e"
+                          role="img"
+                          aria-hidden
+                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                        >
+                          <title>Location service enabled</title>
+                          <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                        </svg>
+                      )}
+                      {canAccessContracts && documentUrlStatusByPersonName[item.name] && (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={14}
+                          height={14}
+                          fill={documentUrlStatusByPersonName[item.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[item.name] === 'yellow' ? '#eab308' : '#ef4444'}
+                          role="img"
+                          aria-hidden
+                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                        >
+                          <title>{documentUrlStatusByPersonName[item.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[item.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
+                          <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
+                        </svg>
                       )}
                       {isDev && item.source === 'user' && item.email && (
                         <>
@@ -3572,11 +4326,11 @@ export default function People() {
                       {item.master_user_id === authUser?.id ? (
                         <button
                           type="button"
-                          onClick={() => deletePerson(item.id)}
-                          disabled={deletingId === item.id}
+                          onClick={() => archivePerson(item.id)}
+                          disabled={archivingId === item.id}
                           style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
                         >
-                          {deletingId === item.id ? '...' : 'Remove'}
+                          {archivingId === item.id ? '...' : 'Archive'}
                         </button>
                       ) : (
                         <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -3603,6 +4357,72 @@ export default function People() {
           )}
         </section>
       ))}
+
+          {/* Archived people */}
+          <div style={{ marginTop: '2rem', maxWidth: 640 }}>
+            <button
+              type="button"
+              onClick={() => setArchivedSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                padding: '1rem',
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{archivedSectionOpen ? '▼' : '▶'}</span>
+              Archived people ({archivedPeople.length})
+            </button>
+            {archivedSectionOpen && (
+              <div style={{ padding: '0 1rem 1rem 1rem' }}>
+                {archivedPeople.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No archived people.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}>Archived</th>
+                          <th style={{ padding: '0.5rem 0.75rem' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {archivedPeople.map((p) => (
+                          <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.email ?? '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
+                              {p.archived_at ? new Date(p.archived_at).toLocaleDateString() : '—'}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => restorePerson(p.id)}
+                                disabled={restoringId === p.id}
+                                style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                              >
+                                {restoringId === p.id ? 'Restoring…' : 'Restore'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -5039,6 +5859,33 @@ export default function People() {
               showActionsColumn
               locationVariant="full"
               emptyMessage="No pending sessions"
+              renderJob={(s) => {
+                const jobDisplay = s.jobs_ledger
+                  ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+                  : s.bids
+                    ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+                    : null
+                const isActive = s.clocked_out_at == null
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
+                    {!isActive && (
+                      <span style={{ flexShrink: 0 }}>
+                        <AssignSessionJobPopover
+                          session={s}
+                          onSaved={() => {
+                            showToast?.('Job assigned', 'success')
+                            loadAllClockSessionsRef.current?.()
+                          }}
+                          onError={(msg) => setError(msg)}
+                        />
+                      </span>
+                    )}
+                    {jobDisplay != null && (
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{jobDisplay}</span>
+                    )}
+                  </div>
+                )
+              }}
               renderActions={(s) => {
                 const personName = s.users?.name?.trim() ?? 'Unknown'
                 const isActive = s.clocked_out_at == null
@@ -5071,6 +5918,8 @@ export default function People() {
                             setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
                             setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
                             setEditClockSessionNotes(s.notes ?? '')
+                            setEditClockSessionSplitMode(false)
+                            setEditClockSessionSplitAt('')
                           }}
                           style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
                         >
@@ -5079,7 +5928,7 @@ export default function People() {
                         <button
                           type="button"
                           onClick={async () => {
-                            const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
+                            const { data, error } = await import('../lib/approveClockSessions').then((m) => m.approveClockSessions([s.id]))
                             if (error) { setError(error.message); return }
                             const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
                             const row = result[0]
@@ -5573,6 +6422,724 @@ export default function People() {
               {offsets.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No offsets yet. Add backcharges or damages to get started.</p>}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'licenses' && canAccessLicenses && (
+        <div>
+          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 600 }}>Licenses</h2>
+          {licensesError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{licensesError}</p>}
+          {licensesLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <>
+              <section style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderRadius: 6, border: '1px solid #fde68a' }}>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Licenses expiring in the next 30 days</h3>
+                {licensesExpiringSoon.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No licenses expiring in the next 30 days.</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>License and #</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date of Expiry</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Cost to Company</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Days left</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {licensesExpiringSoon.map((l) => {
+                          const today = new Date()
+                          const expiry = new Date(l.date_of_expiry + 'T12:00:00')
+                          const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                          return (
+                            <tr key={l.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem' }}>{l.person_name}</td>
+                              <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
+                              <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
+                              <td style={{ padding: '0.5rem' }}>{costLinesTotal(l.person_license_cost_lines) > 0 ? `$${costLinesTotal(l.person_license_cost_lines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}</td>
+                              <td style={{ padding: '0.5rem', textAlign: 'right' }}>{daysLeft}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', width: 1 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const personNames = [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter((n): n is string => Boolean(n)).sort((a, b) => a.localeCompare(b))
+                      if (personNames.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={2} style={{ padding: '1rem', color: '#6b7280' }}>No people in roster. Add people in Users tab first.</td>
+                          </tr>
+                        )
+                      }
+                      return personNames.map((personName) => {
+                        const personLicenses = licenses.filter((l) => l.person_name === personName)
+                        const isExpanded = selectedLicensePersonName === personName
+                        return (
+                          <Fragment key={personName}>
+                            <tr
+                              style={{
+                                borderBottom: '1px solid #e5e7eb',
+                                cursor: 'pointer',
+                                background: isExpanded ? '#f0f9ff' : undefined,
+                              }}
+                              onClick={() => setSelectedLicensePersonName((prev) => (prev === personName ? null : personName))}
+                            >
+                              <td style={{ padding: '0.75rem' }}>
+                                {personName}
+                                {personLicenses.length > 0 && (
+                                  <span style={{ marginLeft: '0.5rem', color: '#6b7280', fontSize: '0.8125rem' }}>
+                                    {personLicenses.map((l) => l.license_type).join(', ')}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'right', width: 1 }}>
+                                {isExpanded && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openLicenseForm(personName)
+                                    }}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  >
+                                    + Add license
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr>
+                                <td colSpan={2} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div>
+                                      {personLicenses.length === 0 ? (
+                                        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No licenses.</p>
+                                      ) : (
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                          <thead>
+                                            <tr>
+                                              <th style={{ padding: '0.5rem', textAlign: 'left' }}>License and #</th>
+                                              <th style={{ padding: '0.5rem', textAlign: 'left' }}>Note</th>
+                                              <th style={{ padding: '0.5rem', textAlign: 'left' }}>Date of Expiry</th>
+                                              <th style={{ padding: '0.5rem', textAlign: 'left' }}>Cost to Company</th>
+                                              <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {personLicenses.map((l) => {
+                                              const costLines = l.person_license_cost_lines ?? []
+                                              return (
+                                                <Fragment key={l.id}>
+                                                  <tr style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                    <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
+                                                    <td style={{ padding: '0.5rem' }}>{l.note || '—'}</td>
+                                                    <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
+                                                    <td style={{ padding: '0.5rem', verticalAlign: 'top' }}>
+                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                          {(costLines.length > 0 || costLinesTotal(costLines) > 0) ? (
+                                                            <div
+                                                              role="button"
+                                                              tabIndex={0}
+                                                              aria-expanded={expandedCostLinesLicenseId === l.id}
+                                                              onClick={(e) => { e.stopPropagation(); setExpandedCostLinesLicenseId((prev) => (prev === l.id ? null : l.id)) }}
+                                                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setExpandedCostLinesLicenseId((prev) => (prev === l.id ? null : l.id)) } }}
+                                                              style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                                            >
+                                                              <span style={{ fontSize: '0.75em', color: '#6b7280' }}>{expandedCostLinesLicenseId === l.id ? '▾' : '▸'}</span>
+                                                              {costLinesTotal(costLines) > 0 ? `$${costLinesTotal(costLines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}
+                                                              {costLines.length > 1 && (
+                                                                <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>({costLines.length} lines)</span>
+                                                              )}
+                                                            </div>
+                                                          ) : null}
+                                                          <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id) }} style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>+ Add Cost</button>
+                                                        </div>
+                                                        {expandedCostLinesLicenseId === l.id && costLines.length > 0 && (
+                                                          <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, borderLeft: '3px solid #e5e7eb' }}>
+                                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                                              <tbody>
+                                                                {costLines.map((cl) => (
+                                                                  <tr key={cl.id}>
+                                                                    <td style={{ padding: '0.2rem 0.35rem 0 0' }}>${Number(cl.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                                                                    <td style={{ padding: '0.2rem 0.35rem 0 0' }}>{cl.note || '—'}</td>
+                                                                    <td style={{ padding: '0.2rem 0.35rem 0 0' }}>{cl.date}</td>
+                                                                    <td style={{ padding: '0.2rem 0' }}>
+                                                                      <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id, cl) }} style={{ marginRight: '0.2rem', padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}>Edit</button>
+                                                                      <button type="button" onClick={(e) => { e.stopPropagation(); deleteCostLine(cl) }} style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', color: '#b91c1c' }}>Delete</button>
+                                                                    </td>
+                                                                  </tr>
+                                                                ))}
+                                                              </tbody>
+                                                            </table>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                    </td>
+                                                    <td style={{ padding: '0.5rem' }}>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          openLicenseForm(undefined, l)
+                                                        }}
+                                                        style={{ marginRight: '0.35rem', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                                                      >
+                                                        Edit
+                                                      </button>
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation()
+                                                          deleteLicense(l)
+                                                        }}
+                                                        style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', color: '#b91c1c' }}
+                                                      >
+                                                        Delete
+                                                      </button>
+                                                    </td>
+                                                  </tr>
+                                                </Fragment>
+                                              )
+                                            })}
+                                          </tbody>
+                                        </table>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'contracts' && canAccessContracts && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Contracts</h2>
+            <button
+              type="button"
+              onClick={() => setContractsTemplateModalOpen(true)}
+              style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+            >
+              Manage templates
+            </button>
+          </div>
+          {contractsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{contractsError}</p>}
+          {contractsLoading ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : (
+            <>
+              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead style={{ background: '#f9fafb' }}>
+                    <tr>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 48 }}>Status</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', width: 1 }}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const personNames = [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter((n): n is string => Boolean(n?.trim())).sort((a, b) => a.localeCompare(b))
+                      if (personNames.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={3} style={{ padding: '1rem', color: '#6b7280' }}>No people in roster. Add people in Users tab first.</td>
+                          </tr>
+                        )
+                      }
+                      return personNames.map((personName) => {
+                        const docs = getDocumentsForPerson(personName)
+                        const status = getAggregateStatus(docs)
+                        const isExpanded = selectedContractsPersonName === personName
+                        const statusColor = status === 'green' ? '#22c55e' : status === 'yellow' ? '#eab308' : status === 'red' ? '#dc2626' : '#9ca3af'
+                        return (
+                          <Fragment key={personName}>
+                            <tr
+                              style={{
+                                borderBottom: '1px solid #e5e7eb',
+                                cursor: 'pointer',
+                                background: isExpanded ? '#f0f9ff' : undefined,
+                              }}
+                              onClick={() => setSelectedContractsPersonName((prev) => (prev === personName ? null : personName))}
+                            >
+                              <td style={{ padding: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                  <span>{personName}</span>
+                                  {personContractAssignments
+                                    .filter((a) => a.person_name === personName)
+                                    .map((a) => {
+                                      const t = contractTemplates.find((x) => x.id === a.template_id)
+                                      const tStatus = getAggregateStatusForTemplate(personName, a.template_id)
+                                      const tColor = tStatus === 'green' ? '#22c55e' : tStatus === 'yellow' ? '#eab308' : tStatus === 'red' ? '#dc2626' : '#9ca3af'
+                                      return (
+                                        <span
+                                          key={a.id}
+                                          style={{
+                                            fontSize: '0.7rem',
+                                            padding: '0.15rem 0.4rem',
+                                            borderRadius: 4,
+                                            backgroundColor: tColor,
+                                            color: '#fff',
+                                            fontWeight: 500,
+                                          }}
+                                          title={tStatus === 'green' ? 'All signed' : tStatus === 'yellow' ? 'Sent for signature' : tStatus === 'red' ? 'Unsent' : 'No documents'}
+                                        >
+                                          {t?.name ?? '—'}
+                                        </span>
+                                      )
+                                    })}
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.75rem' }}>
+                                {status !== null && (
+                                  <span
+                                    title={status === 'green' ? 'All signed' : status === 'yellow' ? 'Sent for signature' : 'Unsent'}
+                                    style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: statusColor }}
+                                    aria-hidden
+                                  />
+                                )}
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'right', width: 1 }}>
+                                <span style={{ fontSize: '0.75rem' }}>{isExpanded ? '▾' : '▸'}</span>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr>
+                                <td colSpan={3} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setContractsAssignModalOpen(true)
+                                          setContractsError(null)
+                                          setAssignTemplateSelectedId(null)
+                                        }}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                      >
+                                        Assign template
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingContractDocument(null)
+                                          setContractDocumentFormPersonName(personName)
+                                          setContractDocumentFormDocumentName('')
+                                          setContractDocumentFormUrl('')
+                                          setContractDocumentFormStatus('unsent')
+                                          setContractDocumentFormSignedAt('')
+                                          setContractDocumentFormNote('')
+                                          setContractDocumentModalOpen(true)
+                                        }}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                                      >
+                                        + Add document
+                                      </button>
+                                    </div>
+                                    {docs.length === 0 ? (
+                                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
+                                    ) : (
+                                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                                        <thead>
+                                          <tr>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Document</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Status</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>URL</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Signed</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Note</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {docs.map(({ document_name, doc, templateNames }) => (
+                                            <tr key={document_name} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                              <td style={{ padding: '0.5rem' }}>
+                                                {templateNames.length > 0 && (
+                                                  <span style={{ marginRight: '0.35rem', display: 'inline-flex', gap: '0.2rem', flexWrap: 'wrap' }}>
+                                                    {templateNames.map((n) => (
+                                                      <span
+                                                        key={n}
+                                                        style={{
+                                                          fontSize: '0.7rem',
+                                                          padding: '0.1rem 0.3rem',
+                                                          borderRadius: 4,
+                                                          backgroundColor: '#e5e7eb',
+                                                          color: '#374151',
+                                                        }}
+                                                      >
+                                                        {n}
+                                                      </span>
+                                                    ))}
+                                                  </span>
+                                                )}
+                                                <span>{document_name}</span>
+                                              </td>
+                                              <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
+                                              <td style={{ padding: '0.5rem' }}>
+                                                {doc?.url ? (
+                                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                    Link
+                                                  </a>
+                                                ) : (
+                                                  '—'
+                                                )}
+                                              </td>
+                                              <td style={{ padding: '0.5rem' }}>{doc?.signed_at ?? '—'}</td>
+                                              <td style={{ padding: '0.5rem' }}>{doc?.note ?? '—'}</td>
+                                              <td style={{ padding: '0.5rem' }}>
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    setEditingContractDocument(doc)
+                                                    setContractDocumentFormPersonName(personName)
+                                                    setContractDocumentFormDocumentName(document_name)
+                                                    setContractDocumentFormUrl(doc?.url ?? '')
+                                                    setContractDocumentFormStatus((doc?.status as 'unsent' | 'sent' | 'signed') ?? 'unsent')
+                                                    setContractDocumentFormSignedAt(doc?.signed_at ?? '')
+                                                    setContractDocumentFormNote(doc?.note ?? '')
+                                                    setContractDocumentModalOpen(true)
+                                                  }}
+                                                  style={{ marginRight: '0.35rem', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }}
+                                                >
+                                                  Edit
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {contractsTemplateModalOpen && activeTab === 'contracts' && canAccessContracts && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: '90vw', maxHeight: '85vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.125rem' }}>Manage templates</h3>
+              <button
+                type="button"
+                onClick={() => setContractsTemplateModalOpen(false)}
+                style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {contractsError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
+            {templateFormMode !== 'none' ? (
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{editingContractTemplate ? 'Edit template' : 'New template'}</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Template name</label>
+                    <input
+                      type="text"
+                      value={templateFormName}
+                      onChange={(e) => setTemplateFormName(e.target.value)}
+                      placeholder="e.g. Farm Work"
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Documents</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <input
+                        type="text"
+                        value={templateFormNewDocumentName}
+                        onChange={(e) => setTemplateFormNewDocumentName(e.target.value)}
+                        placeholder="Document name"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const n = templateFormNewDocumentName.trim()
+                            if (n && !templateFormDocumentNames.includes(n)) {
+                              setTemplateFormDocumentNames((prev) => [...prev, n].sort())
+                              setTemplateFormNewDocumentName('')
+                            }
+                          }
+                        }}
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const n = templateFormNewDocumentName.trim()
+                          if (n && !templateFormDocumentNames.includes(n)) {
+                            setTemplateFormDocumentNames((prev) => [...prev, n].sort())
+                            setTemplateFormNewDocumentName('')
+                          }
+                        }}
+                        style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
+                      {templateFormDocumentNames.map((docName) => (
+                        <li key={docName} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          {docName}
+                          <button
+                            type="button"
+                            onClick={() => setTemplateFormDocumentNames((prev) => prev.filter((d) => d !== docName))}
+                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.75rem', color: '#b91c1c', border: 'none', background: 'none', cursor: 'pointer' }}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={saveTemplate}
+                      disabled={templateFormSaving}
+                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: templateFormSaving ? 'not-allowed' : 'pointer' }}
+                    >
+                      {templateFormSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeTemplateForm}
+                      style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem' }}>Templates</h4>
+                <button
+                  type="button"
+                  onClick={() => openTemplateForm()}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+                >
+                  + New template
+                </button>
+              </div>
+              {contractTemplates.length === 0 ? (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No templates yet. Create one to assign to people.</p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', listStyle: 'none' }}>
+                  {contractTemplates.map((t) => {
+                    const docs = contractTemplateDocuments.filter((d) => d.template_id === t.id).map((d) => d.document_name).sort()
+                    return (
+                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong>{t.name}</strong>
+                          {docs.length > 0 && <span style={{ color: '#6b7280', fontSize: '0.8125rem', marginLeft: '0.5rem' }}>({docs.join(', ')})</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => openTemplateForm(t)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteContractTemplate(t)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {contractsAssignModalOpen && activeTab === 'contracts' && canAccessContracts && selectedContractsPersonName && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign template to {selectedContractsPersonName}</h3>
+            {contractsError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
+            {contractTemplates.length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>No templates. Create one in Manage templates first.</p>
+            ) : (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Select template</label>
+                <select
+                  value={assignTemplateSelectedId ?? ''}
+                  onChange={(e) => setAssignTemplateSelectedId(e.target.value || null)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="">— Select —</option>
+                  {contractTemplates.map((t) => {
+                    const alreadyAssigned = personContractAssignments.some(
+                      (a) => a.person_name === selectedContractsPersonName && a.template_id === t.id
+                    )
+                    const docCount = contractTemplateDocuments.filter((d) => d.template_id === t.id).length
+                    const docLabel = docCount > 0 ? ` (${docCount} docs)` : ''
+                    return (
+                      <option key={t.id} value={t.id} disabled={alreadyAssigned}>
+                        {t.name}{docLabel}{alreadyAssigned ? ' — already assigned' : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={assignTemplateToPerson}
+                disabled={assignTemplateSaving || !assignTemplateSelectedId || contractTemplates.length === 0}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: assignTemplateSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {assignTemplateSaving ? 'Assigning…' : 'Assign'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setContractsAssignModalOpen(false); setAssignTemplateSelectedId(null); setContractsError(null) }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {contractDocumentModalOpen && activeTab === 'contracts' && canAccessContracts && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+            <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>{editingContractDocument ? 'Edit document' : 'Add document'}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Person</label>
+                <input
+                  type="text"
+                  value={contractDocumentFormPersonName}
+                  onChange={(e) => setContractDocumentFormPersonName(e.target.value)}
+                  readOnly
+                  disabled
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f9fafb' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Document name</label>
+                <input
+                  type="text"
+                  value={contractDocumentFormDocumentName}
+                  onChange={(e) => setContractDocumentFormDocumentName(e.target.value)}
+                  placeholder="e.g. Farm Work Agreement"
+                  readOnly={!!editingContractDocument}
+                  disabled={!!editingContractDocument}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editingContractDocument ? '#f9fafb' : undefined }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>URL</label>
+                <input
+                  type="url"
+                  value={contractDocumentFormUrl}
+                  onChange={(e) => setContractDocumentFormUrl(e.target.value)}
+                  placeholder="https://..."
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Status</label>
+                <select
+                  value={contractDocumentFormStatus}
+                  onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                >
+                  <option value="unsent">Unsent</option>
+                  <option value="sent">Sent</option>
+                  <option value="signed">Signed</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Signed date</label>
+                <input
+                  type="date"
+                  value={contractDocumentFormSignedAt}
+                  onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Note</label>
+                <textarea
+                  value={contractDocumentFormNote}
+                  onChange={(e) => setContractDocumentFormNote(e.target.value)}
+                  rows={2}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={saveContractDocument}
+                disabled={contractDocumentFormSaving}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {contractDocumentFormSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setContractDocumentModalOpen(false)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -6252,6 +7819,84 @@ export default function People() {
         </div>
       )}
 
+      {licenseFormOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>{editingLicense ? 'Edit license' : 'Add license'}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Person *</label>
+              <select value={licensePersonName} onChange={(e) => setLicensePersonName(e.target.value)} disabled={!!editingLicense} style={{ width: '100%', padding: '0.5rem' }}>
+                <option value="">— Select —</option>
+                {[...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])].filter(Boolean).sort((a, b) => (a ?? '').localeCompare(b ?? '')).map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>License and # *</label>
+              <input type="text" value={licenseType} onChange={(e) => setLicenseType(e.target.value)} placeholder="e.g. Master Plumber" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Note</label>
+              <input type="text" value={licenseNote} onChange={(e) => setLicenseNote(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date of Expiry *</label>
+              <input type="date" value={licenseDateOfExpiry} onChange={(e) => setLicenseDateOfExpiry(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={upsertLicense} style={{ padding: '0.5rem 1rem' }}>Save</button>
+              <button type="button" onClick={closeLicenseForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {costLineFormOpen && costLineLicenseId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h2 style={{ marginTop: 0 }}>{editingCostLine ? 'Edit cost line' : 'Add cost line'}</h2>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Amount ($) *</label>
+              <input type="number" min={0} step={0.01} value={costLineAmount} onChange={(e) => setCostLineAmount(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Note</label>
+              <input type="text" value={costLineNote} onChange={(e) => setCostLineNote(e.target.value)} placeholder="Optional" style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: 4 }}>Date *</label>
+              <input type="date" value={costLineDate} onChange={(e) => setCostLineDate(e.target.value)} style={{ width: '100%', padding: '0.5rem' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const amt = parseFloat(costLineAmount)
+                  if (isNaN(amt) || amt < 0) {
+                    setLicensesError('Enter a valid amount')
+                    return
+                  }
+                  if (!costLineDate) {
+                    setLicensesError('Date is required')
+                    return
+                  }
+                  if (editingCostLine) {
+                    updateCostLine(editingCostLine, amt, costLineNote, costLineDate)
+                  } else {
+                    addCostLine(costLineLicenseId, amt, costLineNote, costLineDate)
+                  }
+                }}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                Save
+              </button>
+              <button type="button" onClick={closeCostLineForm} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {offsetFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
@@ -6543,7 +8188,7 @@ export default function People() {
             style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>Edit clock session</h3>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>{editClockSessionSplitMode ? 'Split clock session' : 'Edit clock session'}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
@@ -6551,15 +8196,46 @@ export default function People() {
                   type="datetime-local"
                   value={editClockSessionIn}
                   onChange={(e) => setEditClockSessionIn(e.target.value)}
+                  disabled={editClockSessionSplitMode}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
+              {editClockSessionSplitMode && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Split at</label>
+                  <input
+                    type="datetime-local"
+                    value={editClockSessionSplitAt}
+                    onChange={(e) => setEditClockSessionSplitAt(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  />
+                  {(() => {
+                    const inVal = fromDatetimeLocal(editClockSessionIn)
+                    const outVal = fromDatetimeLocal(editClockSessionOut)
+                    const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
+                    if (!inVal || !outVal || !splitVal) return null
+                    const inMs = new Date(inVal).getTime()
+                    const outMs = new Date(outVal).getTime()
+                    const splitMs = new Date(splitVal).getTime()
+                    const hrs1 = (splitMs - inMs) / (1000 * 3600)
+                    const hrs2 = (outMs - splitMs) / (1000 * 3600)
+                    const valid = splitMs > inMs && splitMs < outMs && hrs1 >= 0.01 && hrs2 >= 0.01
+                    return (
+                      <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? '#6b7280' : '#dc2626' }}>
+                        Part 1: {hrs1.toFixed(2)}h | Part 2: {hrs2.toFixed(2)}h
+                        {!valid && splitVal && ' — Split time must be strictly between in and out, with at least 0.01h per part'}
+                      </p>
+                    )
+                  })()}
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked out</label>
                 <input
                   type="datetime-local"
                   value={editClockSessionOut}
                   onChange={(e) => setEditClockSessionOut(e.target.value)}
+                  disabled={editClockSessionSplitMode}
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
@@ -6573,57 +8249,180 @@ export default function People() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </div>
+              {!editClockSessionSplitMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditClockSessionSplitMode(true)
+                    const inVal = fromDatetimeLocal(editClockSessionIn)
+                    const outVal = fromDatetimeLocal(editClockSessionOut)
+                    if (inVal && outVal) {
+                      const inMs = new Date(inVal).getTime()
+                      const outMs = new Date(outVal).getTime()
+                      const midMs = (inMs + outMs) / 2
+                      setEditClockSessionSplitAt(toDatetimeLocal(new Date(midMs).toISOString()))
+                    }
+                  }}
+                  style={{ alignSelf: 'flex-start', padding: '0.25rem 0', border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#3b82f6', textDecoration: 'underline' }}
+                >
+                  Split session
+                </button>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setEditClockSession(null)}
-                disabled={editClockSessionSaving}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const inVal = fromDatetimeLocal(editClockSessionIn)
-                  const outVal = fromDatetimeLocal(editClockSessionOut)
-                  if (!inVal || !outVal) {
-                    setError('Invalid date/time')
-                    return
-                  }
-                  if (new Date(outVal) <= new Date(inVal)) {
-                    setError('Clocked out must be after clocked in')
-                    return
-                  }
-                  if (!editClockSessionNotes.trim()) {
-                    setError('Notes are required')
-                    return
-                  }
-                  setEditClockSessionSaving(true)
-                  const workDate = editClockSessionIn.slice(0, 10)
-                  const { error } = await supabase
-                    .from('clock_sessions')
-                    .update({
-                      clocked_in_at: inVal,
-                      clocked_out_at: outVal,
-                      work_date: workDate,
-                      notes: editClockSessionNotes.trim(),
-                    })
-                    .eq('id', editClockSession.id)
-                  setEditClockSessionSaving(false)
-                  if (error) {
-                    setError(error.message)
-                    return
-                  }
-                  setEditClockSession(null)
-                  await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
-                }}
-                disabled={!editClockSessionNotes.trim() || editClockSessionSaving}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: editClockSessionNotes.trim() && !editClockSessionSaving ? 'pointer' : 'not-allowed' }}
-              >
-                {editClockSessionSaving ? 'Saving…' : 'Save'}
-              </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {editClockSessionSplitMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditClockSessionSplitMode(false)}
+                    disabled={editClockSessionSaving}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
+                  >
+                    Cancel split
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const inVal = fromDatetimeLocal(editClockSessionIn)
+                      const outVal = fromDatetimeLocal(editClockSessionOut)
+                      const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
+                      if (!inVal || !outVal || !splitVal) {
+                        setError('Invalid date/time')
+                        return
+                      }
+                      const inMs = new Date(inVal).getTime()
+                      const outMs = new Date(outVal).getTime()
+                      const splitMs = new Date(splitVal).getTime()
+                      const hrs1 = (splitMs - inMs) / (1000 * 3600)
+                      const hrs2 = (outMs - splitMs) / (1000 * 3600)
+                      if (splitMs <= inMs || splitMs >= outMs) {
+                        setError('Split time must be strictly between clock in and clock out')
+                        return
+                      }
+                      if (hrs1 < 0.01 || hrs2 < 0.01) {
+                        setError('Each part must be at least 0.01 hours (~36 seconds)')
+                        return
+                      }
+                      if (!editClockSessionNotes.trim()) {
+                        setError('Notes are required')
+                        return
+                      }
+                      setEditClockSessionSaving(true)
+                      try {
+                        const workDateA = editClockSessionIn.slice(0, 10)
+                        const workDateB = editClockSessionSplitAt.slice(0, 10)
+                        await withSupabaseRetry(
+                          async () => {
+                            const { error: err1 } = await supabase.from('clock_sessions').insert({
+                              user_id: editClockSession.user_id,
+                              clocked_in_at: inVal,
+                              clocked_out_at: splitVal,
+                              work_date: workDateA,
+                              notes: editClockSessionNotes.trim(),
+                              job_ledger_id: null,
+                              bid_id: null,
+                            })
+                            if (err1) return { data: null, error: err1 }
+                            const { error: err2 } = await supabase.from('clock_sessions').insert({
+                              user_id: editClockSession.user_id,
+                              clocked_in_at: splitVal,
+                              clocked_out_at: outVal,
+                              work_date: workDateB,
+                              notes: editClockSessionNotes.trim(),
+                              job_ledger_id: null,
+                              bid_id: null,
+                            })
+                            if (err2) return { data: null, error: err2 }
+                            const { error: err3 } = await supabase.from('clock_sessions').delete().eq('id', editClockSession.id)
+                            return { data: null, error: err3 }
+                          },
+                          'split clock session'
+                        )
+                        setEditClockSession(null)
+                        setEditClockSessionSplitMode(false)
+                        setEditClockSessionSplitAt('')
+                        showToast?.('Session split into 2 parts', 'success')
+                        await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'Failed to split session')
+                      } finally {
+                        setEditClockSessionSaving(false)
+                      }
+                    }}
+                    disabled={
+                      !editClockSessionNotes.trim() ||
+                      editClockSessionSaving ||
+                      (() => {
+                        const inVal = fromDatetimeLocal(editClockSessionIn)
+                        const outVal = fromDatetimeLocal(editClockSessionOut)
+                        const splitVal = fromDatetimeLocal(editClockSessionSplitAt)
+                        if (!inVal || !outVal || !splitVal) return true
+                        const inMs = new Date(inVal).getTime()
+                        const outMs = new Date(outVal).getTime()
+                        const splitMs = new Date(splitVal).getTime()
+                        const hrs1 = (splitMs - inMs) / (1000 * 3600)
+                        const hrs2 = (outMs - splitMs) / (1000 * 3600)
+                        return splitMs <= inMs || splitMs >= outMs || hrs1 < 0.01 || hrs2 < 0.01
+                      })()
+                    }
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: 'pointer' }}
+                  >
+                    {editClockSessionSaving ? 'Splitting…' : 'Split'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditClockSession(null)}
+                    disabled={editClockSessionSaving}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: editClockSessionSaving ? 'not-allowed' : 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const inVal = fromDatetimeLocal(editClockSessionIn)
+                      const outVal = fromDatetimeLocal(editClockSessionOut)
+                      if (!inVal || !outVal) {
+                        setError('Invalid date/time')
+                        return
+                      }
+                      if (new Date(outVal) <= new Date(inVal)) {
+                        setError('Clocked out must be after clocked in')
+                        return
+                      }
+                      if (!editClockSessionNotes.trim()) {
+                        setError('Notes are required')
+                        return
+                      }
+                      setEditClockSessionSaving(true)
+                      const workDate = editClockSessionIn.slice(0, 10)
+                      const { error } = await supabase
+                        .from('clock_sessions')
+                        .update({
+                          clocked_in_at: inVal,
+                          clocked_out_at: outVal,
+                          work_date: workDate,
+                          notes: editClockSessionNotes.trim(),
+                        })
+                        .eq('id', editClockSession.id)
+                      setEditClockSessionSaving(false)
+                      if (error) {
+                        setError(error.message)
+                        return
+                      }
+                      setEditClockSession(null)
+                      await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                    }}
+                    disabled={!editClockSessionNotes.trim() || editClockSessionSaving}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: editClockSessionNotes.trim() && !editClockSessionSaving ? 'pointer' : 'not-allowed' }}
+                  >
+                    {editClockSessionSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

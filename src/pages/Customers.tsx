@@ -38,6 +38,7 @@ export default function Customers() {
   const [viewingBidsForCustomer, setViewingBidsForCustomer] = useState<string | null>(null)
   const [bidsForCustomer, setBidsForCustomer] = useState<BidRow[]>([])
   const [loadingBids, setLoadingBids] = useState(false)
+  const [countsByCustomerId, setCountsByCustomerId] = useState<Record<string, { projects: number; jobs: number; bids: number }>>({})
   const [searchQuery, setSearchQuery] = useState('')
   const typeFilter = (searchParams.get('type') as CustomerTypeFilter) || 'all'
 
@@ -57,6 +58,29 @@ export default function Customers() {
       return { ...customer, master_user: users ?? null }
     })
     setCustomers(customersWithMasters)
+    const customerIds = customersWithMasters.map((c) => c.id)
+    if (customerIds.length > 0) {
+      const [projectsRes, jobsRes, bidsRes] = await Promise.all([
+        supabase.from('projects').select('customer_id').in('customer_id', customerIds),
+        supabase.from('jobs_ledger').select('customer_id').in('customer_id', customerIds),
+        supabase.from('bids').select('customer_id').in('customer_id', customerIds),
+      ])
+      const counts: Record<string, { projects: number; jobs: number; bids: number }> = {}
+      for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0 }
+      for (const r of (projectsRes.data ?? [])) {
+        const entry = r.customer_id ? counts[r.customer_id] : undefined
+        if (entry) entry.projects++
+      }
+      for (const r of (jobsRes.data ?? [])) {
+        const entry = r.customer_id ? counts[r.customer_id] : undefined
+        if (entry) entry.jobs++
+      }
+      for (const r of (bidsRes.data ?? [])) {
+        const entry = r.customer_id ? counts[r.customer_id] : undefined
+        if (entry) entry.bids++
+      }
+      setCountsByCustomerId(counts)
+    }
     setLoading(false)
   }
 
@@ -96,7 +120,7 @@ export default function Customers() {
   useEffect(() => {
     const editId = location.state?.openEditCustomer
     if (typeof editId === 'string' && editId && editCustomerModal) {
-      editCustomerModal.openEditCustomerModal(editId, { onSaved: fetchCustomers })
+      editCustomerModal.openEditCustomerModal(editId, { onSaved: fetchCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((c) => c.id !== id)) })
       navigate('/customers', { replace: true, state: {} })
     }
   }, [location.state?.openEditCustomer, editCustomerModal, navigate])
@@ -207,19 +231,13 @@ export default function Customers() {
               <div>
                 <button
                 type="button"
-                onClick={() => editCustomerModal?.openEditCustomerModal(c.id, { onSaved: fetchCustomers })}
+                onClick={() => editCustomerModal?.openEditCustomerModal(c.id, { onSaved: fetchCustomers, onDeleted: (id) => setCustomers((prev) => prev.filter((x) => x.id !== id)) })}
                 style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 500, cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
               >
                 {c.name}
               </button>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {c.address && <span>{c.address}</span>}
-                  {c.master_user && (
-                    <span>
-                      {c.address && <span> · </span>}
-                      Master: {c.master_user.name || c.master_user.email || 'Unknown'}
-                    </span>
-                  )}
                   {c.address && (
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.address)}`}
@@ -300,24 +318,31 @@ export default function Customers() {
                 </div>
               </div>
               <span className="customers-projects-bids-links" style={{ display: 'flex', gap: '0.5rem' }}>
-                <Link to={`/projects?customer=${c.id}`}>Projects</Link>
-                <Link to={`/jobs?customer=${c.id}`}>Jobs</Link>
-                <button
-                  onClick={() => {
-                    setViewingBidsForCustomer(c.id)
-                    loadBidsForCustomer(c.id)
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#2563eb',
-                    cursor: 'pointer',
-                    padding: 0,
-                    font: 'inherit',
-                  }}
-                >
-                  Bids
-                </button>
+                {(() => {
+                  const counts = countsByCustomerId[c.id] ?? { projects: 0, jobs: 0, bids: 0 }
+                  return (
+                    <>
+                      <Link to={`/projects?customer=${c.id}`}>Projects ({counts.projects})</Link>
+                      <Link to={`/jobs?customer=${c.id}`}>Jobs ({counts.jobs})</Link>
+                      <button
+                        onClick={() => {
+                          setViewingBidsForCustomer(c.id)
+                          loadBidsForCustomer(c.id)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#2563eb',
+                          cursor: 'pointer',
+                          padding: 0,
+                          font: 'inherit',
+                        }}
+                      >
+                        Bids ({counts.bids})
+                      </button>
+                    </>
+                  )
+                })()}
               </span>
             </li>
           ))}

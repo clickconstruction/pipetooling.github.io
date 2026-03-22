@@ -7,7 +7,7 @@ const REFRESH_WINDOW_MS = 30 * 60 * 1000 // 30 minutes
 // Expiry warning: show when less than this time remains
 const WARNING_THRESHOLD_MS = 15 * 60 * 1000 // 15 minutes
 
-export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary'
+export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
 
 interface UseAuthReturn {
   user: User | null

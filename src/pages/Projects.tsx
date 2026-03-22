@@ -25,6 +25,12 @@ export default function Projects() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
+  const [superintendentsByProject, setSuperintendentsByProject] = useState<
+    Record<string, Array<{ id: string; name: string | null; email: string | null }>>
+  >({})
+  const [jobsByProject, setJobsByProject] = useState<
+    Record<string, Array<{ id: string; hcp_number: string; job_name: string; status: string }>>
+  >({})
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -85,16 +91,55 @@ export default function Projects() {
       setProjects(projectsWithMasters)
       setLoading(false)
 
-      // Load active steps and step summaries in background (progressive loading)
+      // Load active steps, step summaries, and superintendent access in background
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
+        const masterIds = [...new Set(projectsWithMasters.map((p) => p.master_user_id).filter(Boolean))] as string[]
 
-        // Single query: workflows with nested steps (reduces round-trips, limit to prevent huge result sets)
-        const { data: workflows, error: workflowsErr } = await supabase
-          .from('project_workflows')
-          .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
-          .in('project_id', projectIds)
-          .limit(100)
+        // Parallel: workflows + superintendent data + linked jobs
+        const [workflowsRes, psRes, msRes, jobsRes] = await Promise.all([
+          supabase
+            .from('project_workflows')
+            .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
+            .in('project_id', projectIds)
+            .limit(100),
+          supabase.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds),
+          masterIds.length > 0 ? supabase.from('master_superintendents').select('master_id, superintendent_id').in('master_id', masterIds) : Promise.resolve({ data: [] as { master_id: string; superintendent_id: string }[] }),
+          supabase.from('jobs_ledger').select('id, hcp_number, job_name, project_id, status').in('project_id', projectIds),
+        ])
+
+        const { data: workflows, error: workflowsErr } = workflowsRes
+        const psData = (psRes as { data: { project_id: string; superintendent_id: string }[] | null }).data ?? []
+        const msData = (msRes as { data: { master_id: string; superintendent_id: string }[] | null }).data ?? []
+
+        // Build superintendentsByProject
+        const superintendentIds = [...new Set([...psData.map((r) => r.superintendent_id), ...msData.map((r) => r.superintendent_id)])]
+        let usersMap: Record<string, { id: string; name: string | null; email: string | null }> = {}
+        if (superintendentIds.length > 0) {
+          const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', superintendentIds)
+          const users = (usersData ?? []) as Array<{ id: string; name: string | null; email: string | null }>
+          users.forEach((u) => {
+            usersMap[u.id] = u
+          })
+        }
+        const map: Record<string, Array<{ id: string; name: string | null; email: string | null }>> = {}
+        projectsWithMasters.forEach((p) => {
+          const ids = new Set<string>()
+          msData.filter((r) => r.master_id === p.master_user_id).forEach((r) => ids.add(r.superintendent_id))
+          psData.filter((r) => r.project_id === p.id).forEach((r) => ids.add(r.superintendent_id))
+          map[p.id] = [...ids].map((id) => usersMap[id]).filter((u): u is { id: string; name: string | null; email: string | null } => !!u)
+        })
+        setSuperintendentsByProject(map)
+
+        const jobsData = (jobsRes as { data: Array<{ id: string; hcp_number: string; job_name: string; project_id: string; status: string }> | null }).data ?? []
+        const jobsMap: Record<string, Array<{ id: string; hcp_number: string; job_name: string; status: string }>> = {}
+        jobsData.forEach((j) => {
+          if (j.project_id) {
+            const arr = jobsMap[j.project_id] ?? []
+            jobsMap[j.project_id] = [...arr, { id: j.id, hcp_number: j.hcp_number, job_name: j.job_name, status: j.status }]
+          }
+        })
+        setJobsByProject(jobsMap)
 
         if (workflowsErr) {
           console.error('Projects: workflows+steps query failed', workflowsErr)
@@ -255,16 +300,13 @@ export default function Projects() {
                 borderBottom: '1px solid #e5e7eb',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: 'flex-start',
               }}
             >
               <div>
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   {p.customers?.name ?? '—'} · {p.status}
-                  {p.master_user && (
-                    <span> · Master: {p.master_user.name || p.master_user.email || 'Unknown'}</span>
-                  )}
                   {activeSteps[p.id] && (
                     <span>
                       {' · Current stage: '}
@@ -339,8 +381,62 @@ export default function Projects() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '0.5rem',
+                  minWidth: 200,
+                  flexShrink: 0,
+                  paddingLeft: '1rem',
+                  marginLeft: '1rem',
+                  borderLeft: '1px solid #e5e7eb',
+                }}
+              >
                 <Link to={`/projects/${p.id}/edit`}>Edit</Link>
+                {p.master_user && (
+                  <span style={{ padding: '0.2rem 0.5rem', background: '#eff6ff', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 500 }}>
+                    Master: {p.master_user.name || p.master_user.email || 'Unknown'}
+                  </span>
+                )}
+                {(superintendentsByProject[p.id]?.length ?? 0) > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
+                    {(superintendentsByProject[p.id] ?? []).map((s) => (
+                      <span key={s.id} style={{ padding: '0.2rem 0.5rem', background: '#f0fdf4', borderRadius: 4, fontSize: '0.8125rem' }}>
+                        {s.name || s.email || 'Unknown'}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {(jobsByProject[p.id]?.length ?? 0) > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
+                    {(jobsByProject[p.id] ?? []).map((j) => (
+                      <Link
+                        key={j.id}
+                        to={`/jobs?edit=${j.id}&tab=stages`}
+                        style={{ padding: '0.2rem 0.5rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
+                      >
+                        {j.hcp_number || j.job_name || 'Job'}
+                      </Link>
+                    ))}
+                    <Link
+                      to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
+                      style={{ padding: '0.2rem 0.5rem', background: '#e0f2fe', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#0369a1' }}
+                    >
+                      + Create Job
+                    </Link>
+                  </div>
+                ) : (
+                  <Link
+                    to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
+                    style={{ fontSize: '0.8125rem', color: '#0369a1', textDecoration: 'none' }}
+                  >
+                    + Create Job for this project
+                  </Link>
+                )}
               </div>
             </li>
           ))}

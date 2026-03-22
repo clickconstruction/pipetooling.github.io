@@ -3,9 +3,9 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 6 Supabase Edge Functions
+purpose: Complete API documentation for all 10+ Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-02-22
+last_updated: 2026-04-27
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 

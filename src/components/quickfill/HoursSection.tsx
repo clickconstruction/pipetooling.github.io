@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
-import { ClockSessionsTable, ClockSessionsSection } from '../clock-sessions'
+import { AssignSessionJobPopover, ClockSessionsTable, ClockSessionsSection } from '../clock-sessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 
@@ -448,6 +448,33 @@ export function HoursSection() {
               showActionsColumn
               locationVariant="full"
               emptyMessage="No pending sessions"
+              renderJob={(s) => {
+                const jobDisplay = s.jobs_ledger
+                  ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+                  : s.bids
+                    ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+                    : null
+                const isActive = s.clocked_out_at == null
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
+                    {!isActive && (
+                      <span style={{ flexShrink: 0 }}>
+                        <AssignSessionJobPopover
+                          session={s}
+                          onSaved={() => {
+                            loadAllClockSessionsRef.current?.()
+                            loadPeopleHoursRef.current?.()
+                          }}
+                          onError={(msg) => setError(msg)}
+                        />
+                      </span>
+                    )}
+                    {jobDisplay != null && (
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{jobDisplay}</span>
+                    )}
+                  </div>
+                )
+              }}
               renderActions={(s) => {
                 const personName = s.users?.name?.trim() ?? 'Unknown'
                 const isActive = s.clocked_out_at == null
@@ -479,7 +506,7 @@ export function HoursSection() {
                         <button
                           type="button"
                           onClick={async () => {
-                            const { data, error } = await supabase.rpc('approve_clock_sessions', { p_session_ids: [s.id] })
+                            const { data, error } = await import('../../lib/approveClockSessions').then((m) => m.approveClockSessions([s.id]))
                             if (error) { setError(error.message); return }
                             const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
                             const row = result[0]

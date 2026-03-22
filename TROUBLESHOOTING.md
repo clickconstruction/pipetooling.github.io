@@ -105,7 +105,20 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
 ---
 
+## RPC returns 404 (e.g. approve_clock_sessions)
+
+**Symptoms**: RPC call returns 404 even though the function exists in the database.
+
+**Solutions**:
+1. Reload PostgREST schema: `NOTIFY pgrst, 'reload schema';` in Supabase SQL Editor
+2. Ensure client uses `db: { schema: 'public' }` (see [src/lib/supabase.ts](src/lib/supabase.ts))
+3. For approve_clock_sessions, the app uses [approveClockSessions](src/lib/approveClockSessions.ts) helper with fetch fallback
+
+**See**: [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) → RPC 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125
+
+---
+
 ## Related docs
 
-- [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) - Edge function 404 issues
+- [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) - RPC and Edge function 404 issues
 - [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Fix app and pin features (v2.51)

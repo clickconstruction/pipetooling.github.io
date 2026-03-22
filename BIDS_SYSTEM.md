@@ -3,9 +3,9 @@
 ---
 file: BIDS_SYSTEM.md
 type: System Documentation
-purpose: Complete documentation of 6-tab Bids system including workflows, book systems, and integrations
+purpose: Complete documentation of 10-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-04-23
+last_updated: 2026-04-27
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -61,7 +61,7 @@ key_sections:
     description: "All bids-related tables"
 
 quick_navigation:
-  - "[6-Tab Workflow](#overview) - Tab sequence and purpose"
+  - "[10-Tab Workflow](#overview) - Tab sequence and purpose"
   - "[Book Systems](#takeoff-tab) - Assembly libraries"
   - "[Database Tables](#database-schema) - Schema reference"
   - "[Materials Integration](#integration-with-materials) - PO creation"

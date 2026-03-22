@@ -18,6 +18,7 @@ export default function EditCustomerModal() {
             modalContext.closeModal()
           }}
           onCancel={modalContext.closeModal}
+          onDeleted={modalContext.onDeleted ?? undefined}
         />
       </div>
     </div>

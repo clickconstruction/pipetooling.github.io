@@ -15,7 +15,7 @@ type MaterialTemplate = Database['public']['Tables']['material_templates']['Row'
 type MaterialTemplateItem = Database['public']['Tables']['material_template_items']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
 interface ServiceType {
   id: string
@@ -125,6 +125,7 @@ export default function Materials() {
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [primaryServiceTypeIds, setPrimaryServiceTypeIds] = useState<string[] | null>(null)
+  const [superintendentServiceTypeIds, setSuperintendentServiceTypeIds] = useState<string[] | null>(null)
 
   // Part Types state
   const [partTypes, setPartTypes] = useState<PartType[]>([])
@@ -272,7 +273,7 @@ export default function Materials() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids, primary_service_type_ids')
+      .select('role, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -280,9 +281,10 @@ export default function Materials() {
       setLoading(false)
       return
     }
-    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null } | null)?.role ?? null
+    const role = (me as { role: UserRole; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null } | null)?.role ?? null
     const estIds = (me as { estimator_service_type_ids?: string[] | null } | null)?.estimator_service_type_ids
     const primIds = (me as { primary_service_type_ids?: string[] | null } | null)?.primary_service_type_ids
+    const supIds = (me as { superintendent_service_type_ids?: string[] | null } | null)?.superintendent_service_type_ids
     setMyRole(role)
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
@@ -294,7 +296,12 @@ export default function Materials() {
     } else {
       setPrimaryServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary') {
+    if (role === 'superintendent' && supIds && supIds.length > 0) {
+      setSuperintendentServiceTypeIds(supIds)
+    } else {
+      setSuperintendentServiceTypeIds(null)
+    }
+    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
       setLoading(false)
       return
     }
@@ -321,6 +328,8 @@ export default function Materials() {
       visibleTypes = types.filter((st) => estimatorServiceTypeIds.includes(st.id))
     } else if (primaryServiceTypeIds && primaryServiceTypeIds.length > 0) {
       visibleTypes = types.filter((st) => primaryServiceTypeIds.includes(st.id))
+    } else if (superintendentServiceTypeIds && superintendentServiceTypeIds.length > 0) {
+      visibleTypes = types.filter((st) => superintendentServiceTypeIds.includes(st.id))
     }
     const firstId = visibleTypes[0]?.id
     if (firstId) {
@@ -900,7 +909,7 @@ export default function Materials() {
 
   useEffect(() => {
     const tab = searchParams.get('tab')
-    if (myRole === 'primary' && (tab === 'supply-houses' || tab === 'templates-po' || tab === 'purchase-orders')) {
+    if ((myRole === 'primary' || myRole === 'superintendent') && (tab === 'supply-houses' || tab === 'templates-po' || tab === 'purchase-orders')) {
       setActiveTab('price-book')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -947,7 +956,7 @@ export default function Materials() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary') {
+    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
       const loadInitial = async () => {
         try {
           setPartsPage(0)
@@ -960,7 +969,7 @@ export default function Materials() {
       }
       loadInitial()
     }
-  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds])
+  }, [myRole, estimatorServiceTypeIds, primaryServiceTypeIds, superintendentServiceTypeIds])
 
   // Restore Load All mode preference from localStorage (per user); default off so filter dropdowns work
   useEffect(() => {
@@ -971,7 +980,7 @@ export default function Materials() {
 
   // Reload data when service type or loadAllMode changes
   useEffect(() => {
-    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary')) {
+    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       setFilterPartTypeId('')
       setFilterManufacturer('')
       const loadForServiceType = async () => {
@@ -1181,8 +1190,8 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary') {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, and primaries can access materials.</div>
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, primaries, and superintendents can access materials.</div>
   }
 
   // Filter parts by search query (name, manufacturer, part_type, notes) — used by part pickers
@@ -2677,7 +2686,9 @@ export default function Materials() {
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
     : (myRole === 'primary' && primaryServiceTypeIds && primaryServiceTypeIds.length > 0)
       ? serviceTypes.filter((st) => primaryServiceTypeIds.includes(st.id))
-      : serviceTypes
+      : (myRole === 'superintendent' && superintendentServiceTypeIds && superintendentServiceTypeIds.length > 0)
+        ? serviceTypes.filter((st) => superintendentServiceTypeIds.includes(st.id))
+        : serviceTypes
 
   return (
     <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
@@ -2715,7 +2726,7 @@ export default function Materials() {
       <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', gap: '1rem', width: 'max-content', alignItems: 'center' }}>
-        {myRole !== 'estimator' && myRole !== 'primary' && (
+        {myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent' && (
           <>
           <button
             type="button"
@@ -2789,7 +2800,7 @@ export default function Materials() {
         >
           Assembly Book
         </button>
-        {myRole !== 'primary' && (
+        {myRole !== 'primary' && myRole !== 'superintendent' && (
           <>
           <button
             type="button"

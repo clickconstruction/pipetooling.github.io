@@ -47,7 +47,7 @@ export function ReceivablesSection() {
 
   async function loadRoster() {
     if (!authUser?.id) return
-    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').order('kind').order('name')
+    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name')
     setPeople((peopleData as Person[]) ?? [])
     await loadUsers()
   }

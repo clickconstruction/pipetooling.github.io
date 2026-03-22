@@ -58,6 +58,8 @@ This document provides detailed information about all workflow-related features.
 - **Reject**: Pending or in-progress (owners/masters only)
 - **Re-open**: Completed, approved, or rejected (owners/masters only)
 
+**Note**: Approve and Reject refer to the card they appear on (same step), not the previous card.
+
 **Access Control**:
 - Assistants/subcontractors can only use Set Start and Complete on stages assigned to them
 - Owners/masters can use all actions on any stage
@@ -74,31 +76,51 @@ This document provides detailed information about all workflow-related features.
 
 **Database**: `project_workflow_step_actions` table
 
+### Button Styling
+
+Workflow uses scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions. **Action button colors**: Set Start blue (initiate, `wf-btn-info`), Complete green (success, `wf-btn-success`), Approve blue (manager sign-off, `wf-btn-info`), Reject red (destructive, `wf-btn-danger`). Approve and Reject are visually separated from Set Start and Complete (left border, spacing) and available to dev, master, and assistant. Notify control is right-aligned when the card is expanded.
+
+### Collapse Old Stages Toggle
+
+- **Toggle button**: "Collapse old stages" / "Expand old stages" (shown when 2+ completed/approved stages).
+- **When off**: All steps shown individually.
+- **When on**: Old completed stages (all but the most recent by `sequence_order`) are replaced by a single summary row: `X previous stages · Started {date}`. Most recent completed stage stays visible. Summary row is clickable to expand.
+- **Implementation**: `oldStagesCollapsed` state; `displayItems` array with `summary` or `step` types; summary card uses green background `#f0fdf4`.
+
+### Stage Breadcrumb Layout
+
+- **Location**: Dedicated row below the title and "Expand old stages" / "Add step" buttons.
+- **Full width**: Breadcrumb spans full width; no longer competes with buttons on the same row.
+- **Horizontal scroll**: Stages stay on one line (`whiteSpace: nowrap`); horizontal scrollbar when content exceeds viewport. Uses `overflowX: auto`, `minWidth: 0`, `WebkitOverflowScrolling: touch` following Materials/People pattern.
+- **Click to scroll**: Each stage name is clickable and scrolls the corresponding step card into view.
+
 ---
 
 ## Financial Tracking
 
 ### Collapsible Sections (Stage Card)
 
-Each stage card has collapsible sections for Notify, Notes, Private Notes, and Line Items.
+**Row collapse**: Entire step card can collapse to 1–2 lines. Completed/approved cards default collapsed. Chevron in header toggles expand/collapse. Collapsed header shows Start/End dates, line items (count + total), Notes/Pvt word counts. Assign and Notify hidden when collapsed. Notes and Private Notes section labels show word count (e.g. "Notes (12 words)").
+
+Each stage card has collapsible sections for Notify, Notes, Private Notes, and Line Items For Office.
 
 **Notify when stage**:
 - Always collapsed by default
 - Cross-step checkboxes ("Notify next card assignee when complete or approved", "Notify prior card assignee when rejected") default to on (null/undefined = checked)
 - These two checkboxes do not affect section expansion
 
-**Notes, Private Notes, Line Items**:
+**Notes, Private Notes, Line Items For Office**:
 - Expand when stage is in progress or when section has content
 - Same font size (1rem) for all three headers
 - No blue background/border (matches Notes styling)
 
-**Line Items when collapsed**:
-- Header shows total: "Line Items (Master and Assistants only) | $3,000.00"
+**Line Items For Office when collapsed**:
+- Header shows total: "Line Items For Office | $3,000.00"
 - Total is sum of all line item amounts for that stage
 
 ---
 
-### Line Items (Stage-Level)
+### Line Items For Office (Stage-Level)
 
 **Purpose**: Track actual expenses/credits for individual workflow stages
 
@@ -113,6 +135,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Negative amounts for credits/refunds
 - Amounts formatted with commas: `$1,234.56`
 - Aggregated in Ledger at top of workflow
+- **Supply House Invoice Integration**: Line items can link to `supply_house_invoices` via `supply_house_invoice_id`. "Add Supply House Invoice" button when invoices exist; modal with search by invoice #, supply house name, amount, date, PO #, paid/unpaid. "View Invoice" button on linked line items opens details modal.
 
 **Access / Visibility**:
 - Devs and masters can see and manage line items for all stages
@@ -222,7 +245,7 @@ All monetary amounts throughout the application use comma formatting:
 **Implementation**: `formatAmount()` function uses `toLocaleString('en-US')` with 2 decimal places
 
 **Applied to**:
-- Line Items (in cards and Ledger)
+- Line Items For Office (in cards and Ledger)
 - Projections
 - All financial totals
 

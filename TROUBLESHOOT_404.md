@@ -1,15 +1,38 @@
-# Troubleshooting 404 Error for send-workflow-notification
+# Troubleshooting 404 Errors
 
-## The Problem
-Getting 404 error even though:
+## RPC 404 (e.g. approve_clock_sessions)
+
+**Symptoms**: `POST /rest/v1/rpc/approve_clock_sessions` returns 404 even though the function exists and works via SQL.
+
+**Solutions**:
+
+1. **Reload PostgREST schema cache**: In Supabase SQL Editor, run:
+   ```sql
+   NOTIFY pgrst, 'reload schema';
+   ```
+
+2. **Explicit schema in client**: The Supabase client uses `db: { schema: 'public' }` in [src/lib/supabase.ts](src/lib/supabase.ts). If missing, add it to avoid schema mismatches.
+
+3. **approveClockSessions helper**: [src/lib/approveClockSessions.ts](src/lib/approveClockSessions.ts) uses `supabase.schema('public').rpc(...)` and has a fetch fallback when RPC returns 404. People Hours and Quickfill Hours use this helper.
+
+4. **Verify function in OpenAPI**: `GET https://your-project.supabase.co/rest/v1/` with `Accept: application/openapi+json` — search for the RPC path. If missing, schema cache may be stale.
+
+**See**: [RECENT_FEATURES.md](RECENT_FEATURES.md) v2.125; [MIGRATIONS.md](MIGRATIONS.md) → 20260427120000
+
+---
+
+## Edge Function 404 (e.g. send-workflow-notification)
+
+### The Problem
+Getting 404 error for an Edge Function even though:
 - ✅ Function is deployed and active in Supabase Dashboard
 - ✅ JWT is disabled
 - ✅ API key is active
 - ✅ Edge function shows as active
 
-## Possible Causes & Solutions
+### Possible Causes & Solutions
 
-### 1. Function Name Mismatch
+#### 1. Function Name Mismatch
 **Check**: The function name in Supabase Dashboard must match EXACTLY (case-sensitive, hyphens matter)
 
 **Solution**:
@@ -20,7 +43,7 @@ Getting 404 error even though:
   - Rename it in the dashboard to match, OR
   - Update the code to match the dashboard name
 
-### 2. Project URL Mismatch
+#### 2. Project URL Mismatch
 **Check**: Your `.env` file might be pointing to a different project
 
 **Solution**:
@@ -32,7 +55,7 @@ Getting 404 error even though:
 3. In Supabase Dashboard, check your project URL (Settings → API)
 4. Make sure they match exactly
 
-### 3. Deployment Propagation Delay
+#### 3. Deployment Propagation Delay
 **Check**: Sometimes deployments take a few minutes to propagate
 
 **Solution**:
@@ -41,7 +64,7 @@ Getting 404 error even though:
 - Clear browser cache
 - Try in an incognito/private window
 
-### 4. Function Not Fully Deployed
+#### 4. Function Not Fully Deployed
 **Check**: The function might show as "active" but not be fully deployed
 
 **Solution**:
@@ -53,14 +76,14 @@ Getting 404 error even though:
    - Click "Deploy" again
    - Wait for deployment to complete
 
-### 5. Region Mismatch
+#### 5. Region Mismatch
 **Check**: If your Supabase project is in a specific region, the function might need to be in the same region
 
 **Solution**:
 - Check your Supabase project region (Settings → General)
 - Make sure the Edge Function is deployed to the same region
 
-### 6. Browser Cache / Service Worker
+#### 6. Browser Cache / Service Worker
 **Check**: Old cached code might be using a different function name
 
 **Solution**:
@@ -69,7 +92,7 @@ Getting 404 error even though:
 - Try in incognito/private window
 - If using a service worker, unregister it
 
-### 7. Check Function URL Directly
+#### 7. Check Function URL Directly
 **Test**: Try accessing the function URL directly
 
 **Solution**:
@@ -78,7 +101,7 @@ Getting 404 error even though:
 3. Try a POST request to this URL (using Postman, curl, or browser DevTools)
 4. You should get a response (even if it's an error about missing auth)
 
-### 8. Verify Function Code
+#### 8. Verify Function Code
 **Check**: Make sure the function code in the dashboard matches the file
 
 **Solution**:
@@ -88,7 +111,7 @@ Getting 404 error even though:
 4. Compare the code - make sure it matches exactly
 5. If different, paste the correct code and redeploy
 
-### 9. Check Supabase Client Configuration
+#### 9. Check Supabase Client Configuration
 **Check**: The Supabase client might be configured incorrectly
 
 **Solution**:
@@ -99,7 +122,7 @@ Getting 404 error even though:
    - The expected function URL
 3. Verify these match what you see in Supabase Dashboard
 
-### 10. Test with a Simple Function Call
+#### 10. Test with a Simple Function Call
 **Test**: Try invoking the function with minimal data
 
 **Solution**:

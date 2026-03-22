@@ -230,7 +230,7 @@ export default function DispatchTaskModal() {
             />
           </label>
           <div style={{ marginBottom: 0 }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reference (optional)</span>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Reference Job (optional)</span>
             {serviceTypes.length === 1 ? (
               <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                 Filtering by: {serviceTypes[0]!.name}
