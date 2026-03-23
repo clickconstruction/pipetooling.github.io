@@ -5,6 +5,7 @@
 -- jobs_ledger
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger" ON public.jobs_ledger;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger" ON public.jobs_ledger;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger"
 ON public.jobs_ledger FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -19,6 +20,7 @@ ON public.jobs_ledger FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can update jobs ledger" ON public.jobs_ledger;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can update jobs ledger" ON public.jobs_ledger;
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger"
 ON public.jobs_ledger FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -39,6 +41,7 @@ WITH CHECK (
 -- jobs_ledger_materials
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger materials" ON public.jobs_ledger_materials;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger materials" ON public.jobs_ledger_materials;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger materials"
 ON public.jobs_ledger_materials FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -55,6 +58,7 @@ ON public.jobs_ledger_materials FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can insert jobs ledger materials" ON public.jobs_ledger_materials;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can insert jobs ledger materials" ON public.jobs_ledger_materials;
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger materials"
 ON public.jobs_ledger_materials FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -69,6 +73,7 @@ ON public.jobs_ledger_materials FOR INSERT WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can update jobs ledger materials" ON public.jobs_ledger_materials;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can update jobs ledger materials" ON public.jobs_ledger_materials;
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger materials"
 ON public.jobs_ledger_materials FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -86,6 +91,7 @@ ON public.jobs_ledger_materials FOR UPDATE USING (
 WITH CHECK (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary')));
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can delete jobs ledger materials" ON public.jobs_ledger_materials;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can delete jobs ledger materials" ON public.jobs_ledger_materials;
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger materials"
 ON public.jobs_ledger_materials FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -105,6 +111,7 @@ ON public.jobs_ledger_materials FOR DELETE USING (
 -- jobs_ledger_invoices
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger invoices" ON public.jobs_ledger_invoices;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger invoices" ON public.jobs_ledger_invoices;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger invoices"
 ON public.jobs_ledger_invoices FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -121,6 +128,7 @@ ON public.jobs_ledger_invoices FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can insert jobs ledger invoices" ON public.jobs_ledger_invoices;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can insert jobs ledger invoices" ON public.jobs_ledger_invoices;
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger invoices"
 ON public.jobs_ledger_invoices FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -135,6 +143,7 @@ ON public.jobs_ledger_invoices FOR INSERT WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can update jobs ledger invoices" ON public.jobs_ledger_invoices;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can update jobs ledger invoices" ON public.jobs_ledger_invoices;
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger invoices"
 ON public.jobs_ledger_invoices FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -152,6 +161,7 @@ ON public.jobs_ledger_invoices FOR UPDATE USING (
 WITH CHECK (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary')));
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can delete jobs ledger invoices" ON public.jobs_ledger_invoices;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can delete jobs ledger invoices" ON public.jobs_ledger_invoices;
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger invoices"
 ON public.jobs_ledger_invoices FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -171,6 +181,7 @@ ON public.jobs_ledger_invoices FOR DELETE USING (
 -- jobs_ledger_payments
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger payments" ON public.jobs_ledger_payments;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger payments" ON public.jobs_ledger_payments;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger payments"
 ON public.jobs_ledger_payments FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -187,6 +198,7 @@ ON public.jobs_ledger_payments FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can insert jobs ledger payments" ON public.jobs_ledger_payments;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can insert jobs ledger payments" ON public.jobs_ledger_payments;
 CREATE POLICY "Devs, masters, assistants, primary can insert jobs ledger payments"
 ON public.jobs_ledger_payments FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -201,6 +213,7 @@ ON public.jobs_ledger_payments FOR INSERT WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can update jobs ledger payments" ON public.jobs_ledger_payments;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can update jobs ledger payments" ON public.jobs_ledger_payments;
 CREATE POLICY "Devs, masters, assistants, primary can update jobs ledger payments"
 ON public.jobs_ledger_payments FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -218,6 +231,7 @@ ON public.jobs_ledger_payments FOR UPDATE USING (
 WITH CHECK (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary')));
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can delete jobs ledger payments" ON public.jobs_ledger_payments;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can delete jobs ledger payments" ON public.jobs_ledger_payments;
 CREATE POLICY "Devs, masters, assistants, primary can delete jobs ledger payments"
 ON public.jobs_ledger_payments FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -237,6 +251,7 @@ ON public.jobs_ledger_payments FOR DELETE USING (
 -- jobs_tally_parts
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs masters assistants primary superintendent can read jobs tally parts" ON public.jobs_tally_parts;
+DROP POLICY IF EXISTS "Devs masters assistants primary can read jobs tally parts" ON public.jobs_tally_parts;
 CREATE POLICY "Devs masters assistants primary can read jobs tally parts"
 ON public.jobs_tally_parts FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -253,6 +268,7 @@ ON public.jobs_tally_parts FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs masters assistants primary superintendent can insert jobs tally parts" ON public.jobs_tally_parts;
+DROP POLICY IF EXISTS "Devs masters assistants primary can insert jobs tally parts" ON public.jobs_tally_parts;
 CREATE POLICY "Devs masters assistants primary can insert jobs tally parts"
 ON public.jobs_tally_parts FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -269,6 +285,7 @@ ON public.jobs_tally_parts FOR INSERT WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Devs masters assistants primary superintendent can update jobs tally parts" ON public.jobs_tally_parts;
+DROP POLICY IF EXISTS "Devs masters assistants primary can update jobs tally parts" ON public.jobs_tally_parts;
 CREATE POLICY "Devs masters assistants primary can update jobs tally parts"
 ON public.jobs_tally_parts FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -285,6 +302,7 @@ ON public.jobs_tally_parts FOR UPDATE USING (
 );
 
 DROP POLICY IF EXISTS "Devs masters assistants primary superintendent can delete jobs tally parts" ON public.jobs_tally_parts;
+DROP POLICY IF EXISTS "Devs masters assistants primary can delete jobs tally parts" ON public.jobs_tally_parts;
 CREATE POLICY "Devs masters assistants primary can delete jobs tally parts"
 ON public.jobs_tally_parts FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -304,6 +322,7 @@ ON public.jobs_tally_parts FOR DELETE USING (
 -- jobs_ledger_fixtures
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger fixtures" ON public.jobs_ledger_fixtures;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger fixtures" ON public.jobs_ledger_fixtures;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger fixtures"
 ON public.jobs_ledger_fixtures FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))
@@ -320,6 +339,7 @@ ON public.jobs_ledger_fixtures FOR SELECT USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, superintendent can insert jobs ledger fixtures" ON public.jobs_ledger_fixtures;
+DROP POLICY IF EXISTS "Devs, masters, assistants can insert jobs ledger fixtures" ON public.jobs_ledger_fixtures;
 CREATE POLICY "Devs, masters, assistants can insert jobs ledger fixtures"
 ON public.jobs_ledger_fixtures FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -333,6 +353,7 @@ ON public.jobs_ledger_fixtures FOR INSERT WITH CHECK (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, superintendent can update jobs ledger fixtures" ON public.jobs_ledger_fixtures;
+DROP POLICY IF EXISTS "Devs, masters, assistants can update jobs ledger fixtures" ON public.jobs_ledger_fixtures;
 CREATE POLICY "Devs, masters, assistants can update jobs ledger fixtures"
 ON public.jobs_ledger_fixtures FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -348,6 +369,7 @@ ON public.jobs_ledger_fixtures FOR UPDATE USING (
 );
 
 DROP POLICY IF EXISTS "Devs, masters, assistants, superintendent can delete jobs ledger fixtures" ON public.jobs_ledger_fixtures;
+DROP POLICY IF EXISTS "Devs, masters, assistants can delete jobs ledger fixtures" ON public.jobs_ledger_fixtures;
 CREATE POLICY "Devs, masters, assistants can delete jobs ledger fixtures"
 ON public.jobs_ledger_fixtures FOR DELETE USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant'))
@@ -366,6 +388,7 @@ ON public.jobs_ledger_fixtures FOR DELETE USING (
 -- jobs_ledger_team_members
 -- ============================================================================
 DROP POLICY IF EXISTS "Devs, masters, assistants, primary, superintendent can read jobs ledger team members" ON public.jobs_ledger_team_members;
+DROP POLICY IF EXISTS "Devs, masters, assistants, primary can read jobs ledger team members" ON public.jobs_ledger_team_members;
 CREATE POLICY "Devs, masters, assistants, primary can read jobs ledger team members"
 ON public.jobs_ledger_team_members FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('dev', 'master_technician', 'assistant', 'primary'))

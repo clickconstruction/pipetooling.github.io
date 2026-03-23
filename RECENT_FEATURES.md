@@ -364,14 +364,14 @@ when_to_read:
 
 **Date**: 2026-06-24
 
-### Fix cost_estimates RLS for Assistants
+### Fix cost_estimates RLS for Assistants and Devs
 
-- **Problem**: Assistants got "Failed to create cost estimate: new row violates row-level security policy for table 'cost_estimates'" when opening the Cost Estimate tab on a bid.
-- **Cause**: The cost_estimates policies used inline subqueries on `bids` and `users` (subject to RLS), which could fail even when access was intended.
-- **Fix**: Replace inline subqueries with `can_access_bid_for_pricing(bid_id)` (SECURITY DEFINER), matching bid_pricing_assignments and bid_count_row_custom_prices.
+- **Problem**: Assistants and devs got "Failed to create cost estimate: new row violates row-level security policy for table 'cost_estimates'" when adding a Bids Counts row or opening the Cost Estimate tab.
+- **Cause**: (1) Policies used inline subqueries on `bids` and `users` (subject to RLS). (2) Even after switching to `can_access_bid_for_pricing`, the redundant `EXISTS (SELECT 1 FROM users ...)` ran as invoker and could fail under users RLS.
+- **Fix**: (1) Replace inline subqueries with `can_access_bid_for_pricing(bid_id)`. (2) Drop the users subquery; use only `can_access_bid_for_pricing` (it validates role via SECURITY DEFINER internally).
 - **Tables**: cost_estimates (4 policies), cost_estimate_labor_rows (4 policies).
 
-**Files**: `supabase/migrations/20260624000000_fix_cost_estimates_rls_use_helper.sql`
+**Files**: `supabase/migrations/20260624000000_fix_cost_estimates_rls_use_helper.sql`, `supabase/migrations/20260624120000_cost_estimates_rls_drop_users_subquery.sql`
 
 ---
 

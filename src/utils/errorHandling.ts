@@ -49,6 +49,13 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
 function isRetryableError(error: unknown): boolean {
   if (!error) return false
   
+  // AbortError (user navigated away, request cancelled) - never retry
+  const isAbort =
+    (error instanceof Error && error.name === 'AbortError') ||
+    (error && typeof error === 'object' && 'name' in error && (error as { name: string }).name === 'AbortError') ||
+    (error instanceof Error && /abort/i.test(error.message))
+  if (isAbort) return false
+  
   const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
   
   // Network errors

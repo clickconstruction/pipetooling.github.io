@@ -196,6 +196,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Assistants, primaries, superintendents can create and manage cost estimates without RLS recursion; aligns with bid_pricing_assignments pattern
 - **Category**: Bids / RLS
 
+**`20260624120000_cost_estimates_rls_drop_users_subquery.sql`**
+- **Purpose**: Fix devs/assistants still hitting RLS when adding Bids Counts rows
+- **Changes**: Remove redundant `EXISTS (SELECT 1 FROM users ...)` from cost_estimates and cost_estimate_labor_rows policies; use only `can_access_bid_for_pricing` (SECURITY DEFINER)
+- **Impact**: Policies no longer fail due to users table RLS; `can_access_bid_for_pricing` already validates role internally
+- **Category**: Bids / RLS
+
 ### May 2026
 
 #### May 20, 2026 — Superintendent role
