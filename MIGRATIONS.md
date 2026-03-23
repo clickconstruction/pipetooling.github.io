@@ -188,6 +188,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Superintendents can no longer read or modify Jobs Billing tab data; correct ledger is Workflow Line Items For Office. Reports and list_reports_with_job_info unchanged.
 - **Category**: Access control / Jobs / RLS
 
+#### June 24, 2026
+
+**`20260624000000_fix_cost_estimates_rls_use_helper.sql`**
+- **Purpose**: Fix assistants failing to create cost estimates (RLS policy violation)
+- **Changes**: Replace inline bid/users subqueries with `can_access_bid_for_pricing(bid_id)` on cost_estimates and cost_estimate_labor_rows (4 policies each)
+- **Impact**: Assistants, primaries, superintendents can create and manage cost estimates without RLS recursion; aligns with bid_pricing_assignments pattern
+- **Category**: Bids / RLS
+
 ### May 2026
 
 #### May 20, 2026 — Superintendent role

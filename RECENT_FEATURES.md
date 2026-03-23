@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.138)"
+  - name: "Latest Version (v2.139)"
     line: ~349
+    description: "Fix cost_estimates RLS for assistants"
+  - name: "v2.138"
+    line: ~365
     description: "Revoke superintendent Jobs Billing access"
   - name: "v2.137"
     line: ~355
@@ -259,7 +262,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+1. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
+2. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
 2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
 2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
@@ -353,6 +357,21 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.139)
+
+**Date**: 2026-06-24
+
+### Fix cost_estimates RLS for Assistants
+
+- **Problem**: Assistants got "Failed to create cost estimate: new row violates row-level security policy for table 'cost_estimates'" when opening the Cost Estimate tab on a bid.
+- **Cause**: The cost_estimates policies used inline subqueries on `bids` and `users` (subject to RLS), which could fail even when access was intended.
+- **Fix**: Replace inline subqueries with `can_access_bid_for_pricing(bid_id)` (SECURITY DEFINER), matching bid_pricing_assignments and bid_count_row_custom_prices.
+- **Tables**: cost_estimates (4 policies), cost_estimate_labor_rows (4 policies).
+
+**Files**: `supabase/migrations/20260624000000_fix_cost_estimates_rls_use_helper.sql`
 
 ---
 
