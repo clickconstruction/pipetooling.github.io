@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -9,7 +10,7 @@ type ProjectWithCustomer = Project & {
   customers: { name: string } | null
   master_user: { id: string; name: string | null; email: string | null } | null
 }
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'superintendent'
 
 export default function Projects() {
   const { user: authUser } = useAuth()
@@ -31,6 +32,13 @@ export default function Projects() {
   const [jobsByProject, setJobsByProject] = useState<
     Record<string, Array<{ id: string; hcp_number: string; job_name: string; status: string }>>
   >({})
+  const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
+  const [projectSuperintendentIdsByProject, setProjectSuperintendentIdsByProject] = useState<Record<string, Set<string>>>({})
+  const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
+  const [addSuperintendentProject, setAddSuperintendentProject] = useState<{ id: string; name: string } | null>(null)
+  const [selectedSuperintendentId, setSelectedSuperintendentId] = useState('')
+
+  const canAssignSuperintendents = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -91,6 +99,11 @@ export default function Projects() {
       setProjects(projectsWithMasters)
       setLoading(false)
 
+      if (projectsWithMasters.length === 0) {
+        setSuperintendentsByProject({})
+        setProjectSuperintendentIdsByProject({})
+      }
+
       // Load active steps, step summaries, and superintendent access in background
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
@@ -123,13 +136,16 @@ export default function Projects() {
           })
         }
         const map: Record<string, Array<{ id: string; name: string | null; email: string | null }>> = {}
+        const psIdsMap: Record<string, Set<string>> = {}
         projectsWithMasters.forEach((p) => {
           const ids = new Set<string>()
           msData.filter((r) => r.master_id === p.master_user_id).forEach((r) => ids.add(r.superintendent_id))
           psData.filter((r) => r.project_id === p.id).forEach((r) => ids.add(r.superintendent_id))
           map[p.id] = [...ids].map((id) => usersMap[id]).filter((u): u is { id: string; name: string | null; email: string | null } => !!u)
+          psIdsMap[p.id] = new Set(psData.filter((r) => r.project_id === p.id).map((r) => r.superintendent_id))
         })
         setSuperintendentsByProject(map)
+        setProjectSuperintendentIdsByProject(psIdsMap)
 
         const jobsData = (jobsRes as { data: Array<{ id: string; hcp_number: string; job_name: string; project_id: string; status: string }> | null }).data ?? []
         const jobsMap: Record<string, Array<{ id: string; hcp_number: string; job_name: string; status: string }>> = {}
@@ -250,6 +266,75 @@ export default function Projects() {
     fetchProjects()
   }, [customerId])
 
+  useEffect(() => {
+    if (!canAssignSuperintendents || projects.length === 0) return
+    async function loadAllSuperintendents() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .eq('role', 'superintendent')
+        .is('archived_at', null)
+        .order('name')
+      if (error) {
+        console.error('Error loading superintendents:', error)
+        setAllSuperintendents([])
+        return
+      }
+      setAllSuperintendents((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
+    }
+    loadAllSuperintendents()
+  }, [canAssignSuperintendents, projects.length])
+
+  async function addProjectSuperintendent(projectId: string, superintendentId: string) {
+    setProjectSuperintendentSaving(true)
+    setError(null)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('project_superintendents').insert({ project_id: projectId, superintendent_id: superintendentId }),
+        'add project superintendent'
+      )
+      const sup = allSuperintendents.find((s) => s.id === superintendentId)
+      if (sup) {
+        setSuperintendentsByProject((prev) => {
+          const arr = prev[projectId] ?? []
+          if (arr.some((s) => s.id === superintendentId)) return prev
+          return { ...prev, [projectId]: [...arr, sup] }
+        })
+        setProjectSuperintendentIdsByProject((prev) => {
+          const set = new Set(prev[projectId] ?? [])
+          set.add(superintendentId)
+          return { ...prev, [projectId]: set }
+        })
+      }
+    } catch (e) {
+      setError(`Failed to assign superintendent: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    setProjectSuperintendentSaving(false)
+  }
+
+  async function removeProjectSuperintendent(projectId: string, superintendentId: string) {
+    setProjectSuperintendentSaving(true)
+    setError(null)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('project_superintendents').delete().eq('project_id', projectId).eq('superintendent_id', superintendentId),
+        'remove project superintendent'
+      )
+      setSuperintendentsByProject((prev) => {
+        const arr = (prev[projectId] ?? []).filter((s) => s.id !== superintendentId)
+        return { ...prev, [projectId]: arr }
+      })
+      setProjectSuperintendentIdsByProject((prev) => {
+        const set = new Set(prev[projectId] ?? [])
+        set.delete(superintendentId)
+        return { ...prev, [projectId]: set }
+      })
+    } catch (e) {
+      setError(`Failed to remove superintendent: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    setProjectSuperintendentSaving(false)
+  }
+
   if (loading) return <p>Loading projects…</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
@@ -325,6 +410,8 @@ export default function Projects() {
                       let fontWeight: 'normal' | 'bold' = 'normal'
                       if (step.status === 'completed' || step.status === 'approved') {
                         color = '#059669' // green
+                      } else if (step.status === 'skipped') {
+                        color = '#6b7280' // neutral gray
                       } else if (step.status === 'rejected') {
                         color = '#b91c1c' // red
                       } else if (step.status === 'in_progress') {
@@ -400,7 +487,74 @@ export default function Projects() {
                     Master: {p.master_user.name || p.master_user.email || 'Unknown'}
                   </span>
                 )}
-                {(superintendentsByProject[p.id]?.length ?? 0) > 0 && (
+                {canAssignSuperintendents && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
+                    {(superintendentsByProject[p.id] ?? []).length === 0 && (
+                      <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>
+                    )}
+                    {(superintendentsByProject[p.id] ?? []).map((s) => (
+                      <span
+                        key={s.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          padding: '0.15rem 0.4rem',
+                          background: '#e0f2fe',
+                          color: '#0369a1',
+                          borderRadius: 4,
+                          fontSize: '0.8125rem',
+                        }}
+                      >
+                        {s.name || s.email || 'Unknown'}
+                        {projectSuperintendentIdsByProject[p.id]?.has(s.id) && (
+                          <button
+                            type="button"
+                            onClick={() => removeProjectSuperintendent(p.id, s.id)}
+                            disabled={projectSuperintendentSaving}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer', color: 'inherit', fontSize: '0.9em', lineHeight: 1 }}
+                            title="Remove"
+                          >
+                            {"\u00d7"}
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {(() => {
+                      const available = allSuperintendents.filter((s) => !(superintendentsByProject[p.id] ?? []).some((ps) => ps.id === s.id))
+                      return available.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddSuperintendentProject({ id: p.id, name: p.name ?? 'Project' })
+                            setSelectedSuperintendentId('')
+                          }}
+                          disabled={projectSuperintendentSaving}
+                          title="Add superintendent"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 24,
+                            height: 24,
+                            padding: 0,
+                            border: '1px solid #bae6fd',
+                            borderRadius: 4,
+                            background: 'white',
+                            color: '#0369a1',
+                            fontSize: '1.125rem',
+                            lineHeight: 1,
+                            cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          +
+                        </button>
+                      ) : null
+                    })()}
+                  </div>
+                )}
+                {!canAssignSuperintendents && (superintendentsByProject[p.id]?.length ?? 0) > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end' }}>
                     <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
@@ -447,6 +601,68 @@ export default function Projects() {
           <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
             Edit templates
           </Link>
+        </div>
+      )}
+
+      {addSuperintendentProject && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+          onClick={() => {
+            setAddSuperintendentProject(null)
+            setSelectedSuperintendentId('')
+          }}
+        >
+          <div
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0 }}>Add superintendent to {addSuperintendentProject.name}</h3>
+            {(() => {
+              const available = allSuperintendents.filter((s) =>
+                !(superintendentsByProject[addSuperintendentProject.id] ?? []).some((ps) => ps.id === s.id)
+              )
+              return available.length > 0 ? (
+                <select
+                  value={selectedSuperintendentId}
+                  onChange={(e) => setSelectedSuperintendentId(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+                >
+                  <option value="">Choose superintendent...</option>
+                  {available.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name || s.email || s.id}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No superintendents available</p>
+              )
+            })()}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (selectedSuperintendentId && addSuperintendentProject) {
+                    await addProjectSuperintendent(addSuperintendentProject.id, selectedSuperintendentId)
+                    setAddSuperintendentProject(null)
+                    setSelectedSuperintendentId('')
+                  }
+                }}
+                disabled={!selectedSuperintendentId || projectSuperintendentSaving}
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddSuperintendentProject(null)
+                  setSelectedSuperintendentId('')
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

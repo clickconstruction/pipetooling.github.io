@@ -69,6 +69,13 @@ function formatAmount(amount: number | null | undefined): string {
   return `$${formatted}`
 }
 
+function getStepStatusStyle(status: StepStatus | null): { color: string; fontWeight: 'normal' | 'bold' } {
+  if (status === 'completed' || status === 'approved') return { color: '#059669', fontWeight: 'normal' }
+  if (status === 'in_progress') return { color: '#E87600', fontWeight: 'bold' }
+  if (status === 'rejected') return { color: '#b91c1c', fontWeight: 'normal' }
+  return { color: '#6b7280', fontWeight: 'normal' }
+}
+
 function PersonDisplayWithContact({ name, contacts, userNames }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }>; userNames: Set<string> }) {
   if (!name || !name.trim()) {
     return <span>Assigned to: unknown</span>
@@ -122,6 +129,7 @@ export default function Workflow() {
 
   const [stepForm, setStepForm] = useState<{ open: boolean; step: Step | null; depends_on_step_id?: string | null; insertAfterStepId?: string | null }>({ open: false, step: null })
   const [rejectStep, setRejectStep] = useState<{ step: Step; reason: string } | null>(null)
+  const [skipStep, setSkipStep] = useState<{ step: Step; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
@@ -158,6 +166,7 @@ export default function Workflow() {
   const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
   const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
   const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
+  const [projectJobs, setProjectJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; status: string }>>([])
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
@@ -165,7 +174,7 @@ export default function Workflow() {
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
 
   function isRowDefaultCollapsed(step: Step): boolean {
-    return step.status === 'completed' || step.status === 'approved'
+    return step.status === 'completed' || step.status === 'approved' || step.status === 'skipped' || step.status === 'pending'
   }
 
   function isStepEmpty(step: Step): boolean {
@@ -308,6 +317,19 @@ export default function Workflow() {
     const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', ids)
     const users = (usersData ?? []) as Array<{ id: string; name: string | null; email: string | null }>
     setProjectSuperintendents(users)
+  }
+
+  async function loadProjectJobs(pid: string) {
+    const { data, error } = await supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, job_name, status')
+      .eq('project_id', pid)
+    if (error) {
+      console.error('Error loading project jobs:', error)
+      setProjectJobs([])
+      return
+    }
+    setProjectJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; status: string }>)
   }
 
   async function loadAllSuperintendents() {
@@ -612,7 +634,7 @@ export default function Workflow() {
     } else {
       setAddingPOToStep(null)
       await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)
       }
@@ -654,7 +676,7 @@ export default function Workflow() {
       setAddingInvoiceToStep(null)
       setInvoiceSearchText('')
       await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)
       }
@@ -662,7 +684,7 @@ export default function Workflow() {
   }
 
   async function loadLineItemsForSteps(stepIds: string[]) {
-    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant') return
+    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant' && userRole !== 'superintendent') return
     if (stepIds.length === 0) {
       setLineItems({})
       return
@@ -750,7 +772,7 @@ export default function Workflow() {
 
   // Load line items when steps and userRole are available (staggered to reduce concurrent DB load)
   useEffect(() => {
-    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant')) {
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
       const stepIds = steps.map(s => s.id)
       const t = setTimeout(() => loadLineItemsForSteps(stepIds), 50)
       return () => clearTimeout(t)
@@ -790,6 +812,14 @@ export default function Workflow() {
       setAllSuperintendents([])
     }
   }, [projectId, canAssignSuperintendents])
+
+  useEffect(() => {
+    if (projectId) {
+      loadProjectJobs(projectId)
+    } else {
+      setProjectJobs([])
+    }
+  }, [projectId])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -1093,7 +1123,7 @@ export default function Workflow() {
     return 'Unknown'
   }
 
-  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened', notes?: string | null) {
+  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened' | 'skipped', notes?: string | null) {
     const performedBy = await getCurrentUserName()
     const performedAt = new Date().toISOString()
     const { data, error } = await supabase
@@ -1618,10 +1648,11 @@ export default function Workflow() {
     }
   }
 
-  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string | null; rejection_reason?: string | null; approved_by?: string | null; approved_at?: string | null; next_step_rejected_notice?: string | null; next_step_rejection_reason?: string | null }) {
+  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string | null; rejection_reason?: string | null; skipped_reason?: string | null; approved_by?: string | null; approved_at?: string | null; next_step_rejected_notice?: string | null; next_step_rejection_reason?: string | null }) {
     const up: Record<string, unknown> = { status }
     if (extra?.ended_at !== undefined) up.ended_at = extra.ended_at
     if (extra?.rejection_reason !== undefined) up.rejection_reason = extra.rejection_reason
+    if (extra?.skipped_reason !== undefined) up.skipped_reason = extra.skipped_reason
     if (extra?.approved_by !== undefined) up.approved_by = extra.approved_by
     if (extra?.approved_at !== undefined) up.approved_at = extra.approved_at
     if (extra?.next_step_rejected_notice !== undefined) up.next_step_rejected_notice = extra.next_step_rejected_notice
@@ -1730,6 +1761,7 @@ export default function Workflow() {
     await updateStepStatus(step, 'pending', { 
       ended_at: null,
       rejection_reason: null,
+      skipped_reason: null,
       approved_by: null,
       approved_at: null,
       next_step_rejected_notice: null,
@@ -1899,7 +1931,7 @@ export default function Workflow() {
     if (previousStep) {
       if (previousStep.status === 'completed' || previousStep.status === 'approved') {
         // Reopen the previous step with notice and rejection reason
-        await updateStepStatus(previousStep, 'pending', {
+        await updateStepStatus(previousStep, 'in_progress', {
           ended_at: null,
           approved_by: null,
           approved_at: null,
@@ -1919,6 +1951,14 @@ export default function Workflow() {
     }
     
     setRejectStep(null)
+    await refreshSteps()
+  }
+
+  async function submitSkip() {
+    if (!skipStep || !skipStep.reason.trim()) return
+    await updateStepStatus(skipStep.step, 'skipped', { skipped_reason: skipStep.reason.trim(), ended_at: new Date().toISOString() })
+    await recordAction(skipStep.step.id, 'skipped', skipStep.reason.trim())
+    setSkipStep(null)
     await refreshSteps()
   }
 
@@ -2077,23 +2117,44 @@ export default function Workflow() {
               </div>
             )}
           </div>
-          {canManageStages && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {(steps.filter(s => s.status === 'completed' || s.status === 'approved').length >= 2) && (
-                <button
-                  type="button"
-                  onClick={() => setOldStagesCollapsed(v => !v)}
-                  className="wf-btn-ghost"
-                  style={{ fontSize: '0.8125rem' }}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
+              {projectJobs.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>}
+              {projectJobs.map((j) => (
+                <Link
+                  key={j.id}
+                  to={`/jobs?edit=${j.id}&tab=stages`}
+                  style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
                 >
-                  {oldStagesCollapsed ? 'Expand old stages' : 'Collapse old stages'}
+                  {j.hcp_number || j.job_name || 'Job'}
+                </Link>
+              ))}
+              <Link
+                to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
+                style={{ padding: '0.15rem 0.4rem', background: '#e0f2fe', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#0369a1' }}
+              >
+                + Create Job
+              </Link>
+            </div>
+            {canManageStages && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {(steps.filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped').length >= 2) && (
+                  <button
+                    type="button"
+                    onClick={() => setOldStagesCollapsed(v => !v)}
+                    className="wf-btn-ghost"
+                    style={{ fontSize: '0.8125rem' }}
+                  >
+                    {oldStagesCollapsed ? 'Show Old Stages' : 'Hide Old Stages'}
+                  </button>
+                )}
+                <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  Add step
                 </button>
-              )}
-              <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                Add step
-              </button>
-            </span>
-          )}
+              </span>
+            )}
+          </div>
         </div>
         {steps.length > 0 && (
           <div
@@ -2108,16 +2169,7 @@ export default function Workflow() {
           >
             <span>
             {steps.map((s, i) => {
-              let color = '#6b7280' // default gray
-              let fontWeight: 'normal' | 'bold' = 'normal'
-              if (s.status === 'completed' || s.status === 'approved') {
-                color = '#059669' // green
-              } else if (s.status === 'rejected') {
-                color = '#b91c1c' // red
-              } else if (s.status === 'in_progress') {
-                color = '#E87600' // strong orange
-                fontWeight = 'bold' // bold if started but not completed
-              }
+              const { color, fontWeight } = getStepStatusStyle(s.status)
               const scrollToStep = () => {
                 const element = document.getElementById(`step-${s.id}`)
                 if (element) {
@@ -2321,7 +2373,7 @@ export default function Workflow() {
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center' }}>
         {steps.length === 0 ? (
           <div>
             {canManageStages ? (
@@ -2364,7 +2416,7 @@ export default function Workflow() {
           </div>
         ) : (() => {
           const completedSteps = steps
-            .filter(s => s.status === 'completed' || s.status === 'approved')
+            .filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped')
             .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
           const oldCompletedSteps = completedSteps.slice(0, -1)
           const oldStepIds = new Set(oldCompletedSteps.map(s => s.id))
@@ -2413,8 +2465,19 @@ export default function Workflow() {
               )
             }
             const s = item.step
+            const isCollapsed = rowCollapsed[s.id] ?? isRowDefaultCollapsed(s)
             return (
-            <div key={s.id} id={`step-${s.id}`}>
+            <div
+              key={s.id}
+              id={`step-${s.id}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: isCollapsed ? 'center' : 'stretch',
+                alignSelf: isCollapsed ? 'center' : 'stretch',
+                width: isCollapsed ? 'fit-content' : '100%',
+              }}
+            >
               <div
                 style={{
                   border: '1px solid #bae6fd',
@@ -2422,10 +2485,11 @@ export default function Workflow() {
                   padding: '0.5rem 0.75rem',
                   marginBottom: '0.25rem',
                   background: 'white',
+                  ...(isCollapsed && { display: 'inline-block', width: 'fit-content', maxWidth: 'min(100%, 520px)', borderLeft: `9px solid ${getStepStatusStyle(s.status).color}` }),
+                  ...(!isCollapsed && s.status === 'in_progress' && { background: '#fff7ed', borderLeft: '4px solid #E87600' }),
                 }}
               >
                 {(() => {
-                  const isCollapsed = rowCollapsed[s.id] ?? isRowDefaultCollapsed(s)
                   const toggleRow = () => setRowCollapsed((p) => ({ ...p, [s.id]: !(p[s.id] ?? isRowDefaultCollapsed(s)) }))
                   return (
                     <>
@@ -2435,13 +2499,13 @@ export default function Workflow() {
                       tabIndex={0}
                       onClick={(e) => { if (!(e.target as HTMLElement).closest('button, [data-stop]')) toggleRow() }}
                       onKeyDown={(e) => e.key === 'Enter' && toggleRow()}
-                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: 4, fontSize: '0.8125rem', cursor: 'pointer' }}
+                      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: 4, fontSize: '0.8125rem', cursor: 'pointer', ...(isCollapsed && { minWidth: 0 }) }}
                     >
                       <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isCollapsed ? '\u25B6' : '\u25BC'}</span>
-                      <span style={{ fontWeight: 600, color: '#111827' }}>{s.name}</span>
+                      <span style={{ fontWeight: isCollapsed ? getStepStatusStyle(s.status).fontWeight : 600, color: isCollapsed ? getStepStatusStyle(s.status).color : '#111827' }}>{s.name}</span>
                       <span style={{ color: '#9ca3af' }}>·</span>
-                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
-                        {s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'in_progress' && (() => {
+                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : s.status === 'skipped' ? '#6b7280' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                        {s.status === 'rejected' ? 'Previous work incomplete' : s.status === 'skipped' ? 'Skipped' : s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'skipped' && s.skipped_reason ? ` - ${s.skipped_reason}` : ''}{s.status === 'in_progress' && (() => {
                           const d = daysOpen(s.started_at, s.ended_at)
                           return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
                         })()}
@@ -2500,14 +2564,12 @@ export default function Workflow() {
                         const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
                         const notesWords = (s.notes ?? '').trim().split(/\s+/).filter(Boolean).length
                         const privateWords = (s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length
-                        const daysSuffix = s.status === 'in_progress' ? null : (() => {
-                          const d = daysBetween(s.started_at, s.ended_at)
-                          return d != null ? ` · open for ${d === 1 ? '1 day' : `${d} days`}` : null
-                        })()
+                        const d = s.status === 'in_progress' ? daysOpen(s.started_at, s.ended_at) : daysBetween(s.started_at, s.ended_at)
+                        const daysPrefix = d != null ? `[${d === 1 ? '1 day' : `${d} days`}] ` : ''
                         return (
-                          <div style={{ flexBasis: '100%', width: '100%', marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <div style={{ flexBasis: '100%', minWidth: 0, marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', alignSelf: 'flex-start' }}>
                             <span style={pillStyle}>
-                              {formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}{daysSuffix ?? ''}
+                              {daysPrefix}{formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}
                             </span>
                             {canManageStages && count > 0 && (
                               <span style={pillStyle}>
@@ -2524,26 +2586,33 @@ export default function Workflow() {
                         )
                       })()}
                     </div>
-                {/* Row 2: Action buttons - always visible when user can act (including when collapsed) */}
-                {((canManageStages || s.assigned_to_name === currentUserName) || !isCollapsed) && (
+                {/* Row 2: Action buttons - only visible when expanded and user can act */}
+                {((canManageStages || s.assigned_to_name === currentUserName) && !isCollapsed) && (
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
-                    {s.status === 'pending' && (
-                      <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} className="wf-btn-info">
-                        Set Start
-                      </button>
-                    )}
                     {(s.status === 'pending' || s.status === 'in_progress') && (
-                      <button type="button" onClick={() => markCompleted(s)} className="wf-btn-success">
-                        Mark Complete
-                      </button>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Technician:</span>
+                        {s.status === 'pending' && (
+                          <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} className="wf-btn-info">
+                            Set Start
+                          </button>
+                        )}
+                        <button type="button" onClick={() => markCompleted(s)} className="wf-btn-success">
+                          Mark Complete
+                        </button>
+                      </span>
                     )}
                     {canSeePrivateNotesAndApprove && (s.status === 'pending' || s.status === 'in_progress') && (
-                      <span style={{ display: 'inline-flex', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Office:</span>
                         <button type="button" onClick={() => markApproved(s)} className="wf-btn-info">
                           Approve
                         </button>
                         <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} className="wf-btn-danger">
-                          Reject
+                          Send Back: Previous Work Incomplete
+                        </button>
+                        <button type="button" onClick={() => setSkipStep({ step: s, reason: '' })} className="wf-btn-secondary" style={{ color: '#92400e' }}>
+                          Skip
                         </button>
                       </span>
                     )}
@@ -2562,10 +2631,20 @@ export default function Workflow() {
                 {!isCollapsed && (
                 <>
                 {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
-                  <div style={{ fontSize: '0.8125rem', color: '#E87600', marginBottom: 4, fontStyle: 'italic' }}>
-                    (next card rejected: {s.next_step_rejected_notice})
+                  <div style={{
+                    background: '#b91c1c',
+                    marginLeft: '-0.75rem',
+                    marginRight: '-0.75rem',
+                    padding: '0.5rem calc(1.5rem + 0.75rem)',
+                    marginBottom: 4,
+                    fontSize: '0.8125rem',
+                    color: '#ffffff',
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                  }}>
+                    Next stage <strong style={{ textDecoration: 'underline' }}>{s.next_step_rejected_notice}</strong> rejected, this stage must be re-completed.
                     {s.next_step_rejection_reason && (
-                      <div style={{ marginTop: 2, color: '#b91c1c', fontStyle: 'normal' }}>Reason: {s.next_step_rejection_reason}</div>
+                      <div style={{ marginTop: 2, fontWeight: 600, fontStyle: 'normal', color: '#ffffff' }}>Reason: {s.next_step_rejection_reason}</div>
                     )}
                   </div>
                 )}
@@ -2670,7 +2749,7 @@ export default function Workflow() {
                               onChange={(e) => updateCrossStepNotify(s, 'notify_prior_assignee_when_rejected', e.target.checked)}
                               style={{ cursor: 'pointer' }}
                             />
-                            Notify prior card assignee when rejected
+                            Notify prior card assignee when marked incomplete
                           </label>
                         </div>
                       )}
@@ -2689,7 +2768,7 @@ export default function Workflow() {
                     <div style={{ marginBottom: 4, padding: '0.5rem 0.6rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
                       {stepActions[s.id]!.map((action) => (
                         <div key={action.id} style={{ marginBottom: '0.25rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type}</span>
+                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type === 'rejected' ? 'Previous work incomplete' : action.action_type === 'skipped' ? 'Skipped' : action.action_type}</span>
                           {' by '}
                           <span style={{ fontWeight: 500 }}>{action.performed_by}</span>
                           {' on '}
@@ -2889,7 +2968,7 @@ export default function Workflow() {
                         </div>
                       </div>
                     ) : (
-                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic' }}>No line items yet. Click "Add Line Item" to add one.</p>
+                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>No line items yet. Click "Add Line Item" to add one.</p>
                     ))}
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
                                 <button
@@ -2932,7 +3011,7 @@ export default function Workflow() {
                       <button type="button" onClick={() => { setConfirmDeleteStep(s); setDeleteStepConfirmText('') }} className="wf-btn-danger">Delete</button>
                     </div>
                   )}
-                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected') && canManageStages && (
+                  {(s.status === 'completed' || s.status === 'approved' || s.status === 'rejected' || s.status === 'skipped') && canManageStages && (
                     <button type="button" onClick={() => markReopened(s)} className="wf-btn-ghost">
                       Re-open
                     </button>
@@ -3039,7 +3118,7 @@ export default function Workflow() {
       {rejectStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Reject step: {rejectStep.step.name}</h3>
+            <h3 style={{ marginTop: 0 }}>Previous work incomplete: {rejectStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
             <textarea
               value={rejectStep.reason}
@@ -3049,8 +3128,35 @@ export default function Workflow() {
               placeholder="What is wrong and how should it be fixed (optional)"
             />
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitReject} className="wf-btn-modal-primary wf-btn-danger-style">Reject</button>
+              <button type="button" onClick={submitReject} className="wf-btn-modal-primary wf-btn-danger-style">Send Back: Previous Work Incomplete</button>
               <button type="button" onClick={() => setRejectStep(null)} className="wf-btn-modal-secondary">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {skipStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
+            <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
+            <textarea
+              value={skipStep.reason}
+              onChange={(e) => setSkipStep((r) => r ? { ...r, reason: e.target.value } : null)}
+              rows={4}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
+              placeholder="e.g. Client waived inspection, combined with prior stage, not applicable..."
+            />
+            <div style={{ marginBottom: '1rem' }}>
+              <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} className="wf-btn-ghost" style={{ fontSize: '0.8125rem' }}>
+                Not relevant
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={submitSkip} disabled={!skipStep.reason.trim()} className="wf-btn-modal-primary" style={skipStep.reason.trim() ? {} : { opacity: 0.5, cursor: 'not-allowed' }}>
+                Skip
+              </button>
+              <button type="button" onClick={() => setSkipStep(null)} className="wf-btn-modal-secondary">Cancel</button>
             </div>
           </div>
         </div>

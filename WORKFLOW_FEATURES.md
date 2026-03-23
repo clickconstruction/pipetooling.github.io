@@ -54,15 +54,16 @@ This document provides detailed information about all workflow-related features.
 **Available Actions** (based on status and user role):
 - **Set Start**: Pending stages only
 - **Complete**: Pending or in-progress stages
-- **Approve**: Pending or in-progress (owners/masters only)
-- **Reject**: Pending or in-progress (owners/masters only)
+- **Approve**: Pending or in-progress (dev, master, assistant, superintendent)
+- **Previous work incomplete**: Pending or in-progress (dev, master, assistant, superintendent)
 - **Re-open**: Completed, approved, or rejected (owners/masters only)
 
-**Note**: Approve and Reject refer to the card they appear on (same step), not the previous card.
+**Note**: Approve and Previous work incomplete refer to the card they appear on (same step), not the previous card.
 
 **Access Control**:
 - Assistants/subcontractors can only use Set Start and Complete on stages assigned to them
 - Owners/masters can use all actions on any stage
+- Superintendents can use Set Start, Complete, Approve, and Send Back: Previous Work Incomplete on stages in workflows they have access to
 
 ### Action Ledger
 
@@ -78,7 +79,7 @@ This document provides detailed information about all workflow-related features.
 
 ### Button Styling
 
-Workflow uses scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions. **Action button colors**: Set Start blue (initiate, `wf-btn-info`), Complete green (success, `wf-btn-success`), Approve blue (manager sign-off, `wf-btn-info`), Reject red (destructive, `wf-btn-danger`). Approve and Reject are visually separated from Set Start and Complete (left border, spacing) and available to dev, master, and assistant. Notify control is right-aligned when the card is expanded.
+Workflow uses scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions. **Action button colors**: Set Start blue (initiate, `wf-btn-info`), Complete green (success, `wf-btn-success`), Approve blue (manager sign-off, `wf-btn-info`), Previous work incomplete red (destructive, `wf-btn-danger`). Approve and Previous work incomplete are visually separated from Set Start and Complete (left border, spacing) and available to dev, master, assistant, and superintendent. Notify control is right-aligned when the card is expanded.
 
 ### Collapse Old Stages Toggle
 
@@ -106,7 +107,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 **Notify when stage**:
 - Always collapsed by default
-- Cross-step checkboxes ("Notify next card assignee when complete or approved", "Notify prior card assignee when rejected") default to on (null/undefined = checked)
+- Cross-step checkboxes ("Notify next card assignee when complete or approved", "Notify prior card assignee when marked incomplete") default to on (null/undefined = checked)
 - These two checkboxes do not affect section expansion
 
 **Notes, Private Notes, Line Items For Office**:
@@ -196,6 +197,13 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Can only see "ME" column in notification settings
 - Error message if accessing workflow with no assigned stages
 
+**Superintendents**:
+- See all stages in workflows for projects they have access to (via adoption or project assignment)
+- Cannot add, edit, or delete stages; can assign people
+- Can see private notes, line items; cannot see projections or financial totals
+- Can use Set Start, Complete, Approve, and Send Back: Previous Work Incomplete on stages in accessible workflows
+- Can only see "ME" column in notification settings
+
 ### Person Assignment
 
 **Feature**: "Add person to:" modal improvements
@@ -224,7 +232,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Notify when stage: started, complete, re-opened (section collapsed by default)
 - Cross-step notifications (owners/masters only, default to on):
   - Notify next card assignee when complete or approved
-  - Notify prior card assignee when rejected
+  - Notify prior card assignee when marked incomplete
 
 **Database**: 
 - Stage-level: `notify_assigned_when_*` fields

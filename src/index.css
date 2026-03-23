@@ -466,6 +466,265 @@ button {
   background: #e5e7eb;
 }
 
+/* Assigned Stage Card (Dashboard) */
+.assignedStageCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.assignedStageCard--rejected {
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+}
+.assignedStageCard--approved,
+.assignedStageCard--completed {
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+}
+.assignedStageCard--skipped {
+  background: #f9fafb;
+  border-left: 4px solid #9ca3af;
+}
+.assignedStageCard--in_progress {
+  border-left: 4px solid #2563eb;
+}
+
+.assignedStageCard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.assignedStageCard-titleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.assignedStageCard-stageName {
+  font-weight: 600;
+  font-size: 1rem;
+}
+.assignedStageCard-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.assignedStageCard-badge {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+.assignedStageCard-badge.pending {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+.assignedStageCard-badge.in_progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+.assignedStageCard-badge.completed,
+.assignedStageCard-badge.approved {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+.assignedStageCard-badge.rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+.assignedStageCard-badge.skipped {
+  background: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+.assignedStageCard-projectLink {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.assignedStageCard-rejectedNotice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #b91c1c;
+  border-left: 4px solid #991b1b;
+}
+.assignedStageCard-rejectedNotice svg {
+  flex-shrink: 0;
+  color: #ffffff;
+}
+.assignedStageCard-rejectedNotice-text {
+  font-size: 0.875rem;
+  color: #ffffff;
+}
+.assignedStageCard-rejectedNotice-reason {
+  font-size: 0.875rem;
+  color: #ffffff;
+  margin-top: 0.25rem;
+}
+
+.assignedStageCard-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+.assignedStageCard-metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.assignedStageCard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.assignedStageCard-link {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.assignedStageCard-link:hover {
+  text-decoration: none;
+}
+
+.assignedStageCard-notes {
+  margin: 0.75rem 0 0.5rem;
+}
+.assignedStageCard-notesLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+.assignedStageCard-notesContent {
+  font-size: 0.875rem;
+  color: #374151;
+  white-space: pre-wrap;
+  padding: 0.5rem;
+  background: #f9fafb;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  margin: 0;
+}
+
+.assignedStageCard-rejection {
+  font-size: 0.875rem;
+  color: #b91c1c;
+  margin-top: 0.5rem;
+}
+.assignedStageCard-skippedReason {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+}
+
+.assignedStageCard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+/* Reuse wf-btn styles for AssignedStageCard (not inside .workflow) */
+.assignedStageCard .wf-btn-secondary,
+.assignedStageCard .wf-btn-primary,
+.assignedStageCard .wf-btn-info,
+.assignedStageCard .wf-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.assignedStageCard .wf-btn-secondary {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.assignedStageCard .wf-btn-secondary:hover {
+  background: #e5e7eb;
+}
+.assignedStageCard .wf-btn-primary {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: #2563eb;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.assignedStageCard .wf-btn-primary:hover {
+  background: #1d4ed8;
+}
+.assignedStageCard .wf-btn-info {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #0ea5e9;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.assignedStageCard .wf-btn-info:hover {
+  background: #0284c7;
+}
+.assignedStageCard .wf-btn-danger {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #991b1b;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.assignedStageCard .wf-btn-danger:hover {
+  background: #fecaca;
+}
+
+/* Mobile: larger tap targets for assigned stage card buttons */
+@media (max-width: 640px) {
+  .assignedStageCard-actions button {
+    min-height: 44px;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
 /* Mobile: maximize usable width */
 @media (max-width: 640px) {
   :root {

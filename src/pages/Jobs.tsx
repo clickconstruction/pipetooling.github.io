@@ -2234,24 +2234,24 @@ export default function Jobs() {
     }
     // Redirect superintendent away from Team Labor and Teams tabs
     if (isSuperintendent && (tab === 'combined-labor' || tab === 'teams-summary')) {
-      setActiveTab('stages')
+      setActiveTab('reports')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'stages')
+        next.set('tab', 'reports')
         return next
       }, { replace: true })
       return
     }
-    // Superintendent: reports, stages, billing, sub_sheet_ledger; default stages
+    // Superintendent: reports, sub_sheet_ledger only; default reports
     if (isSuperintendent) {
-      const superintendentTabs = ['reports', 'stages', 'billing', 'sub_sheet_ledger']
+      const superintendentTabs = ['reports', 'sub_sheet_ledger']
       if (tab && superintendentTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
       } else if (!tab || !superintendentTabs.includes(tab)) {
-        setActiveTab('stages')
+        setActiveTab('reports')
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
-          next.set('tab', 'stages')
+          next.set('tab', 'reports')
           return next
         }, { replace: true })
       }
@@ -3373,6 +3373,7 @@ export default function Jobs() {
   const isPrimaryOrUnknown = (authRole === 'primary' || myRole === 'primary') || (authRole === null && myRole === null)
   const showPrimaryRestrictedTabs = !isPrimaryOrUnknown
   const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
+  const showStagesAndBillingTabs = showPrimaryRestrictedTabs && !isSuperintendent
   const showTeamsTab = showPrimaryRestrictedTabs &&
     authRole !== 'master_technician' && authRole !== 'assistant' &&
     authRole !== 'superintendent' && myRole !== 'superintendent' &&
@@ -3416,7 +3417,7 @@ export default function Jobs() {
           >
             Reports
           </button>
-        {showPrimaryRestrictedTabs && (
+        {showStagesAndBillingTabs && (
           <button
             type="button"
             onClick={() => {
@@ -3434,21 +3435,25 @@ export default function Jobs() {
         )}
         {showPrimaryRestrictedTabs && (
           <>
-          <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('billing')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'billing')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'billing')}
-          >
-            Billing
-          </button>
+          {showStagesAndBillingTabs && (
+            <>
+            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('billing')
+                setSearchParams((p) => {
+                  const next = new URLSearchParams(p)
+                  next.set('tab', 'billing')
+                  return next
+                })
+              }}
+              style={tabStyle(activeTab === 'billing')}
+            >
+              Billing
+            </button>
+            </>
+          )}
           {showTeamLaborTab && (
           <button
             type="button"

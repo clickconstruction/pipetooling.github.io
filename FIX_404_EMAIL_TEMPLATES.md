@@ -31,7 +31,7 @@ You need to create templates for all workflow notification types. Based on your 
 5. **`stage_me_complete`** - Sent to subscribed user when stage is completed
 6. **`stage_me_reopened`** - Sent to subscribed user when stage is reopened ⚠️ **You're missing this one!**
 7. **`stage_next_complete_or_approved`** - Sent to next assignee when current stage is completed/approved
-8. **`stage_prior_rejected`** - Sent to prior assignee when current stage is rejected
+8. **`stage_prior_rejected`** - Sent to prior assignee when current stage is marked incomplete
 
 ### Step 3: Create Each Template
 
@@ -54,7 +54,7 @@ You can use these variables in your templates:
 - `{{assigned_to_name}}` - Person assigned to stage
 - `{{workflow_link}}` - Link to view workflow
 - `{{previous_stage_name}}` - Previous stage name (for cross-step notifications)
-- `{{rejection_reason}}` - Rejection reason (for `stage_prior_rejected`)
+- `{{rejection_reason}}` - Reason (for `stage_prior_rejected`)
 
 ### Quick Template Examples
 
@@ -138,13 +138,13 @@ View the workflow: {{workflow_link}}
 
 #### `stage_prior_rejected`
 
-**Subject**: `Stage {{previous_stage_name}} was rejected`
+**Subject**: `Prior work incomplete: {{previous_stage_name}}`
 
 **Body**:
 ```
 Hi {{name}},
 
-The stage "{{previous_stage_name}}" in project "{{project_name}}" that you worked on has been rejected.
+The stage "{{previous_stage_name}}" in project "{{project_name}}" that you worked on has been marked as incomplete.
 
 Reason: {{rejection_reason}}
 

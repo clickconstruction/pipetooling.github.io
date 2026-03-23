@@ -156,13 +156,13 @@ A sequence of stages/steps for completing a project. Each project has exactly on
 **Relationship**: One per project (1:1)
 
 ### Stage / Step
-Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set"). Can be assigned to people, have start/complete dates, and track status (pending, in_progress, completed, approved, rejected).
+Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "Top Out", "Trim Set"). Can be assigned to people, have start/complete dates, and track status (pending, in_progress, completed, approved, rejected). The rejected status displays as "Previous work incomplete" in the UI.
 
 **Database**: `project_workflow_steps` table
 
 **Alias**: "Stage" and "Step" used interchangeably
 
-**Statuses**: pending, in_progress, completed, approved, rejected
+**Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete")
 
 ### Template
 Reusable workflow definition. Masters and devs can create templates with pre-defined stages. When creating a project, can select a template to auto-generate workflow stages.
@@ -249,7 +249,7 @@ Owner-only note on a workflow stage. Not visible to assistants, subcontractors, 
 **Access**: Only owner (master) and dev can see/edit
 
 ### Action / Action Ledger
-Status change event recorded in history (started, completed, approved, rejected, reopened). Provides complete audit trail of stage lifecycle.
+Status change event recorded in history (started, completed, approved, rejected, reopened). The rejected action displays as "Previous work incomplete". Provides complete audit trail of stage lifecycle.
 
 **Database**: `project_workflow_step_actions` table
 

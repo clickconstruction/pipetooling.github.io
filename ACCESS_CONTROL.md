@@ -79,7 +79,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 4. **subcontractor** - External workers assigned to specific tasks
 5. **estimator** - Bid estimation specialists
 6. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
-7. **superintendent** - Run jobs, manage subcontractors, draft bids (adoption-based; no People page)
+7. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
@@ -414,12 +414,12 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 ### superintendent (Superintendent)
 
-**Purpose**: Run jobs, manage subcontractors, and draft bids. Adoption-based access via `master_superintendents`.
+**Purpose**: Run jobs, manage subcontractors, and draft bids. Same access as assistants for projects, but only those they are assigned to.
 
 **Access**:
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - **Blocked**: Customers (direct), People, Templates, Prospects
-- **Jobs tabs**: Reports, Stages, Billing, Sub Sheet Ledger (hide Team Labor, Teams Summary)
+- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Teams Summary, Stages, Billing)
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
@@ -429,15 +429,14 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - **NULL or empty array** = superintendent sees all service types
 - **Non-empty array** = superintendent sees only those service types in Bids and Materials
 
-**Master-Superintendents Adoption**:
-- Masters can adopt superintendents via `master_superintendents` table (Settings → Adopt superintendents)
-- Adopted superintendents access projects, workflows, jobs, and bids from adopted masters
-- Superintendents can assign people (subcontractors, primaries) to workflow stages
-
-**Project-Level Superintendent Assignment**:
-- Devs, masters, and assistants can assign superintendents to specific projects via the Workflow page (Assigned Superintendents section)
+**Project-Level Superintendent Assignment (Required for Project Access)**:
+- Devs, masters, and assistants assign superintendents to specific projects via the Workflow page (Assigned Superintendents section)
 - `project_superintendents(project_id, superintendent_id)` table; RLS uses `can_access_project_row` for assigners
-- Superintendents gain access via adoption (all master's projects) OR project assignment (specific projects only)
+- Superintendents gain access **only** via project assignment. Adoption (`master_superintendents`) no longer grants project access.
+
+**Master-Superintendents Adoption** (legacy; does not grant project access):
+- Masters can adopt superintendents via `master_superintendents` (Settings → Adopt superintendents) for other purposes
+- Project access is via `project_superintendents` only
 
 **Permissions**:
 
@@ -448,7 +447,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Cannot see projections or Ledger Total
 
 **Jobs**:
-- Reports, Stages, Billing, Sub Sheet Ledger tabs
+- Reports, Sub Sheet Ledger tabs only (no Stages or Billing)
 - Team Labor and Teams Summary tabs hidden
 
 **Bids**:
@@ -462,7 +461,6 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)
 - No Customers page (create from Bids modal only)
-- No Projects page (access via Workflow)
 - No Pricing, Cover Letter, Submission tabs on Bids
 
 **Layout Behavior**:
@@ -477,10 +475,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 |------|-----|--------|-----------|-----|-----------|---------|-----------------|
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Stages + Billing + Sub Ledger |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
 | **Calendar** | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
@@ -495,7 +493,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 **Primary**: Any page except Dashboard/Materials/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
 
-**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Stages, Billing, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
+**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Bids/Materials/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 
 **Assistants**: Can access most pages but see filtered data
 
@@ -527,7 +525,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ✅ Adopted |
+| View projects | ✅ All | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ✅ Assigned only |
 | Create projects | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Edit projects | ✅ | ✅ Own | ✅ Adopted | ❌ | ❌ | ❌ | ❌ |
 | Delete projects | ✅ | ✅ Own | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -561,7 +559,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Assign people | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Set Start (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
 | Complete (assigned) | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Approve/Reject | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Approve/Previous work incomplete | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | Re-open | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | View private notes | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |
 | View/edit line items | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ |

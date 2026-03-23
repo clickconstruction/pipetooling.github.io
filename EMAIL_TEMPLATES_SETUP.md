@@ -90,7 +90,7 @@ WITH CHECK (
 
 #### Cross-Step Notifications
 10. **`stage_next_complete_or_approved`** - Sent to next stage assignee when current stage is completed or approved
-11. **`stage_prior_rejected`** - Sent to prior stage assignee when their stage is rejected
+11. **`stage_prior_rejected`** - Sent to prior stage assignee when their stage is marked incomplete
 
 ### Template Variables
 
@@ -110,7 +110,7 @@ Templates support different variables depending on the template type:
 - `{{assigned_to_name}}` - Name of person assigned to the stage
 - `{{workflow_link}}` - Link to view the workflow page
 - `{{previous_stage_name}}` - Name of the previous stage (for cross-step notifications)
-- `{{rejection_reason}}` - Reason for rejection (for `stage_prior_rejected` template)
+- `{{rejection_reason}}` - Reason for marking incomplete (for `stage_prior_rejected` template)
 
 ### Example Templates
 

@@ -2277,8 +2277,8 @@ export default function Settings() {
           body: 'Hi {{assigned_to_name}},\n\nThe previous workflow stage for project "{{project_name}}" has been completed or approved. Your stage "{{stage_name}}" is now ready to begin.\n\nProject: {{project_name}}\nYour stage: {{stage_name}}\nPrevious stage: {{previous_stage_name}}\n\nView the workflow: {{workflow_link}}',
         },
         stage_prior_rejected: {
-          subject: 'Workflow stage rejected: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been rejected.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nRejection reason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
+          subject: 'Prior work incomplete: {{stage_name}}',
+          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been marked as incomplete.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nReason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
         },
       }
       const defaultTemplate = defaults[templateType]
@@ -8046,7 +8046,7 @@ export default function Settings() {
                     { type: 'stage_me_complete' as const, label: 'Stage completed (ME)', description: 'Subscribed stage completed' },
                     { type: 'stage_me_reopened' as const, label: 'Stage re-opened (ME)', description: 'Subscribed stage re-opened' },
                     { type: 'stage_next_complete_or_approved' as const, label: 'Your turn', description: 'Next stage ready after previous completed/approved' },
-                    { type: 'stage_prior_rejected' as const, label: 'Stage rejected', description: 'Stage rejected, sent to prior assignee' },
+                    { type: 'stage_prior_rejected' as const, label: 'Prior work incomplete', description: 'Prior work incomplete, sent to prior assignee' },
                   ].map(({ type, label, description }) => {
                     const template = notificationTemplates.find(t => t.template_type === type)
                     return (
@@ -8282,7 +8282,7 @@ export default function Settings() {
             <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Cross-Step Notifications</h4>
             {[
               { type: 'stage_next_complete_or_approved' as const, label: 'Next Stage Ready', description: 'Sent to next stage assignee when current stage is completed or approved' },
-              { type: 'stage_prior_rejected' as const, label: 'Prior Stage Rejected', description: 'Sent to prior stage assignee when their stage is rejected' },
+              { type: 'stage_prior_rejected' as const, label: 'Prior work incomplete', description: 'Sent to prior stage assignee when their stage is marked incomplete' },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
@@ -8346,7 +8346,7 @@ export default function Settings() {
                     editingTemplate.template_type === 'stage_me_complete' ? 'Stage Complete (ME)' :
                     editingTemplate.template_type === 'stage_me_reopened' ? 'Stage Re-opened (ME)' :
                     editingTemplate.template_type === 'stage_next_complete_or_approved' ? 'Next Stage Ready' :
-                    editingTemplate.template_type === 'stage_prior_rejected' ? 'Prior Stage Rejected' :
+                    editingTemplate.template_type === 'stage_prior_rejected' ? 'Prior work incomplete' :
                     'Email'} Template
                 </h2>
                 <form onSubmit={saveEmailTemplate}>

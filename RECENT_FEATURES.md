@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-22
+last_updated: 2026-06-23
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,18 +15,24 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.136)"
+  - name: "Latest Version (v2.138)"
     line: ~349
+    description: "Revoke superintendent Jobs Billing access"
+  - name: "v2.137"
+    line: ~355
+    description: "Superintendents: Approve and Send Back: Previous Work Incomplete"
+  - name: "v2.136"
+    line: ~365
     description: "Line Items For Office, supply house invoice linking, clock pay INSERT, dispatch dismissals"
   - name: "v2.135"
     line: ~362
     description: "Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll"
   - name: "v2.134"
     line: ~352
-    description: "Assistants: private notes and Approve/Reject"
+    description: "Assistants: private notes and Approve/Previous work incomplete"
   - name: "v2.133"
     line: ~352
-    description: "Approve/Reject restricted to dev/master, visual separation"
+    description: "Approve/Previous work incomplete restricted to dev/master, visual separation"
   - name: "v2.132"
     line: ~352
     description: "Workflow step cards row collapse, button modernization"
@@ -253,7 +259,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
+1. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
 2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
 2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
 2. [Latest Updates (v2.97)](#latest-updates-v297) - Bids Counts: Save & Add, Cancel styling; Bids Pricing: Price book centered
@@ -349,6 +356,40 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.138)
+
+**Date**: 2026-06-23
+
+### Revoke Superintendent Jobs Billing Access
+
+- **Background**: Migration `20260623170000_superintendent_ledger_assigned_only` had incorrectly granted superintendents access to the Jobs Billing tab (`jobs_ledger` and child tables). The correct ledger for superintendents is **Workflow Line Items For Office**, which was already fixed. Superintendents should not see Jobs billing data.
+
+- **RLS revoked** on 8 tables (removed `superintendent` from role checks and removed `can_access_project_row` project-assignment branch):
+  - jobs_ledger, jobs_ledger_materials, jobs_ledger_invoices, jobs_ledger_payments
+  - jobs_ledger_fixtures, jobs_ledger_team_members, jobs_tally_parts, job_status_events
+
+- **Jobs page**: Superintendent tabs reduced from Reports, Stages, Billing, Sub Sheet Ledger → **Reports, Sub Sheet Ledger only**. Stages and Billing tabs hidden; default tab changed from `stages` to `reports`. Direct URLs `/jobs?tab=billing` and `/jobs?tab=stages` redirect to Reports.
+
+- **Unchanged**: Reports tab and `list_reports_with_job_info` remain accessible to superintendents. Workflow Line Items For Office, Dashboard Assigned Jobs, and in-progress stage links still work (SECURITY DEFINER RPCs).
+
+**Files**: `supabase/migrations/20260623190000_revoke_superintendent_jobs_billing.sql`, `src/pages/Jobs.tsx`, `ACCESS_CONTROL.md`
+
+---
+
+## Latest Updates (v2.137)
+
+**Date**: 2026-06-22
+
+### Superintendents: Approve and Send Back: Previous Work Incomplete
+
+- **Superintendents can use Approve and Send Back: Previous Work Incomplete** on the Workflow page and Dashboard Assigned Stages (previously dev, master, and assistant only).
+- **AssignedStageCard**: Added superintendent to `canApproveReject` so Approve/Send Back buttons appear on Dashboard Assigned Stage cards.
+- **Backend**: Updated `can_access_step_for_action` to allow superintendents with workflow access to INSERT into `project_workflow_step_actions` (action ledger) when they Approve or Reject.
+
+**Files**: `src/components/AssignedStageCard.tsx`, `supabase/migrations/20260622130000_superintendent_approve_step_actions.sql`, `ACCESS_CONTROL.md`, `WORKFLOW_FEATURES.md`, `PROJECT_DOCUMENTATION.md`
+
+---
+
 ## Latest Updates (v2.136)
 
 **Date**: 2026-03-22
@@ -400,10 +441,10 @@ when_to_read:
 
 **Date**: 2026-03-21
 
-### Assistants: Private Notes and Approve/Reject Access
+### Assistants: Private Notes and Approve/Previous Work Incomplete Access
 
 - **Assistants can see and edit private notes** on workflow steps (previously dev/master only).
-- **Assistants can use Approve and Reject** buttons (Workflow page and Dashboard Assigned Stages).
+- **Assistants can use Approve and Previous work incomplete** buttons (Workflow page and Dashboard Assigned Stages).
 - Backend already permitted this; changes were frontend-only (`canSeePrivateNotesAndApprove` flag).
 - Settings copy updated: assistants "cannot see financial totals" (not private notes or financials).
 
@@ -415,10 +456,10 @@ when_to_read:
 
 **Date**: 2026-03-21
 
-### Workflow – Approve/Reject Restricted, Visual Separation
+### Workflow – Approve/Previous Work Incomplete Restricted, Visual Separation
 
-- **Approve/Reject restricted to dev and master only** (v2.134 adds assistants). Superintendents do not see Approve/Reject; they use Complete on assigned stages.
-- **Visual separation**: Approve and Reject are wrapped in a bordered group with left divider and extra spacing, distinct from Set Start and Complete (worker actions).
+- **Approve/Previous work incomplete restricted to dev and master only** (v2.134 adds assistants). Superintendents do not see Approve/Previous work incomplete; they use Complete on assigned stages.
+- **Visual separation**: Approve and Previous work incomplete are wrapped in a bordered group with left divider and extra spacing, distinct from Set Start and Complete (worker actions).
 - **Approve color**: Approve is now blue (wf-btn-info) to distinguish manager sign-off from Complete (green, worker done).
 
 **Files**: `src/pages/Workflow.tsx`, `src/pages/Dashboard.tsx`
@@ -433,11 +474,11 @@ when_to_read:
 
 - **Row collapse**: Each step card can collapse to 1–2 lines; completed/approved cards default collapsed; chevron in header toggles expand/collapse.
 - **Collapsed header**: Shows Start/End dates, line items (count + total amount), Notes/Pvt word counts.
-- **When collapsed**: Assign and Notify hidden; action buttons (Set Start, Complete, Approve, Reject) remain visible.
+- **When collapsed**: Assign and Notify hidden; action buttons (Set Start, Complete, Approve, Previous work incomplete) remain visible.
 - **Notes/Private Notes**: Section labels show word count (e.g. "Notes (12 words)", "Private Notes (5 words)").
 - **Notify**: Right-aligned when expanded.
 - **Button modernization**: Workflow-scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions.
-- **Action button colors**: Set Start blue (initiate), Complete/Approve green (success), Reject red (destructive).
+- **Action button colors**: Set Start blue (initiate), Complete/Approve green (success), Previous work incomplete red (destructive).
 
 **Files**: `src/pages/Workflow.tsx`, `src/index.css`
 
@@ -1991,7 +2032,7 @@ Workflow stage card UI improvements: collapsible sections for Notify, Notes, Pri
 
 **Notify when stage**:
 - **Collapsed by default**: Section always starts collapsed (no longer expands based on in-progress or content)
-- **Cross-step checkboxes default to on**: "Notify next card assignee when complete or approved" and "Notify prior card assignee when rejected" are checked by default (null/undefined treated as true)
+- **Cross-step checkboxes default to on**: "Notify next card assignee when complete or approved" and "Notify prior card assignee when marked incomplete" are checked by default (null/undefined treated as true)
 - **Expansion logic**: These two checkboxes are excluded from the "has content" check that would expand the section
 
 **Notes, Private Notes, Line Items**:
@@ -4940,8 +4981,8 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 **Date**: 2026-01-21
 
 **Changes**:
-- ✅ **Re-open button now available for completed, approved, and rejected stages**
-  - Previously only available for rejected stages
+- ✅ **Re-open button now available for completed, approved, and marked-incomplete stages**
+  - Previously only available for marked-incomplete stages
   - Now available to devs, masters, and assistants (on Workflow page)
   - Button appears inline with Edit and Delete buttons (bottom right of card)
   - Removed from Dashboard (only available on Workflow page)
@@ -5019,17 +5060,17 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 **Changes**:
 - ✅ **Status moved to top of card**: Now displays right below "Assigned to" line
   - Format: `Status: {status}` for all status types
-  - Rejected status includes reason inline: `Status: rejected - {rejection_reason}`
-  - Rejected status shown in red (#b91c1c) with bold font
+  - Previous work incomplete status includes reason inline: `Status: Previous work incomplete - {rejection_reason}`
+  - Previous work incomplete status shown in red (#b91c1c) with bold font
 - ✅ **Removed duplicate status display** from bottom of card
 
 **Files Modified**:
 - `src/pages/Workflow.tsx` - Moved status display, removed separate rejection reason display
 
-### Re-open Rejected Stages
+### Re-open Marked-Incomplete Stages
 
 **Changes**:
-- ✅ **Added "Re-open" button** for rejected stages
+- ✅ **Added "Re-open" button** for stages marked incomplete
   - Visible to devs/masters and assigned person
   - Resets stage to `pending` status
   - Clears `ended_at`, `rejection_reason`, `approved_by`, and `approved_at`
@@ -5110,7 +5151,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 - Shows who performed each action and when
 - Displays action notes if provided
 - Chronologically ordered (newest first)
-- **Re-open functionality**: Rejected stages can be reopened via "Re-open" button
+- **Re-open functionality**: Stages marked incomplete can be reopened via "Re-open" button
   - Resets stage to `pending` status
   - Clears rejection reason and approval info
   - Records 'reopened' action in ledger
@@ -5267,7 +5308,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
 **Features**:
 - **Stage Summary**: Shows complete workflow stage sequence with color coding
   - Green (`#059669`) for completed/approved stages
-  - Red (`#b91c1c`) for rejected stages
+  - Red (`#b91c1c`) for stages marked incomplete
   - Orange (`#E87600`) and bold for in_progress stages
   - Gray (`#6b7280`) for pending stages
   - Displayed below project description, above plans link
@@ -5275,7 +5316,7 @@ All changes are backward compatible. Existing code continues to work unchanged. 
   - Format: `Current stage: check subs work [3 / 5]`
   - Shows stage position (1-indexed) and total stages
   - **Position calculation**: Uses sorted step list position, not raw `sequence_order` (fixes display issues when sequence_order has gaps)
-  - **Rejected stages stop progress**: If any stage is rejected, it's shown as the current stage (prevents progress past rejected stages)
+  - **Stages marked incomplete stop progress**: If any stage is marked incomplete, it's shown as the current stage (prevents progress past those stages)
 - **Map Link**: Clickable map icon next to "Link to plans" (if project has address)
   - Opens Google Maps with project address
   - Same icon and styling as customer list

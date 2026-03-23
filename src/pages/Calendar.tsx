@@ -447,7 +447,7 @@ export default function Calendar() {
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
-                          background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                          background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
                           color: '#111827',
                           textDecoration: 'none',
                           borderRadius: 3,
@@ -582,7 +582,7 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                              background: step.status === 'completed' || step.status === 'approved' ? '#f0fdf4' : step.status === 'skipped' ? '#f3f4f6' : step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
                               color: '#111827',
                               textDecoration: 'none',
                               borderRadius: 4,
@@ -664,7 +664,7 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
+                          background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'skipped' ? '#f3f4f6' : item.step.status === 'rejected' ? '#fef2f2' : '#eff6ff',
                           color: '#111827',
                           textDecoration: 'none',
                           borderRadius: 4,

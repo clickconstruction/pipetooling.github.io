@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-03-22
+last_updated: 2026-06-23
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -180,6 +180,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Closing a dispatch request requires user to enter a note
 - **Category**: Task Dispatch / Schema
 
+#### June 23, 2026
+
+**`20260623190000_revoke_superintendent_jobs_billing.sql`**
+- **Purpose**: Revoke superintendent access to Jobs billing data (jobs_ledger and child tables)
+- **Changes**: Drop policies that included `superintendent` and `can_access_project_row`; recreate policies without them on jobs_ledger, jobs_ledger_materials, jobs_ledger_invoices, jobs_ledger_payments, jobs_ledger_fixtures, jobs_ledger_team_members, jobs_tally_parts, job_status_events
+- **Impact**: Superintendents can no longer read or modify Jobs Billing tab data; correct ledger is Workflow Line Items For Office. Reports and list_reports_with_job_info unchanged.
+- **Category**: Access control / Jobs / RLS
+
 ### May 2026
 
 #### May 20, 2026 — Superintendent role
@@ -313,6 +321,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Update RLS on contract_templates, contract_template_documents, person_contract_assignments, person_contract_documents to include `is_master_or_dev()` in USING/WITH CHECK
 - **Impact**: Non-pay-approved masters can manage contract templates and assignments
 - **Category**: People / Contracts / RLS
+
+**`20260322170000_fix_projects_rls_recursion.sql`**
+- **Purpose**: Fix "infinite recursion detected in policy for relation projects" on /projects
+- **Changes**: Add overload `can_access_project_row(project_id, master_user_id, customer_id)` that uses passed values instead of reading projects; add `user_assigned_to_project_as_superintendent` SECURITY DEFINER helper; update projects SELECT policy to use the overload
+- **Impact**: Projects page loads without recursion; assigned-steps access path preserved
+- **Category**: RLS / Bugfix / Projects
 
 #### April 21, 2026
 

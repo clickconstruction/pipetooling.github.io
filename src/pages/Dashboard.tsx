@@ -24,6 +24,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
+import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import type { Database } from '../types/database'
 
@@ -102,6 +103,7 @@ type AssignedStep = Step & {
   project_name: string
   project_address: string | null
   project_plans_link: string | null
+  project_superintendent_names: string | null
   workflow_id: string
 }
 
@@ -248,6 +250,7 @@ export default function Dashboard() {
   const [subscribedLoading, setSubscribedLoading] = useState(true)
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
   const [rejectStep, setRejectStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
+  const [skipStep, setSkipStep] = useState<{ step: AssignedStep; reason: string } | null>(null)
   const [setStartStep, setSetStartStep] = useState<{ step: AssignedStep; startDateTime: string } | null>(null)
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [fwdInstance, setFwdInstance] = useState<ChecklistInstance | null>(null)
@@ -293,8 +296,11 @@ export default function Dashboard() {
   const [recentReportsView, setRecentReportsView] = useState<'unread' | 'all'>('unread')
   const [readyToBillExpanded, setReadyToBillExpanded] = useState(false)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null }>>([])
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
+  const [superintendentJobs, setSuperintendentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
+  const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
+  const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(false)
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -876,49 +882,56 @@ export default function Dashboard() {
           if (!cancelled) setAssignedLoading(false)
           return
         }
-        const { data: stepsData } = await supabase
-          .from('project_workflow_steps')
-          .select('*')
-          .eq('assigned_to_name', name)
-          .order('created_at', { ascending: false })
-          .limit(100)
-        const steps = (stepsData ?? []) as Step[]
-        if (cancelled || steps.length === 0) {
-          if (!cancelled) setAssignedLoading(false)
-          return
+        let assigned: AssignedStep[] = []
+        const withProjectsRes = await supabase.rpc('get_assigned_steps_with_projects_for_dashboard', { p_user_name: name })
+        if (!withProjectsRes.error && Array.isArray(withProjectsRes.data)) {
+          assigned = withProjectsRes.data as AssignedStep[]
         }
-        const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
-        const { data: workflows } = await supabase
-          .from('project_workflows')
-          .select('id, project_id')
-          .in('id', workflowIds)
-        if (cancelled || !workflows?.length) {
-          if (!cancelled) setAssignedLoading(false)
-          return
-        }
-        const projectIds = [...new Set(workflows.map((w) => w.project_id))]
-        const { data: projects } = await supabase
-          .from('projects')
-          .select('id, name, address, plans_link')
-          .in('id', projectIds)
-        if (cancelled || !projects?.length) {
-          if (!cancelled) setAssignedLoading(false)
-          return
-        }
-        const workflowToProject = new Map(workflows.map((w) => [w.id, w.project_id]))
-        const projectMap = new Map(projects.map((p) => [p.id, { name: p.name, address: p.address, plans_link: p.plans_link }]))
-        const assigned: AssignedStep[] = steps.map((step) => {
-          const projectId = workflowToProject.get(step.workflow_id) ?? ''
-          const project = projectId ? projectMap.get(projectId) : null
-          return {
-            ...step,
-            project_id: projectId,
-            project_name: project?.name ?? '',
-            project_address: project?.address ?? null,
-            project_plans_link: project?.plans_link ?? null,
-            workflow_id: step.workflow_id,
+        if (assigned.length === 0 && (withProjectsRes.error?.message?.includes('Could not find the function') || withProjectsRes.error)) {
+          let steps: Step[] = []
+          const rpcRes = await supabase.rpc('get_assigned_steps_for_dashboard', { p_user_name: name })
+          if (rpcRes.error?.message?.includes('Could not find the function')) {
+            const { data } = await supabase.from('project_workflow_steps').select('*').eq('assigned_to_name', name).order('created_at', { ascending: false }).limit(100)
+            steps = (data ?? []) as Step[]
+          } else {
+            steps = (rpcRes.data ?? []) as Step[]
           }
-        })
+          if (cancelled || steps.length === 0) {
+            if (!cancelled) setAssignedLoading(false)
+            return
+          }
+          const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
+          const { data: workflows } = await supabase.from('project_workflows').select('id, project_id').in('id', workflowIds)
+          if (cancelled || !workflows?.length) {
+            if (!cancelled) setAssignedLoading(false)
+            return
+          }
+          const projectIds = [...new Set(workflows.map((w) => w.project_id))]
+          const { data: projects } = await supabase.from('projects').select('id, name, address, plans_link').in('id', projectIds)
+          if (cancelled || !projects?.length) {
+            if (!cancelled) setAssignedLoading(false)
+            return
+          }
+          const workflowToProject = new Map(workflows.map((w) => [w.id, w.project_id]))
+          const projectMap = new Map(projects.map((p) => [p.id, { name: p.name, address: p.address, plans_link: p.plans_link }]))
+          assigned = steps.map((step) => {
+            const projectId = workflowToProject.get(step.workflow_id) ?? ''
+            const project = projectId ? projectMap.get(projectId) : null
+            return {
+              ...step,
+              project_id: projectId,
+              project_name: project?.name ?? '',
+              project_address: project?.address ?? null,
+              project_plans_link: project?.plans_link ?? null,
+              project_superintendent_names: null,
+              workflow_id: step.workflow_id,
+            }
+          })
+        }
+        if (cancelled || assigned.length === 0) {
+          if (!cancelled) setAssignedLoading(false)
+          return
+        }
         if (!cancelled) {
           setAssignedSteps(assigned)
           setAssignedLoading(false)
@@ -942,6 +955,18 @@ export default function Dashboard() {
         setAssignedJobs((data ?? []) as unknown as typeof assignedJobs)
       })
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id || role !== 'superintendent') return
+    setSuperintendentJobsLoading(true)
+    supabase
+      .rpc('list_superintendent_jobs_for_dashboard')
+      .then(({ data, error }) => {
+        setSuperintendentJobsLoading(false)
+        if (error) return
+        setSuperintendentJobs((data ?? []) as unknown as typeof superintendentJobs)
+      })
+  }, [authUser?.id, role])
 
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
@@ -1042,9 +1067,14 @@ export default function Dashboard() {
     }
     showToast?.('Status updated', 'success')
     setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
+    setSuperintendentJobs((prev) => prev.filter((j) => j.id !== jobId))
     refreshInvoices()
     const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
     if (assignedData) setAssignedJobs(assignedData as unknown as typeof assignedJobs)
+    if (role === 'superintendent') {
+      const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
+      if (superintendentData) setSuperintendentJobs(superintendentData as unknown as typeof superintendentJobs)
+    }
   }
 
   async function refreshInvoices() {
@@ -1281,13 +1311,29 @@ export default function Dashboard() {
     const name = (userData as { name: string | null } | null)?.name ?? null
     
     if (name) {
-      const { data: stepsData } = await supabase
-        .from('project_workflow_steps')
-        .select('*')
-        .eq('assigned_to_name', name)
-        .order('created_at', { ascending: false })
-        .limit(100)
-      const steps = (stepsData ?? []) as Step[]
+      const withProjectsRes = await supabase.rpc('get_assigned_steps_with_projects_for_dashboard', { p_user_name: name })
+      if (!withProjectsRes.error && Array.isArray(withProjectsRes.data)) {
+        const assigned = withProjectsRes.data as AssignedStep[]
+        if (assigned.length > 0) {
+          setAssignedSteps(assigned)
+        } else {
+          setAssignedSteps([])
+        }
+        return
+      }
+      const rpcRes = await supabase.rpc('get_assigned_steps_for_dashboard', { p_user_name: name })
+      let steps: Step[] = []
+      if (rpcRes.error?.message?.includes('Could not find the function')) {
+        const { data } = await supabase
+          .from('project_workflow_steps')
+          .select('*')
+          .eq('assigned_to_name', name)
+          .order('created_at', { ascending: false })
+          .limit(100)
+        steps = (data ?? []) as Step[]
+      } else {
+        steps = (rpcRes.data ?? []) as Step[]
+      }
       if (steps.length > 0) {
         const workflowIds = [...new Set(steps.map((s) => s.workflow_id))]
         const { data: workflows } = await supabase
@@ -1317,11 +1363,16 @@ export default function Dashboard() {
                 project_name: project?.name ?? '',
                 project_address: project?.address ?? null,
                 project_plans_link: project?.plans_link ?? null,
+                project_superintendent_names: null,
                 workflow_id: step.workflow_id,
               }
             })
             setAssignedSteps(assigned)
+          } else {
+            setAssignedSteps([])
           }
+        } else {
+          setAssignedSteps([])
         }
       } else {
         setAssignedSteps([])
@@ -1614,7 +1665,7 @@ export default function Dashboard() {
     return (userData as { name: string | null; email: string | null } | null)?.name || (userData as { email: string | null } | null)?.email || 'Unknown'
   }
 
-  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened', notes?: string | null) {
+  async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened' | 'skipped', notes?: string | null) {
     const performedBy = await getCurrentUserName()
     const performedAt = new Date().toISOString()
     await supabase
@@ -1663,6 +1714,7 @@ export default function Dashboard() {
           project_name: project.name,
           project_address: project.address,
           project_plans_link: project.plans_link,
+          project_superintendent_names: null,
           workflow_id: step.workflow_id,
         } as AssignedStep
       }
@@ -1706,6 +1758,7 @@ export default function Dashboard() {
           project_name: project.name,
           project_address: project.address,
           project_plans_link: project.plans_link,
+          project_superintendent_names: null,
           workflow_id: step.workflow_id,
         } as AssignedStep
       }
@@ -1823,6 +1876,18 @@ export default function Dashboard() {
     }
     
     setRejectStep(null)
+    await loadAssignedSteps()
+  }
+
+  async function submitSkip() {
+    if (!skipStep || !skipStep.reason.trim()) return
+    await supabase.from('project_workflow_steps').update({
+      status: 'skipped',
+      skipped_reason: skipStep.reason.trim(),
+      ended_at: new Date().toISOString(),
+    }).eq('id', skipStep.step.id)
+    await recordAction(skipStep.step.id, 'skipped', skipStep.reason.trim())
+    setSkipStep(null)
     await loadAssignedSteps()
   }
 
@@ -3396,6 +3461,17 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
+                      {j.in_progress_stage_name && (
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {j.project_id && j.in_progress_step_id ? (
+                            <Link to={`/workflows/${j.project_id}#step-${j.in_progress_step_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                              In Progress Stage: {j.in_progress_stage_name}
+                            </Link>
+                          ) : (
+                            <>In Progress Stage: {j.in_progress_stage_name}</>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
@@ -3433,6 +3509,20 @@ export default function Dashboard() {
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
                           <Link to={`/jobs?tab=billing`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                            View
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            View<br />Reports
+                          </button>
+                        </>
+                      )}
+                      {role === 'superintendent' && (
+                        <>
+                          <Link to={`/jobs?edit=${j.id}&tab=stages`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
                             View
                           </Link>
                           <button
@@ -3483,6 +3573,108 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {role === 'superintendent' && (superintendentJobsLoading || superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length > 0) && (
+        <div style={{ marginTop: '2rem' }}>
+          <button
+            type="button"
+            onClick={() => setSuperintendentJobsExpanded((prev) => !prev)}
+            aria-expanded={superintendentJobsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: superintendentJobsExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{superintendentJobsExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+              Superintendent Jobs ({superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length})
+            </h2>
+          </button>
+          {superintendentJobsExpanded && (
+            superintendentJobsLoading && superintendentJobs.length === 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[1, 2].map((i) => (
+                  <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                    <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div>
+                {superintendentJobs
+                  .filter((j) => !assignedJobs.some((a) => a.id === j.id))
+                  .map((j) => (
+                    <div
+                      key={j.id}
+                      style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        padding: '1rem',
+                        marginBottom: '0.75rem',
+                        background: '#fff',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>
+                            {j.hcp_number || '—'} · {j.job_name || '—'}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                            {j.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          {j.in_progress_stage_name && (
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                              {j.project_id && j.in_progress_step_id ? (
+                                <Link to={`/workflows/${j.project_id}#step-${j.in_progress_step_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                                  In Progress Stage: {j.in_progress_stage_name}
+                                </Link>
+                              ) : (
+                                <>In Progress Stage: {j.in_progress_stage_name}</>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {j.google_drive_link?.trim() && (
+                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {j.job_plans_link?.trim() && (
+                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <Link to={`/jobs?edit=${j.id}&tab=stages`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+                            View
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                          >
+                            View<br />Reports
+                          </button>
+                          {j.created_at && (
+                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                              Open<br />{formatTimeSince(j.created_at)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )
           )}
         </div>
       )}
@@ -3889,109 +4081,20 @@ export default function Dashboard() {
           ) : (
           <div>
             {assignedSteps.map((s) => (
-              <div
+              <AssignedStageCard
                 key={s.id}
-                style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: '1rem',
-                  marginBottom: '0.75rem',
-                  background: s.status === 'rejected' ? '#fef2f2' : s.status === 'approved' || s.status === 'completed' ? '#f0fdf4' : '#fff',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: 4 }}>
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{s.name} - {personDisplay(s.assigned_to_name, userNames)}</div>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                      Project: <Link to={`/workflows/${s.project_id}#step-${s.id}`} style={{ color: '#2563eb' }}>{s.project_name}</Link>
-                    </div>
-                  </div>
-                </div>
-                <div style={{ fontSize: '0.875rem', marginBottom: 8 }}>Status: {s.status}</div>
-                {s.next_step_rejected_notice && (s.status === 'pending' || s.status === 'in_progress') && (
-                  <div style={{ fontSize: '0.875rem', color: '#E87600', marginBottom: 8, fontStyle: 'italic' }}>
-                    (next card rejected: {s.next_step_rejected_notice})
-                    {s.next_step_rejection_reason && (
-                      <div style={{ marginTop: 4, color: '#b91c1c', fontStyle: 'normal' }}>
-                        Reason: {s.next_step_rejection_reason}
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
-                  Start: {formatDatetime(s.started_at)}{" \u00B7 "}End: {formatDatetime(s.ended_at)}
-                  {(() => {
-                    const d = daysOpen(s.started_at, s.ended_at)
-                    return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
-                  })()}
-                </div>
-                {s.project_address && (
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 8 }}>
-                    Address: <a 
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.project_address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: '#2563eb', textDecoration: 'underline' }}
-                    >
-                      {s.project_address}
-                    </a>
-                  </div>
-                )}
-                {s.project_plans_link && (
-                  <div style={{ fontSize: '0.875rem', marginBottom: 8 }}>
-                    Plans: <a href={s.project_plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>View Plans</a>
-                  </div>
-                )}
-                {s.notes && (
-                  <div style={{ marginTop: 8, marginBottom: 8 }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Notes:</div>
-                    <div style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'pre-wrap', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-                      {s.notes}
-                    </div>
-                  </div>
-                )}
-                {s.rejection_reason && <div style={{ marginTop: 8, fontSize: '0.875rem', color: '#b91c1c' }}>Rejection: {s.rejection_reason}</div>}
-                
-                {/* Action Buttons */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 }}>
-                  {s.status === 'pending' && (
-                    <button 
-                      type="button" 
-                      onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} 
-                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
-                    >
-                      Set Start
-                    </button>
-                  )}
-                  {(s.status === 'pending' || s.status === 'in_progress') && (
-                    <button 
-                      type="button" 
-                      onClick={() => markCompleted(s)}
-                      style={{ padding: '4px 8px', fontSize: '0.875rem' }}
-                    >
-                      Mark Complete
-                    </button>
-                  )}
-                  {(s.status === 'pending' || s.status === 'in_progress') && (role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-                    <span style={{ display: 'inline-flex', gap: 6, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
-                      <button 
-                        type="button" 
-                        onClick={() => markApproved(s)} 
-                        style={{ padding: '4px 8px', fontSize: '0.875rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                      >
-                        Approve
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => setRejectStep({ step: s, reason: '' })} 
-                        style={{ padding: '4px 8px', fontSize: '0.875rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 6, cursor: 'pointer' }}
-                      >
-                        Reject
-                      </button>
-                    </span>
-                  )}
-                </div>
-              </div>
+                step={s}
+                userNames={userNames}
+                role={role}
+                onSetStart={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })}
+                onMarkComplete={() => markCompleted(s)}
+                onMarkApproved={() => markApproved(s)}
+                onReject={() => setRejectStep({ step: s, reason: '' })}
+                onSkip={() => setSkipStep({ step: s, reason: '' })}
+                formatDatetime={formatDatetime}
+                daysOpen={daysOpen}
+                personDisplay={personDisplay}
+              />
             ))}
           </div>
           )}
@@ -4002,7 +4105,7 @@ export default function Dashboard() {
       {rejectStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Reject step: {rejectStep.step.name}</h3>
+            <h3 style={{ marginTop: 0 }}>Previous work incomplete: {rejectStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
             <textarea
               value={rejectStep.reason}
@@ -4012,8 +4115,34 @@ export default function Dashboard() {
               placeholder="What is wrong and how should it be fixed (optional)"
             />
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitReject} style={{ padding: '0.5rem 1rem', color: '#E87600' }}>Reject</button>
+              <button type="button" onClick={submitReject} style={{ padding: '0.5rem 1rem', color: '#E87600' }}>Send Back: Previous Work Incomplete</button>
               <button type="button" onClick={() => setRejectStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Skip Modal */}
+      {skipStep && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+            <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
+            <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
+            <textarea
+              value={skipStep.reason}
+              onChange={(e) => setSkipStep((r) => r ? { ...r, reason: e.target.value } : null)}
+              rows={4}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
+              placeholder="e.g. Client waived inspection, combined with prior stage, not applicable..."
+            />
+            <div style={{ marginBottom: '1rem' }}>
+              <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
+                Not relevant
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={submitSkip} disabled={!skipStep.reason.trim()} style={{ padding: '0.5rem 1rem', color: '#92400e', ...(!skipStep.reason.trim() && { opacity: 0.5, cursor: 'not-allowed' }) }}>Skip</button>
+              <button type="button" onClick={() => setSkipStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
             </div>
           </div>
         </div>

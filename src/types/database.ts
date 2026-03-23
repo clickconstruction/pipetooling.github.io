@@ -3571,6 +3571,7 @@ export type Database = {
           scheduled_end_date: string | null
           scheduled_start_date: string | null
           sequence_order: number
+          skipped_reason: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["step_status"]
           step_type: Database["public"]["Enums"]["step_type"] | null
@@ -3602,6 +3603,7 @@ export type Database = {
           scheduled_end_date?: string | null
           scheduled_start_date?: string | null
           sequence_order: number
+          skipped_reason?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["step_status"]
           step_type?: Database["public"]["Enums"]["step_type"] | null
@@ -3633,6 +3635,7 @@ export type Database = {
           scheduled_end_date?: string | null
           scheduled_start_date?: string | null
           sequence_order?: number
+          skipped_reason?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["step_status"]
           step_type?: Database["public"]["Enums"]["step_type"] | null
@@ -5343,10 +5346,16 @@ export type Database = {
         Args: { project_id_param: string }
         Returns: boolean
       }
-      can_access_project_row: {
-        Args: { project_id_param: string }
-        Returns: boolean
-      }
+      can_access_project_row:
+        | { Args: { project_id_param: string }; Returns: boolean }
+        | {
+            Args: {
+              proj_customer_id: string
+              proj_master_id: string
+              project_id_param: string
+            }
+            Returns: boolean
+          }
       can_access_project_via_step: {
         Args: { step_id_param: string }
         Returns: boolean
@@ -5410,6 +5419,51 @@ export type Database = {
         Returns: boolean
       }
       get_archived_user_names: { Args: never; Returns: string[] }
+      get_assigned_steps_for_dashboard: {
+        Args: { p_user_name: string }
+        Returns: {
+          approved_at: string | null
+          approved_by: string | null
+          assigned_skill: string | null
+          assigned_to_name: string | null
+          created_at: string | null
+          ended_at: string | null
+          id: string
+          inspection_notes: string | null
+          inspector_name: string | null
+          name: string
+          next_step_rejected_notice: string | null
+          next_step_rejection_reason: string | null
+          notes: string | null
+          notify_assigned_when_complete: boolean | null
+          notify_assigned_when_reopened: boolean | null
+          notify_assigned_when_started: boolean | null
+          notify_next_assignee_when_complete_or_approved: boolean | null
+          notify_prior_assignee_when_rejected: boolean | null
+          private_notes: string | null
+          rejection_reason: string | null
+          scheduled_end_date: string | null
+          scheduled_start_date: string | null
+          sequence_order: number
+          skipped_reason: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["step_status"]
+          step_type: Database["public"]["Enums"]["step_type"] | null
+          template_step_id: string | null
+          updated_at: string | null
+          workflow_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "project_workflow_steps"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_assigned_steps_with_projects_for_dashboard: {
+        Args: { p_user_name: string }
+        Returns: Json[]
+      }
       get_bids_by_ids: {
         Args: { p_bid_ids: string[] }
         Returns: {
@@ -5634,6 +5688,22 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_superintendent_jobs_for_dashboard: {
+        Args: never
+        Returns: {
+          created_at: string
+          google_drive_link: string
+          hcp_number: string
+          id: string
+          in_progress_stage_name: string
+          in_progress_step_id: string
+          job_address: string
+          job_name: string
+          job_plans_link: string
+          project_id: string
+          revenue: number
+        }[]
+      }
       list_tally_parts_with_po: {
         Args: never
         Returns: {
@@ -5688,7 +5758,6 @@ export type Database = {
           customer_name: string
           id: string
           project_name: string
-          service_type_name: string
         }[]
       }
       search_jobs_for_reports: {
@@ -5748,6 +5817,14 @@ export type Database = {
         Args: { p_private_notes: string; p_step_id: string }
         Returns: undefined
       }
+      user_assigned_to_project_as_superintendent: {
+        Args: { project_id_param: string }
+        Returns: boolean
+      }
+      user_has_assigned_step_in_project: {
+        Args: { project_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       project_status: "active" | "completed" | "on_hold" | "awaiting_start"
@@ -5757,6 +5834,7 @@ export type Database = {
         | "completed"
         | "rejected"
         | "approved"
+        | "skipped"
       step_type: "delivery" | "count" | "work" | "inspection" | "billing"
       user_role:
         | "owner"
@@ -5903,6 +5981,7 @@ export const Constants = {
         "completed",
         "rejected",
         "approved",
+        "skipped",
       ],
       step_type: ["delivery", "count", "work", "inspection", "billing"],
       user_role: [

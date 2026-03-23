@@ -32,6 +32,8 @@ $$;
 COMMENT ON FUNCTION public.search_jobs_ledger(TEXT) IS 'Search jobs_ledger by HCP, job name, or address. J prefix normalized: J651 matches 651.';
 
 -- 3. search_bids_for_clock: normalize "B" prefix so "B88" matches bid_number "88".
+-- Drop all overloads first (return type or params may differ on existing installs).
+DROP FUNCTION IF EXISTS public.search_bids_for_clock(TEXT, UUID, UUID[]);
 CREATE OR REPLACE FUNCTION public.search_bids_for_clock(
   p_search_text TEXT DEFAULT '',
   p_service_type_id UUID DEFAULT NULL,

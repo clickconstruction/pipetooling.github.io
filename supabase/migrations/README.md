@@ -305,12 +305,12 @@ Run these when introducing the **superintendent** role. Order: add role enum fir
 - `20260520120002_add_superintendent_service_type_ids.sql` — Service type filtering on users
 - `20260520120003_superintendent_project_and_adoption_access.sql` — Projects and can_access_project_row, master_adopted_current_user
 - `20260520120004_workflow_rls_superintendent.sql` — Workflow tables (project_workflow_steps, workflow_step_line_items)
-- `20260520120005_superintendent_jobs_and_reports_rls.sql` — Jobs, reports, ledger tables
+- `20260520120005_superintendent_jobs_and_reports_rls.sql` — Jobs reports RLS (ledger revoked in `20260623190000_revoke_superintendent_jobs_billing.sql`)
 - `20260520120006_superintendent_people_rls.sql` — People table (for Workflow roster)
 - `20260520120007_superintendent_bids_and_customers_rls.sql` — Bids tables and customers (SELECT + INSERT for Bids)
 - `20260520120008_superintendent_materials_rls.sql` — Materials tables
 
-**When to run**: Apply in order when enabling the superintendent role. Superintendents have adoption-based access via `master_superintendents`; no People page; Jobs tabs: Reports, Stages, Billing, Sub Sheet Ledger; Bids tabs: draft flow only (no Pricing, Cover Letter, Submission).
+**When to run**: Apply in order when enabling the superintendent role. Superintendents have adoption-based access via `master_superintendents`; no People page; Jobs tabs: Reports, Sub Sheet Ledger only (no Stages or Billing; revoked in `20260623190000`); Bids tabs: draft flow only (no Pricing, Cover Letter, Submission).
 
 ### Revert price book and bids.job_type
 

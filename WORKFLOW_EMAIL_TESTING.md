@@ -40,7 +40,7 @@ This guide helps you systematically test all workflow email notification scenari
 
 ### 3. Cross-Step Notifications
 - **Next Assignee**: When a stage is completed/approved, notify the next stage's assignee
-- **Prior Assignee**: When a stage is rejected, notify the previous stage's assignee
+- **Prior Assignee**: When a stage is marked incomplete, notify the previous stage's assignee
 - **Settings**: Controlled by flags on the step:
   - `notify_next_assignee_when_complete_or_approved`
   - `notify_prior_assignee_when_rejected`
@@ -177,19 +177,19 @@ This guide helps you systematically test all workflow email notification scenari
 
 ---
 
-## Test Scenario 6: Cross-Step - Notify Prior Assignee When Rejected
+## Test Scenario 6: Cross-Step - Notify Prior Assignee When Marked Incomplete
 
-**Goal**: Test that the previous stage's assignee receives an email when the current stage is rejected.
+**Goal**: Test that the previous stage's assignee receives an email when the current stage is marked incomplete.
 
 **Prerequisites**:
 - "Test Step 1" is completed (assigned to Person A)
 - "Test Step 2" is in progress (assigned to Person B)
-- "Test Step 2" has "Notify prior assignee when rejected" enabled
+- "Test Step 2" has "Notify prior assignee when marked incomplete" enabled
 
 **Steps**:
 1. Navigate to "Test Step 2"
-2. **Enable cross-step notification**: Ensure "Notify prior card assignee when rejected" toggle is ON
-3. **Reject the stage**: Click "Reject" and enter a rejection reason (e.g., "Needs more work")
+2. **Enable cross-step notification**: Ensure "Notify prior card assignee when marked incomplete" toggle is ON
+3. **Mark prior work incomplete**: Click "Previous work incomplete" and enter a reason (e.g., "Needs more work")
 4. **Check email**: User A (assigned to "Test Step 1") should receive an email with template `stage_prior_rejected`
 
 **Expected Email**:
@@ -198,8 +198,8 @@ This guide helps you systematically test all workflow email notification scenari
 - **Variables**: Should include `{{previous_stage_name}}` (should be "Test Step 1"), `{{rejection_reason}}` (should be "Needs more work")
 
 **Verification**:
-- Verify `{{rejection_reason}}` shows the correct rejection reason
-- Verify the email indicates which stage was rejected
+- Verify `{{rejection_reason}}` shows the correct reason
+- Verify the email indicates which stage was marked incomplete
 
 ---
 
@@ -355,7 +355,7 @@ Use this checklist to quickly verify all notification types:
 - [ ] `stage_assigned_reopened` - Assigned person when reopened
 - [ ] `stage_me_reopened` - Subscribed user when reopened
 - [ ] `stage_next_complete_or_approved` - Next assignee when completed/approved
-- [ ] `stage_prior_rejected` - Prior assignee when rejected
+- [ ] `stage_prior_rejected` - Prior assignee when marked incomplete
 
 ---
 

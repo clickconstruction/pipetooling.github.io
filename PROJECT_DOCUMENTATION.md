@@ -1852,9 +1852,9 @@ user_id = auth.uid()
   - Create workflow from template
   - **Project owner displayed** in project list and workflow page
   - **Stage Summary**: Color-coded workflow stage sequence displayed below description
-    - Green for completed/approved, red for rejected, orange (bold) for in_progress, gray for pending
+    - Green for completed/approved, red for previous work incomplete, orange (bold) for in_progress, gray for pending
   - **Current Stage**: Shows active stage with progress `[current / total]` (e.g., `[3 / 5]`)
-    - Rejected stages stop progress and are shown as current stage
+    - Stages marked incomplete stop progress and are shown as current stage
   - **Click project name** to view workflow (removed redundant "Workflow" link)
   - **Empty state**: When filtering by customer, shows `**[Customer Name]** has no projects yet. Add one.`
 - **Data**: Name, description, status, customer, master_user_id (project owner, matches customer owner), address, external references
@@ -1879,7 +1879,7 @@ user_id = auth.uid()
 **Visual Workflow Display**:
   - **Workflow Header**: Shows all stage names with "→" separators, color-coded by status
     - Green: completed/approved
-    - Red: rejected
+    - Red: previous work incomplete
     - Orange: in_progress (bolded)
     - Gray: pending
     - Clickable stage names scroll to specific step cards
@@ -1908,10 +1908,10 @@ user_id = auth.uid()
     - Allows setting historical or future start times
     - Pre-filled with current date/time
   - **Complete** (green): Worker marks stage as finished (sets `ended_at` timestamp). Visible to assigned person or managers.
-  - **Approve** (blue): Managers/owners sign off with audit trail (who approved, when). Dev, master, and assistant; visually separated from Complete.
-  - **Reject** (red): Owners/masters can reject with reason notes. Dev, master, and assistant.
-  - **Re-open**: Reopen completed/approved/rejected stages (resets status to pending)
-    - Available for completed, approved, or rejected stages via "Re-open" button
+  - **Approve** (blue): Managers/owners sign off with audit trail (who approved, when). Dev, master, assistant, and superintendent; visually separated from Complete.
+  - **Previous work incomplete** (red): Owners/masters can mark prior work incomplete with reason notes. Dev, master, assistant, and superintendent.
+  - **Re-open**: Reopen completed/approved/marked-incomplete stages (resets status to pending)
+    - Available for completed, approved, or marked-incomplete stages via "Re-open" button
     - Visible to devs, masters, and assistants (on Workflow page only)
     - Button appears inline with Edit and Delete buttons (bottom right of card)
     - Clears rejection reason, approval info, and next step rejection notices
@@ -1970,7 +1970,7 @@ user_id = auth.uid()
     - **Current user (ME)**: Notify when step started/complete/re-opened (stored in `step_subscriptions`)
   - **Cross-Step Notifications**:
     - Notify next step assignee when current step is completed or approved (default: enabled)
-    - Notify prior step assignee when current step is rejected (default: enabled)
+    - Notify prior step assignee when current step is marked incomplete (default: enabled)
     - Stored on step as `notify_next_assignee_when_complete_or_approved` and `notify_prior_assignee_when_rejected`
   - Notification preferences displayed in workflow step cards
   - **Email Delivery**: ✅ Fully implemented
@@ -1988,11 +1988,15 @@ user_id = auth.uid()
   - **Owners/Masters**: See all stages, full access to all features
   - **Assistants**: 
     - See ALL stages in workflows they have access to (via master adoption)
-    - Can use Set Start, Complete, Approve, Reject, and Re-open on assigned stages
+    - Can use Set Start, Complete, Approve, Send Back: Previous Work Incomplete, and Re-open on assigned stages
     - Can view and edit line items and private notes (but cannot see financial totals)
     - Cannot see projections or financial totals
     - Cannot add, edit, delete, or assign stages
     - Notification settings: "ASSIGNED" column hidden, only "ME" column visible
+  - **Superintendents**:
+    - See all stages in workflows for projects they have access to (via adoption or project assignment)
+    - Can use Set Start, Complete, Approve, and Send Back: Previous Work Incomplete on stages in accessible workflows
+    - Can assign people; cannot add, edit, or delete stages
   - **Subcontractors**: 
     - Only see stages where `assigned_to_name` matches their name
     - Can only use Set Start and Complete on assigned stages
@@ -2061,6 +2065,7 @@ user_id = auth.uid()
   - **Inspections Tab**: Quick links to permit/inspection portals (editable via Edit Quick Inspection Links); Add Inspection modal (job selection, address, type, date); Edit Inspection Types button (add/edit/delete types; anyone who sees the tab can manage); calendar grid with inspection chips per day; Upcoming list (next 14 days); day click opens modal with day's inspections.
   - **Upcoming** and **Teams Summary**: Placeholder tabs (content coming soon).
 - **Data**: Labor/Sub Sheet Ledger use `people_labor_jobs`, `people_labor_job_items`; labor book uses `labor_book_versions`, `labor_book_entries`; service types and fixture types; HCP Jobs use `jobs_ledger`, `jobs_ledger_materials`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_team_members`; Inspections use `inspections`, `inspection_types` (editable lookup), and `inspection_quick_links` (editable permit portal links). `jobs_receivables` retained for Data backup (dev) export.
+- **Superintendent Jobs tabs**: Superintendents see Reports and Sub Sheet Ledger only (no Stages, Billing, Team Labor, Teams Summary); default tab Reports. RLS on jobs_ledger and child tables excludes superintendents; correct ledger for superintendents is Workflow Line Items For Office.
 - **Job–Project link**: `jobs_ledger.project_id` (nullable FK → projects). Jobs can optionally link to projects for multi-phase billing; not all jobs need projects. New/Edit Job modal has Project dropdown; job rows show linked project badge; Projects page shows linked jobs and "Create Job" link. When linking a job to a project during edit, `master_user_id` is automatically updated to the project owner (trigger enforces match).
 
 ### 6a. Job Parts Tally
@@ -2120,7 +2125,7 @@ user_id = auth.uid()
     - Shows project address and plans link if available
     - Displays notes and rejection reasons if present
     - Shows next step rejection notices if present
-    - Action buttons: Set Start, Complete, Approve, Reject (based on role and status)
+    - Action buttons: Set Start, Complete, Approve, Send Back: Previous Work Incomplete (based on role and status; dev, master, assistant, superintendent)
   - **Projects: Subscribed Stages**: Shows stages user has subscribed to (with notification preferences)
     - Links to projects and workflows
   - **My Notification History**: Expandable ledger of recent notifications (timestamp, title, channel badge, links to project/workflow/checklist)
@@ -2131,7 +2136,7 @@ user_id = auth.uid()
     - Format: "Stage name - Assigned person"
     - Project link below title
     - Status, start/end times displayed
-    - Color-coded by status (green for approved/completed, red for rejected)
+    - Color-coded by status (green for approved/completed, red for previous work incomplete)
 
 ### 9. Settings
 - **Page**: `Settings.tsx`
@@ -2186,7 +2191,7 @@ user_id = auth.uid()
     - **Current user (ME)**: Notify when step started/complete/re-opened (stored in `step_subscriptions`)
   - **Cross-Step Notifications**:
     - Notify next step assignee when current step is completed or approved (default: enabled)
-    - Notify prior step assignee when current step is rejected (default: enabled)
+    - Notify prior step assignee when current step is marked incomplete (default: enabled)
     - Stored on step as `notify_next_assignee_when_complete_or_approved` and `notify_prior_assignee_when_rejected`
   - Subscribed stages shown in Dashboard
   - Notification preferences displayed in workflow step cards
@@ -2199,7 +2204,7 @@ user_id = auth.uid()
 - **Notification Triggers**:
   - **Step Started**: Sends `stage_assigned_started` to assigned person, `stage_me_started` to subscribed users
   - **Step Completed/Approved**: Sends `stage_assigned_complete` to assigned person, `stage_me_complete` to subscribed users, `stage_next_complete_or_approved` to next step assignee
-  - **Step Rejected**: Sends `stage_prior_rejected` to prior step assignee
+  - **Step marked incomplete**: Sends `stage_prior_rejected` to prior step assignee
   - **Step Reopened**: Sends `stage_assigned_reopened` to assigned person, `stage_me_reopened` to subscribed users
 - **Email Lookup**: Recipients are found by matching names in `people` and `users` tables
 - **Template Variables**: Supports `{{name}}`, `{{email}}`, `{{project_name}}`, `{{stage_name}}`, `{{assigned_to_name}}`, `{{workflow_link}}`, `{{previous_stage_name}}`, `{{rejection_reason}}`
@@ -3820,11 +3825,11 @@ For questions or issues:
 
 ### Workflow Stage Status Display
 - ✅ Status moved to top of card (right below "Assigned to")
-- ✅ Rejected status includes reason inline: "Status: rejected - {reason}"
+- ✅ Previous work incomplete status includes reason inline: "Status: Previous work incomplete - {reason}"
 - ✅ Removed duplicate status display from bottom of card
 
 ### Re-open Stages
-- ✅ Added "Re-open" button for completed, approved, and rejected stages
+- ✅ Added "Re-open" button for completed, approved, and marked-incomplete stages
 - ✅ Available to devs, masters, and assistants (on Workflow page only)
 - ✅ Button appears inline with Edit and Delete buttons (bottom right of card)
 - ✅ Resets stage to pending, clears rejection reason, approval info, and next step rejection notices
