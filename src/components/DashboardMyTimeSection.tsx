@@ -77,7 +77,7 @@ function renderBreakdownList(
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            padding: '0.35rem 0.75rem 0.35rem 1.25rem',
+                            padding: '0.3rem 0.75rem 0.3rem 1.25rem',
                             fontSize: '0.8125rem',
                             borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
                           }}
@@ -120,6 +120,31 @@ function renderBreakdownList(
   )
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>) {
+  const dates: string[] = []
+  const d = new Date(weekStart + 'T00:00:00')
+  for (let i = 0; i < 7; i++) {
+    dates.push(d.toLocaleDateString('en-CA'))
+    d.setDate(d.getDate() + 1)
+  }
+  return (
+    <div className="hoursByDayGrid">
+      {dates.map((dateStr, i) => {
+        const sec = secondsByDay.get(dateStr) ?? 0
+        const d2 = new Date(dateStr + 'T00:00:00')
+        const label = `${DAY_NAMES[i]} ${d2.getMonth() + 1}/${d2.getDate()}`
+        return (
+          <span key={dateStr} style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {label}: {sec === 0 ? '—' : formatHours(sec)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 type SessionRow = {
   id: string
   clocked_in_at: string
@@ -156,8 +181,9 @@ export default function DashboardMyTimeSection({ userId }: Props) {
   const [breakdownOpen, setBreakdownOpen] = useState(false)
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
   const [breakdownLastWeek, setBreakdownLastWeek] = useState<BreakdownItem[]>([])
-  const [lastWeekBreakdownOpen, setLastWeekBreakdownOpen] = useState(false)
   const [expandedKeysLastWeek, setExpandedKeysLastWeek] = useState<Set<string>>(new Set())
+  const [secondsByDayThisWeek, setSecondsByDayThisWeek] = useState<Map<string, number>>(new Map())
+  const [secondsByDayLastWeek, setSecondsByDayLastWeek] = useState<Map<string, number>>(new Map())
 
   const loadData = useCallback(async () => {
     if (!userId) return
@@ -209,6 +235,20 @@ export default function DashboardMyTimeSection({ userId }: Props) {
     setTotalSecondsToday(todaySeconds)
     setTotalSecondsWeek(weekSeconds)
     setTotalSecondsLastWeek(lastWeekSeconds)
+
+    const secondsByDay = new Map<string, number>()
+    for (const s of sessions) {
+      const cur = secondsByDay.get(s.work_date) ?? 0
+      secondsByDay.set(s.work_date, cur + sessionSeconds(s))
+    }
+    setSecondsByDayThisWeek(secondsByDay)
+
+    const secondsByDayLW = new Map<string, number>()
+    for (const s of lastWeekSessions) {
+      const cur = secondsByDayLW.get(s.work_date) ?? 0
+      secondsByDayLW.set(s.work_date, cur + sessionSeconds(s))
+    }
+    setSecondsByDayLastWeek(secondsByDayLW)
 
     type ParentGroup = { type: 'job' | 'bid'; jobId?: string; bidId?: string; byNotes: Map<string, number> }
     const parentGroups = new Map<string, ParentGroup>()
@@ -320,12 +360,20 @@ export default function DashboardMyTimeSection({ userId }: Props) {
       })
     }
 
-    const focusBreakdownItems: BreakdownItem[] = [...focusItems.entries()].map(([key, v]) => ({
-      key,
-      type: 'focus' as const,
-      label: v.label,
-      seconds: v.seconds,
-    }))
+    const focusBreakdownItems: BreakdownItem[] =
+      focusItems.size > 0
+        ? [
+            {
+              key: 'focus:all',
+              type: 'focus' as const,
+              label: 'No job or bid',
+              seconds: [...focusItems.values()].reduce((a, v) => a + v.seconds, 0),
+              children: [...focusItems.entries()]
+                .map(([, v]) => ({ notes: v.label, seconds: v.seconds }))
+                .sort((a, b) => b.seconds - a.seconds),
+            },
+          ]
+        : []
 
     const items: BreakdownItem[] = [...parentItems, ...focusBreakdownItems].sort((a, b) => b.seconds - a.seconds)
 
@@ -353,12 +401,20 @@ export default function DashboardMyTimeSection({ userId }: Props) {
         children,
       })
     }
-    const focusBreakdownItemsLastWeek: BreakdownItem[] = [...focusItemsLastWeek.entries()].map(([key, v]) => ({
-      key,
-      type: 'focus' as const,
-      label: v.label,
-      seconds: v.seconds,
-    }))
+    const focusBreakdownItemsLastWeek: BreakdownItem[] =
+      focusItemsLastWeek.size > 0
+        ? [
+            {
+              key: 'focus:all',
+              type: 'focus' as const,
+              label: 'No job or bid',
+              seconds: [...focusItemsLastWeek.values()].reduce((a, v) => a + v.seconds, 0),
+              children: [...focusItemsLastWeek.entries()]
+                .map(([, v]) => ({ notes: v.label, seconds: v.seconds }))
+                .sort((a, b) => b.seconds - a.seconds),
+            },
+          ]
+        : []
     const itemsLastWeek: BreakdownItem[] = [...parentItemsLastWeek, ...focusBreakdownItemsLastWeek].sort(
       (a, b) => b.seconds - a.seconds
     )
@@ -415,7 +471,7 @@ export default function DashboardMyTimeSection({ userId }: Props) {
   if (loading && breakdown.length === 0) {
     return (
       <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>My Time</h2>
+        <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>My Time</h2>
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
       </div>
     )
@@ -423,8 +479,8 @@ export default function DashboardMyTimeSection({ userId }: Props) {
 
   return (
     <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-      <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>My Time</h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+        <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Time:</h2>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
           Today: {formatElapsed(totalSecondsToday)} | Week: {formatElapsed(totalSecondsWeek)}
         </span>
@@ -438,7 +494,7 @@ export default function DashboardMyTimeSection({ userId }: Props) {
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
-              padding: 0,
+              padding: '0.25rem 0',
               margin: 0,
               background: 'none',
               border: 'none',
@@ -449,78 +505,61 @@ export default function DashboardMyTimeSection({ userId }: Props) {
             }}
           >
             <span aria-hidden>{breakdownOpen ? '▼' : '▶'}</span>
-            This week
+            This week detail
           </button>
-          {breakdownOpen &&
-            renderBreakdownList(breakdown, expandedKeys, (key) => {
-              setExpandedKeys((prev) => {
-                const next = new Set(prev)
-                if (next.has(key)) next.delete(key)
-                else next.add(key)
-                return next
-              })
-            })}
+          {breakdownOpen && (
+            <>
+              {renderHoursByDay(getDefaultWeekRange().start, secondsByDayThisWeek)}
+              {renderBreakdownList(breakdown, expandedKeys, (key) => {
+                setExpandedKeys((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(key)) next.delete(key)
+                  else next.add(key)
+                  return next
+                })
+              })}
+            </>
+          )}
         </>
       )}
-      <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end', flexDirection: 'column', alignItems: 'flex-end' }}>
-        <button
-          type="button"
-          onClick={handleToggleLastWeek}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            padding: 0,
-            margin: 0,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            color: '#6b7280',
-            fontWeight: 500,
-          }}
-        >
-          <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
-          {showLastWeek ? 'Hide last week' : 'Show last week'}
-        </button>
+      <div style={{ marginTop: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={handleToggleLastWeek}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.25rem 0',
+              margin: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              color: '#6b7280',
+              fontWeight: 500,
+            }}
+          >
+            <span aria-hidden>{showLastWeek ? '▼' : '▶'}</span>
+            {showLastWeek ? 'Hide last week detail' : 'Last week detail'}
+          </button>
+        </div>
         {showLastWeek && (
           <>
-            <div style={{ marginTop: '0.35rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+            <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
               Last week: {formatElapsed(totalSecondsLastWeek)}
             </div>
-            {breakdownLastWeek.length > 0 && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setLastWeekBreakdownOpen((o) => !o)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: 0,
-                    margin: '0.5rem 0 0',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    color: '#6b7280',
-                    fontWeight: 500,
-                  }}
-                >
-                  <span aria-hidden>{lastWeekBreakdownOpen ? '▼' : '▶'}</span>
-                  Last week
-                </button>
-                {lastWeekBreakdownOpen &&
-                  renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
-                    setExpandedKeysLastWeek((prev) => {
-                      const next = new Set(prev)
-                      if (next.has(key)) next.delete(key)
-                      else next.add(key)
-                      return next
-                    })
-                  })}
-              </>
-            )}
+            {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek)}
+            {breakdownLastWeek.length > 0 &&
+              renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
+                setExpandedKeysLastWeek((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(key)) next.delete(key)
+                  else next.add(key)
+                  return next
+                })
+              })}
           </>
         )}
       </div>
