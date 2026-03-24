@@ -843,6 +843,13 @@ Editing field directly in table/list without opening modal.
 
 **Pattern**: Click to edit, blur or Enter to save
 
+### Page Pins
+User-customizable shortcut links on the Dashboard. Stored in localStorage and/or `user_pinned_tabs` table.
+
+**Management**: Settings → Dashboard Page Pins → Page pins (Clear all, Remove per pin). Users add pins via the Layout pin icon when on pinnable pages.
+
+**Dev-only pins**: Devs can pin financial totals (Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Cost matrix) to masters/devs dashboards via dev-only sections in Settings.
+
 ---
 
 ## Abbreviations

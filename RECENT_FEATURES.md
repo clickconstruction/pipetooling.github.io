@@ -15,8 +15,14 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.145)"
+  - name: "Latest Version (v2.147)"
     line: ~332
+    description: "Remove specific pins, Page pins for all roles, assistant tally layout, last_report_at"
+  - name: "v2.146"
+    line: ~340
+    description: "Billing sections above Checklist for Dev/Master"
+  - name: "v2.145"
+    line: ~345
     description: "Master tech mobile nav Quickfill and Review in hamburger"
   - name: "v2.144"
     line: ~340
@@ -379,6 +385,46 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.147)
+
+**Date**: 2026-07-23
+
+### Settings: Remove Specific Pins and Page Pins for All Roles
+
+- **Remove specific pins**: Per-pin Remove button in Settings → Dashboard Page Pins → Page pins. Users can remove individual pins instead of only "Clear all". Uses `removePin()` and `getMergedFilteredPins()` from `pinnedTabs.ts`.
+- **Dashboard Page Pins visible to all roles**: The section is no longer dev-only. Assistants, masters, subcontractors, estimators, primaries, and superintendents see the Page pins card (Clear all + per-pin Remove list). Dev-only cards (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due) remain dev-only.
+
+**Files**: `src/pages/Settings.tsx`, `src/lib/pinnedTabs.ts`
+
+---
+
+### Assistant Dashboard: Tally and Pinned Below Clock In
+
+- **Change**: For assistants, the Tally and Job Report row and pinned pages now appear directly below Clock In/Out, before Ready to Bill and Dispatch.
+- **Order**: Clock In → Tally + Job Report + pinned pages → Ready to Bill / Dispatch / Billed → Inspections → rest. Non-assistant roles keep the original order.
+
+**Files**: `src/pages/Dashboard.tsx`
+
+---
+
+### Subcontractor Assigned Jobs: last_report_at
+
+- **Change**: `list_assigned_jobs_for_dashboard` RPC now returns `last_report_at` (max `reports.created_at` for the job) for subcontractor Dashboard cards, showing "time since last report" (e.g. "Open 1 week").
+
+**Files**: `supabase/migrations/20270324120000_add_last_report_at_to_list_assigned_jobs.sql`
+
+---
+
+### Hours Review Modals
+
+- **ReviewHoursModal**: Person/week navigation and "Mark as reviewed" checkbox for Pay tab hours workflow.
+- **PersonTimeDetailModal**: Detailed time breakdown for a person.
+- **AssignFocusModal**: Assign clock focus from Clock In / Update Focus flow.
+
+**Files**: `src/components/ReviewHoursModal.tsx`, `src/components/PersonTimeDetailModal.tsx`, `src/components/AssignFocusModal.tsx`, `src/pages/People.tsx`
 
 ---
 

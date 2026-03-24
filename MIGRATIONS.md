@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
 total_migrations: ~87
-date_range: "Through April 18, 2026"
+date_range: "Through March 24, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -99,6 +99,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Create `hours_reviewed` (person_name, start_date, end_date, reviewed_by, reviewed_at); UNIQUE(person_name, start_date); RLS for dev, pay-approved masters, assistants
 - **Impact**: Review Hours modal "Mark as reviewed" checkbox; Hours reviewed ledger on Pay tab
 - **Category**: People / Pay
+
+### March 2027
+
+#### March 24, 2027
+
+**`20270324120000_add_last_report_at_to_list_assigned_jobs.sql`**
+- **Purpose**: Add last report timestamp to subcontractor Assigned Jobs Dashboard cards
+- **Changes**: DROP and recreate `list_assigned_jobs_for_dashboard()`; add `last_report_at TIMESTAMPTZ` to return type (subquery: `MAX(reports.created_at)` for job)
+- **Impact**: Subcontractor Dashboard Assigned Jobs cards show "Open X" (time since last report) for "time since last report" display
+- **Category**: Dashboard / Reports
 
 ### March 2026
 

@@ -37,6 +37,7 @@
 | Dispatch dismissals, closed note | `RECENT_FEATURES.md` → v2.136; `MIGRATIONS.md`; `GLOSSARY.md` → Task Dispatch |
 | Superintendent Jobs: Reports + Sub Ledger only (no Stages, Billing) | `RECENT_FEATURES.md` → v2.138; `ACCESS_CONTROL.md` → superintendent; `MIGRATIONS.md` → 20260623190000 |
 | Dashboard Assigned Jobs, Superintendent Jobs, in-progress stage banner, Choose from my jobs | `RECENT_FEATURES.md` → v2.142; `PROJECT_DOCUMENTATION.md` → Dashboard; `MIGRATIONS.md` → 20260624000000_allow_superintendent_send_to_billing |
+| Remove specific pins, Page pins for assistants | `RECENT_FEATURES.md` → v2.147; `PROJECT_DOCUMENTATION.md` → Settings, Dashboard |
 
 ---
 

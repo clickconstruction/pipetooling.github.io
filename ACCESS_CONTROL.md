@@ -193,7 +193,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Blocked**: Settings (except viewing adoptions), Templates
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Blocked**: Templates
 
 **Permissions**:
 
@@ -483,7 +484,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ❌ | ❌ | ✅ limited | ✅ limited | ✅ limited |
+| **Settings** | ✅ | ✅ limited | ✅ limited | ❌ | ✅ limited | ✅ limited | ✅ limited |
 
 ### Redirection Rules
 
