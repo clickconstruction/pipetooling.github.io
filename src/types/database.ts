@@ -1370,6 +1370,8 @@ export type Database = {
           id: string
           job_ledger_id: string | null
           links: string[]
+          location_lat: number | null
+          location_lng: number | null
           reference_summary: string | null
           status: string
           title: string
@@ -1384,6 +1386,8 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           links?: string[]
+          location_lat?: number | null
+          location_lng?: number | null
           reference_summary?: string | null
           status?: string
           title: string
@@ -1398,6 +1402,8 @@ export type Database = {
           id?: string
           job_ledger_id?: string | null
           links?: string[]
+          location_lat?: number | null
+          location_lng?: number | null
           reference_summary?: string | null
           status?: string
           title?: string

@@ -517,6 +517,8 @@ const response = await supabase.functions.invoke('dev-login', {
 2. Set Edge Function secret: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
 3. Open `http://localhost:5175/dev-login?as=test@example.com` or use the form at `/dev-login`
 
+**Note**: The email must exist in `auth.users`. If `user@example.com` or `test@example.com` is not in your database, the Edge Function returns a non-2xx status. Use an existing user email (e.g. `robert@douglasmining.com` in your project) or create the user first via the create-user Edge Function.
+
 #### Supabase Auth Config
 
 `additional_redirect_urls` in `supabase/config.toml` must include `http://localhost:5175/**` (and optionally `http://localhost:5173/**`) for dev-login magic links to redirect back to localhost. Production: `https://pipetooling.com/**`; local dev: localhost URLs.

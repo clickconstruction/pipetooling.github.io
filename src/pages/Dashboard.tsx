@@ -338,6 +338,8 @@ export default function Dashboard() {
     created_at: string | null
     from_user_id: string
     reference_summary: string | null
+    location_lat: number | null
+    location_lng: number | null
     sender: { name: string | null; email: string | null } | null
     status: 'open' | 'closed'
     closed_at: string | null
@@ -424,7 +426,7 @@ export default function Dashboard() {
       supabase
         .from('dispatch_requests')
         .select(
-          'id, title, links, created_at, from_user_id, reference_summary, status, closed_at, closed_by_user_id, closed_note, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)',
+          'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)',
         )
         .order('created_at', { ascending: false }),
       supabase.from('dispatch_request_dismissals').select('request_id').eq('user_id', authUser.id),
@@ -2534,6 +2536,19 @@ export default function Dashboard() {
                               }}
                             >
                               Ref: {req.reference_summary.trim()}
+                            </div>
+                          ) : null}
+                          {req.location_lat != null && req.location_lng != null ? (
+                            <div style={{ marginTop: 4, fontSize: '0.8125rem' }}>
+                              <a
+                                href={`https://www.google.com/maps?q=${req.location_lat},${req.location_lng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="View location in Google Maps"
+                                style={{ color: '#2563eb', textDecoration: 'none' }}
+                              >
+                                View location
+                              </a>
                             </div>
                           ) : null}
                         </div>

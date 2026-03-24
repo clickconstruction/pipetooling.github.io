@@ -21,6 +21,8 @@ type DispatchRow = {
   reference_summary: string | null
   job_ledger_id: string | null
   bid_id: string | null
+  location_lat: number | null
+  location_lng: number | null
 }
 
 function truncateTitle(title: string, maxLen: number): string {
@@ -77,7 +79,7 @@ serve(async (req) => {
 
     const { data: row, error: rowErr } = await userClient
       .from('dispatch_requests')
-      .select('id, from_user_id, title, reference_summary, job_ledger_id, bid_id')
+      .select('id, from_user_id, title, reference_summary, job_ledger_id, bid_id, location_lat, location_lng')
       .eq('id', dispatch_request_id)
       .maybeSingle()
 
@@ -182,6 +184,12 @@ serve(async (req) => {
         const prefix = `B${(b.bid_number || '').trim() || '—'}`
         refSuffix = ` · ${prefix} · ${b.project_name || '—'} - ${b.address || b.customer_name || '—'}`
       }
+    }
+    if (
+      dispatchRow.location_lat != null &&
+      dispatchRow.location_lng != null
+    ) {
+      refSuffix += ' · Location attached'
     }
 
     const titlePart = truncateTitle(dispatchRow.title, 160)

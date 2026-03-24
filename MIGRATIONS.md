@@ -202,6 +202,40 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Policies no longer fail due to users table RLS; `can_access_bid_for_pricing` already validates role internally
 - **Category**: Bids / RLS
 
+#### June 25, 2026
+
+**Root cause**: Postgres truncates policy names to 63 characters. Long descriptive names collided or caused policies to be dropped; only `can_access_bid_for_pricing` used in recreated policies.
+
+**`20260625120000_debug_cost_estimate_check_rpc.sql`**
+- **Purpose**: Debug RPC for cost_estimate RLS diagnostics
+- **Changes**: Create `debug_cost_estimate_check(p_bid_id)` — returns can_access, auth_id, user_role, bid_exists
+- **Impact**: Dev diagnostics; safe to leave in prod
+- **Category**: Bids / Debug
+
+**`20260625130000_debug_cost_estimate_policies_rpc.sql`**
+- **Purpose**: Debug RPC listing cost_estimates policies
+- **Changes**: Create `debug_cost_estimate_policies()` — returns policyname, cmd, qual, with_check from pg_policies
+- **Impact**: Dev diagnostics
+- **Category**: Bids / Debug
+
+**`20260625140000_cost_estimates_rls_recreate_all.sql`**
+- **Purpose**: Recreate cost_estimates RLS with short names to avoid 63-char truncation collisions
+- **Changes**: Drop all policies via pg_policies loop; recreate ce_select, ce_insert, ce_update, ce_delete using `can_access_bid_for_pricing`
+- **Impact**: Fixes "new row violates row-level security policy" when only DELETE policy remained
+- **Category**: Bids / RLS
+
+**`20260625150000_cost_estimate_labor_rows_rls_recreate_all.sql`**
+- **Purpose**: Same as above for cost_estimate_labor_rows
+- **Changes**: Drop all policies; recreate celr_select, celr_insert, celr_update, celr_delete
+- **Impact**: Bids Counts and Pricing tabs work for dev, assistant, estimator, primary
+- **Category**: Bids / RLS
+
+**`20260625160000_bid_pricing_assignments_rls_recreate_all.sql`**
+- **Purpose**: Same as above for bid_pricing_assignments
+- **Changes**: Drop all policies; recreate bpa_select, bpa_insert, bpa_update, bpa_delete
+- **Impact**: Bids Pricing tab assignments work correctly
+- **Category**: Bids / RLS
+
 ### May 2026
 
 #### May 20, 2026 — Superintendent role

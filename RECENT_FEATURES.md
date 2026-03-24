@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-23
+last_updated: 2026-06-25
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.139)"
+  - name: "Latest Version (v2.140)"
     line: ~349
+    description: "RLS policy name truncation fix, AbortError non-retryable"
+  - name: "v2.139"
+    line: ~365
     description: "Fix cost_estimates RLS for assistants"
   - name: "v2.138"
     line: ~365
@@ -357,6 +360,26 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.140)
+
+**Date**: 2026-06-25
+
+### RLS Policy Name Truncation Fix
+
+- **Problem**: Devs and assistants got "new row violates row-level security policy for table 'cost_estimates'" when adding Bids Counts rows. Logs showed only the DELETE policy was present; INSERT/UPDATE/SELECT policies were missing.
+- **Cause**: Postgres truncates policy names to 63 characters. Long descriptive names (e.g. "Devs masters assistants estimators primaries superintendents can insert cost estimates") collided or caused policies to be dropped during migration application.
+- **Fix**: Drop all policies on `cost_estimates`, `cost_estimate_labor_rows`, and `bid_pricing_assignments` via `pg_policies` loop; recreate with short names (ce_select, ce_insert, ce_update, ce_delete; celr_*; bpa_*). Use only `can_access_bid_for_pricing` (SECURITY DEFINER).
+- **Tables**: cost_estimates, cost_estimate_labor_rows, bid_pricing_assignments
+
+### AbortError Non-Retryable
+
+- **Problem**: When switching Bids tabs or navigating away, aborted Supabase requests triggered retry logic and log spam.
+- **Fix**: `isRetryableError` in `src/utils/errorHandling.ts` now treats `AbortError` (and errors with "abort" in the message) as non-retryable. `withSupabaseRetry` no longer retries when the user has navigated away or cancelled the request.
+
+**Files**: `supabase/migrations/20260625140000_cost_estimates_rls_recreate_all.sql`, `20260625150000_cost_estimate_labor_rows_rls_recreate_all.sql`, `20260625160000_bid_pricing_assignments_rls_recreate_all.sql`, `src/utils/errorHandling.ts`
 
 ---
 
@@ -979,7 +1002,7 @@ All buttons use `display: inline-flex`, `alignItems: center`, `justifyContent: c
 - **`/dev-login` route**: Sign in as any user by email when running the dev server. No password required. Enables AI agents and automated tests to authenticate for checklist testing, E2E, etc.
 - **Flow**: Frontend calls `dev-login` Edge Function with email + shared secret; function returns magic link; browser redirects; user lands authenticated.
 - **Security**: Only active when `import.meta.env.DEV` is true. Requires `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for the Edge Function. Production builds redirect to sign-in.
-- **Usage**: Open `http://localhost:5175/dev-login?as=user@example.com` or use the form at `/dev-login`.
+- **Usage**: Open `http://localhost:5175/dev-login?as=user@example.com` or use the form at `/dev-login`. The email must exist in `auth.users`; use an existing user email for testing.
 - **Docs**: `EDGE_FUNCTIONS.md` → dev-login; `AGENTS.md` and `AI_CONTEXT.md` → "Testing without credentials" in Where to Look For.
 
 ---

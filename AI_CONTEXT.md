@@ -192,7 +192,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 1. **Prerequisites**: Dev server running (`npm run dev`); Supabase functions running; test user exists in Supabase
 2. **Env vars**: Add to `.env.local`: `VITE_DEV_LOGIN_SECRET=your-secret`
 3. **Edge Function secret**: `supabase secrets set DEV_LOGIN_SECRET=your-secret`
-4. **URL**: Open `http://localhost:5173/dev-login?as=test@example.com` or use the form at `/dev-login` (Vite default port 5173)
+4. **URL**: Open `http://localhost:5173/dev-login?as=<existing-email>` or use the form at `/dev-login` (Vite default port 5173). Use an existing user email from your Supabase project (e.g. `robert@douglasmining.com`). `user@example.com` or `test@example.com` will fail with non-2xx if that user doesn't exist in `auth.users`.
 5. **Flow**: Frontend calls `dev-login` Edge Function with email + secret; function returns magic link; browser redirects; user lands authenticated
 
 **Security**: Only active when `import.meta.env.DEV` is true. Production builds redirect `/dev-login` to sign-in.
@@ -219,7 +219,7 @@ AI agents or automated tests can sign in without a password using the dev-login 
 | Supabase disk IO / Materials performance | `RECENT_FEATURES.md` → v2.46; `PROJECT_DOCUMENTATION.md` → Materials Disk IO Optimizations |
 | Clock In/Out, pending sessions, pay roster | `RECENT_FEATURES.md` → v2.100; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours tab; `GLOSSARY.md` → Clock Sessions |
 | Checklist (multi-assignee, links, Today/History/Manage) | `RECENT_FEATURES.md` → v2.107, v2.109; `PROJECT_DOCUMENTATION.md` → Key Features; `GLOSSARY.md` → Checklist Items |
-| Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=user@example.com` when running dev server; set `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for Edge Function |
+| Testing without credentials (dev login) | `EDGE_FUNCTIONS.md` → dev-login; `/dev-login?as=<existing-email>` when running dev server; email must exist in auth.users (e.g. robert@douglasmining.com); set `VITE_DEV_LOGIN_SECRET` in `.env.local` and `DEV_LOGIN_SECRET` for Edge Function |
 
 ---
 
