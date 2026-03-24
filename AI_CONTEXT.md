@@ -124,7 +124,7 @@ pipetooling.github.io/
 
 ### Core Application
 - **`src/pages/Workflow.tsx`** (~3.2k lines) - Most complex component, manages project workflow
-- **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release
+- **`src/pages/Bids.tsx`** (~14k lines) - Bids: Bid Board, Builder Review (PIA per customer), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release; Bid Board **Notes** row: tabs **All notes** (default), **Bid notes**, **Customer notes** — see `src/components/bidBoard/UnifiedBidCustomerNotes.tsx`
 - **`src/pages/Materials.tsx`** (~7k lines) - Price book, templates, purchase orders
 - **`src/pages/Checklist.tsx`** - Recurring checklist (Today, History, Manage tabs)
 - **`src/components/ChecklistTitleWithLinks.tsx`** - Renders checklist titles with [1], [2], etc. as clickable links

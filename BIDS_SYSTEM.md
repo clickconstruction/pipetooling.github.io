@@ -159,6 +159,9 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **Lost bids are always hidden** on the Bid Board (no toggle)
 - Empty state when all matching bids are lost: "No bids to show (all matching bids are lost)."
 
+#### Notes (first column, expandable)
+- Expanding a row opens bid and customer notes inline. Tabs (left to right): **All notes** (default when the row opens), **Bid notes**, **Customer notes**. **All notes** shows a single timeline of `bids_submission_entries` and `customer_contacts` (when the bid has a linked customer), with **Add bid note** / **Add customer note**. **Bid notes** and **Customer notes** show only that source. See `RECENT_FEATURES.md` v2.148 and `src/components/bidBoard/UnifiedBidCustomerNotes.tsx`.
+
 #### Table Columns
 
 Column order (left to right):

@@ -182,6 +182,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Workflow Add Supply House Invoice modal; View Invoice button on linked line items
 - **Category**: Workflow / Materials
 
+#### March 24, 2026
+
+**`20260324120000_add_customer_contacts_contact_method.sql`**
+- **Purpose**: Optional contact channel on general customer outreach rows (Builder Review / Bid Board customer notes UX parity with bid submission entries)
+- **Changes**: `ALTER TABLE customer_contacts ADD COLUMN IF NOT EXISTS contact_method text` (nullable); comment on column
+- **Impact**: `CustomerNotesTable` and unified **All notes** on Bid Board can store/display/edit contact method; no new RLS (existing table policies cover the column)
+- **Category**: Bids / Customers
+
 ### June 2026
 
 #### June 21, 2026

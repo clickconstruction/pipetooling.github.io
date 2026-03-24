@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23
+last_updated: 2026-03-24
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,7 +15,10 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.147)"
+  - name: "Latest Version (v2.148)"
+    line: ~391
+    description: "Bid Board All notes unified stack; customer notes card UX; customer_contacts contact_method"
+  - name: "v2.147"
     line: ~332
     description: "Remove specific pins, Page pins for all roles, assistant tally layout, last_report_at"
   - name: "v2.146"
@@ -286,7 +289,8 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+1. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+2. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
 2. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
 3. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
 3. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
@@ -385,6 +389,30 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.148)
+
+**Date**: 2026-03-24
+
+### Bids – Bid Board: All notes and notes tabs
+
+- **All notes** (third notes mode, first in the tab strip): Merges **bid submission entries** (`bids_submission_entries`) and **general customer contacts** (`customer_contacts`) for the bid’s linked customer into one list sorted **newest first**. Rows show a **Bid note** or **Customer note** badge plus distinct background / left border. **Add bid note** and **Add customer note** open inline drafts (customer add disabled when the bid has no linked customer). New/edited bid notes still update **`bids.last_contact`** when applicable.
+- **Tab order**: **All notes** | **Bid notes** | **Customer notes**. Expanding the Notes row defaults to **All notes** (state sync when `expandedBidBoardBidId` is set).
+- **Bid notes** and **Customer notes** tabs unchanged: still use `BidNotesTable` and `CustomerNotesTable` alone.
+
+**Files**: [`src/components/bidBoard/UnifiedBidCustomerNotes.tsx`](src/components/bidBoard/UnifiedBidCustomerNotes.tsx), [`src/pages/Bids.tsx`](src/pages/Bids.tsx)
+
+---
+
+### Bids – Customer notes UX parity and `contact_method`
+
+- **Builder Review** and Bid Board **Customer notes** tab: **Customer notes** use the same stacked-card pattern as bid notes (inline add row, edit/delete, contact method quick picks, `datetime-local`), not a table + modal.
+- **Database**: Nullable **`customer_contacts.contact_method`** (append-only migration); aligns with bid submission entry contact method. Regenerate [`src/types/database.ts`](src/types/database.ts) after apply.
+- **Shared UI**: [`src/components/shared/ContactMethodQuickPicks.tsx`](src/components/shared/ContactMethodQuickPicks.tsx) (Font Awesome–licensed icons) used by bid notes and customer notes.
+
+**Files**: [`src/components/customerNotes/CustomerNotesTable.tsx`](src/components/customerNotes/CustomerNotesTable.tsx), [`src/components/bidNotes/BidNotesTable.tsx`](src/components/bidNotes/BidNotesTable.tsx), [`supabase/migrations/20260324120000_add_customer_contacts_contact_method.sql`](supabase/migrations/20260324120000_add_customer_contacts_contact_method.sql)
 
 ---
 

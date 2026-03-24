@@ -1649,7 +1649,7 @@ counts_fixture_groups (id)
 ##### Bids Capabilities
 
 **Full Bids System Access**:
-- All Bids tabs (Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup). Builder Review: customers sorted by last contact (Oldest first / Newest first); PIA checkbox per customer excludes that customer when Oldest first is selected (stored per user in localStorage).
+- All Bids tabs (Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup). Builder Review: customers sorted by last contact (Oldest first / Newest first); PIA checkbox per customer excludes that customer when Oldest first is selected (stored per user in localStorage). **General contact** (`customer_contacts`) uses the same stacked-card notes UX as bid notes (contact method quick picks, inline add/edit/delete); optional `contact_method` column on `customer_contacts`.
 - Create, edit, and delete bids
 - Enter fixture counts with quick-select and number pad
 - Map counts to material templates (Takeoff tab)
@@ -2578,7 +2578,8 @@ pipetooling.github.io/
 - **Route**: `/bids`
 - **Access**: Devs, master_technicians, assistants
 - **Tabs**: Bid Board (Evaluate button and checklist modal; search, table with lost bids always hidden, columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, Account Man, Bid, Bid Date, Distance to Office, Last Contact, Counts (hexagon icon opens bid in Counts tab), Edit; create/edit modal with **Project Name \*** and **Project Address** at top, then Project Folder, Job Plans, GC/Builder, Project Contact Name/Phone/Email, Estimator, etc.; Estimated Job Start Date when outcome is Won; delete bid opens separate confirmation modal; project contact fields not shown on Bid Board), Counts (fixture/count/page per bid), Takeoffs (assembly mappings, create PO, view PO; delete entries only in edit modal), **Cover Letter** (select bid; Customer + Project Name/Address at top; Inclusions/Exclusions/Terms with defaults; combined document; Edit bid button), Submission & Followup (four collapsible tables; selected-bid panel shows Builder Name, Builder Address, Builder Phone Number, Builder Email (from customer or legacy GC/Builder), Project Name, Project Address, Project Contact Name, Project Contact Phone, Project Contact Email, Bid Size; Sent Bid Script and Bid Question Script buttons and modals; then submission entries table; each table has Edit column with gear when row is selected; Won table shows Estimated Job Start Date; edit icon next to Close; submission entry Edit/Delete icons)
-- **Database**: `bids`, `bids_gc_builders`, `bids_count_rows`, `bids_submission_entries`; GC/Builder picker uses `customers` table
+- **Bid Board – Notes column**: Expanding a row opens an inline notes area with tabs **All notes** | **Bid notes** | **Customer notes** (default **All notes** when the row opens). **All notes** merges bid submission entries and `customer_contacts` for the bid’s linked customer in one reverse-chronological list (`src/components/bidBoard/UnifiedBidCustomerNotes.tsx`); **Bid notes** / **Customer notes** use `BidNotesTable` and `CustomerNotesTable`. Adding or editing bid notes in All notes still updates `bids.last_contact` when a timestamp is saved.
+- **Database**: `bids`, `bids_gc_builders`, `bids_count_rows`, `bids_submission_entries`, `customer_contacts` (includes optional `contact_method` for general customer outreach); GC/Builder picker uses `customers` table
 - **Helpers**: `formatShortDate` (e.g. "Sun 2/1"), `formatDateYYMMDD` (e.g. 26/02/12), `formatCompactCurrency` (e.g. $121k), `formatTimeSinceLastContact`, `formatTimeSinceDueDate` (e.g. "X days since deadline", "Due today", "X days until due")
 
 #### `src/pages/Workflow.tsx`
