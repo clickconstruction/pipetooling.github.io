@@ -289,18 +289,18 @@ export default function Dashboard() {
       return new Set()
     }
   })
-  const [hideOnRefreshPending, setHideOnRefreshPending] = useState(false)
+  const [hideOnRefreshPending, setHideOnRefreshPending] = useState(true)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [recentReportsView, setRecentReportsView] = useState<'unread' | 'all'>('unread')
-  const [readyToBillExpanded, setReadyToBillExpanded] = useState(false)
+  const [readyToBillExpanded, setReadyToBillExpanded] = useState(true)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
+  const [assignedJobs, setAssignedJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; last_report_at?: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
   const [superintendentJobs, setSuperintendentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
-  const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(false)
+  const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -367,6 +367,7 @@ export default function Dashboard() {
   const [myBidsLoading, setMyBidsLoading] = useState(false)
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
   const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
+  const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
@@ -515,7 +516,7 @@ export default function Dashboard() {
       .select('button_key, visible')
       .eq('user_id', authUser.id)
       .then(({ data }) => {
-        const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true }
+        const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true, builder_review: role === 'master_technician' }
         const map = { ...defaults }
         for (const r of (data ?? []) as Array<{ button_key: string; visible: boolean }>) {
           if (r.button_key in map) map[r.button_key] = r.visible
@@ -585,7 +586,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authUser?.id) return
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
+    const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -719,7 +720,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
+    const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
     if (!showRecent) return
     const channel = supabase
       .channel('dashboard-reports-changes')
@@ -739,6 +740,16 @@ export default function Dashboard() {
       setRecentReportsView('all')
     }
   }, [recentReports, readReportIds, hiddenReportIds, recentReportsView])
+
+  useEffect(() => {
+    if (!hideOnRefreshPending || readReportIds.size === 0) return
+    const ids = Array.from(readReportIds)
+    try {
+      localStorage.setItem(HIDE_ON_REFRESH_STORAGE_KEY, JSON.stringify(ids))
+    } catch {
+      /* ignore */
+    }
+  }, [readReportIds, hideOnRefreshPending])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1941,7 +1952,7 @@ export default function Dashboard() {
   const showChecklist = checklistLoading || todayChecklist.length > 0
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const showRecent = (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') || (role === 'subcontractor' && isReportEnabledOnlyUser)
+  const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
 
   const handleCloseNoteModalClose = () => {
     setCloseNoteModalRequestId(null)
@@ -1960,190 +1971,8 @@ export default function Dashboard() {
     }
   }
 
-  return (
-    <div>
-      {closeNoteModalRequestId && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 60,
-          }}
-          onClick={(e) => e.target === e.currentTarget && handleCloseNoteModalClose()}
-        >
-          <div
-            style={{
-              background: 'white',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 360,
-              maxWidth: 480,
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Close dispatch request</h2>
-              <button
-                type="button"
-                onClick={handleCloseNoteModalClose}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleCloseNoteSubmit()
-              }}
-            >
-              <textarea
-                value={closeNoteText}
-                onChange={(e) => setCloseNoteText(e.target.value)}
-                placeholder="Enter close note..."
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 0.75rem',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  fontSize: '0.875rem',
-                  resize: 'vertical',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {closeNoteError && (
-                <p style={{ color: '#b91c1c', marginTop: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>{closeNoteError}</p>
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={handleCloseNoteModalClose}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={dispatchRequestClosingId === closeNoteModalRequestId}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: dispatchRequestClosingId === closeNoteModalRequestId ? '#9ca3af' : '#2563eb',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: dispatchRequestClosingId === closeNoteModalRequestId ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {dispatchRequestClosingId === closeNoteModalRequestId ? '…' : 'Submit'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
-          {[
-            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
-            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
-            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
-            { key: 'project', label: 'Project', to: '/projects/new' },
-            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
-            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
-            { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
-            { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
-          ]
-            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
-            .map((b) => (
-              <Link
-                key={b.key}
-                to={b.to}
-                style={{
-                  padding: '0.75rem 1.25rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                }}
-              >
-                {b.label}
-              </Link>
-            ))}
-        </div>
-      )}
-      {authUser?.id && (
-        <div style={{ marginBottom: '1rem' }}>
-          <ClockInOutButton userId={authUser.id} userName={userName} />
-        </div>
-      )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
-        <div style={{ marginBottom: '1rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
-          {upcomingInspectionsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-          ) : upcomingInspections.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {upcomingInspections.map((i) => {
-                const today = new Date()
-                const parts = i.scheduled_date.split('-').map(Number)
-                const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
-                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-                const diffDays = Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
-                const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
-                const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
-                return (
-                  <li key={i.id} style={{ marginBottom: '0.5rem' }}>
-                    <Link
-                      to="/jobs?tab=inspections"
-                      style={{
-                        display: 'block',
-                        padding: '0.5rem 0.75rem',
-                        background: '#eff6ff',
-                        border: '1px solid #bfdbfe',
-                        borderRadius: 4,
-                        color: '#1e40af',
-                        textDecoration: 'none',
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      <div>
-                        <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
-                        <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
-                        <span style={{ fontWeight: 500 }}>{i.address}</span>
-                        {i.address?.trim() && (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
-                            title={`View ${i.address} on map`}
-                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
-                              <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </div>
-      )}
+  const tallyAndPinnedBlock = (
+    <>
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <Link
@@ -2251,219 +2080,568 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {role === 'master_technician' && (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-          <Link
-            to="/bids?tab=builder-review"
+    </>
+  )
+
+  return (
+    <div>
+      {closeNoteModalRequestId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 60,
+          }}
+          onClick={(e) => e.target === e.currentTarget && handleCloseNoteModalClose()}
+        >
+          <div
             style={{
-              padding: '0.5rem 1rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 6,
-              textDecoration: 'none',
-              fontWeight: 500,
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 480,
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            Builder Review
-          </Link>
-      </div>
-      )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.length > 0) && (
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
-          <Link
-            to="/bids?new=true"
-            style={{
-              padding: '0.35rem 0.75rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 6,
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-            }}
-          >
-            New Bid
-          </Link>
-        </div>
-          {myBidsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-          ) : (
-            <>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {myBids
-                  .filter((b) => !hiddenBidIds.has(b.id))
-                  .map((b) => {
-                    const status =
-                      !b.bid_date_sent
-                        ? 'Unsent'
-                        : b.outcome === 'won'
-                          ? 'Won'
-                          : b.outcome === 'started_or_complete'
-                            ? 'Started or Complete'
-                            : 'Pending'
-                    const dueStr = b.bid_due_date
-                      ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
-                      : '—'
-                    return (
-                      <li key={b.id} style={{ marginBottom: '0.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Link
-                            to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              display: 'block',
-                              padding: '0.5rem 0.75rem',
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              borderRadius: 4,
-                              color: '#1e40af',
-                              textDecoration: 'none',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <div>
-                              <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
-                              {b.service_type_name && (
-                                <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
-                              )}
-                            </div>
-                            <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
-                              Due {dueStr} · {status}
-                            </div>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              hideBid(b.id)
-                            }}
-                            style={{
-                              flexShrink: 0,
-                              padding: '0.35rem',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: '#6b7280',
-                            }}
-                            title="Hide bid"
-                            aria-label="Hide bid"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
-                              <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
-                            </svg>
-                          </button>
-                        </div>
-                      </li>
-                    )
-                  })}
-              </ul>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <Link
-                  to="/bids?tab=bid-board"
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Close dispatch request</h2>
+              <button
+                type="button"
+                onClick={handleCloseNoteModalClose}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleCloseNoteSubmit()
+              }}
+            >
+              <textarea
+                value={closeNoteText}
+                onChange={(e) => setCloseNoteText(e.target.value)}
+                placeholder="Enter close note..."
+                rows={4}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  fontSize: '0.875rem',
+                  resize: 'vertical',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {closeNoteError && (
+                <p style={{ color: '#b91c1c', marginTop: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>{closeNoteError}</p>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={handleCloseNoteModalClose}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dispatchRequestClosingId === closeNoteModalRequestId}
                   style={{
-                    fontSize: '0.875rem',
-                    color: '#2563eb',
-                    textDecoration: 'underline',
+                    padding: '0.5rem 1rem',
+                    background: dispatchRequestClosingId === closeNoteModalRequestId ? '#9ca3af' : '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: dispatchRequestClosingId === closeNoteModalRequestId ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  View all
-                </Link>
-                {hiddenBidIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setHiddenBidsExpanded((x) => !x)}
+                  {dispatchRequestClosingId === closeNoteModalRequestId ? '…' : 'Submit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
+          {[
+            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
+            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
+            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
+            { key: 'project', label: 'Project', to: '/projects/new' },
+            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
+            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
+            { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
+            { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
+            { key: 'builder_review', label: 'Builder Review', to: '/bids?tab=builder-review' },
+          ]
+            .filter((b) => (b.key === 'builder_review' ? role === 'master_technician' : true))
+            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
+            .map((b) => (
+              <Link
+                key={b.key}
+                to={b.to}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                }}
+              >
+                {b.label}
+              </Link>
+            ))}
+        </div>
+      )}
+      {authUser?.id && (
+        <div style={{ marginBottom: '1rem' }}>
+          <ClockInOutButton userId={authUser.id} userName={userName} />
+        </div>
+      )}
+      {role === 'assistant' && tallyAndPinnedBlock}
+      {role === 'assistant' && (
+        <>
+          <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => setReadyToBillExpanded((prev) => !prev)}
+              aria-expanded={readyToBillExpanded}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
+            >
+              <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillJobs.length + readyToBillInvoices.length})</h2>
+            </button>
+            {readyToBillExpanded && (
+            <>
+            {readyToBillLoading && readyToBillInvoices.length === 0 && readyToBillJobs.length === 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[1, 2].map((i) => (
+                  <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                    <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                  </li>
+                ))}
+              </ul>
+            ) : readyToBillJobs.length === 0 && readyToBillInvoices.length === 0 ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+            ) : (
+              <div>
+                {readyToBillJobs.map((j) => {
+                  const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                  return (
+                    <div
+                      key={j.id}
+                      style={{
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 8,
+                        padding: '1rem',
+                        marginBottom: '0.75rem',
+                        background: '#fff',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>
+                            {j.hcp_number || '—'} · {j.job_name || '—'}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                            {j.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {j.google_drive_link?.trim() && (
+                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {j.job_plans_link?.trim() && (
+                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <button type="button" onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}</button>
+                          {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+                {readyToBillInvoices.map((inv) => (
+                  <div
+                    key={inv.id}
                     style={{
-                      padding: 0,
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                      color: '#2563eb',
-                      textDecoration: 'underline',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: '#fff',
                     }}
                   >
-                    View hidden ({hiddenBidIds.size})
-                  </button>
-                )}
-              </div>
-              {hiddenBidsExpanded && hiddenBidIds.size > 0 && (
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Hidden bids</div>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {myBids
-                      .filter((b) => hiddenBidIds.has(b.id))
-                      .map((b) => {
-                        const status =
-                          !b.bid_date_sent
-                            ? 'Unsent'
-                            : b.outcome === 'won'
-                              ? 'Won'
-                              : b.outcome === 'started_or_complete'
-                                ? 'Started or Complete'
-                                : 'Pending'
-                        const dueStr = b.bid_due_date
-                          ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
-                          : '—'
-                        return (
-                          <li key={b.id} style={{ marginBottom: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Link
-                                to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
-                                style={{
-                                  flex: 1,
-                                  minWidth: 0,
-                                  display: 'block',
-                                  padding: '0.5rem 0.75rem',
-                                  background: '#f9fafb',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: 4,
-                                  color: '#374151',
-                                  textDecoration: 'none',
-                                  fontSize: '0.875rem',
-                                }}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {inv.hcp_number || '—'} · {inv.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {inv.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {inv.google_drive_link?.trim() && (
+                              <a
+                                href={inv.google_drive_link.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
+                                title="Google Drive"
+                                style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
                               >
-                                <div>
-                                  <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
-                                  {b.service_type_name && (
-                                    <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
-                                  )}
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                  <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                                </svg>
+                              </a>
+                            )}
+                            {inv.job_plans_link?.trim() && (
+                              <a
+                                href={inv.job_plans_link.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
+                                title="Job Plans"
+                                style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                  <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                                </svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledInvoice(inv) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark as<br />Billed</>}</button>
+                        {inv.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">{isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            </>
+            )}
+          </div>
+          {authUser?.id && dispatchInboxEligible && (
+            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              <button
+                type="button"
+                onClick={() => setDispatchRequestsOpen((o) => !o)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  margin: 0,
+                  background: '#f9fafb',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  textAlign: 'left',
+                }}
+              >
+                <span aria-hidden>{dispatchRequestsOpen ? '▼' : '▶'}</span>
+                Dispatch inbox
+                {!dispatchRequestsLoading && dispatchRequests.length > 0 ? (
+                  <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
+                    ({dispatchRequests.filter((r) => r.status === 'open').length} open)
+                  </span>
+                ) : null}
+              </button>
+              {dispatchRequestsOpen && (
+                <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                  {dispatchRequestsLoading ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+                  ) : dispatchRequests.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No dispatch requests.</p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {dispatchRequests.map((req) => {
+                        const fromLabel = req.sender?.name?.trim() || req.sender?.email?.trim() || 'Unknown'
+                        const isClosed = req.status === 'closed'
+                        const closedByLabel = req.closed_by?.name?.trim() || 'Unknown'
+                        return (
+                          <li
+                            key={req.id}
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'flex-start',
+                              gap: '0.5rem',
+                              padding: '0.75rem 0',
+                              borderBottom: '1px solid #f3f4f6',
+                              opacity: isClosed ? 0.85 : 1,
+                              background: isClosed ? '#f9fafb' : undefined,
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                              <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
+                                From {fromLabel}
+                                {req.created_at ? (
+                                  <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
+                                ) : null}
+                              </div>
+                              <div style={{ fontWeight: 500 }}>
+                                <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
+                              </div>
+                              {req.reference_summary?.trim() ? (
+                                <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
+                                  Ref: {req.reference_summary.trim()}
                                 </div>
-                                <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
-                                  Due {dueStr} · {status}
+                              ) : null}
+                              {req.location_lat != null && req.location_lng != null ? (
+                                <div style={{ marginTop: 4, fontSize: '0.8125rem' }}>
+                                  <a href={`https://www.google.com/maps?q=${req.location_lat},${req.location_lng}`} target="_blank" rel="noopener noreferrer" title="View location in Google Maps" style={{ color: '#2563eb', textDecoration: 'none' }}>
+                                    View location
+                                  </a>
                                 </div>
-                              </Link>
+                              ) : null}
+                            </div>
+                            {isClosed ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                <button type="button" onClick={() => dismissDispatchRequest(req.id)} disabled={dispatchRequestDismissingId === req.id} style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}>
+                                  {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
+                                </button>
+                                <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Closed by {closedByLabel}</div>
+                                {req.closed_note?.trim() ? (
+                                  <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 2, maxWidth: 200, textAlign: 'right' }}>
+                                    "{req.closed_note.trim()}"
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => unhideBid(b.id)}
-                                style={{
-                                  flexShrink: 0,
-                                  padding: '0.2rem 0.5rem',
-                                  fontSize: '0.8125rem',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: 4,
-                                  background: 'white',
-                                  color: '#374151',
-                                  cursor: 'pointer',
-                                }}
+                                onClick={() => { setCloseNoteModalRequestId(req.id); setCloseNoteText(''); setCloseNoteError(null) }}
+                                disabled={dispatchRequestClosingId === req.id}
+                                style={{ padding: '0.35rem 0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: dispatchRequestClosingId === req.id ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
                               >
-                                Add back
+                                {dispatchRequestClosingId === req.id ? '…' : 'Mark closed'}
                               </button>
-                            </div>
+                            )}
                           </li>
                         )
                       })}
-                  </ul>
+                    </ul>
+                  )}
                 </div>
               )}
-            </>
+            </div>
+          )}
+          {(waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
+            <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
+                aria-expanded={waitingForPaymentExpanded}
+                style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
+              >
+                <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
+                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({waitingForPaymentJobs.length + waitingForPaymentInvoices.length})</h2>
+              </button>
+              {waitingForPaymentExpanded && (
+              <>
+              {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {[1, 2].map((i) => (
+                    <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                      <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                      <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div>
+                  {waitingForPaymentJobs.map((j) => {
+                    const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                    return (
+                      <div key={j.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                              {j.job_address?.trim() ? (
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                              ) : (
+                                '—'
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {j.google_drive_link?.trim() && (
+                                  <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                  </a>
+                                )}
+                                {j.job_plans_link?.trim() && (
+                                  <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                            <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                            <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                            {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {waitingForPaymentInvoices.map((inv) => (
+                    <div key={inv.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
+                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                            {inv.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {inv.google_drive_link?.trim() && (
+                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {inv.job_plans_link?.trim() && (
+                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
+                          {inv.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">{isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              </>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
+        <div style={{ marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
+          {upcomingInspectionsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+          ) : upcomingInspections.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {upcomingInspections.map((i) => {
+                const today = new Date()
+                const parts = i.scheduled_date.split('-').map(Number)
+                const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
+                const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                const diffDays = Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
+                const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
+                const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
+                return (
+                  <li key={i.id} style={{ marginBottom: '0.5rem' }}>
+                    <Link
+                      to="/jobs?tab=inspections"
+                      style={{
+                        display: 'block',
+                        padding: '0.5rem 0.75rem',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 4,
+                        color: '#1e40af',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      <div>
+                        <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
+                        <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+                        <span style={{ fontWeight: 500 }}>{i.address}</span>
+                        {i.address?.trim() && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
+                            title={`View ${i.address} on map`}
+                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
+                              <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </div>
       )}
-      {authUser?.id && dispatchInboxEligible && (
+      {role !== 'assistant' && tallyAndPinnedBlock}
+      {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
         <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
           <button
             type="button"
@@ -2608,6 +2786,400 @@ export default function Dashboard() {
           )}
         </div>
       )}
+      {(role === 'dev' || role === 'master_technician') && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setReadyToBillExpanded((prev) => !prev)}
+            aria-expanded={readyToBillExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillJobs.length + readyToBillInvoices.length})</h2>
+          </button>
+          {readyToBillExpanded && (
+          <>
+          {readyToBillLoading && readyToBillInvoices.length === 0 && readyToBillJobs.length === 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {[1, 2].map((i) => (
+                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                </li>
+              ))}
+            </ul>
+          ) : readyToBillJobs.length === 0 && readyToBillInvoices.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+          ) : (
+            <div>
+              {readyToBillJobs.map((j) => {
+                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                return (
+                  <div
+                    key={j.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {j.hcp_number || '—'} · {j.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}</button>
+                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {readyToBillInvoices.map((inv) => (
+                <div
+                  key={inv.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        {inv.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                          {inv.google_drive_link?.trim() && (
+                            <a
+                              href={inv.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
+                              title="Google Drive"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                              </svg>
+                            </a>
+                          )}
+                      {inv.job_plans_link?.trim() && (
+                        <a
+                          href={inv.job_plans_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
+                          title="Job Plans"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                          </svg>
+                        </a>
+                          )}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                      >
+                        View<br />Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        View<br />Reports
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: 'none',
+                          color: '#6b7280',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Send<br />back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledInvoice(inv) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: '#16a34a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark as<br />Billed</>}
+                      </button>
+                      {inv.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
+                          {isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          </>
+          )}
+        </div>
+      )}
+
+      {(role === 'dev' || role === 'master_technician') && (waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
+        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
+            aria-expanded={waitingForPaymentExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({waitingForPaymentJobs.length + waitingForPaymentInvoices.length})</h2>
+          </button>
+          {waitingForPaymentExpanded && (
+          <>
+          {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {[1, 2].map((i) => (
+                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
+                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div>
+              {waitingForPaymentJobs.map((j) => {
+                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                return (
+                  <div
+                    key={j.id}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {j.hcp_number || '—'} · {j.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">{isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}</span>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+              {waitingForPaymentInvoices.map((inv) => (
+                <div
+                  key={inv.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: '1rem',
+                    marginBottom: '0.75rem',
+                    background: '#fff',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>
+                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        {inv.job_address?.trim() ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                        ) : (
+                          '—'
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                          {inv.google_drive_link?.trim() && (
+                            <a
+                              href={inv.google_drive_link.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
+                              title="Google Drive"
+                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                              </svg>
+                            </a>
+                          )}
+                      {inv.job_plans_link?.trim() && (
+                        <a
+                          href={inv.job_plans_link.trim()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
+                          title="Job Plans"
+                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                          </svg>
+                        </a>
+                          )}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                      >
+                        View<br />Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        View<br />Reports
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: 'none',
+                          color: '#6b7280',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        Send<br />back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }}
+                        disabled={invoiceStatusUpdatingId === inv.id}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.875rem',
+                          background: '#16a34a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}
+                      </button>
+                      {inv.created_at && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
+                          {isMobile ? <>Open {formatTimeSince(inv.created_at)}</> : <>Open<br />{formatTimeSince(inv.created_at)}</>}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          </>
+          )}
+        </div>
+      )}
+
       {(userLoading || showChecklist) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
@@ -2766,6 +3338,236 @@ export default function Dashboard() {
               })}
             </ul>
           ) : null}
+        </div>
+      )}
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id) && !b.bid_date_sent)) && (
+        <div style={{ marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+          <Link
+            to="/bids?new=true"
+            style={{
+              padding: '0.35rem 0.75rem',
+              background: '#3b82f6',
+              color: 'white',
+              borderRadius: 6,
+              textDecoration: 'none',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+            }}
+          >
+            New Bid
+          </Link>
+        </div>
+          {myBidsLoading ? (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+          ) : (
+            <>
+              {(() => {
+                const visibleBids = myBids.filter((b) => !hiddenBidIds.has(b.id))
+                const unsentBids = visibleBids.filter((b) => !b.bid_date_sent)
+                const sentBids = visibleBids.filter((b) => b.bid_date_sent != null)
+                const renderBidItem = (b: typeof myBids[0], cardStyle: React.CSSProperties) => {
+                  const status =
+                    !b.bid_date_sent
+                      ? 'Unsent'
+                      : b.outcome === 'won'
+                        ? 'Won'
+                        : b.outcome === 'started_or_complete'
+                          ? 'Started or Complete'
+                          : 'Pending'
+                  const dueStr = b.bid_due_date
+                    ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+                    : '—'
+                  return (
+                    <li key={b.id} style={{ marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Link
+                          to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            display: 'block',
+                            padding: '0.5rem 0.75rem',
+                            ...cardStyle,
+                          }}
+                        >
+                          <div>
+                            <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
+                            {b.service_type_name && (
+                              <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                            )}
+                          </div>
+                          <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
+                            Due {dueStr} · {status}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            hideBid(b.id)
+                          }}
+                          style={{
+                            flexShrink: 0,
+                            padding: '0.35rem',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                          }}
+                          title="Hide bid"
+                          aria-label="Hide bid"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
+                            <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
+                          </svg>
+                        </button>
+                      </div>
+                    </li>
+                  )
+                }
+                const unsentCardStyle = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const sentCardStyle = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                return (
+                  <>
+                    {unsentBids.length === 0 && sentBids.length > 0 ? (
+                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No unsent bids</p>
+                    ) : null}
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {unsentBids.map((b) => renderBidItem(b, unsentCardStyle))}
+                    </ul>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <Link
+                        to="/bids?tab=bid-board"
+                        style={{
+                          fontSize: '0.875rem',
+                          color: '#2563eb',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        View all
+                      </Link>
+                      <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {sentBids.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSentBidsExpanded((x) => !x)}
+                            style={{
+                              padding: 0,
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              color: '#2563eb',
+                              textDecoration: 'underline',
+                            }}
+                          >
+                            Sent bids ({sentBids.length}) {sentBidsExpanded ? '\u25B2' : '\u25BC'}
+                          </button>
+                        )}
+                        {hiddenBidIds.size > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setHiddenBidsExpanded((x) => !x)}
+                            style={{
+                              padding: 0,
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontSize: '0.875rem',
+                              color: '#2563eb',
+                              textDecoration: 'underline',
+                            }}
+                          >
+                            View hidden ({hiddenBidIds.size})
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                    {sentBidsExpanded && sentBids.length > 0 && (
+                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Sent bids</div>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                          {sentBids.map((b) => renderBidItem(b, sentCardStyle))}
+                        </ul>
+                      </div>
+                    )}
+              {hiddenBidsExpanded && hiddenBidIds.size > 0 && (
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Hidden bids</div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {myBids
+                      .filter((b) => hiddenBidIds.has(b.id))
+                      .map((b) => {
+                        const status =
+                          !b.bid_date_sent
+                            ? 'Unsent'
+                            : b.outcome === 'won'
+                              ? 'Won'
+                              : b.outcome === 'started_or_complete'
+                                ? 'Started or Complete'
+                                : 'Pending'
+                        const dueStr = b.bid_due_date
+                          ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
+                          : '—'
+                        return (
+                          <li key={b.id} style={{ marginBottom: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <Link
+                                to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  display: 'block',
+                                  padding: '0.5rem 0.75rem',
+                                  background: '#f9fafb',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: 4,
+                                  color: '#374151',
+                                  textDecoration: 'none',
+                                  fontSize: '0.875rem',
+                                }}
+                              >
+                                <div>
+                                  <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
+                                  {b.service_type_name && (
+                                    <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                                  )}
+                                </div>
+                                <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
+                                  Due {dueStr} · {status}
+                                </div>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => unhideBid(b.id)}
+                                style={{
+                                  flexShrink: 0,
+                                  padding: '0.2rem 0.5rem',
+                                  fontSize: '0.8125rem',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: 4,
+                                  background: 'white',
+                                  color: '#374151',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Add back
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
+                  </ul>
+                </div>
+              )}
+            </>
+          )
+        })()}
+      </>
+          )}
         </div>
       )}
       {isDev && (
@@ -3127,37 +3929,6 @@ export default function Dashboard() {
               <span aria-hidden>{recentReportsExpanded ? '\u25BC' : '\u25B6'}</span>
               Recent Reports ({recentReports.filter((r) => !hiddenReportIds.has(r.id) && !readReportIds.has(r.id)).length})
             </h2>
-            {recentReportsExpanded && (
-              <label
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#6b7280', fontWeight: 400 }}
-              >
-                <input
-                  type="checkbox"
-                  checked={hideOnRefreshPending}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    setHideOnRefreshPending(checked)
-                    if (checked) {
-                      const ids = recentReports.filter((r) => !hiddenReportIds.has(r.id)).map((r) => r.id)
-                      try {
-                        localStorage.setItem(HIDE_ON_REFRESH_STORAGE_KEY, JSON.stringify(ids))
-                      } catch {
-                        /* ignore */
-                      }
-                    } else {
-                      try {
-                        localStorage.removeItem(HIDE_ON_REFRESH_STORAGE_KEY)
-                      } catch {
-                        /* ignore */
-                      }
-                    }
-                  }}
-                  style={{ margin: 0 }}
-                />
-                <span>hide from dashboard all open reports on refresh</span>
-              </label>
-            )}
           </button>
           {recentReportsExpanded && (
             <>
@@ -3355,6 +4126,37 @@ export default function Dashboard() {
                   )}
                 </p>
               )}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem', paddingTop: '0.25rem' }}>
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#6b7280', fontWeight: 400 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={hideOnRefreshPending}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setHideOnRefreshPending(checked)
+                      if (checked) {
+                        const ids = Array.from(readReportIds)
+                        try {
+                          localStorage.setItem(HIDE_ON_REFRESH_STORAGE_KEY, JSON.stringify(ids))
+                        } catch {
+                          /* ignore */
+                        }
+                      } else {
+                        try {
+                          localStorage.removeItem(HIDE_ON_REFRESH_STORAGE_KEY)
+                        } catch {
+                          /* ignore */
+                        }
+                      }
+                    }}
+                    style={{ margin: 0 }}
+                  />
+                  <span>hide from dashboard reports I've opened, on refresh</span>
+                </label>
+              </div>
             </>
           )}
         </div>
@@ -3465,7 +4267,7 @@ export default function Dashboard() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div>
+                    <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
                       <div style={{ fontWeight: 600 }}>
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
@@ -3476,17 +4278,6 @@ export default function Dashboard() {
                           '—'
                         )}
                       </div>
-                      {j.in_progress_stage_name && (
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                          {j.project_id && j.in_progress_step_id ? (
-                            <Link to={`/workflows/${j.project_id}#step-${j.in_progress_step_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                              In Progress Stage: {j.in_progress_stage_name}
-                            </Link>
-                          ) : (
-                            <>In Progress Stage: {j.in_progress_stage_name}</>
-                          )}
-                        </div>
-                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
@@ -3523,9 +4314,13 @@ export default function Dashboard() {
                       )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
-                          <Link to={`/jobs?tab=billing`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
-                            View
-                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                          >
+                            View<br />Details
+                          </button>
                           <button
                             type="button"
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
@@ -3536,18 +4331,26 @@ export default function Dashboard() {
                         </>
                       )}
                       {role === 'superintendent' && (
-                        <>
-                          <Link to={`/jobs?edit=${j.id}&tab=stages`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
-                            View
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            View<br />Reports
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          View<br />Reports
+                        </button>
+                      )}
+                      {role === 'subcontractor' && !isMobile && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.8125rem', color: '#6b7280' }}>
+                          <span>Last report:</span>
+                          <span>
+                            {j.last_report_at
+                              ? (() => {
+                                  const t = formatTimeSince(j.last_report_at)
+                                  return t === 'just now' ? 'Just now' : `${t} ago`
+                                })()
+                              : 'No reports yet'}
+                          </span>
+                        </div>
                       )}
                       {role === 'subcontractor' && (
                         <button
@@ -3578,13 +4381,50 @@ export default function Dashboard() {
                       >
                         {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
                       </button>
-                      {j.created_at && (
+                      {j.created_at && (!isMobile || role !== 'subcontractor') && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                          Open<br />{formatTimeSince(j.created_at)}
+                          {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
                         </span>
+                      )}
+                      {role === 'subcontractor' && isMobile && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
+                          {j.created_at && <span>Open {formatTimeSince(j.created_at)}</span>}
+                          <span>
+                            last report: {j.last_report_at
+                              ? (() => {
+                                  const t = formatTimeSince(j.last_report_at)
+                                  return t === 'just now' ? 'Just now' : `${t} ago`
+                                })()
+                              : 'No reports yet'}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
+                  {j.in_progress_stage_name && (
+                    <Link
+                      to={j.project_id && j.in_progress_step_id
+                        ? `/workflows/${j.project_id}#step-${j.in_progress_step_id}`
+                        : '/workflows'}
+                      style={{
+                        display: 'block',
+                        marginTop: '1rem',
+                        marginLeft: '-1rem',
+                        marginRight: '-1rem',
+                        marginBottom: '-1rem',
+                        padding: '0.5rem 1rem',
+                        background: '#ede9fe',
+                        color: '#6d28d9',
+                        textDecoration: 'none',
+                        fontSize: '0.875rem',
+                        borderBottomLeftRadius: 8,
+                        borderBottomRightRadius: 8,
+                        textAlign: 'center',
+                      }}
+                    >
+                      In progress stage: {j.in_progress_stage_name}
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
@@ -3631,7 +4471,7 @@ export default function Dashboard() {
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div>
+                        <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
                           <div style={{ fontWeight: 600 }}>
                             {j.hcp_number || '—'} · {j.job_name || '—'}
                           </div>
@@ -3642,19 +4482,8 @@ export default function Dashboard() {
                               '—'
                             )}
                           </div>
-                          {j.in_progress_stage_name && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                              {j.project_id && j.in_progress_step_id ? (
-                                <Link to={`/workflows/${j.project_id}#step-${j.in_progress_step_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                                  In Progress Stage: {j.in_progress_stage_name}
-                                </Link>
-                              ) : (
-                                <>In Progress Stage: {j.in_progress_stage_name}</>
-                              )}
-                            </div>
-                          )}
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                           {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {j.google_drive_link?.trim() && (
@@ -3669,23 +4498,70 @@ export default function Dashboard() {
                               )}
                             </div>
                           )}
-                          <Link to={`/jobs?edit=${j.id}&tab=stages`} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
-                            View
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            View<br />Reports
-                          </button>
-                          {j.created_at && (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
-                              Open<br />{formatTimeSince(j.created_at)}
-                            </span>
-                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                View<br />Reports
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })
+                                  setReadyForBillingChecked1(false)
+                                  setReadyForBillingChecked2(false)
+                                }}
+                                disabled={jobStatusUpdatingId === j.id}
+                                style={{
+                                  padding: '0.35rem 0.75rem',
+                                  fontSize: '0.875rem',
+                                  background: '#3b82f6',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                              {j.created_at && (
+                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                                  {isMobile ? <>Open {formatTimeSince(j.created_at)}</> : <>Open<br />{formatTimeSince(j.created_at)}</>}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
+                      {j.in_progress_stage_name && (
+                        <Link
+                          to={j.project_id && j.in_progress_step_id
+                            ? `/workflows/${j.project_id}#step-${j.in_progress_step_id}`
+                            : '/workflows'}
+                          style={{
+                            display: 'block',
+                            marginTop: '1rem',
+                            marginLeft: '-1rem',
+                            marginRight: '-1rem',
+                            marginBottom: '-1rem',
+                            padding: '0.5rem 1rem',
+                            background: '#ede9fe',
+                            color: '#6d28d9',
+                            textDecoration: 'none',
+                            fontSize: '0.875rem',
+                            borderBottomLeftRadius: 8,
+                            borderBottomRightRadius: 8,
+                            textAlign: 'center',
+                          }}
+                        >
+                          In progress stage: {j.in_progress_stage_name}
+                        </Link>
+                      )}
                     </div>
                   ))}
               </div>
@@ -3693,401 +4569,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setReadyToBillExpanded((prev) => !prev)}
-            aria-expanded={readyToBillExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillJobs.length + readyToBillInvoices.length})</h2>
-          </button>
-          {readyToBillExpanded && (
-          <>
-          {readyToBillLoading && readyToBillInvoices.length === 0 && readyToBillJobs.length === 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {[1, 2].map((i) => (
-                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                </li>
-              ))}
-            </ul>
-          ) : readyToBillJobs.length === 0 && readyToBillInvoices.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
-          ) : (
-            <div>
-              {readyToBillJobs.map((j) => {
-                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-                return (
-                  <div
-                    key={j.id}
-                    style={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 8,
-                      padding: '1rem',
-                      marginBottom: '0.75rem',
-                      background: '#fff',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {j.hcp_number || '—'} · {j.job_name || '—'}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                          {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
-                          ) : (
-                            '—'
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                              </a>
-                            )}
-                            {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <button type="button" onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark as<br />Billed</>}</button>
-                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">Open<br />{formatTimeSince(j.created_at)}</span>}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-              {readyToBillInvoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    padding: '1rem',
-                    marginBottom: '0.75rem',
-                    background: '#fff',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                        {inv.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
-                        ) : (
-                          '—'
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                          {inv.google_drive_link?.trim() && (
-                            <a
-                              href={inv.google_drive_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
-                              title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                              </svg>
-                            </a>
-                          )}
-                      {inv.job_plans_link?.trim() && (
-                        <a
-                          href={inv.job_plans_link.trim()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
-                          title="Job Plans"
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                          </svg>
-                        </a>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
-                      >
-                        View<br />Details
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        View<br />Reports
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }}
-                        disabled={invoiceStatusUpdatingId === inv.id}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          background: 'none',
-                          color: '#6b7280',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        Send<br />back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setMarkAsBilledChecked(false); setMarkAsBilledInvoice(inv) }}
-                        disabled={invoiceStatusUpdatingId === inv.id}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          background: '#16a34a',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark as<br />Billed</>}
-                      </button>
-                      {inv.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
-                          Open<br />{formatTimeSince(inv.created_at)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          </>
-          )}
-        </div>
-      )}
-
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (waitingForPaymentLoading || waitingForPaymentInvoices.length > 0 || waitingForPaymentJobs.length > 0) && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
-            aria-expanded={waitingForPaymentExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({waitingForPaymentJobs.length + waitingForPaymentInvoices.length})</h2>
-          </button>
-          {waitingForPaymentExpanded && (
-          <>
-          {waitingForPaymentLoading && waitingForPaymentInvoices.length === 0 && waitingForPaymentJobs.length === 0 ? (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {[1, 2].map((i) => (
-                <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                  <div style={{ ...skeletonStyle, height: 16, width: '50%', marginBottom: 4 }} />
-                  <div style={{ ...skeletonStyle, height: 14, width: '35%' }} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div>
-              {waitingForPaymentJobs.map((j) => {
-                const remaining = (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-                return (
-                  <div
-                    key={j.id}
-                    style={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: 8,
-                      padding: '1rem',
-                      marginBottom: '0.75rem',
-                      background: '#fff',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {j.hcp_number || '—'} · {j.job_name || '—'}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                          {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
-                          ) : (
-                            '—'
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                              </a>
-                            )}
-                            {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <button type="button" onClick={() => { setMarkPaidChecked(false); setMarkPaidJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">Open<br />{formatTimeSince(j.created_at)}</span>}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-              {waitingForPaymentInvoices.map((inv) => (
-                <div
-                  key={inv.id}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    padding: '1rem',
-                    marginBottom: '0.75rem',
-                    background: '#fff',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {inv.hcp_number || '—'} · {inv.job_name || '—'}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                        {inv.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
-                        ) : (
-                          '—'
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Invoice: ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                          {inv.google_drive_link?.trim() && (
-                            <a
-                              href={inv.google_drive_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
-                              title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                              </svg>
-                            </a>
-                          )}
-                      {inv.job_plans_link?.trim() && (
-                        <a
-                          href={inv.job_plans_link.trim()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
-                          title="Job Plans"
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                            <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                          </svg>
-                        </a>
-                          )}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
-                      >
-                        View<br />Details
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        View<br />Reports
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }}
-                        disabled={invoiceStatusUpdatingId === inv.id}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          background: 'none',
-                          color: '#6b7280',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        Send<br />back
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setMarkPaidChecked(false); setMarkPaidInvoice(inv) }}
-                        disabled={invoiceStatusUpdatingId === inv.id}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          background: '#16a34a',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}
-                      </button>
-                      {inv.created_at && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since invoice created">
-                          Open<br />{formatTimeSince(inv.created_at)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          </>
-          )}
-        </div>
-      )}
-
       {(userLoading || showAssigned) && (
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Projects: Assigned Stages</h2>

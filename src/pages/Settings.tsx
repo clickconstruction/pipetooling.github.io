@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -6,7 +6,7 @@ import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/casc
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
-import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getUsersWithPin } from '../lib/pinnedTabs'
+import { addPinForUser, clearPinned, clearPinnedInSupabase, deletePinForPathAndTab, getMergedFilteredPins, getUsersWithPin, removePin, type PinnedItem } from '../lib/pinnedTabs'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
@@ -209,6 +209,9 @@ export default function Settings() {
   const [locationPermission, setLocationPermission] = useState<'unknown' | 'prompt' | 'granted' | 'denied'>('unknown')
   const [locationLoading, setLocationLoading] = useState(false)
   const [pinsClearSuccess, setPinsClearSuccess] = useState(false)
+  const [myPins, setMyPins] = useState<PinnedItem[]>([])
+  const [pinsLoading, setPinsLoading] = useState(true)
+  const [pinRemovingId, setPinRemovingId] = useState<string | null>(null)
   // Billed pin to dashboard (dev-only)
   const [pinBilledMasterIds, setPinBilledMasterIds] = useState<Set<string>>(new Set())
   const [pinBilledSaving, setPinBilledSaving] = useState(false)
@@ -333,6 +336,9 @@ export default function Settings() {
     project: true,
     part: true,
     assembly: true,
+    prospect: true,
+    inspections: true,
+    builder_review: true,
   })
   const [dashboardButtonsSaving, setDashboardButtonsSaving] = useState(false)
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(true)
@@ -1310,7 +1316,7 @@ export default function Settings() {
         .from('user_dashboard_buttons')
         .select('button_key, visible')
         .eq('user_id', authUser.id)
-      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true }
+      const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true, builder_review: role === 'master_technician' }
       const map = { ...defaults }
       for (const r of (btnRows ?? []) as Array<{ button_key: string; visible: boolean }>) {
         if (r.button_key in map) map[r.button_key] = r.visible
@@ -3569,6 +3575,30 @@ export default function Settings() {
     }
   }, [myRole])
 
+  const loadMyPins = useCallback(async () => {
+    if (!authUser?.id) {
+      setMyPins([])
+      setPinsLoading(false)
+      return
+    }
+    setPinsLoading(true)
+    const pins = await getMergedFilteredPins(authUser.id, myRole)
+    setMyPins(pins)
+    setPinsLoading(false)
+  }, [authUser?.id, myRole])
+
+  useEffect(() => {
+    loadMyPins()
+  }, [loadMyPins])
+
+  useEffect(() => {
+    const onPinsChanged = () => {
+      loadMyPins()
+    }
+    window.addEventListener('pipetooling-pins-changed', onPinsChanged)
+    return () => window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
+  }, [loadMyPins])
+
   const { total: costMatrixTotal } = useCostMatrixTotal(myRole === 'dev')
 
   // Default notification test target: current user if in list, else first user
@@ -4717,8 +4747,10 @@ export default function Settings() {
             Choose which quick-action buttons appear on your Dashboard.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
-            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections'] as const).map((key) => {
-              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'Prospect' : key === 'inspections' ? 'Inspections' : key.charAt(0).toUpperCase() + key.slice(1)
+            {(['job', 'job_labor', 'bid', 'project', 'part', 'assembly', 'prospect', 'inspections', 'builder_review'] as const)
+              .filter((key) => key !== 'builder_review' || myRole === 'master_technician')
+              .map((key) => {
+              const label = key === 'job_labor' ? 'Job Labor' : key === 'prospect' ? 'Prospect' : key === 'inspections' ? 'Inspections' : key === 'builder_review' ? 'Builder Review' : key.charAt(0).toUpperCase() + key.slice(1)
               return (
                 <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
                   <input
@@ -8544,7 +8576,7 @@ export default function Settings() {
         </>
       )}
 
-      {myRole === 'dev' && (
+      {myRole != null && (
         <div style={{ marginBottom: '2rem' }}>
           <button
             type="button"
@@ -8600,8 +8632,58 @@ export default function Settings() {
                 >
                   Clear all page pins
                 </button>
+                {!pinsLoading && myPins.length > 0 && (
+                  <ul style={{ margin: '1rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {myPins.map((item) => {
+                      const pinKey = `${item.path}:${item.tab ?? ''}`
+                      const label = item.tab
+                        ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}`
+                        : item.label
+                      const removing = pinRemovingId === pinKey
+                      return (
+                        <li
+                          key={pinKey}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            padding: '0.5rem 0.75rem',
+                            background: '#f9fafb',
+                            borderRadius: 6,
+                            border: '1px solid #e5e7eb',
+                          }}
+                        >
+                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
+                          <button
+                            type="button"
+                            disabled={removing}
+                            onClick={async () => {
+                              setPinRemovingId(pinKey)
+                              await removePin(authUser?.id, item)
+                              setPinRemovingId(null)
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.75rem',
+                              background: removing ? '#e5e7eb' : '#fef2f2',
+                              color: removing ? '#9ca3af' : '#b91c1c',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 4,
+                              cursor: removing ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {removing ? 'Removing…' : 'Remove'}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
               </div>
 
+              {myRole === 'dev' && (
+              <>
               <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
                 <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -9037,6 +9119,8 @@ export default function Settings() {
             </p>
           )}
         </div>
+              </>
+              )}
 
             </div>
           )}

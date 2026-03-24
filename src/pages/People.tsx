@@ -10,6 +10,8 @@ import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
+import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
+import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { AssignSessionJobPopover, ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -119,6 +121,9 @@ export default function People() {
   const [newTagColor, setNewTagColor] = useState('#e5e7eb')
   const [tagLedgerModalTag, setTagLedgerModalTag] = useState<string | null>(null)
   const [teamLedgerModalTeam, setTeamLedgerModalTeam] = useState<PeopleTeam | null>(null)
+  const [personTimeDetailModalPerson, setPersonTimeDetailModalPerson] = useState<string | null>(null)
+  const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
+  const [hoursReviewedSet, setHoursReviewedSet] = useState<Set<string>>(new Set())
   const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
   const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
   const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
@@ -916,6 +921,16 @@ export default function People() {
     setArchivedUserNames(new Set(names))
   }
 
+  async function loadHoursReviewed() {
+    if (!canAccessPay) return
+    const { data } = await supabase
+      .from('hours_reviewed')
+      .select('person_name')
+      .eq('start_date', matrixStartDate)
+    const set = new Set((data ?? []).map((r: { person_name: string }) => r.person_name))
+    setHoursReviewedSet(set)
+  }
+
   async function loadPeopleHours(start: string, end: string) {
     if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
     const { data, error } = await supabase
@@ -1656,6 +1671,7 @@ export default function People() {
           loadCostMatrixTags(),
           loadCostMatrixTagColors(),
           loadArchivedUserNames(),
+          loadHoursReviewed(),
         ]).finally(() => setPayTabLoading(false))
       }, 80)
       return () => clearTimeout(t)
@@ -4880,6 +4896,25 @@ export default function People() {
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : (
           <>
+          {canAccessPay && (
+            <div style={{ marginBottom: '1rem' }}>
+              <button
+                type="button"
+                onClick={() => setReviewHoursModalOpen(true)}
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                Review Hours <span style={{ color: '#059669' }}>✓</span>
+              </button>
+            </div>
+          )}
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           {(() => {
             const matrixTotal = matrixDays.reduce(
@@ -5124,6 +5159,30 @@ export default function People() {
               </div>
             )
           })()}
+          {personTimeDetailModalPerson && (
+            <PersonTimeDetailModal
+              personName={personTimeDetailModalPerson}
+              startDate={matrixStartDate}
+              endDate={matrixEndDate}
+              hoursRows={peopleHours.filter((h) => h.person_name === personTimeDetailModalPerson).map((h) => ({ work_date: h.work_date, hours: h.hours }))}
+              onClose={() => setPersonTimeDetailModalPerson(null)}
+            />
+          )}
+          {reviewHoursModalOpen && (
+            <ReviewHoursModal
+              people={showPeopleForMatrix}
+              initialPersonIndex={0}
+              initialStartDate={matrixStartDate}
+              initialEndDate={matrixEndDate}
+              hoursRowsForPerson={(p) =>
+                peopleHours.filter((h) => h.person_name === p).map((h) => ({ work_date: h.work_date, hours: h.hours }))
+              }
+              canAddToJob={canAccessPay}
+              canMarkReviewed={canAccessPay}
+              onReviewedChange={() => void loadHoursReviewed()}
+              onClose={() => setReviewHoursModalOpen(false)}
+            />
+          )}
           <section id="cost-matrix">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
               <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Cost matrix</h2>
@@ -5184,7 +5243,12 @@ export default function People() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                    {canAccessPay && (
+                      <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
+                        ✓
+                      </th>
+                    )}
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         Person
                         <button
@@ -5259,7 +5323,16 @@ export default function People() {
                     const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
                     return (
                       <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: 'white', minWidth: 200 }}>
+                        {canAccessPay && (
+                          <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'white', minWidth: 36 }}>
+                            {hoursReviewedSet.has(personName) ? (
+                              <span style={{ color: '#059669' }}>✓</span>
+                            ) : (
+                              <span style={{ color: '#d1d5db' }}>—</span>
+                            )}
+                          </td>
+                        )}
+                        <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'white', minWidth: 200 }}>
                           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                               {payEditArrangement && canAccessPay ? (
@@ -5284,7 +5357,14 @@ export default function People() {
                                   </button>
                                 </span>
                               ) : null}
-                              <span>
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setPersonTimeDetailModalPerson(personName)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPersonTimeDetailModalPerson(personName) } }}
+                                title="View hours detail"
+                                style={{ cursor: 'pointer' }}
+                              >
                                 {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
                               </span>
                             </span>
@@ -5333,7 +5413,12 @@ export default function People() {
                     )
                   })}
                   <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
-                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: 0, background: '#f9fafb' }}>
+                    {canAccessPay && (
+                      <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }}>
+                        {hoursReviewedSet.size} of {showPeopleForMatrix.length}
+                      </td>
+                    )}
+                    <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
                       Internal Team: ${Math.round(
                         matrixDays.reduce(
                           (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),

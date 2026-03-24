@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
 import {
   formatUnifiedResult,
   getBidServiceTypeTag,
@@ -56,6 +57,7 @@ type Props = {
 
 export default function ClockInOutButton({ userId, userName }: Props) {
   const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -77,6 +79,51 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
   const [selectedBidServiceTypeId, setSelectedBidServiceTypeId] = useState<string>('')
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
+  const [lastSelectedJobBid, setLastSelectedJobBid] = useState<UnifiedSearchResult | null>(null)
+  const assignedJobsShownRef = useRef(false)
+
+  function parseLastJobBidFromStorage(raw: string | null): UnifiedSearchResult | null {
+    if (!raw?.trim()) return null
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      if (!parsed || typeof parsed !== 'object') return null
+      const o = parsed as Record<string, unknown>
+      const source = o.source
+      const id = o.id
+      if (source === 'job' && typeof id === 'string') {
+        if (typeof o.hcp_number === 'string' && typeof o.job_name === 'string' && typeof o.job_address === 'string') {
+          return { source: 'job', id, hcp_number: o.hcp_number, job_name: o.job_name, job_address: o.job_address }
+        }
+      }
+      if (source === 'bid' && typeof id === 'string') {
+        if (
+          typeof o.bid_number === 'string' &&
+          typeof o.project_name === 'string' &&
+          typeof o.address === 'string' &&
+          typeof o.customer_name === 'string'
+        ) {
+          return {
+            source: 'bid',
+            id,
+            bid_number: o.bid_number,
+            project_name: o.project_name,
+            address: o.address,
+            customer_name: o.customer_name,
+            service_type_name: typeof o.service_type_name === 'string' ? o.service_type_name : null,
+          }
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return null
+  }
+
+  useEffect(() => {
+    if (!userId || typeof localStorage === 'undefined') return
+    const stored = localStorage.getItem(`clock_in_last_job_bid_${userId}`)
+    setLastSelectedJobBid(parseLastJobBidFromStorage(stored))
+  }, [userId])
 
   const fetchSessions = useCallback(async () => {
     if (!userId) return
@@ -173,7 +220,12 @@ export default function ClockInOutButton({ userId, userName }: Props) {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!(clockInModalOpen || updateFocusModalOpen) || !unifiedSearchText.trim()) {
+      if (!(clockInModalOpen || updateFocusModalOpen)) return
+      if (!unifiedSearchText.trim()) {
+        if (assignedJobsShownRef.current) {
+          assignedJobsShownRef.current = false
+          return
+        }
         setUnifiedSearchResults([])
         return
       }
@@ -274,7 +326,12 @@ export default function ClockInOutButton({ userId, userName }: Props) {
   }
 
   async function handleCompleteClockIn() {
-    if (!userId || !userName?.trim() || !clockInNotes.trim()) return
+    if (!userId || !userName?.trim() || !clockInNotes.trim()) {
+      if (!clockInNotes.trim()) {
+        showToast('Please describe what you intend to accomplish today', 'error')
+      }
+      return
+    }
     setActionLoading(true)
     setClockInError(null)
     try {
@@ -307,12 +364,39 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
       })
       if (err) throw err
+      if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
+        localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
+        setLastSelectedJobBid(selectedAssociation)
+      }
       setClockInModalOpen(false)
       await fetchSessions()
     } catch (e) {
       setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  async function handleChooseFromMyJobs() {
+    setUnifiedSearchText('')
+    setUnifiedSearchResults([])
+    const { data, error } = await supabase.rpc('list_assigned_jobs_for_dashboard')
+    if (error) {
+      showToast('Could not load your jobs', 'error')
+      return
+    }
+    const jobs = (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+    const mapped: UnifiedSearchResult[] = jobs.map((j) => ({
+      source: 'job' as const,
+      id: j.id,
+      hcp_number: j.hcp_number ?? '',
+      job_name: j.job_name ?? '',
+      job_address: j.job_address ?? '',
+    }))
+    setUnifiedSearchResults(mapped)
+    if (mapped.length > 0) assignedJobsShownRef.current = true
+    if (mapped.length === 0) {
+      showToast('You have no assigned jobs', 'info')
     }
   }
 
@@ -409,6 +493,10 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           clockInLng != null && { clock_in_lat: clockInLat, clock_in_lng: clockInLng }),
       })
       if (errIn) throw errIn
+      if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
+        localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
+        setLastSelectedJobBid(selectedAssociation)
+      }
       setUpdateFocusModalOpen(false)
       await fetchSessions()
     } catch (e) {
@@ -509,42 +597,38 @@ export default function ClockInOutButton({ userId, userName }: Props) {
           onClick={() => !actionLoading && setClockInModalOpen(false)}
         >
           <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+            id="clock-in-modal"
+            style={{ background: '#fefcfb', padding: '1.5rem', borderRadius: 12, maxWidth: 480, width: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', borderTop: '4px solid #ff6600' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="clock-in-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Complete Clock In</h3>
+            <style>{`#clock-in-modal textarea:focus,#clock-in-modal input:focus,#clock-in-modal button:focus-visible{outline:2px solid #ff6600;outline-offset:2px}`}</style>
+            <h3 id="clock-in-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Ready to clock in?</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What are you working on?</span>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What do you plan to accomplish?</span>
               <textarea
                 ref={clockInNotesRef}
                 value={clockInNotes}
                 onChange={(e) => setClockInNotes(e.target.value)}
-                placeholder="e.g. Rough-in at 123 Main St"
+                placeholder="e.g. Rough-in at 123 Main St, or finishing trim in Unit 4"
                 rows={3}
                 disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
-                {serviceTypes.length === 1 && (
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Filtering by: {serviceTypes[0]!.name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500 }}>Link to a job or bid (optional)</span>
+                {lastSelectedJobBid && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
+                    disabled={actionLoading}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #fed7aa', borderRadius: 6, background: '#fff7ed', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
+                  </button>
                 )}
               </div>
-              {serviceTypes.length > 1 && (
-                <select
-                  value={selectedBidServiceTypeId}
-                  onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
-                  disabled={actionLoading}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                >
-                  <option value="">All types</option>
-                  {serviceTypes.map((st) => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
-              )}
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -562,7 +646,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                     type="button"
                     onClick={() => { setSelectedAssociation(null); setUnifiedSearchResults([]) }}
                     disabled={actionLoading}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                   >
                     Clear
                   </button>
@@ -571,11 +655,59 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               <input
                 type="text"
                 value={unifiedSearchText}
-                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null) }}
+                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
                 placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
               />
+              {serviceTypes.length === 1 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                    Filtering by: {serviceTypes[0]!.name}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleChooseFromMyJobs()}
+                    disabled={actionLoading}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    Choose from my jobs?
+                  </button>
+                </div>
+              ) : serviceTypes.length > 1 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  <select
+                    value={selectedBidServiceTypeId}
+                    onChange={(e) => { setSelectedBidServiceTypeId(e.target.value); setUnifiedSearchResults([]) }}
+                    disabled={actionLoading}
+                    style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                  >
+                    <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
+                    {serviceTypes.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => void handleChooseFromMyJobs()}
+                    disabled={actionLoading}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                  >
+                    Choose from my jobs?
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleChooseFromMyJobs()}
+                    disabled={actionLoading}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #2563eb', borderRadius: 6, background: '#eff6ff', color: '#2563eb', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    Choose from my jobs?
+                  </button>
+                </div>
+              )}
               {unifiedSearchResults.length > 0 && (
                 <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
                   {unifiedSearchResults.map((r) => (
@@ -600,22 +732,26 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               )}
             </div>
             {clockInError && (
-              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockInError}</p>
+              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
+                {clockInError.toLowerCase().includes('network') || clockInError.toLowerCase().includes('fetch')
+                  ? "Something went wrong. Please check your connection and try again."
+                  : clockInError}
+              </p>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
               <button
                 type="button"
                 onClick={() => !actionLoading && setClockInModalOpen(false)}
                 disabled={actionLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleCompleteClockIn}
-                disabled={!clockInNotes.trim() || actionLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: clockInNotes.trim() && !actionLoading ? 'pointer' : 'not-allowed' }}
+                disabled={actionLoading}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #ff6600', borderRadius: 6, background: '#ff6600', color: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
               >
                 {actionLoading ? 'Clocking in…' : 'Complete Clock In'}
               </button>
@@ -652,7 +788,19 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
-              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Job or Bid (optional)</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 500 }}>Job or Bid (optional)</span>
+                {lastSelectedJobBid && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAssociation(lastSelectedJobBid)}
+                    disabled={updateFocusLoading}
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
+                  >
+                    Use last: {formatUnifiedResult(lastSelectedJobBid)}
+                  </button>
+                )}
+              </div>
               {selectedAssociation && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -679,7 +827,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
               <input
                 type="text"
                 value={unifiedSearchText}
-                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null) }}
+                onChange={(e) => { setUnifiedSearchText(e.target.value); setSelectedAssociation(null); assignedJobsShownRef.current = false }}
                 placeholder="Search by HCP #, bid #, project name, or address"
                 disabled={updateFocusLoading}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
@@ -695,7 +843,7 @@ export default function ClockInOutButton({ userId, userName }: Props) {
                   disabled={updateFocusLoading}
                   style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
                 >
-                  <option value="">All types</option>
+                  <option value="">Show all types ({serviceTypes.map((st) => st.name).join(', ')})</option>
                   {serviceTypes.map((st) => (
                     <option key={st.id} value={st.id}>{st.name}</option>
                   ))}

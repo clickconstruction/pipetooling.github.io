@@ -18,6 +18,7 @@ type ReportForView = {
 type ReportWithJobInfo = ReportForView & {
   job_ledger_id: string | null
   project_id: string | null
+  created_by_user_id?: string | null
 }
 
 type Props = {
@@ -29,9 +30,11 @@ type Props = {
   jobAddress: string
   authUserId: string | null
   userRole?: UserRole | null
+  filterCreatedByUserId?: string | null
+  zIndex?: number
 }
 
-export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId, userRole }: Props) {
+export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobName, jobAddress, authUserId, userRole, filterCreatedByUserId, zIndex = 55 }: Props) {
   const [reports, setReports] = useState<ReportForView[]>([])
   const [loading, setLoading] = useState(false)
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
@@ -46,10 +49,13 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
         setLoading(false)
         if (error) return
         const all = (data as ReportWithJobInfo[]) ?? []
-        const filtered = all.filter((r) => r.job_ledger_id === jobId)
+        let filtered = all.filter((r) => r.job_ledger_id === jobId)
+        if (filterCreatedByUserId) {
+          filtered = filtered.filter((r) => r.created_by_user_id === filterCreatedByUserId)
+        }
         setReports(filtered)
       })
-  }, [open, jobId])
+  }, [open, jobId, filterCreatedByUserId])
 
   useEffect(() => {
     if (!open) return
@@ -77,7 +83,10 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
   function handleReportAdded() {
     supabase.rpc('list_reports_with_job_info').then(({ data }) => {
       const all = (data as ReportWithJobInfo[]) ?? []
-      const filtered = all.filter((r) => r.job_ledger_id === jobId)
+      let filtered = all.filter((r) => r.job_ledger_id === jobId)
+      if (filterCreatedByUserId) {
+        filtered = filtered.filter((r) => r.created_by_user_id === filterCreatedByUserId)
+      }
       setReports(filtered)
     })
   }
@@ -93,7 +102,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
           position: 'fixed',
           inset: 0,
           background: 'white',
-          zIndex: 55,
+          zIndex,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -109,7 +118,7 @@ export default function JobReportsModal({ open, onClose, jobId, hcpNumber, jobNa
             flexShrink: 0,
           }}
         >
-          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Reports</h1>
+          <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>{filterCreatedByUserId ? 'My reports for this job' : 'Reports'}</h1>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button
               type="button"

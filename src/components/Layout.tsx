@@ -187,7 +187,7 @@ export default function Layout() {
         <NavLink to="/dashboard" style={iconLinkStyle} end title="Dashboard" aria-label="Dashboard">
           {dashboardIcon}
         </NavLink>
-        {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        {(role === 'dev' || role === 'assistant') && (
           <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}
           </NavLink>
@@ -316,6 +316,46 @@ export default function Layout() {
                     zIndex: 50,
                   }}
                 >
+                  {role === 'master_technician' && (
+                    <>
+                      <NavLink
+                        to="/quickfill"
+                        onClick={() => setMenuOpen(false)}
+                        style={({ isActive }) => ({
+                          ...dropdownLinkStyle({ isActive }),
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.5rem 1rem',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        })}
+                        title="Quickfill"
+                        aria-label="Quickfill"
+                      >
+                        {quickfillIcon}
+                        Quickfill
+                      </NavLink>
+                      <NavLink
+                        to="/people?tab=review"
+                        onClick={() => setMenuOpen(false)}
+                        style={({ isActive }) => ({
+                          ...dropdownLinkStyle({ isActive }),
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.5rem 1rem',
+                          width: '100%',
+                          boxSizing: 'border-box',
+                        })}
+                        title="Review"
+                        aria-label="Review"
+                      >
+                        {reviewIcon}
+                        Review
+                      </NavLink>
+                    </>
+                  )}
                   {renderNavLinks(() => setMenuOpen(false), true)}
                   {role === 'dev' && (
                     <NavLink

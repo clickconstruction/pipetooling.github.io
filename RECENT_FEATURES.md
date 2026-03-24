@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-25
+last_updated: 2026-07-23
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,23 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.140)"
-    line: ~349
+  - name: "Latest Version (v2.145)"
+    line: ~332
+    description: "Master tech mobile nav Quickfill and Review in hamburger"
+  - name: "v2.144"
+    line: ~340
+    description: "Assistant billing sections at top of Dashboard"
+  - name: "v2.143"
+    line: ~340
+    description: "Assistant Dashboard section reorder"
+  - name: "v2.142"
+    line: ~340
+    description: "Dashboard Assigned Jobs and Superintendent Jobs UX"
+  - name: "v2.141"
+    line: ~380
+    description: "Hours reviewed ledger for Pay tab"
+  - name: "v2.140"
+    line: ~365
     description: "RLS policy name truncation fix, AbortError non-retryable"
   - name: "v2.139"
     line: ~365
@@ -265,8 +280,12 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
-2. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
+1. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+2. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+3. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+3. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
+3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
 2. [Latest Updates (v2.126)](#latest-updates-v2126) - Split clock session in Edit modal
 2. [Latest Updates (v2.121)](#latest-updates-v2121) - Stages ClickTooling icon, Billing UX refactor, Report count styling
@@ -360,6 +379,85 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.146)
+
+**Date**: 2026-07-23
+
+### Dashboard: Billing Sections Above Checklist for Dev/Master
+
+- **Change**: For dev and master_technician, Ready to Bill and Billed Waiting for Payment now appear above Checklist Due Today (along with Dispatch inbox, which was already there).
+- **Order**: Ready to Bill, Dispatch inbox, Billed Waiting for Payment, then Checklist Due Today, Checklist Outstanding, My Bids, and the rest.
+- **Files**: `src/pages/Dashboard.tsx`
+
+---
+
+## Latest Updates (v2.145)
+
+**Date**: 2026-07-23
+
+### Master Technician Mobile Nav: Quickfill and Review in Hamburger Menu
+
+- **Change**: On mobile, master technicians no longer see the Quickfill icon in the header. Instead, Quickfill and Review (People Review tab) appear as links at the top of the hamburger menu, reducing header crowding.
+- **Files**: `src/components/Layout.tsx`
+
+---
+
+## Latest Updates (v2.144)
+
+**Date**: 2026-07-23
+
+### Assistant Billing Sections at Top of Dashboard
+
+- **Change**: For assistants, the billing sections (Ready to Bill, Dispatch inbox, Billed Waiting for Payment) now appear at the top of the Dashboard, directly below Clock In/Out and above Upcoming inspections, My Bids, and the rest of the content.
+- **Files**: `src/pages/Dashboard.tsx`
+
+---
+
+## Latest Updates (v2.143)
+
+**Date**: 2026-07-23
+
+### Assistant Dashboard Section Reorder
+
+- **Change**: For assistants, the billing-related Dashboard sections now appear in this order: (1) Ready to Bill, (2) Dispatch inbox, (3) Billed Waiting for Payment.
+- **Implementation**: Assistants see a grouped block at the top of the Dashboard (above My Bids); dev and master_technician keep the previous layout (Dispatch inbox near My Bids, Ready to Bill and Billed Waiting for Payment lower).
+- **Files**: `src/pages/Dashboard.tsx`
+
+---
+
+## Latest Updates (v2.142)
+
+**Date**: 2026-07-23
+
+### Dashboard: Assigned Jobs and Superintendent Jobs UX
+
+- **Clock In modal**: "Choose from my jobs?" button moved from the first row (next to "Use last") to the right of "Filtering by: [service type]" (or right of the service type dropdown when multiple types). Same placement in Update Focus modal when multiple service types; when no service types, button appears right-aligned on its own row.
+- **Superintendent Jobs expanded by default**: Section is now expanded when superintendents load the Dashboard (`superintendentJobsExpanded` initial state `true`).
+- **Superintendent Jobs button layout**: Matches subcontractor Assigned Jobs layout. Row 1: View Reports | Send to Billing (side by side). Row 2: Open X (time since created). View link removed for superintendents in both Assigned Jobs and Superintendent Jobs.
+- **Superintendent Send to Billing**: Migration `20260624000000_allow_superintendent_send_to_billing.sql` extends `update_job_status` so superintendents can mark jobs Ready for Billing when the job belongs to a project they supervise (via `project_superintendents` or `master_superintendents`).
+- **Open X single line on mobile**: In Assigned Jobs and Superintendent Jobs, "Open 1 week" (or similar) displays on one continuous line on mobile instead of two lines; desktop keeps two-line layout.
+- **In progress stage banner**: In-progress stage moved from inline text to a full-width banner at the bottom of job cards (Assigned Jobs and Superintendent Jobs). Banner uses soft purple background (`#ede9fe`) and dark purple text (`#6d28d9`). Click navigates to Workflow page at the in-progress step (`/workflows/{project_id}#step-{step_id}`). Fallback: `/workflows` when `project_id` or `in_progress_step_id` missing.
+- **Superintendent Jobs mobile flex**: Left column uses same `flex: 0 0 50%` on mobile as Assigned Jobs for consistent layout.
+
+**Files**: `src/pages/Dashboard.tsx`, `src/components/ClockInOutButton.tsx`, `supabase/migrations/20260624000000_allow_superintendent_send_to_billing.sql`
+
+---
+
+## Latest Updates (v2.141)
+
+**Date**: 2026-07-01
+
+### Hours Reviewed Ledger
+
+- **Feature**: Weekly "hours reviewed" workflow for Pay tab. Dev, pay-approved masters, and assistants can mark that they have reviewed a person's hours for a given week.
+- **Review Hours modal**: "Mark as reviewed" checkbox below the breakdown (when viewing a person's hours). Toggle persists to `hours_reviewed` table.
+- **Hours reviewed ledger**: New section on Pay tab (after Due by Team) showing one row per person with checkmark (reviewed) or dash (not reviewed). Summary: "X of Y reviewed".
+- **Data**: New `hours_reviewed` table (person_name, start_date, end_date, reviewed_by, reviewed_at); UNIQUE(person_name, start_date). RLS mirrors person_offsets.
+
+**Files**: `supabase/migrations/20260701000000_create_hours_reviewed.sql`, `src/components/ReviewHoursModal.tsx`, `src/pages/People.tsx`, `src/types/database.ts`
 
 ---
 

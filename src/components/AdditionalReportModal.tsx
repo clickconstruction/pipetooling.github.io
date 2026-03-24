@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
+import JobReportsModal from './JobReportsModal'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -25,6 +26,7 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showJobReportsModal, setShowJobReportsModal] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -143,6 +145,7 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
   const canSubmit = selectedTemplateId && authUserId
 
   return (
+    <>
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -157,6 +160,14 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
           </div>
           <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowJobReportsModal(true)}
+          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#2563eb', background: 'none', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', marginBottom: '1rem' }}
+        >
+          View my reports for this job
+        </button>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
@@ -208,5 +219,20 @@ export default function AdditionalReportModal({ open, onClose, onSaved, authUser
         </form>
       </div>
     </div>
+    {showJobReportsModal && (
+      <JobReportsModal
+        open={showJobReportsModal}
+        onClose={() => setShowJobReportsModal(false)}
+        jobId={jobId}
+        hcpNumber={hcpNumber}
+        jobName={jobName}
+        jobAddress={jobAddress}
+        authUserId={authUserId}
+        userRole={userRole}
+        filterCreatedByUserId={authUserId}
+        zIndex={70}
+      />
+    )}
+    </>
   )
 }

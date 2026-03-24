@@ -1625,6 +1625,33 @@ export type Database = {
           },
         ]
       }
+      hours_reviewed: {
+        Row: {
+          end_date: string
+          id: string
+          person_name: string
+          reviewed_at: string
+          reviewed_by: string
+          start_date: string
+        }
+        Insert: {
+          end_date: string
+          id?: string
+          person_name: string
+          reviewed_at?: string
+          reviewed_by: string
+          start_date: string
+        }
+        Update: {
+          end_date?: string
+          id?: string
+          person_name?: string
+          reviewed_at?: string
+          reviewed_by?: string
+          start_date?: string
+        }
+        Relationships: []
+      }
       inspection_quick_links: {
         Row: {
           created_at: string | null
@@ -5416,6 +5443,16 @@ export type Database = {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
       }
+      debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
+      debug_cost_estimate_policies: {
+        Args: never
+        Returns: {
+          cmd: string
+          policyname: string
+          qual: string
+          with_check: string
+        }[]
+      }
       duplicate_purchase_order: {
         Args: { p_created_by: string; p_source_po_id: string }
         Returns: Json
@@ -5643,6 +5680,7 @@ export type Database = {
           job_address: string
           job_name: string
           job_plans_link: string
+          last_report_at: string | null
           master_user_id: string
           revenue: number
         }[]
@@ -6005,3 +6043,4 @@ export const Constants = {
     },
   },
 } as const
+

@@ -191,21 +191,43 @@ export async function getUsersWithPin(path: string, tab: string): Promise<{ user
   return (data ?? []) as { user_id: string }[]
 }
 
-/** Delete a specific user's pin for path+tab. Returns { error }. */
+/** Delete a specific user's pin for path+tab. Returns { error }. Use tab=null for pins without a tab. */
 export async function deletePinForUserPathAndTab(
   userId: string,
   path: string,
-  tab: string
+  tab: string | null
 ): Promise<{ error: Error | null }> {
-  const { error } = await (supabase as any)
-    .from('user_pinned_tabs')
-    .delete()
-    .eq('user_id', userId)
-    .eq('path', path)
-    .eq('tab', tab)
+  let query = (supabase as any).from('user_pinned_tabs').delete().eq('user_id', userId).eq('path', path)
+  if (tab == null || tab === '') {
+    query = query.is('tab', null)
+  } else {
+    query = query.eq('tab', tab)
+  }
+  const { error } = await query
   if (error) return { error: new Error(error.message) }
   window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
   return { error: null }
+}
+
+/** Remove a pin for the current user from both localStorage and Supabase. */
+export async function removePin(
+  userId: string | undefined,
+  item: PinnedItem
+): Promise<{ error: Error | null }> {
+  if (!userId || typeof window === 'undefined') return { error: null }
+  const tabVal = item.tab ?? null
+  // 1. Remove from localStorage
+  const list = getPinned(userId)
+  const next = list.filter((p) => !(p.path === item.path && (p.tab ?? null) === tabVal))
+  try {
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(next))
+  } catch {
+    /* ignore */
+  }
+  // 2. Remove from Supabase
+  const res = await deletePinForUserPathAndTab(userId, item.path, tabVal)
+  window.dispatchEvent(new CustomEvent('pipetooling-pins-changed'))
+  return res
 }
 
 /** Delete all pins for a given path+tab (e.g. Cost matrix). Devs only. Returns { count, error }. */
@@ -226,6 +248,48 @@ export async function deletePinForPathAndTab(
 
 export function pathToLabel(path: string): string {
   return PATH_TO_LABEL[path] ?? (path.slice(1) || 'Dashboard')
+}
+
+const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
+const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
+
+function getAllowedPathsForRole(role: string | null): Set<string> | null {
+  if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
+  if (role === 'estimator') return ESTIMATOR_PATHS
+  if (role === 'primary' || role === null) return PRIMARY_PATHS
+  if (role === 'superintendent') return SUPERINTENDENT_PATHS
+  return null
+}
+
+/** Filter pins by role (same logic as Dashboard). */
+export function filterPinnedByRole(pins: PinnedItem[], role: string | null): PinnedItem[] {
+  const allowed = getAllowedPathsForRole(role)
+  if (!allowed) return pins
+  return pins.filter((p) => allowed.has(p.path))
+}
+
+/** Get merged (local + Supabase) and filtered pins for a user. Matches Dashboard pinsToShow logic. */
+export async function getMergedFilteredPins(
+  userId: string | undefined,
+  role: string | null
+): Promise<PinnedItem[]> {
+  if (!userId) return []
+  const local = getPinned(userId)
+  const fromDb = await getPinnedForUserFromSupabase(userId)
+  const seen = new Set<string>()
+  const merged: PinnedItem[] = []
+  for (const p of [...local, ...fromDb]) {
+    const key = p.path + '|' + (p.tab ?? '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    merged.push(p)
+  }
+  const filtered = filterPinnedByRole(merged, role)
+    .filter((p) => p.path !== '/dashboard' && p.path !== '/')
+    .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
+  return filtered
 }
 
 /** Returns valid tab for this path from search (or undefined if none). */

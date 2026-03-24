@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-06-23
+last_updated: 2026-07-23
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -89,6 +89,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ---
 
 ## Recent Migrations
+
+### July 2026
+
+#### July 1, 2026
+
+**`20260701000000_create_hours_reviewed.sql`**
+- **Purpose**: Add `hours_reviewed` table for Pay tab "hours reviewed" workflow
+- **Changes**: Create `hours_reviewed` (person_name, start_date, end_date, reviewed_by, reviewed_at); UNIQUE(person_name, start_date); RLS for dev, pay-approved masters, assistants
+- **Impact**: Review Hours modal "Mark as reviewed" checkbox; Hours reviewed ledger on Pay tab
+- **Category**: People / Pay
 
 ### March 2026
 
@@ -189,6 +199,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Access control / Jobs / RLS
 
 #### June 24, 2026
+
+**`20260624000000_allow_superintendent_send_to_billing.sql`**
+- **Purpose**: Allow superintendents to mark jobs Ready for Billing when job is in a project they supervise
+- **Changes**: Extend `update_job_status` for `working -> ready_to_bill`: add branch allowing superintendents when job belongs to a project they are assigned to via `project_superintendents` or `master_superintendents`
+- **Impact**: Dashboard Superintendent Jobs "Send to Billing" button works for superintendents; job moves to Ready to Bill
+- **Category**: Jobs / Access Control
 
 **`20260624000000_fix_cost_estimates_rls_use_helper.sql`**
 - **Purpose**: Fix assistants failing to create cost estimates (RLS policy violation)
