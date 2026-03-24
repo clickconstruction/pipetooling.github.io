@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -4025,6 +4025,37 @@ export default function Jobs() {
               )
             }
 
+            function stagesRowHasProjectBanner(
+              projectId: string | null,
+              project: { name: string } | null | undefined
+            ): boolean {
+              return !!(projectId && project)
+            }
+
+            function renderStagesProjectBannerRow(
+              projectId: string | null,
+              project: { name: string } | null | undefined,
+              colSpan: number
+            ): React.ReactElement | null {
+              if (!projectId || !project) return null
+              return (
+                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td
+                    colSpan={colSpan}
+                    style={{
+                      padding: '0.5rem 0.75rem',
+                      background: '#eff6ff',
+                      fontSize: '0.8125rem',
+                    }}
+                  >
+                    <Link to={`/workflows/${projectId}`} style={{ color: '#1d4ed8', textDecoration: 'none', fontWeight: 500 }}>
+                      Project: {project.name}
+                    </Link>
+                  </td>
+                </tr>
+              )
+            }
+
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
@@ -4051,7 +4082,12 @@ export default function Jobs() {
                         </tr>
                       ) : (
                         jobList.map((j) => (
-                          <tr key={j.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <Fragment key={j.id}>
+                          <tr
+                            style={{
+                              borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                            }}
+                          >
                             <td style={{ padding: '0.75rem', position: 'relative', verticalAlign: 'top' }}>
                               {stagesHamMode ? (
                                 <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -4193,16 +4229,6 @@ export default function Jobs() {
                                 )
                               })()}
                               {renderJobCustomerLine(j)}
-                              {j.project && (
-                                <div style={{ marginTop: '0.35rem' }}>
-                                  <Link
-                                    to={`/workflows/${j.project_id}`}
-                                    style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
-                                  >
-                                    Project: {j.project.name}
-                                  </Link>
-                                </div>
-                              )}
                             </td>
                             <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                               <textarea
@@ -4430,6 +4456,8 @@ export default function Jobs() {
                               </div>
                             </td>
                           </tr>
+                          {renderStagesProjectBannerRow(j.project_id, j.project, 6 + (showPctComplete ? 1 : 0))}
+                          </Fragment>
                         ))
                       )}
                     </tbody>
@@ -4480,7 +4508,12 @@ export default function Jobs() {
                           if (row.kind === 'job') {
                             const j = row.job
                             return (
-                              <tr key={`job-${j.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <Fragment key={`job-${j.id}`}>
+                              <tr
+                                style={{
+                                  borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                                }}
+                              >
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top', position: 'relative' }}>
                                   {stagesHamMode ? (
                                     <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -4626,16 +4659,6 @@ export default function Jobs() {
                                     )
                                   })()}
                                   {renderJobCustomerLine(j)}
-                                  {j.project && (
-                                    <div style={{ marginTop: '0.35rem' }}>
-                                      <Link
-                                        to={`/workflows/${j.project_id}`}
-                                        style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
-                                      >
-                                        Project: {j.project.name}
-                                      </Link>
-                                    </div>
-                                  )}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4806,12 +4829,19 @@ export default function Jobs() {
                                   </div>
                                 </td>
                               </tr>
+                              {renderStagesProjectBannerRow(j.project_id, j.project, 6)}
+                              </Fragment>
                             )
                           } else {
                             const { inv, job } = row
                             const invWithJob: InvoiceWithJob = { ...inv, job }
                             return (
-                              <tr key={`inv-${inv.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <Fragment key={`inv-${inv.id}`}>
+                              <tr
+                                style={{
+                                  borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
+                                }}
+                              >
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.hcp_number || '—'}</div>
@@ -4839,16 +4869,6 @@ export default function Jobs() {
                                     )
                                   })()}
                                   {renderJobCustomerLine(job)}
-                                  {job.project && (
-                                    <div style={{ marginTop: '0.35rem' }}>
-                                      <Link
-                                        to={`/workflows/${job.project_id}`}
-                                        style={{ fontSize: '0.75rem', padding: '0.15rem 0.4rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4, textDecoration: 'none', display: 'inline-block' }}
-                                      >
-                                        Project: {job.project.name}
-                                      </Link>
-                                    </div>
-                                  )}
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <textarea
@@ -4988,6 +5008,8 @@ export default function Jobs() {
                                   </div>
                                 </td>
                               </tr>
+                              {renderStagesProjectBannerRow(job.project_id, job.project, 6)}
+                              </Fragment>
                             )
                           }
                         })
