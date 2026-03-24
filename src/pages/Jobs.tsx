@@ -99,6 +99,15 @@ function formatCurrencyNoCents(n: number): string {
   return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+/** Calendar whole days from an ISO date/timestamp to now in UTC (avoids DST edge cases). */
+function calendarDaysSinceDateUtc(dateIso: string, now = new Date()): number {
+  const d = new Date(dateIso)
+  if (Number.isNaN(d.getTime())) return -1
+  const fromUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+  const toUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  return Math.floor((toUtc - fromUtc) / 86400000)
+}
+
 function buildClickToolingUrl(job: JobWithDetails): string {
   const params = new URLSearchParams()
   params.set('name', (job.customer_name ?? '').trim())
@@ -145,6 +154,11 @@ function addDaysToDate(dateStr: string | null, deltaDays: number): string {
   const base = dateStr?.trim() ? new Date(dateStr.trim() + 'T12:00:00') : new Date()
   base.setDate(base.getDate() + deltaDays)
   return base.toISOString().slice(0, 10)
+}
+
+/** Per-invoice est. bill date when set; else job-level est. done/bill date. */
+function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails): string | null {
+  return inv.estimated_bill_date ?? job.estimated_completion_date ?? null
 }
 
 type MaterialRow = { id: string; description: string; amount: number }
@@ -435,6 +449,14 @@ export default function Jobs() {
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenBilledModalJob, setWhenBilledModalJob] = useState<JobWithDetails | null>(null)
   const [whenBilledModalDate, setWhenBilledModalDate] = useState('')
+  const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
+    invoiceId: string
+    jobId: string
+    jobName: string
+    hcpNumber: string
+  } | null>(null)
+  const [whenInvoiceBillModalDate, setWhenInvoiceBillModalDate] = useState('')
+  const [invoiceEstimatedBillDateSavingId, setInvoiceEstimatedBillDateSavingId] = useState<string | null>(null)
   const [stagesSearchQuery, setStagesSearchQuery] = useState('')
   const [stagesStatusUpdatingId, setStagesStatusUpdatingId] = useState<string | null>(null)
   const [stagesInvoiceUpdatingId, setStagesInvoiceUpdatingId] = useState<string | null>(null)
@@ -470,6 +492,60 @@ export default function Jobs() {
   const assignedEditDropdownRef = useRef<HTMLDivElement | null>(null)
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
+
+  const stagesFilteredJobs = useMemo(() => {
+    const q = stagesSearchQuery.trim().toLowerCase()
+    if (!q) return jobs
+    return jobs.filter(
+      (j) =>
+        (j.hcp_number ?? '').toLowerCase().includes(q) ||
+        (j.job_name ?? '').toLowerCase().includes(q) ||
+        (j.job_address ?? '').toLowerCase().includes(q)
+    )
+  }, [jobs, stagesSearchQuery])
+
+  const billedAgingBuckets = useMemo(() => {
+    const st = (j: JobWithDetails) => (j.status ?? 'working') as string
+    const filtered = stagesFilteredJobs
+    const billedJobsList = filtered.filter((j) => st(j) === 'billed')
+    const billedInvoicesList = filtered.flatMap((j) =>
+      (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j }))
+    )
+    const now = new Date()
+    let count30_90 = 0
+    let sum30_90 = 0
+    let count90 = 0
+    let sum90 = 0
+    for (const j of billedJobsList) {
+      const iso = j.estimated_completion_date
+      if (!iso) continue
+      const days = calendarDaysSinceDateUtc(iso, now)
+      if (days < 30) continue
+      const amount = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
+      if (days < 90) {
+        count30_90++
+        sum30_90 += amount
+      } else {
+        count90++
+        sum90 += amount
+      }
+    }
+    for (const inv of billedInvoicesList) {
+      const iso = effectiveInvoiceEstBillDate(inv, inv.job)
+      if (!iso) continue
+      const days = calendarDaysSinceDateUtc(iso, now)
+      if (days < 30) continue
+      const amount = Number(inv.amount ?? 0)
+      if (days < 90) {
+        count30_90++
+        sum30_90 += amount
+      } else {
+        count90++
+        sum90 += amount
+      }
+    }
+    return { count30_90, sum30_90, count90, sum90 }
+  }, [stagesFilteredJobs])
 
   function getCustomerDisplay(c: CustomerRow): string {
     if (c.address) return `${c.name} - ${c.address}`
@@ -2984,11 +3060,13 @@ export default function Jobs() {
     setError(null)
     try {
       const nextOrder = (editing.invoices ?? []).length
+      const estBill = editing.estimated_completion_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
         job_id: editing.id,
         amount,
         status: 'ready_to_bill',
         sequence_order: nextOrder,
+        estimated_bill_date: estBill,
       })
       if (err) throw err
       setNewInvoiceAmount('')
@@ -3021,11 +3099,14 @@ export default function Jobs() {
     setError(null)
     try {
       const nextOrder = (createPartialInvoiceJob.invoices ?? []).length
+      const estBillModal =
+        createPartialInvoiceJob.estimated_completion_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase.from('jobs_ledger_invoices').insert({
         job_id: createPartialInvoiceJob.id,
         amount,
         status: 'ready_to_bill',
         sequence_order: nextOrder,
+        estimated_bill_date: estBillModal,
       })
       if (err) throw err
       setCreatePartialInvoiceJob(null)
@@ -3367,6 +3448,55 @@ export default function Jobs() {
     } finally {
       setEstimatedCompletionDateSavingId(null)
     }
+  }
+
+  async function setInvoiceEstimatedBillDate(invoiceId: string, jobId: string, date: string | null) {
+    setInvoiceEstimatedBillDateSavingId(invoiceId)
+    setError(null)
+    try {
+      await withSupabaseRetry(
+        async () => {
+          const r = await supabase
+            .from('jobs_ledger_invoices')
+            .update({ estimated_bill_date: date })
+            .eq('id', invoiceId)
+          return { data: r.data, error: r.error }
+        },
+        'update invoice estimated bill date'
+      )
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id !== jobId
+            ? j
+            : {
+                ...j,
+                invoices: (j.invoices ?? []).map((i) =>
+                  i.id === invoiceId ? { ...i, estimated_bill_date: date } : i
+                ),
+              }
+        )
+      )
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update invoice bill date')
+    } finally {
+      setInvoiceEstimatedBillDateSavingId(null)
+    }
+  }
+
+  /** Ham ±1: seed from invoice date, else job est. date, else today. */
+  async function bumpInvoiceEstimatedBillDate(
+    invoiceId: string,
+    jobId: string,
+    inv: JobsLedgerInvoice,
+    job: JobWithDetails,
+    deltaDays: number
+  ) {
+    const base =
+      inv.estimated_bill_date ??
+      job.estimated_completion_date ??
+      new Date().toISOString().slice(0, 10)
+    const newDate = addDaysToDate(base, deltaDays)
+    await setInvoiceEstimatedBillDate(invoiceId, jobId, newDate)
   }
 
   // Hide primary-restricted tabs until role is known to prevent flash of wrong tabs
@@ -4480,9 +4610,23 @@ export default function Jobs() {
                 showCreatePartialInvoice?: boolean
                 showEmptyEstDoneBillDatePrompt?: boolean
                 onEmptyEstDoneBillDateClick?: (j: JobWithDetails) => void
+                onEmptyInvoiceEstBillDateClick?: (inv: JobsLedgerInvoice, job: JobWithDetails) => void
               }
             ) {
-              const { actionLabel, onJobAction, onInvoiceAction, onJobSendBack, onInvoiceSendBack, showRemaining, showTimeOpen, sendBackBelowRemaining, showCreatePartialInvoice, showEmptyEstDoneBillDatePrompt, onEmptyEstDoneBillDateClick } = options
+              const {
+                actionLabel,
+                onJobAction,
+                onInvoiceAction,
+                onJobSendBack,
+                onInvoiceSendBack,
+                showRemaining,
+                showTimeOpen,
+                sendBackBelowRemaining,
+                showCreatePartialInvoice,
+                showEmptyEstDoneBillDatePrompt,
+                onEmptyEstDoneBillDateClick,
+                onEmptyInvoiceEstBillDateClick,
+              } = options
               return (
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -4845,7 +4989,117 @@ export default function Jobs() {
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                                   <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{job.hcp_number || '—'}</div>
-                                  {renderEstimatedCompletionBlock(job)}
+                                  {(() => {
+                                    const eff = effectiveInvoiceEstBillDate(inv, job)
+                                    const display = formatEstimatedCompletionDisplay(eff)
+                                    return (
+                                      <>
+                                        {!display && showEmptyEstDoneBillDatePrompt && onEmptyInvoiceEstBillDateClick ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => onEmptyInvoiceEstBillDateClick(inv, job)}
+                                            style={{
+                                              display: 'block',
+                                              marginTop: '0.15rem',
+                                              padding: '0.25rem 0.5rem',
+                                              fontSize: '0.75rem',
+                                              color: '#b91c1c',
+                                              border: '2px solid #b91c1c',
+                                              borderRadius: 4,
+                                              background: 'none',
+                                              cursor: 'pointer',
+                                              width: 'fit-content',
+                                            }}
+                                          >
+                                            Missing Billed Date
+                                          </button>
+                                        ) : null}
+                                        {display ? (
+                                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{display}</div>
+                                        ) : null}
+                                        {stagesHamMode ? (
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '0.25rem',
+                                              marginTop: '0.15rem',
+                                            }}
+                                          >
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, -1)
+                                              }}
+                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
+                                              style={{
+                                                padding: '0.25rem 0.5rem',
+                                                fontSize: '0.75rem',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: 4,
+                                                background: 'none',
+                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
+                                                color: '#6b7280',
+                                              }}
+                                            >
+                                              -1
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, 1)
+                                              }}
+                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
+                                              style={{
+                                                padding: '0.25rem 0.5rem',
+                                                fontSize: '0.75rem',
+                                                border: '1px solid #d1d5db',
+                                                borderRadius: 4,
+                                                background: 'none',
+                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
+                                                color: '#6b7280',
+                                              }}
+                                            >
+                                              +1
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setWhenInvoiceBillModal({
+                                                  invoiceId: inv.id,
+                                                  jobId: job.id,
+                                                  jobName: job.job_name ?? '—',
+                                                  hcpNumber: job.hcp_number ?? '—',
+                                                })
+                                                setWhenInvoiceBillModalDate(
+                                                  inv.estimated_bill_date?.trim().slice(0, 10) ??
+                                                    job.estimated_completion_date?.trim().slice(0, 10) ??
+                                                    ''
+                                                )
+                                              }}
+                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
+                                              title="Edit est. bill date"
+                                              aria-label="Edit est. bill date"
+                                              style={{
+                                                padding: '0.25rem',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
+                                                color: '#374151',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                              }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
+                                                <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
+                                              </svg>
+                                            </button>
+                                          </div>
+                                        ) : null}
+                                      </>
+                                    )
+                                  })()}
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
                                   {(() => {
@@ -5082,15 +5336,20 @@ export default function Jobs() {
                 })}
 
                 <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => toggleStages('billed')}
-                    aria-expanded={stagesSectionOpen.billed}
-                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
-                  >
-                    <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
-                    Billed Awaiting Payment ({billedJobs.length + billedInvoices.length}) - ${formatCurrency(billedTotal)}
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => toggleStages('billed')}
+                      aria-expanded={stagesSectionOpen.billed}
+                      style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                    >
+                      <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
+                      Billed Awaiting Payment ({billedJobs.length + billedInvoices.length}) - ${formatCurrency(billedTotal)}
+                    </button>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
+                      {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setBilledTotalByNameModalOpen(true)}
@@ -5111,6 +5370,15 @@ export default function Jobs() {
                   showCreatePartialInvoice: false,
                   showEmptyEstDoneBillDatePrompt: true,
                   onEmptyEstDoneBillDateClick: (j) => { setWhenBilledModalJob(j); setWhenBilledModalDate(''); },
+                  onEmptyInvoiceEstBillDateClick: (inv, j) => {
+                    setWhenInvoiceBillModal({
+                      invoiceId: inv.id,
+                      jobId: j.id,
+                      jobName: j.job_name ?? '—',
+                      hcpNumber: j.hcp_number ?? '—',
+                    })
+                    setWhenInvoiceBillModalDate('')
+                  },
                 })}
 
                 <button
@@ -5259,6 +5527,68 @@ export default function Jobs() {
                     </div>
                   )
                 })()}
+                {whenInvoiceBillModal && (
+                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+                      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Est. bill date for partial invoice</h2>
+                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        {whenInvoiceBillModal.jobName} ({whenInvoiceBillModal.hcpNumber})
+                      </p>
+                      <label style={{ display: 'block', marginBottom: '1rem' }}>
+                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Date</span>
+                        <input
+                          type="date"
+                          value={whenInvoiceBillModalDate}
+                          onChange={(e) => setWhenInvoiceBillModalDate(e.target.value)}
+                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                        />
+                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWhenInvoiceBillModal(null)
+                            setWhenInvoiceBillModalDate('')
+                          }}
+                          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            !whenInvoiceBillModalDate.trim() ||
+                            invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId
+                          }
+                          onClick={async () => {
+                            if (!whenInvoiceBillModalDate.trim() || !whenInvoiceBillModal) return
+                            await setInvoiceEstimatedBillDate(
+                              whenInvoiceBillModal.invoiceId,
+                              whenInvoiceBillModal.jobId,
+                              whenInvoiceBillModalDate.trim()
+                            )
+                            setWhenInvoiceBillModal(null)
+                            setWhenInvoiceBillModalDate('')
+                          }}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor:
+                              !whenInvoiceBillModalDate.trim() ||
+                              invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId
+                                ? 'not-allowed'
+                                : 'pointer',
+                          }}
+                        >
+                          {invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {whenBilledModalJob && (
                   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
                     <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>

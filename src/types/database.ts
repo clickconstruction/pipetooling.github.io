@@ -1939,7 +1939,9 @@ export type Database = {
       jobs_ledger_invoices: {
         Row: {
           amount: number
+          billed_at: string | null
           created_at: string | null
+          estimated_bill_date: string | null
           id: string
           job_id: string
           sequence_order: number
@@ -1947,7 +1949,9 @@ export type Database = {
         }
         Insert: {
           amount: number
+          billed_at?: string | null
           created_at?: string | null
+          estimated_bill_date?: string | null
           id?: string
           job_id: string
           sequence_order?: number
@@ -1955,7 +1959,9 @@ export type Database = {
         }
         Update: {
           amount?: number
+          billed_at?: string | null
           created_at?: string | null
+          estimated_bill_date?: string | null
           id?: string
           job_id?: string
           sequence_order?: number
@@ -5683,7 +5689,7 @@ export type Database = {
           job_address: string
           job_name: string
           job_plans_link: string
-          last_report_at: string | null
+          last_report_at: string
           master_user_id: string
           revenue: number
         }[]
@@ -6046,4 +6052,3 @@ export const Constants = {
     },
   },
 } as const
-
