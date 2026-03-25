@@ -520,6 +520,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | Team lead assignments (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Activity (first-party app usage: UTC daily aggregates; dev-only Settings section; all users may call `bump_user_app_activity` for own row) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 

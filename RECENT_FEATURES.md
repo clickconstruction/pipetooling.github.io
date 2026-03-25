@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.154)"
-    line: ~415
+  - name: "Latest Version (v2.155)"
+    line: ~418
+    description: "First-party app Activity: UTC daily heartbeats, bump_user_app_activity RPC, dev Settings Activity table"
+  - name: "v2.154"
+    line: ~430
     description: "People Licenses: Dispatch Inbox task when license first qualifies as expiring within 30 days"
   - name: "v2.153"
     line: ~430
@@ -412,6 +415,20 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.155)
+
+**Date**: 2026-03-26
+
+### Settings — Activity (dev): first-party app usage
+
+- **`user_app_activity_daily`**: UTC calendar-day aggregates (`active_seconds`, `first_seen_at`, `last_seen_at`). **RLS**: users **SELECT** own rows or **dev** sees all; writes only via **`bump_user_app_activity`** (SECURITY DEFINER).
+- **Layout**: **`useAppActivityHeartbeat`** calls the RPC every **60s** while the tab is **visible** (first bump after the first interval).
+- **Settings**: Dev-only collapsible **Activity** lists **Name**, **Email**, **Last seen**, **Active (7d)** / **(30d)** (h:mm).
+
+**Files**: [`supabase/migrations/20270326120000_user_app_activity_daily.sql`](supabase/migrations/20270326120000_user_app_activity_daily.sql), [`src/hooks/useAppActivityHeartbeat.ts`](src/hooks/useAppActivityHeartbeat.ts), [`src/components/Layout.tsx`](src/components/Layout.tsx), [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
 
 ---
 

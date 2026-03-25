@@ -19,6 +19,7 @@ import {
 } from '../lib/pinnedTabs'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
+import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -44,6 +45,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  useAppActivityHeartbeat(authUser?.id)
   const estimatorAllowedPaths = useMemo(
     () =>
       ['/dashboard', '/materials', '/bids', ...(estimatorProspectsAccess ? ['/prospects'] : []), '/calendar', '/checklist', '/people', '/settings', '/tally'],

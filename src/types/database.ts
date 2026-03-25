@@ -4861,6 +4861,38 @@ export type Database = {
           },
         ]
       }
+      user_app_activity_daily: {
+        Row: {
+          active_seconds: number
+          activity_date: string
+          first_seen_at: string | null
+          last_seen_at: string | null
+          user_id: string
+        }
+        Insert: {
+          active_seconds?: number
+          activity_date: string
+          first_seen_at?: string | null
+          last_seen_at?: string | null
+          user_id: string
+        }
+        Update: {
+          active_seconds?: number
+          activity_date?: string
+          first_seen_at?: string | null
+          last_seen_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_app_activity_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
@@ -5591,6 +5623,10 @@ export type Database = {
         Args: { assistant_a: string; assistant_b: string }
         Returns: boolean
       }
+      bump_user_app_activity: {
+        Args: { p_seconds?: number }
+        Returns: undefined
+      }
       can_access_bid_for_pricing: {
         Args: { bid_id_param: string }
         Returns: boolean
@@ -6284,3 +6320,4 @@ export const Constants = {
     },
   },
 } as const
+
