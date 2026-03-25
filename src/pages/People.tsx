@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
@@ -19,6 +20,7 @@ import {
   ClockSessionsTable,
   ClockSessionsSection,
   formatClockSessionJobOrBidLabel,
+  RejectedClockSessionsSection,
 } from '../components/clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
 
@@ -30,6 +32,22 @@ const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator
 const KIND_LABELS: Record<PersonKind, string> = { assistant: 'Assistants', master_technician: 'Master Technicians', sub: 'Subcontractors', estimator: 'Estimators' }
 
 const KIND_TO_USER_ROLE: Record<PersonKind, string> = { assistant: 'assistant', master_technician: 'master_technician', sub: 'subcontractor', estimator: 'estimator' }
+
+/** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
+type UsersTabSection =
+  | { type: 'personKind'; kind: PersonKind }
+  | { type: 'userRole'; role: 'primary' | 'superintendent' }
+  | { type: 'dev' }
+
+const USERS_TAB_SECTIONS: UsersTabSection[] = [
+  { type: 'personKind', kind: 'master_technician' },
+  { type: 'personKind', kind: 'assistant' },
+  { type: 'userRole', role: 'primary' },
+  { type: 'personKind', kind: 'estimator' },
+  { type: 'userRole', role: 'superintendent' },
+  { type: 'personKind', kind: 'sub' },
+  { type: 'dev' },
+]
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return ''
@@ -99,6 +117,8 @@ export default function People() {
   // Pay/Hours tab state
   const [payTabLoading, setPayTabLoading] = useState(false)
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
+  /** True once the Hours tab load effect has entered its first loading cycle (past the 80ms delay). Used so deep-link scroll runs after content is stable, not during the pre-load gap that is followed by a loading spinner that unmounts the anchor. */
+  const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const [canAccessPay, setCanAccessPay] = useState(false)
   const [canAccessHours, setCanAccessHours] = useState(false)
   const [canAccessLicenses, setCanAccessLicenses] = useState(false)
@@ -140,6 +160,7 @@ export default function People() {
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
   const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
+  const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
   const [editClockSession, setEditClockSession] = useState<ClockSessionRow | null>(null)
   const [editClockSessionIn, setEditClockSessionIn] = useState('')
   const [editClockSessionOut, setEditClockSessionOut] = useState('')
@@ -557,6 +578,34 @@ export default function People() {
   }, [activeTab, searchParams])
 
   useEffect(() => {
+    const section = searchParams.get('section')
+    if (section !== 'rejected' || !canAccessHours) return
+    const tab = searchParams.get('tab')
+    if (tab !== 'hours') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'hours')
+        return next
+      }, { replace: true })
+    }
+  }, [searchParams, canAccessHours, setSearchParams])
+
+  useLayoutEffect(() => {
+    const section = searchParams.get('section')
+    if (section !== 'rejected' || activeTab !== 'hours' || !canAccessHours) return
+    if (hoursTabLoading) return
+    if (!hoursTabFirstLoadCycleStartedRef.current) return
+    setRejectedSectionOpen(true)
+    const el = document.getElementById('people-hours-rejected')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('section')
+      return next
+    }, { replace: true })
+  }, [searchParams, activeTab, canAccessHours, hoursTabLoading, setSearchParams])
+
+  useEffect(() => {
     async function loadPayAccess() {
       if (!authUser?.id) return
       const [meRes, approvedRes, sharesRes] = await Promise.all([
@@ -957,13 +1006,11 @@ export default function People() {
     setPeopleHours((data ?? []) as HoursRow[])
   }
 
-  const clockSessionSelect = 'id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by, users!clock_sessions_user_id_fkey(name), approved_by_user:users!clock_sessions_approved_by_fkey(name), rejected_by_user:users!clock_sessions_rejected_by_fkey(name), revoked_by_user:users!clock_sessions_revoked_by_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
-
   async function loadPendingClockSessions(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select(clockSessionSelect)
+      .select(CLOCK_SESSION_LIST_SELECT)
       .is('approved_at', null)
       .is('rejected_at', null)
       .gte('work_date', start)
@@ -981,7 +1028,7 @@ export default function People() {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select(clockSessionSelect)
+      .select(CLOCK_SESSION_LIST_SELECT)
       .not('approved_at', 'is', null)
       .gte('work_date', start)
       .lte('work_date', end)
@@ -998,7 +1045,7 @@ export default function People() {
     if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select(clockSessionSelect)
+      .select(CLOCK_SESSION_LIST_SELECT)
       .not('rejected_at', 'is', null)
       .gte('work_date', start)
       .lte('work_date', end)
@@ -1785,21 +1832,24 @@ export default function People() {
   }
 
   useEffect(() => {
-    if (activeTab === 'hours' && canAccessHours) {
-      const t = setTimeout(() => {
-        setHoursTabLoading(true)
-        Promise.all([
-          loadPayConfig(),
-          loadPeopleHours(hoursDateStart, hoursDateEnd),
-          loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
-          loadHoursDisplayOrder(),
-          loadPendingClockSessions(hoursDateStart, hoursDateEnd),
-          loadApprovedClockSessions(hoursDateStart, hoursDateEnd),
-          loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
-        ]).finally(() => setHoursTabLoading(false))
-      }, 80)
-      return () => clearTimeout(t)
+    if (activeTab !== 'hours' || !canAccessHours) {
+      hoursTabFirstLoadCycleStartedRef.current = false
+      return
     }
+    const t = setTimeout(() => {
+      hoursTabFirstLoadCycleStartedRef.current = true
+      setHoursTabLoading(true)
+      Promise.all([
+        loadPayConfig(),
+        loadPeopleHours(hoursDateStart, hoursDateEnd),
+        loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
+        loadHoursDisplayOrder(),
+        loadPendingClockSessions(hoursDateStart, hoursDateEnd),
+        loadApprovedClockSessions(hoursDateStart, hoursDateEnd),
+        loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
+      ]).finally(() => setHoursTabLoading(false))
+    }, 80)
+    return () => clearTimeout(t)
   }, [activeTab, canAccessHours, hoursDateStart, hoursDateEnd])
 
   useEffect(() => {
@@ -3820,8 +3870,11 @@ export default function People() {
       {activeTab === 'users' && (
         <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          {isDev && (
-            <section style={{ marginBottom: '2rem' }}>
+          {USERS_TAB_SECTIONS.map((sec) => {
+            if (sec.type === 'dev') {
+              if (!isDev) return null
+              return (
+            <section key="users-tab-devs" style={{ marginBottom: '2rem' }}>
               <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Devs</h2>
               {users.filter((u) => u.role === 'dev').length === 0 ? (
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
@@ -3920,8 +3973,11 @@ export default function People() {
                 </ul>
               )}
             </section>
-          )}
-          <section style={{ marginBottom: '2rem' }}>
+              )
+            }
+            if (sec.type === 'userRole' && sec.role === 'primary') {
+              return (
+          <section key="users-tab-primary" style={{ marginBottom: '2rem' }}>
             <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Primaries</h2>
             {users.filter((u) => u.role === 'primary').length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
@@ -4043,7 +4099,11 @@ export default function People() {
               </ul>
             )}
           </section>
-          <section style={{ marginBottom: '2rem' }}>
+              )
+            }
+            if (sec.type === 'userRole' && sec.role === 'superintendent') {
+              return (
+          <section key="users-tab-superintendent" style={{ marginBottom: '2rem' }}>
             <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.125rem' }}>Superintendents</h2>
             {users.filter((u) => u.role === 'superintendent').length === 0 ? (
               <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
@@ -4153,241 +4213,249 @@ export default function People() {
               </ul>
             )}
           </section>
-          {KINDS.map((k) => (
-        <section key={k} style={{ marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{KIND_LABELS[k]}</h2>
-            {canCreatePeopleInRoster ? (
-              <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
-                Add
-              </button>
-            ) : null}
-          </div>
-          {byKind(k).length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {byKind(k).map((item) => (
-                <li
-                  key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-                  style={{
-                    padding: '0.5rem 0',
-                    borderBottom: '1px solid #e5e7eb',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div>
-                      {item.source === 'user' && canSeePushStatus && pushEnabledUserIds.has(item.id) && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          width={14}
-                          height={14}
-                          fill="#22c55e"
-                          role="img"
-                          aria-hidden
-                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
-                        >
-                          <title>Push notifications enabled</title>
-                          <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C265.1 555.6 290.2 576 320 576C349.8 576 374.9 555.6 382 528L258 528z" />
-                        </svg>
-                      )}
-                      {item.source === 'user' && isDev && locationEnabledUserIds.has(item.id) && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          width={14}
-                          height={14}
-                          fill="#22c55e"
-                          role="img"
-                          aria-hidden
-                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
-                        >
-                          <title>Location service enabled</title>
-                          <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
-                        </svg>
-                      )}
-                      {canAccessContracts && documentUrlStatusByPersonName[item.name] && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          width={14}
-                          height={14}
-                          fill={documentUrlStatusByPersonName[item.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[item.name] === 'yellow' ? '#eab308' : '#ef4444'}
-                          role="img"
-                          aria-hidden
-                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
-                        >
-                          <title>{documentUrlStatusByPersonName[item.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[item.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
-                          <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
-                        </svg>
-                      )}
-                      {isDev && item.source === 'user' && item.email && (
-                        <>
-                          {window.location.hostname === 'pipetooling.com' && (
-                          <button
-                            type="button"
-                            title="imitate (pipetooling.com)"
-                            onClick={async () => {
-                              setLoggingInAsId(item.id)
-                              setError(null)
-                              try {
-                                await loginAsUser(item, 'https://pipetooling.com/dashboard')
-                              } catch (e) {
-                                setError(e instanceof Error ? e.message : 'Failed to imitate')
-                              } finally {
-                                setLoggingInAsId(null)
-                              }
-                            }}
-                            disabled={loggingInAsId === item.id}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              padding: 0,
-                              marginRight: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer',
-                              verticalAlign: 'middle',
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                              <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
-                            </svg>
-                          </button>
-                          )}
-                          {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-                          <button
-                            type="button"
-                            title="imitate (localhost)"
-                            onClick={async () => {
-                              setLoggingInAsId(item.id)
-                              setError(null)
-                              try {
-                                await loginAsUser(item, 'http://localhost:5173/dashboard')
-                              } catch (e) {
-                                setError(e instanceof Error ? e.message : 'Failed to imitate')
-                              } finally {
-                                setLoggingInAsId(null)
-                              }
-                            }}
-                            disabled={loggingInAsId === item.id}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              padding: 0,
-                              marginRight: '0.35rem',
-                              background: 'none',
-                              border: 'none',
-                              cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer',
-                              verticalAlign: 'middle',
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                              <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
-                            </svg>
-                          </button>
-                          )}
-                        </>
-                      )}
-                      <span style={{ fontWeight: 500 }}>{item.name}</span>
-                      {item.source === 'user' && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                      )}
-                      {(item.source === 'user' ? item.email : (item.email || item.phone)) && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                          {item.source === 'user' ? (
-                            item.email ? (
-                              <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                {item.email}
-                              </a>
-                            ) : null
+              )
+            }
+            if (sec.type === 'personKind') {
+              const k = sec.kind
+              return (
+                        <section key={`users-tab-kind-${k}`} style={{ marginBottom: '2rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{KIND_LABELS[k]}</h2>
+                            {canCreatePeopleInRoster ? (
+                              <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+                                Add
+                              </button>
+                            ) : null}
+                          </div>
+                          {byKind(k).length === 0 ? (
+                            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                           ) : (
-                            <>
-                              {item.email && (
-                                <>
-                                  <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                    {item.email}
-                                  </a>
-                                  {item.phone && ' \u00B7 '}
-                                </>
-                              )}
-                              {item.phone && (
-                                <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                  {item.phone}
-                                </a>
-                              )}
-                            </>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                              {byKind(k).map((item) => (
+                                <li
+                                  key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
+                                  style={{
+                                    padding: '0.5rem 0',
+                                    borderBottom: '1px solid #e5e7eb',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                  }}
+                                >
+                                  <div style={{ flex: 1 }}>
+                                    <div>
+                                      {item.source === 'user' && canSeePushStatus && pushEnabledUserIds.has(item.id) && (
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 640 640"
+                                          width={14}
+                                          height={14}
+                                          fill="#22c55e"
+                                          role="img"
+                                          aria-hidden
+                                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                                        >
+                                          <title>Push notifications enabled</title>
+                                          <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C265.1 555.6 290.2 576 320 576C349.8 576 374.9 555.6 382 528L258 528z" />
+                                        </svg>
+                                      )}
+                                      {item.source === 'user' && isDev && locationEnabledUserIds.has(item.id) && (
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 640 640"
+                                          width={14}
+                                          height={14}
+                                          fill="#22c55e"
+                                          role="img"
+                                          aria-hidden
+                                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                                        >
+                                          <title>Location service enabled</title>
+                                          <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                                        </svg>
+                                      )}
+                                      {canAccessContracts && documentUrlStatusByPersonName[item.name] && (
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 640 640"
+                                          width={14}
+                                          height={14}
+                                          fill={documentUrlStatusByPersonName[item.name] === 'green' ? '#22c55e' : documentUrlStatusByPersonName[item.name] === 'yellow' ? '#eab308' : '#ef4444'}
+                                          role="img"
+                                          aria-hidden
+                                          style={{ display: 'inline-block', marginRight: '0.35rem', verticalAlign: 'middle' }}
+                                        >
+                                          <title>{documentUrlStatusByPersonName[item.name] === 'green' ? 'All documents have URLs' : documentUrlStatusByPersonName[item.name] === 'yellow' ? 'Some documents have URLs' : 'No documents have URLs'}</title>
+                                          <path d="M64.1 128C64.1 92.7 92.8 64 128.1 64L277.6 64C294.6 64 310.9 70.7 322.9 82.7L429.3 189.3C441.3 201.3 448 217.6 448 234.6L448 332.1L316 464.1L273.9 464.1L257.8 410.5C253.1 394.8 238.7 384.1 222.3 384.1C211 384.1 200.4 389.2 193.4 398L133.3 473C125 483.3 126.7 498.5 137 506.7C147.3 514.9 162.5 513.3 170.7 502.9L217.8 444.1L233 494.8C236 505 245.4 511.9 256 511.9L287.5 511.9C286.6 515 285.8 518.2 285.2 521.4L274.3 575.9L128.1 575.9C92.8 575.9 64.1 547.2 64.1 511.9L64.1 127.9zM272.1 122.5L272.1 216C272.1 229.3 282.8 240 296.1 240L389.6 240L272.1 122.5zM332.3 530.9C334.8 518.5 340.9 507.1 349.8 498.2L468.7 379.3L548.7 459.3L429.8 578.2C420.9 587.1 409.5 593.2 397.1 595.7L337.5 607.6C336.6 607.8 335.6 607.9 334.6 607.9C326.6 607.9 320 601.4 320 593.3C320 592.3 320.1 591.4 320.3 590.4L332.2 530.8zM600.1 407.9L571.3 436.7L491.3 356.7L520.1 327.9C542.2 305.8 578 305.8 600.1 327.9C622.2 350 622.2 385.8 600.1 407.9z" />
+                                        </svg>
+                                      )}
+                                      {isDev && item.source === 'user' && item.email && (
+                                        <>
+                                          {window.location.hostname === 'pipetooling.com' && (
+                                          <button
+                                            type="button"
+                                            title="imitate (pipetooling.com)"
+                                            onClick={async () => {
+                                              setLoggingInAsId(item.id)
+                                              setError(null)
+                                              try {
+                                                await loginAsUser(item, 'https://pipetooling.com/dashboard')
+                                              } catch (e) {
+                                                setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                              } finally {
+                                                setLoggingInAsId(null)
+                                              }
+                                            }}
+                                            disabled={loggingInAsId === item.id}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              padding: 0,
+                                              marginRight: '0.35rem',
+                                              background: 'none',
+                                              border: 'none',
+                                              cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer',
+                                              verticalAlign: 'middle',
+                                            }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                              <path d="M96 64C60.7 64 32 92.7 32 128L32 200C32 213.3 42.7 224 56 224C69.3 224 80 213.3 80 200L80 128C80 119.2 87.2 112 96 112L168 112C181.3 112 192 101.3 192 88C192 74.7 181.3 64 168 64L96 64zM472 64C458.7 64 448 74.7 448 88C448 101.3 458.7 112 472 112L544 112C552.8 112 560 119.2 560 128L560 200C560 213.3 570.7 224 584 224C597.3 224 608 213.3 608 200L608 128C608 92.7 579.3 64 544 64L472 64zM80 440C80 426.7 69.3 416 56 416C42.7 416 32 426.7 32 440L32 512C32 547.3 60.7 576 96 576L168 576C181.3 576 192 565.3 192 552C192 538.7 181.3 528 168 528L96 528C87.2 528 80 520.8 80 512L80 440zM608 440C608 426.7 597.3 416 584 416C570.7 416 560 426.7 560 440L560 512C560 520.8 552.8 528 544 528L472 528C458.7 528 448 538.7 448 552C448 565.3 458.7 576 472 576L544 576C579.3 576 608 547.3 608 512L608 440zM320 280C350.9 280 376 254.9 376 224C376 193.1 350.9 168 320 168C289.1 168 264 193.1 264 224C264 254.9 289.1 280 320 280zM320 320C267 320 224 363 224 416L224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440L416 416C416 363 373 320 320 320zM512 256C512 229.5 490.5 208 464 208C437.5 208 416 229.5 416 256C416 282.5 437.5 304 464 304C490.5 304 512 282.5 512 256zM200 336.3C150.7 340.4 112 381.6 112 432L112 442.7C112 454.5 121.6 464 133.3 464L180.1 464C177.4 456.5 176 448.4 176 440L176 416C176 386.5 184.8 359.1 200 336.3zM459.9 464L506.7 464C518.5 464 528 454.4 528 442.7L528 432C528 381.7 489.3 340.4 440 336.3C455.2 359.1 464 386.5 464 416L464 440C464 448.4 462.6 456.5 459.9 464zM224 256C224 229.5 202.5 208 176 208C149.5 208 128 229.5 128 256C128 282.5 149.5 304 176 304C202.5 304 224 282.5 224 256z" />
+                                            </svg>
+                                          </button>
+                                          )}
+                                          {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+                                          <button
+                                            type="button"
+                                            title="imitate (localhost)"
+                                            onClick={async () => {
+                                              setLoggingInAsId(item.id)
+                                              setError(null)
+                                              try {
+                                                await loginAsUser(item, 'http://localhost:5173/dashboard')
+                                              } catch (e) {
+                                                setError(e instanceof Error ? e.message : 'Failed to imitate')
+                                              } finally {
+                                                setLoggingInAsId(null)
+                                              }
+                                            }}
+                                            disabled={loggingInAsId === item.id}
+                                            style={{
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              padding: 0,
+                                              marginRight: '0.35rem',
+                                              background: 'none',
+                                              border: 'none',
+                                              cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer',
+                                              verticalAlign: 'middle',
+                                            }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                              <path d="M31 31C21.7 40.4 21.7 55.6 31 65L87 121C96.4 130.4 111.6 130.4 120.9 121C130.2 111.6 130.3 96.4 120.9 87.1L65 31C55.6 21.6 40.4 21.6 31.1 31zM609 31C599.6 21.6 584.4 21.6 575.1 31L519 87C509.6 96.4 509.6 111.6 519 120.9C528.4 130.2 543.6 130.3 552.9 120.9L609 65C618.4 55.6 618.4 40.4 609 31.1zM65 609L121 553C130.4 543.6 130.4 528.4 121 519.1C111.6 509.8 96.4 509.7 87.1 519.1L31 575C21.6 584.4 21.6 599.6 31 608.9C40.4 618.2 55.6 618.3 64.9 608.9zM609 609C618.4 599.6 618.4 584.4 609 575.1L553 519.1C543.6 509.7 528.4 509.7 519.1 519.1C509.8 528.5 509.7 543.7 519.1 553L575.1 609C584.5 618.4 599.7 618.4 609 609zM320 272C355.3 272 384 243.3 384 208C384 172.7 355.3 144 320 144C284.7 144 256 172.7 256 208C256 243.3 284.7 272 320 272zM320 304C258.1 304 208 354.1 208 416L208 424C208 437.3 218.7 448 232 448L408 448C421.3 448 432 437.3 432 424L432 416C432 354.1 381.9 304 320 304zM536 224C536 193.1 510.9 168 480 168C449.1 168 424 193.1 424 224C424 254.9 449.1 280 480 280C510.9 280 536 254.9 536 224zM451.2 324.4C469.4 350.3 480 381.9 480 416L480 424C480 432.4 478.6 440.5 475.9 448L554.7 448C566.5 448 576 438.4 576 426.7L576 416C576 363 533 320 480 320C470 320 460.3 321.5 451.2 324.4zM188.8 324.4C179.7 321.5 170 320 160 320C107 320 64 363 64 416L64 426.7C64 438.5 73.6 448 85.3 448L164.1 448C161.4 440.5 160 432.4 160 424L160 416C160 381.9 170.6 350.3 188.8 324.4zM216 224C216 193.1 190.9 168 160 168C129.1 168 104 193.1 104 224C104 254.9 129.1 280 160 280C190.9 280 216 254.9 216 224z" />
+                                            </svg>
+                                          </button>
+                                          )}
+                                        </>
+                                      )}
+                                      <span style={{ fontWeight: 500 }}>{item.name}</span>
+                                      {item.source === 'user' && (
+                                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+                                      )}
+                                      {(item.source === 'user' ? item.email : (item.email || item.phone)) && (
+                                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                          {item.source === 'user' ? (
+                                            item.email ? (
+                                              <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                {item.email}
+                                              </a>
+                                            ) : null
+                                          ) : (
+                                            <>
+                                              {item.email && (
+                                                <>
+                                                  <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                    {item.email}
+                                                  </a>
+                                                  {item.phone && ' \u00B7 '}
+                                                </>
+                                              )}
+                                              {item.phone && (
+                                                <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                  {item.phone}
+                                                </a>
+                                              )}
+                                            </>
+                                          )}
+                                        </span>
+                                      )}
+                                      {item.source === 'user' && 'notes' in item && item.notes && (
+                                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {item.notes}</span>
+                                      )}
+                                    </div>
+                                    {(() => {
+                                      const projects = personProjects[item.name.trim()]
+                                      return projects && projects.length > 0 ? (
+                                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                          Active projects: {projects.sort().join(', ')}
+                                        </div>
+                                      ) : null
+                                    })()}
+                                  </div>
+                                  {item.source === 'people' && (
+                                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                      {!isAlreadyUser(item.email) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setInviteConfirm(item as Person)}
+                                          disabled={!item.email?.trim() || invitingId === item.id}
+                                          title={!item.email?.trim() ? 'Add email in Edit to invite' : undefined}
+                                          style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
+                                        >
+                                          {invitingId === item.id ? 'Sending…' : 'Invite as user'}
+                                        </button>
+                                      )}
+                                      <button type="button" onClick={() => openEdit(item)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
+                                        Edit
+                                      </button>
+                                      {item.master_user_id === authUser?.id ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => archivePerson(item.id)}
+                                          disabled={archivingId === item.id}
+                                          style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
+                                        >
+                                          {archivingId === item.id ? '...' : 'Archive'}
+                                        </button>
+                                      ) : (
+                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                          Created by {creatorNames[item.master_user_id] ?? 'Unknown'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {item.source === 'user' && canEditUserNotes && (
+                                    <button
+                                      type="button"
+                                      title="Edit note"
+                                      onClick={() => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '' })}
+                                      style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                                        <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
+                                      </svg>
+                                    </button>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
                           )}
-                        </span>
-                      )}
-                      {item.source === 'user' && 'notes' in item && item.notes && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {item.notes}</span>
-                      )}
-                    </div>
-                    {(() => {
-                      const projects = personProjects[item.name.trim()]
-                      return projects && projects.length > 0 ? (
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          Active projects: {projects.sort().join(', ')}
-                        </div>
-                      ) : null
-                    })()}
-                  </div>
-                  {item.source === 'people' && (
-                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {!isAlreadyUser(item.email) && (
-                        <button
-                          type="button"
-                          onClick={() => setInviteConfirm(item as Person)}
-                          disabled={!item.email?.trim() || invitingId === item.id}
-                          title={!item.email?.trim() ? 'Add email in Edit to invite' : undefined}
-                          style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
-                        >
-                          {invitingId === item.id ? 'Sending…' : 'Invite as user'}
-                        </button>
-                      )}
-                      <button type="button" onClick={() => openEdit(item)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
-                        Edit
-                      </button>
-                      {item.master_user_id === authUser?.id ? (
-                        <button
-                          type="button"
-                          onClick={() => archivePerson(item.id)}
-                          disabled={archivingId === item.id}
-                          style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
-                        >
-                          {archivingId === item.id ? '...' : 'Archive'}
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Created by {creatorNames[item.master_user_id] ?? 'Unknown'}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {item.source === 'user' && canEditUserNotes && (
-                    <button
-                      type="button"
-                      title="Edit note"
-                      onClick={() => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '' })}
-                      style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 6px', background: 'none', border: 'none', cursor: 'pointer', verticalAlign: 'middle' }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                        <path d="M32 160C32 124.7 60.7 96 96 96L544 96C579.3 96 608 124.7 608 160L32 160zM32 208L608 208L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 208zM279.3 480C299.5 480 314.6 460.6 301.7 445C287 427.3 264.8 416 240 416L176 416C151.2 416 129 427.3 114.3 445C101.4 460.6 116.5 480 136.7 480L279.2 480zM208 376C238.9 376 264 350.9 264 320C264 289.1 238.9 264 208 264C177.1 264 152 289.1 152 320C152 350.9 177.1 376 208 376zM392 272C378.7 272 368 282.7 368 296C368 309.3 378.7 320 392 320L504 320C517.3 320 528 309.3 528 296C528 282.7 517.3 272 504 272L392 272zM392 368C378.7 368 368 378.7 368 392C368 405.3 378.7 416 392 416L504 416C517.3 416 528 405.3 528 392C528 378.7 517.3 368 504 368L392 368z" />
-                      </svg>
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ))}
+                        </section>
+              )
+            }
+            return null
+          })}
+
 
           {/* Archived people */}
           <div style={{ marginTop: '2rem', maxWidth: 640 }}>
@@ -6081,26 +6149,23 @@ export default function People() {
               </button>
             )}
           />
-          <ClockSessionsSection
-            title="Rejected Sessions"
-            sessions={rejectedClockSessions}
-            collapsedByDefault
-            showActionsColumn
-            renderActions={(s) => (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!confirm('Delete this clock session permanently?')) return
-                  const { error } = await supabase.from('clock_sessions').delete().eq('id', s.id)
-                  if (error) setError(error.message)
-                  else { showToast?.('Session deleted', 'success'); loadAllClockSessionsRef.current?.() }
-                }}
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-              >
-                Delete
-              </button>
-            )}
-          />
+          <div id="people-hours-rejected">
+            <RejectedClockSessionsSection
+              sessions={rejectedClockSessions}
+              onDeleted={() => loadAllClockSessionsRef.current?.()}
+              onError={(message) => setError(message)}
+              open={rejectedSectionOpen}
+              onToggle={() => setRejectedSectionOpen((o) => !o)}
+              onEdit={(s) => {
+                setEditClockSession(s)
+                setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
+                setEditClockSessionNotes(s.notes ?? '')
+                setEditClockSessionSplitMode(false)
+                setEditClockSessionSplitAt('')
+              }}
+            />
+          </div>
           {showPeopleForHours.length === 0 ? (
             <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to Pay tab and check Show in Hours for people to track.</p>
           ) : (
@@ -8438,7 +8503,7 @@ export default function People() {
                         setEditClockSessionSplitMode(false)
                         setEditClockSessionSplitAt('')
                         showToast?.('Session split into 2 parts', 'success')
-                        await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                        loadAllClockSessionsRef.current?.()
                       } catch (e) {
                         setError(e instanceof Error ? e.message : 'Failed to split session')
                       } finally {
@@ -8510,7 +8575,7 @@ export default function People() {
                         return
                       }
                       setEditClockSession(null)
-                      await loadPendingClockSessions(hoursDateStart, hoursDateEnd)
+                      loadAllClockSessionsRef.current?.()
                     }}
                     disabled={!editClockSessionNotes.trim() || editClockSessionSaving}
                     style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: editClockSessionNotes.trim() && !editClockSessionSaving ? 'pointer' : 'not-allowed' }}

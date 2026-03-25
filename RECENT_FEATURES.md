@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-24
+last_updated: 2026-03-29
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.148)"
-    line: ~391
+  - name: "Latest Version (v2.149)"
+    line: ~395
+    description: "Clock sessions table UX; pending action order; My Roles Goals gate; user_dashboard_goals + user_daily_goals_ack"
+  - name: "v2.148"
+    line: ~425
     description: "Bid Board All notes unified stack; customer notes card UX; customer_contacts contact_method"
   - name: "v2.147"
     line: ~332
@@ -289,9 +292,10 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-2. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-2. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+1. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+2. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+3. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+4. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
 3. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
 3. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
@@ -389,6 +393,32 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.149)
+
+**Date**: 2026-03-29
+
+### Dashboard — “My Roles Goals” full-screen gate
+
+- **When**: After the **first successful clock-in of the calendar day** (local work date), users who have at least one goal row see a full-screen overlay titled **“My Roles Goals”** with large checkboxes per goal and a **Continue** button.
+- **Dismissal**: **Continue** records acknowledgment in **`user_daily_goals_ack`** for that calendar day; the gate does not reappear until the next calendar day (even if the user clocks in again the same day).
+- **Editing goals**: **Dev**, **master_technician**, and **assistant** can manage another user’s goal lines in **Settings** (picker + add/edit/delete/reorder). Goals are stored in **`user_dashboard_goals`** (`user_id`, `body`, `sort_order`).
+- **Layout**: While the gate is open, the main app shell is **inert** (no interaction behind the overlay).
+
+**Files**: [`src/lib/dailyGoalsGate.ts`](src/lib/dailyGoalsGate.ts), [`src/contexts/DailyGoalsGateContext.tsx`](src/contexts/DailyGoalsGateContext.tsx), [`src/components/DailyGoalsGateOverlay.tsx`](src/components/DailyGoalsGateOverlay.tsx), [`src/components/ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx), [`src/components/Layout.tsx`](src/components/Layout.tsx), [`src/pages/Settings.tsx`](src/pages/Settings.tsx), [`supabase/migrations/20260329120000_user_dashboard_goals_and_ack.sql`](supabase/migrations/20260329120000_user_dashboard_goals_and_ack.sql)
+
+---
+
+### People / Quickfill — Pending clock sessions table UX
+
+- **Time & location column**: Line 1 shows clock-in/out times and duration; line 2 shows **work date** and **location** (or **In: — | Out: —** when GPS was not captured).
+- **Notes & job**: **Notes** and **Job or Bid** are merged into one **two-column-wide** cell: notes on top; assigned job/bid label below (assignment controls stay in the Job column where applicable). Shared formatter: `formatClockSessionJobOrBidLabel` in [`src/types/clockSessions.ts`](src/types/clockSessions.ts).
+- **Status / accountability**: “Approved/Rejected/Revoked by … at” and the timestamp render on **two lines**; timestamps use **short locale date/time** (no seconds).
+- **Actions column** (pending sessions): Button order is **Approve → Reject → Edit** (People Hours and Quickfill Hours).
+
+**Files**: [`src/components/clock-sessions/ClockSessionsTable.tsx`](src/components/clock-sessions/ClockSessionsTable.tsx), [`src/components/clock-sessions/ClockSessionLocationCell.tsx`](src/components/clock-sessions/ClockSessionLocationCell.tsx), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/quickfill/HoursSection.tsx`](src/components/quickfill/HoursSection.tsx)
 
 ---
 

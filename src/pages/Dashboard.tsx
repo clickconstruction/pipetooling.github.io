@@ -24,6 +24,8 @@ import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
+import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
+import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
@@ -3043,6 +3045,7 @@ export default function Dashboard() {
         </div>
       )}
       {role !== 'assistant' && tallyAndPinnedBlock}
+      {isDev && authUser?.id && <DashboardDevRejectedNotification />}
       {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
         <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
           <button
@@ -5452,6 +5455,8 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      {authUser?.id && <DashboardMyTeamSection />}
 
       {authUser?.id && (
         <DashboardMyTimeSection userId={authUser.id} />

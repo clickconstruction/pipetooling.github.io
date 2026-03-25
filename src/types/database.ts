@@ -4783,6 +4783,52 @@ export type Database = {
           },
         ]
       }
+      team_leader_assignments: {
+        Row: {
+          created_at: string
+          created_by_user_id: string | null
+          id: string
+          leader_user_id: string
+          member_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          leader_user_id: string
+          member_user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string | null
+          id?: string
+          leader_user_id?: string
+          member_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_leader_assignments_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_leader_assignments_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_leader_assignments_member_user_id_fkey"
+            columns: ["member_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
@@ -4848,55 +4894,6 @@ export type Database = {
           },
         ]
       }
-      user_dashboard_buttons: {
-        Row: {
-          button_key: string
-          user_id: string
-          visible: boolean
-        }
-        Insert: {
-          button_key: string
-          user_id: string
-          visible?: boolean
-        }
-        Update: {
-          button_key?: string
-          user_id?: string
-          visible?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_dashboard_buttons_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_dashboard_preferences: {
-        Row: {
-          quick_buttons_placement: string
-          user_id: string
-        }
-        Insert: {
-          quick_buttons_placement?: string
-          user_id: string
-        }
-        Update: {
-          quick_buttons_placement?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_dashboard_preferences_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_daily_goals_ack: {
         Row: {
           completed_at: string
@@ -4916,6 +4913,32 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_daily_goals_ack_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dashboard_buttons: {
+        Row: {
+          button_key: string
+          user_id: string
+          visible: boolean
+        }
+        Insert: {
+          button_key: string
+          user_id: string
+          visible?: boolean
+        }
+        Update: {
+          button_key?: string
+          user_id?: string
+          visible?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_buttons_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -4950,6 +4973,29 @@ export type Database = {
             foreignKeyName: "user_dashboard_goals_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dashboard_preferences: {
+        Row: {
+          quick_buttons_placement: string
+          user_id: string
+        }
+        Insert: {
+          quick_buttons_placement?: string
+          user_id: string
+        }
+        Update: {
+          quick_buttons_placement?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -5541,6 +5587,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
+      can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
         Args: { p_job_id: string }
         Returns: boolean
@@ -5809,6 +5856,14 @@ export type Database = {
       is_estimator: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_team_lead_for_member: {
+        Args: { p_leader: string; p_member: string }
+        Returns: boolean
+      }
+      is_team_lead_for_person_name: {
+        Args: { p_person_name: string }
+        Returns: boolean
+      }
       list_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
@@ -5922,6 +5977,13 @@ export type Database = {
       }
       report_edit_window_days: { Args: never; Returns: number }
       report_sub_visibility_months: { Args: never; Returns: number }
+      restore_rejected_clock_sessions: {
+        Args: { p_session_ids: string[] }
+        Returns: {
+          error_message: string
+          restored_count: number
+        }[]
+      }
       revoke_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {

@@ -17,6 +17,7 @@ import MyReportsModal, { type ReportForMyReports } from '../components/MyReports
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
 import type { Database } from '../types/database'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
@@ -347,6 +348,12 @@ export default function Settings() {
   const [dailyGoalsTargetUserId, setDailyGoalsTargetUserId] = useState('')
   const [dailyGoalsRows, setDailyGoalsRows] = useState<Array<{ id: string; body: string; sort_order: number }>>([])
   const [dailyGoalsLoading, setDailyGoalsLoading] = useState(false)
+  const [teamLeaderAssignments, setTeamLeaderAssignments] = useState<
+    Array<{ id: string; leader_user_id: string; member_user_id: string }>
+  >([])
+  const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
+  const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
+  const [teamAssignSaving, setTeamAssignSaving] = useState(false)
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(true)
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
@@ -1345,6 +1352,13 @@ export default function Settings() {
         .is('archived_at', null)
         .order('name')
       setGoalPickerUsers((goalUsers ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
+
+      const { data: tlaRows, error: tlaErr } = await supabase
+        .from('team_leader_assignments')
+        .select('id, leader_user_id, member_user_id')
+        .order('created_at', { ascending: false })
+      if (tlaErr) setError(tlaErr.message)
+      else setTeamLeaderAssignments((tlaRows ?? []) as Array<{ id: string; leader_user_id: string; member_user_id: string }>)
     }
     
     // Load dev-only data (users, people, etc.)
@@ -4944,6 +4958,163 @@ export default function Settings() {
                 </button>
               </>
             ))}
+        </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Team lead assignments</h2>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+            Link a leader to a member so the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Leader</label>
+              <select
+                value={teamAssignLeaderId}
+                onChange={(e) => setTeamAssignLeaderId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 500 }}>Member</label>
+              <select
+                value={teamAssignMemberId}
+                onChange={(e) => setTeamAssignMemberId(e.target.value)}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200 }}
+              >
+                <option value="">Select user…</option>
+                {goalPickerUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              disabled={teamAssignSaving || !teamAssignLeaderId || !teamAssignMemberId || teamAssignLeaderId === teamAssignMemberId}
+              onClick={async () => {
+                if (!authUser?.id || !teamAssignLeaderId || !teamAssignMemberId) return
+                if (teamAssignLeaderId === teamAssignMemberId) {
+                  setError('Leader and member must be different users.')
+                  return
+                }
+                setTeamAssignSaving(true)
+                try {
+                  const inserted = await withSupabaseRetry(
+                    async () =>
+                      supabase
+                        .from('team_leader_assignments')
+                        .insert({
+                          leader_user_id: teamAssignLeaderId,
+                          member_user_id: teamAssignMemberId,
+                          created_by_user_id: authUser.id,
+                        })
+                        .select('id, leader_user_id, member_user_id')
+                        .single(),
+                    'add team lead assignment',
+                  )
+                  if (!inserted) {
+                    setError('Could not add assignment.')
+                    return
+                  }
+                  const row = inserted as { id: string; leader_user_id: string; member_user_id: string }
+                  setTeamLeaderAssignments((prev) => [row, ...prev])
+                  setTeamAssignLeaderId('')
+                  setTeamAssignMemberId('')
+                } catch (e) {
+                  setError(formatErrorMessage(e))
+                } finally {
+                  setTeamAssignSaving(false)
+                }
+              }}
+              style={{
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.875rem',
+                borderRadius: 4,
+                border: '1px solid #2563eb',
+                background: '#2563eb',
+                color: 'white',
+                cursor: teamAssignSaving ? 'wait' : 'pointer',
+                opacity: teamAssignSaving ? 0.7 : 1,
+              }}
+            >
+              Add
+            </button>
+          </div>
+          {teamLeaderAssignments.length === 0 ? (
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Leader</th>
+                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Member</th>
+                    <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamLeaderAssignments.map((row) => {
+                    const leaderLabel =
+                      goalPickerUsers.find((u) => u.id === row.leader_user_id)?.name?.trim() ||
+                      goalPickerUsers.find((u) => u.id === row.leader_user_id)?.email ||
+                      row.leader_user_id
+                    const memberLabel =
+                      goalPickerUsers.find((u) => u.id === row.member_user_id)?.name?.trim() ||
+                      goalPickerUsers.find((u) => u.id === row.member_user_id)?.email ||
+                      row.member_user_id
+                    return (
+                      <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{memberLabel}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <button
+                            type="button"
+                            disabled={teamAssignSaving}
+                            onClick={async () => {
+                              if (!confirm('Remove this team lead assignment?')) return
+                              setTeamAssignSaving(true)
+                              try {
+                                await withSupabaseRetry(
+                                  async () => supabase.from('team_leader_assignments').delete().eq('id', row.id),
+                                  'remove team lead assignment',
+                                )
+                                setTeamLeaderAssignments((prev) => prev.filter((r) => r.id !== row.id))
+                              } catch (e) {
+                                setError(formatErrorMessage(e))
+                              } finally {
+                                setTeamAssignSaving(false)
+                              }
+                            }}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              color: '#b91c1c',
+                              border: '1px solid #fecaca',
+                              borderRadius: 4,
+                              background: '#fef2f2',
+                              cursor: teamAssignSaving ? 'wait' : 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

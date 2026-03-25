@@ -110,6 +110,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (Settings); only dev can change Show in Hours per person
 - Manage **Task Dispatch** group in Settings: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
+- Manage **team lead assignments** (Settings): link leaders to members for My Team hours approval on Dashboard
+- **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - Delete reports (Jobs Reports tab); masters, assistants, primaries cannot delete reports
 
 **Use Cases**:
@@ -193,7 +195,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team lead assignments** (leader → member links for My Team). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
 **Permissions**:
@@ -510,6 +512,14 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Task Dispatch (header: send task + optional reference + links to Dispatch group) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dispatch inbox (open requests, mark closed) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
+| My Team (pending clock sessions for assigned members; approve/reject/assign job) | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader |
+| Rejected clock sessions (org-wide, review/delete) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Settings (selected)
+
+| Feature | dev | master | assistant | sub | estimator | primary | superintendent |
+|---------|-----|--------|-----------|-----|-----------|---------|----------------|
+| Team lead assignments (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 

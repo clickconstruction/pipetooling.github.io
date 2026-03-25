@@ -204,6 +204,28 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Settings → Dashboard buttons placement; Dashboard layout
 - **Category**: Dashboard / Schema
 
+#### March 29, 2026
+
+**`20260329120000_user_dashboard_goals_and_ack.sql`**
+- **Purpose**: Per-user daily goal lines (managed by dev/master/assistant) and per-calendar-day acknowledgment after the “My Roles Goals” gate
+- **Changes**: Create `user_dashboard_goals` (`user_id`, `body`, `sort_order`, …); create `user_daily_goals_ack` (`user_id`, `local_date` PK, `completed_at`); RLS — goals SELECT own; dev/master/assistant ALL on goals; ack ALL own rows only
+- **Impact**: Settings → per-user goals editor; full-screen overlay after first clock-in of the day when goals exist; Continue writes ack for that calendar day
+- **Category**: Dashboard / Schema
+
+#### March 30, 2026
+
+**`20260330150000_team_leader_assignments.sql`**
+- **Purpose**: Team lead assignments (leader → member) and scoped access to member clock sessions / crew sync tables
+- **Changes**: Create `team_leader_assignments` (unique leader/member pair, no self-pair); helpers `is_team_lead_for_member`, `is_team_lead_for_person_name`, `can_manage_team_leader_assignments`; RLS on assignments; extend `clock_sessions`, `people_hours`, `people_crew_jobs`, `people_crew_bids` policies for team-lead paths; publish `team_leader_assignments` to `supabase_realtime` when missing
+- **Impact**: Settings → Team lead assignments; Dashboard → My Team pending sessions for leaders; team leads without pay access can approve/reject member sessions
+- **Category**: Hours / Clock Sessions / RLS
+
+**`20260330160000_team_leader_approve_revoke_rpcs.sql`**
+- **Purpose**: Allow `approve_clock_sessions` and `revoke_clock_sessions` for non–pay-access users when they are the team lead for the session’s user
+- **Changes**: `CREATE OR REPLACE` both RPCs; per pending session, non–pay callers require `is_team_lead_for_member(auth.uid(), session.user_id)` (fail with access error if not)
+- **Impact**: My Team approve/reject/revoke works for leaders who are not Pay Approved masters
+- **Category**: Hours / RPCs
+
 #### March 27, 2026
 
 **`20260327120000_dispatch_group_members_allow_estimator.sql`**
@@ -291,6 +313,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Changes**: Drop all policies; recreate bpa_select, bpa_insert, bpa_update, bpa_delete
 - **Impact**: Bids Pricing tab assignments work correctly
 - **Category**: Bids / RLS
+
+#### June 27, 2026
+
+**`20260627120000_restore_rejected_clock_sessions.sql`**
+- **Purpose**: Return rejected clock sessions to Pending (clear `rejected_at` / `rejected_by`)
+- **Changes**: RLS `SELECT`/`UPDATE` for `is_dev()` on `clock_sessions`; `restore_rejected_clock_sessions(p_session_ids)` — pay/assistant, dev, or team lead for member; `GRANT EXECUTE` to `authenticated`
+- **Impact**: People → Hours rejected section can “Return to pending”; dev dashboard org-wide tooling can update sessions via RPC
+- **Category**: Hours / Clock Sessions / RLS
 
 ### May 2026
 

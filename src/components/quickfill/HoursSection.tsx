@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CLOCK_SESSION_LIST_SELECT } from '../../lib/clockSessionSelect'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -85,8 +86,6 @@ export function HoursSection() {
 
   const canEditCrewJobs = canAccessHours
 
-  const clockSessionSelect = 'id, user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, clock_in_lat, clock_in_lng, clock_out_lat, clock_out_lng, approved_at, approved_by, rejected_at, rejected_by, revoked_at, revoked_by, users!clock_sessions_user_id_fkey(name), approved_by_user:users!clock_sessions_approved_by_fkey(name), rejected_by_user:users!clock_sessions_rejected_by_fkey(name), revoked_by_user:users!clock_sessions_revoked_by_fkey(name), jobs_ledger!clock_sessions_job_ledger_id_fkey(hcp_number, job_name, job_address), bids!clock_sessions_bid_id_fkey(bid_number, project_name, address, customers(name))'
-
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => loadPeopleHours(hoursDateStart, hoursDateEnd)
   const loadHoursDaysCorrectRef = useRef<() => void>()
@@ -103,7 +102,7 @@ export function HoursSection() {
     if (!canAccessHours) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select(clockSessionSelect)
+      .select(CLOCK_SESSION_LIST_SELECT)
       .is('approved_at', null)
       .is('rejected_at', null)
       .gte('work_date', start)
@@ -121,7 +120,7 @@ export function HoursSection() {
     if (!canAccessHours) return
     const { data, error } = await supabase
       .from('clock_sessions')
-      .select(clockSessionSelect)
+      .select(CLOCK_SESSION_LIST_SELECT)
       .not('approved_at', 'is', null)
       .gte('work_date', start)
       .lte('work_date', end)
