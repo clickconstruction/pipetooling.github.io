@@ -240,6 +240,10 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       setError(err.message)
       return
     }
+    if (!data) {
+      setError('Customer was created but could not be loaded. Refresh the page and search again.')
+      return
+    }
     if (onCreated) {
       // Defer so React flushes state before closing modal and refreshing
       setTimeout(() => onCreated(data as CustomerRow), 0)

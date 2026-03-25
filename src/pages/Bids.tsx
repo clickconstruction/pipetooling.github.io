@@ -13772,7 +13772,8 @@ export default function Bids() {
                         onClick={() => {
                           newCustomerModal?.openNewCustomerModal({
                             onCreated: (c) => {
-                              loadCustomers()
+                              void loadCustomers()
+                              if (!c) return
                               setGcCustomerId(c.id)
                               setGcCustomerSearch(getCustomerDisplay(c))
                             },

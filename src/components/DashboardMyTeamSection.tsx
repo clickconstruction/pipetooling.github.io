@@ -191,30 +191,8 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
               next week →
             </button>
           </div>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
-            Pending clock sessions for people you lead. Approve or reject after they clock out. First approver wins; other
-            leads see who approved.
-          </p>
           {teamMemberRoster.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
-              <div
-                style={{
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: '#374151',
-                  marginBottom: '0.35rem',
-                }}
-              >
-                People you lead ({teamMemberRoster.length})
-              </div>
-              <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.35rem 0' }}>
-                Active is still clocked in; Pending is clocked out and awaiting approval. Approved, Active, Pending, and
-                Total hours use the same Start–End date range as the date controls above (pending sessions and clock
-                activity use this range too).
-              </p>
-              <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                Notify me on clock in/out sends a mobile push when enabled (browser notifications must be allowed).
-              </p>
               <div style={{ overflowX: 'auto' }}>
                 <table
                   style={{
