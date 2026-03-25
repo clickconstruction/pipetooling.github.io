@@ -14,7 +14,12 @@ import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
-import { AssignSessionJobPopover, ClockSessionsTable, ClockSessionsSection } from '../components/clock-sessions'
+import {
+  AssignSessionJobPopover,
+  ClockSessionsTable,
+  ClockSessionsSection,
+  formatClockSessionJobOrBidLabel,
+} from '../components/clock-sessions'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -5954,12 +5959,11 @@ export default function People() {
               showActionsColumn
               locationVariant="full"
               emptyMessage="No pending sessions"
+              renderNotesSecondary={(s) => {
+                const label = formatClockSessionJobOrBidLabel(s)
+                return label ? <span title={label}>{label}</span> : null
+              }}
               renderJob={(s) => {
-                const jobDisplay = s.jobs_ledger
-                  ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
-                  : s.bids
-                    ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
-                    : null
                 const isActive = s.clocked_out_at == null
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
@@ -5974,9 +5978,6 @@ export default function People() {
                           onError={(msg) => setError(msg)}
                         />
                       </span>
-                    )}
-                    {jobDisplay != null && (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{jobDisplay}</span>
                     )}
                   </div>
                 )
@@ -6008,20 +6009,6 @@ export default function People() {
                       <>
                         <button
                           type="button"
-                          onClick={() => {
-                            setEditClockSession(s)
-                            setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                            setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
-                            setEditClockSessionNotes(s.notes ?? '')
-                            setEditClockSessionSplitMode(false)
-                            setEditClockSessionSplitAt('')
-                          }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
                           onClick={async () => {
                             const { data, error } = await approveClockSessions([s.id])
                             if (error) { setError(error.message); return }
@@ -6047,6 +6034,20 @@ export default function People() {
                           style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
                         >
                           Reject
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditClockSession(s)
+                            setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                            setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
+                            setEditClockSessionNotes(s.notes ?? '')
+                            setEditClockSessionSplitMode(false)
+                            setEditClockSessionSplitAt('')
+                          }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                        >
+                          Edit
                         </button>
                       </>
                     )}

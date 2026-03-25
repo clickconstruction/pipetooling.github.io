@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { ClockSessionRow } from '../../types/clockSessions'
+import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
 
 const thStyle = { padding: '0.5rem 0.75rem', textAlign: 'left' as const, borderBottom: '1px solid #e5e7eb' }
@@ -10,6 +10,7 @@ type ClockSessionsTableProps = {
   showActionsColumn?: boolean
   renderActions?: (session: ClockSessionRow) => ReactNode
   renderJob?: (session: ClockSessionRow) => ReactNode
+  renderNotesSecondary?: (session: ClockSessionRow) => ReactNode
   renderDuration?: (session: ClockSessionRow) => ReactNode
   locationVariant?: 'compact' | 'full'
   emptyMessage?: string
@@ -17,19 +18,31 @@ type ClockSessionsTableProps = {
 
 const timeOpts: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
 const dateOpts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric' }
+/** Short date + time without seconds (locale-aware). */
+const accountabilityDateTimeOpts: Intl.DateTimeFormatOptions = {
+  dateStyle: 'short',
+  timeStyle: 'short',
+}
+
+function formatAccountabilityTimestamp(d: Date): string {
+  return d.toLocaleString(undefined, accountabilityDateTimeOpts)
+}
+
+function workDateLabel(s: ClockSessionRow): string {
+  return new Date(s.work_date + 'T12:00:00').toLocaleDateString(undefined, dateOpts)
+}
 
 function defaultRenderDuration(s: ClockSessionRow): ReactNode {
   const inDate = new Date(s.clocked_in_at)
   const outDate = s.clocked_out_at ? new Date(s.clocked_out_at) : new Date()
   const hrs = (outDate.getTime() - inDate.getTime()) / (1000 * 3600)
   const isActive = s.clocked_out_at == null
-  const dateStr = new Date(s.work_date + 'T12:00:00').toLocaleDateString(undefined, dateOpts)
   const inStr = inDate.toLocaleTimeString(undefined, timeOpts)
   const outStr = isActive ? '—' : outDate.toLocaleTimeString(undefined, timeOpts)
   const durationStr = `${hrs.toFixed(2)}h`
   return (
     <>
-      {dateStr} | {inStr} | {outStr} | <span style={{ fontWeight: 600 }}>{durationStr}</span>
+      {inStr} | {outStr} | <span style={{ fontWeight: 600 }}>{durationStr}</span>
     </>
   )
 }
@@ -37,15 +50,15 @@ function defaultRenderDuration(s: ClockSessionRow): ReactNode {
 function formatAccountability(s: ClockSessionRow): string {
   if (s.approved_at && s.approved_by_user?.name) {
     const d = new Date(s.approved_at)
-    return `Approved by ${s.approved_by_user.name.trim()} at ${d.toLocaleString()}`
+    return `Approved by ${s.approved_by_user.name.trim()} at\n${formatAccountabilityTimestamp(d)}`
   }
   if (s.rejected_at && s.rejected_by_user?.name) {
     const d = new Date(s.rejected_at)
-    return `Rejected by ${s.rejected_by_user.name.trim()} at ${d.toLocaleString()}`
+    return `Rejected by ${s.rejected_by_user.name.trim()} at\n${formatAccountabilityTimestamp(d)}`
   }
   if (s.revoked_at && s.revoked_by_user?.name) {
     const d = new Date(s.revoked_at)
-    return `Revoked by ${s.revoked_by_user.name.trim()} at ${d.toLocaleString()}`
+    return `Revoked by ${s.revoked_by_user.name.trim()} at\n${formatAccountabilityTimestamp(d)}`
   }
   return '—'
 }
@@ -55,6 +68,7 @@ export function ClockSessionsTable({
   showActionsColumn = false,
   renderActions,
   renderJob,
+  renderNotesSecondary,
   renderDuration = defaultRenderDuration,
   locationVariant = 'compact',
   emptyMessage = 'No sessions',
@@ -65,42 +79,100 @@ export function ClockSessionsTable({
         <thead style={{ background: '#f3f4f6' }}>
           <tr>
             <th style={thStyle}>Person</th>
-            <th style={thStyle}>Date | In | Out | Duration</th>
-            <th style={thStyle}>Notes</th>
-            <th style={thStyle}>Job or Bid</th>
+            <th style={thStyle}>Time & location</th>
+            <th style={thStyle} colSpan={2} title="Notes and job or bid assignment">
+              Notes &amp; job
+            </th>
             <th style={thStyle}>Status</th>
             {showActionsColumn && <th style={thStyle}>Actions</th>}
-            <th style={thStyle}>Location</th>
           </tr>
         </thead>
         <tbody>
           {sessions.length === 0 ? (
             <tr>
-              <td colSpan={showActionsColumn ? 7 : 6} style={{ ...tdStyle, color: '#6b7280', textAlign: 'center' }}>
+              <td colSpan={showActionsColumn ? 6 : 5} style={{ ...tdStyle, color: '#6b7280', textAlign: 'center' }}>
                 {emptyMessage}
               </td>
             </tr>
           ) : (
             sessions.map((s) => {
               const personName = s.users?.name?.trim() ?? 'Unknown'
-              const jobTitle = s.jobs_ledger
-                ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
-                : s.bids
-                  ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
-                  : undefined
-              const jobDisplay = s.jobs_ledger
-                ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
-                : s.bids
-                  ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
-                  : '—'
+              const jobLabel = formatClockSessionJobOrBidLabel(s)
+              const jobTitle = jobLabel ?? undefined
+              const jobDisplay = jobLabel ?? '—'
               const jobCellContent = renderJob ? renderJob(s) : jobDisplay
+              const notesSecondary = renderNotesSecondary?.(s)
+              const dateStr = workDateLabel(s)
               return (
-                <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
                   <td style={tdStyle}>{personName}</td>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{renderDuration(s)}</td>
-                  <td style={{ ...tdStyle, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.notes || undefined}>{s.notes || '—'}</td>
-                  <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={jobTitle}>{jobCellContent}</td>
-                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'nowrap', color: '#6b7280' }}>
+                  <td style={tdStyle}>
+                    <div style={{ whiteSpace: 'nowrap' }}>{renderDuration(s)}</div>
+                    <div style={{ marginTop: '0.35rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                      {dateStr}
+                      {' | '}
+                      <ClockSessionLocationCell
+                        clockInLat={s.clock_in_lat}
+                        clockInLng={s.clock_in_lng}
+                        clockOutLat={s.clock_out_lat}
+                        clockOutLng={s.clock_out_lng}
+                        variant={locationVariant}
+                      />
+                    </div>
+                  </td>
+                  <td
+                    colSpan={2}
+                    style={{
+                      ...tdStyle,
+                      maxWidth: 480,
+                      overflowWrap: 'break-word',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: '0.5rem',
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }} title={s.notes || undefined}>
+                        {s.notes || '—'}
+                      </div>
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          ...(renderJob
+                            ? {}
+                            : {
+                                maxWidth: 220,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap' as const,
+                              }),
+                        }}
+                        title={renderJob ? undefined : jobTitle}
+                      >
+                        {jobCellContent}
+                      </div>
+                    </div>
+                    {notesSecondary ? (
+                      <div
+                        style={{
+                          marginTop: '0.35rem',
+                          width: '100%',
+                          fontSize: '0.8125rem',
+                          color: '#6b7280',
+                          overflowWrap: 'break-word',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {notesSecondary}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'pre-line', color: '#6b7280' }}>
                     {formatAccountability(s)}
                   </td>
                   {showActionsColumn && (
@@ -108,15 +180,6 @@ export function ClockSessionsTable({
                       {renderActions?.(s)}
                     </td>
                   )}
-                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
-                    <ClockSessionLocationCell
-                      clockInLat={s.clock_in_lat}
-                      clockInLng={s.clock_in_lng}
-                      clockOutLat={s.clock_out_lat}
-                      clockOutLng={s.clock_out_lng}
-                      variant={locationVariant}
-                    />
-                  </td>
                 </tr>
               )
             })

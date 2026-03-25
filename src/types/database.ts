@@ -4874,6 +4874,87 @@ export type Database = {
           },
         ]
       }
+      user_dashboard_preferences: {
+        Row: {
+          quick_buttons_placement: string
+          user_id: string
+        }
+        Insert: {
+          quick_buttons_placement?: string
+          user_id: string
+        }
+        Update: {
+          quick_buttons_placement?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_daily_goals_ack: {
+        Row: {
+          completed_at: string
+          local_date: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          local_date: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          local_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_daily_goals_ack_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dashboard_goals: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dashboard_goals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_pinned_tabs: {
         Row: {
           id: string

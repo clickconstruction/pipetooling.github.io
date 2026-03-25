@@ -24,3 +24,14 @@ export type ClockSessionRow = {
   jobs_ledger: { hcp_number: string | null; job_name: string | null; job_address: string | null } | null
   bids: { bid_number: string | null; project_name: string | null; address: string | null; customers: { name: string | null } | null } | null
 }
+
+/** Job or bid one-line label for display; null if neither is linked. */
+export function formatClockSessionJobOrBidLabel(s: ClockSessionRow): string | null {
+  if (s.jobs_ledger) {
+    return `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
+  }
+  if (s.bids) {
+    return `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
+  }
+  return null
+}

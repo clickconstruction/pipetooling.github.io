@@ -4,7 +4,12 @@ import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
-import { AssignSessionJobPopover, ClockSessionsTable, ClockSessionsSection } from '../clock-sessions'
+import {
+  AssignSessionJobPopover,
+  ClockSessionsTable,
+  ClockSessionsSection,
+  formatClockSessionJobOrBidLabel,
+} from '../clock-sessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 
@@ -449,12 +454,11 @@ export function HoursSection() {
               showActionsColumn
               locationVariant="full"
               emptyMessage="No pending sessions"
+              renderNotesSecondary={(s) => {
+                const label = formatClockSessionJobOrBidLabel(s)
+                return label ? <span title={label}>{label}</span> : null
+              }}
               renderJob={(s) => {
-                const jobDisplay = s.jobs_ledger
-                  ? `J${(s.jobs_ledger.hcp_number || '').trim() || '—'} · ${s.jobs_ledger.job_name || '—'} - ${s.jobs_ledger.job_address || '—'}`
-                  : s.bids
-                    ? `B${(s.bids.bid_number || '').trim() || '—'} · ${s.bids.project_name || '—'} - ${s.bids.address || s.bids.customers?.name || '—'}`
-                    : null
                 const isActive = s.clocked_out_at == null
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
@@ -469,9 +473,6 @@ export function HoursSection() {
                           onError={(msg) => setError(msg)}
                         />
                       </span>
-                    )}
-                    {jobDisplay != null && (
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{jobDisplay}</span>
                     )}
                   </div>
                 )
@@ -498,12 +499,6 @@ export function HoursSection() {
                     )}
                     {!isActive && (
                       <>
-                        <Link
-                          to="/people?tab=hours"
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', color: '#374151', cursor: 'pointer', textDecoration: 'none' }}
-                        >
-                          Edit
-                        </Link>
                         <button
                           type="button"
                           onClick={async () => {
@@ -531,6 +526,12 @@ export function HoursSection() {
                         >
                           Reject
                         </button>
+                        <Link
+                          to="/people?tab=hours"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', color: '#374151', cursor: 'pointer', textDecoration: 'none' }}
+                        >
+                          Edit
+                        </Link>
                       </>
                     )}
                   </div>

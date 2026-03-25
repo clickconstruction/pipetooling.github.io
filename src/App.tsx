@@ -33,6 +33,7 @@ import { DispatchTaskModalProvider } from './contexts/DispatchTaskModalContext'
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -136,7 +137,9 @@ function AppContent() {
                   <DispatchTaskModalProvider>
                     <NewCustomerModalProvider>
                       <EditCustomerModalProvider>
-                        <Layout />
+                        <DailyGoalsGateProvider>
+                          <Layout />
+                        </DailyGoalsGateProvider>
                       </EditCustomerModalProvider>
                     </NewCustomerModalProvider>
                   </DispatchTaskModalProvider>

@@ -341,6 +341,12 @@ export default function Settings() {
     builder_review: true,
   })
   const [dashboardButtonsSaving, setDashboardButtonsSaving] = useState(false)
+  const [dashboardQuickButtonsPlacement, setDashboardQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
+  const [dashboardQuickButtonsPlacementSaving, setDashboardQuickButtonsPlacementSaving] = useState(false)
+  const [goalPickerUsers, setGoalPickerUsers] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
+  const [dailyGoalsTargetUserId, setDailyGoalsTargetUserId] = useState('')
+  const [dailyGoalsRows, setDailyGoalsRows] = useState<Array<{ id: string; body: string; sort_order: number }>>([])
+  const [dailyGoalsLoading, setDailyGoalsLoading] = useState(false)
   const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(true)
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
@@ -1312,16 +1318,18 @@ export default function Settings() {
     
     // Load dashboard button visibility for dev, master, assistant
     if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
-      const { data: btnRows } = await supabase
-        .from('user_dashboard_buttons')
-        .select('button_key, visible')
-        .eq('user_id', authUser.id)
+      const [{ data: btnRows }, { data: dashPref }] = await Promise.all([
+        supabase.from('user_dashboard_buttons').select('button_key, visible').eq('user_id', authUser.id),
+        supabase.from('user_dashboard_preferences').select('quick_buttons_placement').eq('user_id', authUser.id).maybeSingle(),
+      ])
       const defaults: Record<string, boolean> = { job: true, job_labor: true, bid: true, project: true, part: true, assembly: true, prospect: true, inspections: true, builder_review: role === 'master_technician' }
       const map = { ...defaults }
       for (const r of (btnRows ?? []) as Array<{ button_key: string; visible: boolean }>) {
         if (r.button_key in map) map[r.button_key] = r.visible
       }
       setDashboardButtons(map)
+      const placement = (dashPref as { quick_buttons_placement?: string } | null)?.quick_buttons_placement
+      setDashboardQuickButtonsPlacement(placement === 'with_pins' ? 'with_pins' : 'top')
 
       // Load report templates and report notification preferences
       const [templatesRes, prefsRes] = await Promise.all([
@@ -1330,6 +1338,13 @@ export default function Settings() {
       ])
       setReportTemplates((templatesRes.data ?? []) as Array<{ id: string; name: string }>)
       setReportNotificationTemplateIds(new Set((prefsRes.data ?? []).map((p: { template_id: string }) => p.template_id)))
+
+      const { data: goalUsers } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .is('archived_at', null)
+        .order('name')
+      setGoalPickerUsers((goalUsers ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
     }
     
     // Load dev-only data (users, people, etc.)
@@ -3435,6 +3450,33 @@ export default function Settings() {
   }, [authUser?.id])
 
   useEffect(() => {
+    if (!dailyGoalsTargetUserId) {
+      setDailyGoalsRows([])
+      return
+    }
+    let cancelled = false
+    setDailyGoalsLoading(true)
+    void supabase
+      .from('user_dashboard_goals')
+      .select('id, body, sort_order')
+      .eq('user_id', dailyGoalsTargetUserId)
+      .order('sort_order', { ascending: true })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        setDailyGoalsLoading(false)
+        if (error) {
+          setError(error.message)
+          setDailyGoalsRows([])
+          return
+        }
+        setDailyGoalsRows((data ?? []) as Array<{ id: string; body: string; sort_order: number }>)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [dailyGoalsTargetUserId])
+
+  useEffect(() => {
     if (!('permissions' in navigator)) return
     navigator.permissions
       .query({ name: 'geolocation' })
@@ -4773,6 +4815,135 @@ export default function Settings() {
               )
             })}
           </div>
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+            <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Placement</p>
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', marginTop: 0 }}>
+              Show quick-action buttons at the top of the Dashboard (above Clock In/Out), or in the same row as your pinned page tabs.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="dashboard-quick-buttons-placement"
+                  checked={dashboardQuickButtonsPlacement === 'top'}
+                  onChange={async () => {
+                    if (!authUser?.id) return
+                    setDashboardQuickButtonsPlacement('top')
+                    setDashboardQuickButtonsPlacementSaving(true)
+                    const { error } = await supabase.from('user_dashboard_preferences').upsert(
+                      { user_id: authUser.id, quick_buttons_placement: 'top' },
+                      { onConflict: 'user_id' },
+                    )
+                    setDashboardQuickButtonsPlacementSaving(false)
+                    if (error) setError(error.message)
+                  }}
+                  disabled={dashboardQuickButtonsPlacementSaving}
+                />
+                At the top (above Clock In/Out)
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="dashboard-quick-buttons-placement"
+                  checked={dashboardQuickButtonsPlacement === 'with_pins'}
+                  onChange={async () => {
+                    if (!authUser?.id) return
+                    setDashboardQuickButtonsPlacement('with_pins')
+                    setDashboardQuickButtonsPlacementSaving(true)
+                    const { error } = await supabase.from('user_dashboard_preferences').upsert(
+                      { user_id: authUser.id, quick_buttons_placement: 'with_pins' },
+                      { onConflict: 'user_id' },
+                    )
+                    setDashboardQuickButtonsPlacementSaving(false)
+                    if (error) setError(error.message)
+                  }}
+                  disabled={dashboardQuickButtonsPlacementSaving}
+                />
+                With pinned tabs
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>Daily goals (clock-in gate)</h2>
+          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+            After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
+          </p>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
+          <select
+            value={dailyGoalsTargetUserId}
+            onChange={(e) => setDailyGoalsTargetUserId(e.target.value)}
+            style={{ padding: '0.35rem 0.5rem', marginBottom: '1rem', maxWidth: 420, width: '100%' }}
+          >
+            <option value="">Select user…</option>
+            {goalPickerUsers.map((u) => (
+              <option key={u.id} value={u.id}>
+                {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+              </option>
+            ))}
+          </select>
+          {dailyGoalsTargetUserId &&
+            (dailyGoalsLoading ? (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            ) : (
+              <>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {dailyGoalsRows.map((row) => (
+                    <li key={row.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'flex-start' }}>
+                      <textarea
+                        value={row.body}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setDailyGoalsRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, body: v } : r)))
+                        }}
+                        onBlur={async (e) => {
+                          const body = e.currentTarget.value.trim()
+                          if (!body) return
+                          const { error: err } = await supabase.from('user_dashboard_goals').update({ body }).eq('id', row.id)
+                          if (err) setError(err.message)
+                        }}
+                        rows={2}
+                        style={{ flex: 1, padding: '0.5rem', fontSize: '0.875rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('Delete this goal?')) return
+                          const { error: err } = await supabase.from('user_dashboard_goals').delete().eq('id', row.id)
+                          if (err) setError(err.message)
+                          else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
+                        }}
+                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!dailyGoalsTargetUserId) return
+                    const nextOrder =
+                      dailyGoalsRows.length === 0 ? 0 : Math.max(...dailyGoalsRows.map((r) => r.sort_order), 0) + 1
+                    const { data, error: err } = await supabase
+                      .from('user_dashboard_goals')
+                      .insert({ user_id: dailyGoalsTargetUserId, body: 'New goal', sort_order: nextOrder })
+                      .select('id, body, sort_order')
+                      .single()
+                    if (err) setError(err.message)
+                    else if (data)
+                      setDailyGoalsRows((prev) => [...prev, data as { id: string; body: string; sort_order: number }])
+                  }}
+                  style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                >
+                  Add goal
+                </button>
+              </>
+            ))}
         </div>
       )}
 

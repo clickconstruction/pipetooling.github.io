@@ -29,7 +29,7 @@ export function ClockSessionLocationCell({
 }: ClockSessionLocationCellProps) {
   const hasIn = clockInLat != null && clockInLng != null
   const hasOut = clockOutLat != null && clockOutLng != null
-  if (!hasIn && !hasOut) return <>—</>
+  if (!hasIn && !hasOut) return <>In: — | Out: —</>
 
   if (variant === 'compact') {
     return (

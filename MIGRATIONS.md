@@ -198,6 +198,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: RLS blocks roster inserts for estimators; People page hides Add + client guard for same roles
 - **Category**: People / RLS / Access Control
 
+**`20260326140000_user_dashboard_preferences.sql`**
+- **Purpose**: Per-user choice to show dashboard quick-action buttons at the top vs inline with pinned tabs
+- **Changes**: Create `user_dashboard_preferences` (`user_id` PK, `quick_buttons_placement` `top` | `with_pins`); RLS own row only; add to `supabase_realtime` publication
+- **Impact**: Settings → Dashboard buttons placement; Dashboard layout
+- **Category**: Dashboard / Schema
+
 #### March 27, 2026
 
 **`20260327120000_dispatch_group_members_allow_estimator.sql`**

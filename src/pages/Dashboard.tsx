@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
@@ -341,6 +341,7 @@ export default function Dashboard() {
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
+  const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
@@ -584,6 +585,62 @@ export default function Dashboard() {
         }
         setDashboardButtonVisibility(map)
       })
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) {
+      setQuickButtonsPlacement('top')
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const row = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('user_dashboard_preferences')
+              .select('quick_buttons_placement')
+              .eq('user_id', authUser.id)
+              .maybeSingle(),
+          'load user dashboard preferences',
+        )
+        if (cancelled) return
+        const p = (row as { quick_buttons_placement?: string } | null)?.quick_buttons_placement
+        setQuickButtonsPlacement(p === 'with_pins' ? 'with_pins' : 'top')
+      } catch {
+        if (!cancelled) setQuickButtonsPlacement('top')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+
+  useEffect(() => {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
+    const channel = supabase
+      .channel('user-dashboard-preferences')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_dashboard_preferences',
+          filter: `user_id=eq.${authUser.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE' || !payload.new) {
+            setQuickButtonsPlacement('top')
+            return
+          }
+          const next = (payload.new as { quick_buttons_placement?: string }).quick_buttons_placement
+          if (next === 'with_pins' || next === 'top') setQuickButtonsPlacement(next)
+        },
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [authUser?.id, role])
 
   useEffect(() => {
@@ -2287,6 +2344,53 @@ export default function Dashboard() {
     }
   }
 
+  const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const quickActionLinkStyle: CSSProperties = {
+    padding: '0.75rem 1.25rem',
+    background: '#3b82f6',
+    color: 'white',
+    borderRadius: 8,
+    textDecoration: 'none',
+    fontWeight: 600,
+    fontSize: '1rem',
+  }
+  /** Same box model as gray pin pills (padding, font, border, radius) so row height matches */
+  const quickActionLinkStyleWithPins: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    padding: '0.35rem 0.75rem',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    background: '#3b82f6',
+    color: 'white',
+    border: '1px solid #2563eb',
+    borderRadius: 6,
+    textDecoration: 'none',
+  }
+  const quickActionDefs = useMemo(() => {
+    if (!showDashboardQuickButtons || role === null) {
+      return [] as Array<{ key: string; label: string; to: string }>
+    }
+    return [
+      { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
+      { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
+      { key: 'bid', label: 'Bid', to: '/bids?new=true' },
+      { key: 'project', label: 'Project', to: '/projects/new' },
+      { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
+      { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
+      { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
+      { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
+      { key: 'builder_review', label: 'Builder Review', to: '/bids?tab=builder-review' },
+    ]
+      .filter((b) => (b.key === 'builder_review' ? role === 'master_technician' : true))
+      .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
+  }, [showDashboardQuickButtons, role, dashboardButtonVisibility])
+
+  const showPinnedRowWithQuickActions =
+    pinsToShow.length > 0 || isDev || (quickButtonsPlacement === 'with_pins' && showDashboardQuickButtons)
+
   const tallyAndPinnedBlock = (
     <>
       {role != null && (
@@ -2335,7 +2439,7 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-      {(pinsToShow.length > 0 || isDev) && (
+      {showPinnedRowWithQuickActions && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             {isDev && (
@@ -2355,6 +2459,13 @@ export default function Dashboard() {
                 Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
               </Link>
             )}
+            {quickButtonsPlacement === 'with_pins' &&
+              showDashboardQuickButtons &&
+              quickActionDefs.map((b) => (
+                <Link key={b.key} to={b.to} style={quickActionLinkStyleWithPins}>
+                  {b.label}
+                </Link>
+              ))}
             {pinsToShow.map((item) => {
               const isCostMatrix = item.path === '/people' && item.tab === 'pay'
               const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
@@ -2487,38 +2598,13 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+      {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
-          {[
-            { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
-            { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
-            { key: 'bid', label: 'Bid', to: '/bids?new=true' },
-            { key: 'project', label: 'Project', to: '/projects/new' },
-            { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
-            { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
-            { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
-            { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },
-            { key: 'builder_review', label: 'Builder Review', to: '/bids?tab=builder-review' },
-          ]
-            .filter((b) => (b.key === 'builder_review' ? role === 'master_technician' : true))
-            .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
-            .map((b) => (
-              <Link
-                key={b.key}
-                to={b.to}
-                style={{
-                  padding: '0.75rem 1.25rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  fontSize: '1rem',
-                }}
-              >
-                {b.label}
-              </Link>
-            ))}
+          {quickActionDefs.map((b) => (
+            <Link key={b.key} to={b.to} style={quickActionLinkStyle}>
+              {b.label}
+            </Link>
+          ))}
         </div>
       )}
       {authUser?.id && (

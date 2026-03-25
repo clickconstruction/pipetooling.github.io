@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import {
   formatUnifiedResult,
@@ -58,6 +59,7 @@ type Props = {
 export default function ClockInOutButton({ userId, userName }: Props) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const { notifyFirstClockInOfDay } = useDailyGoalsGate()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -369,7 +371,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockInModalOpen(false)
+      const workDate = toLocalDateString(now)
       await fetchSessions()
+      await notifyFirstClockInOfDay(workDate, userId)
     } catch (e) {
       setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
     } finally {
@@ -498,7 +502,9 @@ export default function ClockInOutButton({ userId, userName }: Props) {
         setLastSelectedJobBid(selectedAssociation)
       }
       setUpdateFocusModalOpen(false)
+      const workDate = toLocalDateString(now)
       await fetchSessions()
+      await notifyFirstClockInOfDay(workDate, userId)
     } catch (e) {
       setUpdateFocusError(e instanceof Error ? e.message : 'Failed to switch focus')
     } finally {

@@ -17,6 +17,8 @@ import {
   togglePinned,
   addPinForUser,
 } from '../lib/pinnedTabs'
+import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
+import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -43,6 +45,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role } = useAuth()
+  const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
@@ -265,7 +268,12 @@ export default function Layout() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <>
+      <DailyGoalsGateOverlay />
+      <div
+        style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
+        {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
+      >
       <nav
         className="appNav"
         style={{
@@ -849,6 +857,7 @@ export default function Layout() {
       <NewCustomerModal />
       <EditCustomerModal />
     </div>
+    </>
   )
 }
 
