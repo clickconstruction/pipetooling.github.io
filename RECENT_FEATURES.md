@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-25
+last_updated: 2026-03-26
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,20 +15,23 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.152)"
-    line: ~407
+  - name: "Latest Version (v2.153)"
+    line: ~417
+    description: "Dashboard My Team: Clock activity order/label; pending banner full-bar jump to Pending sessions"
+  - name: "v2.152"
+    line: ~430
     description: "My Team: People you lead Pending/Approved/Total hours table (clock_sessions, Start–End range)"
   - name: "v2.151"
-    line: ~425
+    line: ~448
     description: "My Team: clock notify prefs + ledger; team_leader_clock_notify_prefs; notify-team-lead-clock Edge Function"
   - name: "v2.150"
-    line: ~420
+    line: ~461
     description: "Dashboard My Team: People you lead roster (names from team_leader_assignments + users)"
   - name: "v2.149"
-    line: ~435
+    line: ~455
     description: "Clock sessions table UX; pending action order; My Roles Goals gate; user_dashboard_goals + user_daily_goals_ack"
   - name: "v2.148"
-    line: ~425
+    line: ~445
     description: "Bid Board All notes unified stack; customer notes card UX; customer_contacts contact_method"
   - name: "v2.147"
     line: ~332
@@ -301,15 +304,16 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
-2. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
-3. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
-4. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-5. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-6. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-7. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
-3. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
-3. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
+1. [Latest Updates (v2.153)](#latest-updates-v2153) - Dashboard My Team layout; pending banner jump UX
+2. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+3. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+4. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+5. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+6. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+7. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+8. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+9. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
+10. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
 3. [Latest Updates (v2.138)](#latest-updates-v2138) - Revoke superintendent Jobs Billing access
 2. [Latest Updates (v2.135)](#latest-updates-v2135) - Workflow: Collapse old stages toggle, breadcrumb below buttons, no-wrap scroll
@@ -405,6 +409,21 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.153)
+
+**Date**: 2026-03-26
+
+### Dashboard — My Team: layout and pending banner
+
+- **Section order** (below **Start–End** / **People you lead**): **Clock activity** (expandable ledger) appears **above** **Active clock sessions**, then **Pending sessions** (same `#dashboard-my-team-pending` wrapper).
+- **Clock activity** toggle label is **Clock activity** only (session count suffix removed).
+- **Pending clock sessions** banner (yellow bar when approvals are waiting): no separate **Jump to pending table** link; the **entire bar** is a **button** (`aria-label`: go to pending sessions in My Team). Click **expands My Team** if collapsed and **smooth-scrolls** to the **Pending sessions** card (`id="dashboard-my-team-pending-sessions"`).
+- Pending session **data** in **`useDashboardMyTeamSectionState`** still **loads** while **My Team** is collapsed (not gated on expand state).
+
+**Files**: [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx), [`src/components/DashboardMyTeamPendingBanner.tsx`](src/components/DashboardMyTeamPendingBanner.tsx), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx)
 
 ---
 

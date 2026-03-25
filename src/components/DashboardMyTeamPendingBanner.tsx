@@ -1,24 +1,38 @@
 type Props = {
   pendingApprovalCount: number
   loadingSessions: boolean
+  onGoToPendingSessions?: () => void
 }
 
-export default function DashboardMyTeamPendingBanner({ pendingApprovalCount, loadingSessions }: Props) {
+export default function DashboardMyTeamPendingBanner({
+  pendingApprovalCount,
+  loadingSessions,
+  onGoToPendingSessions,
+}: Props) {
   if (loadingSessions || pendingApprovalCount === 0) {
     return null
   }
   return (
-    <div
+    <button
+      type="button"
+      onClick={() => onGoToPendingSessions?.()}
+      aria-label="Go to pending sessions in My Team"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: '1rem',
+        width: '100%',
         padding: '1rem 1.25rem',
         border: '1px solid #fcd34d',
         borderRadius: 8,
         background: '#fffbeb',
         marginBottom: '1rem',
+        cursor: 'pointer',
+        textAlign: 'left',
+        font: 'inherit',
+        color: 'inherit',
+        boxSizing: 'border-box',
       }}
     >
       <span
@@ -43,19 +57,7 @@ export default function DashboardMyTeamPendingBanner({ pendingApprovalCount, loa
         <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
           Approve or reject in the table below (same Start–End range).
         </div>
-        <div style={{ marginTop: '0.5rem' }}>
-          <a
-            href="#dashboard-my-team-pending"
-            style={{
-              fontSize: '0.8125rem',
-              color: '#2563eb',
-              textDecoration: 'underline',
-            }}
-          >
-            Jump to pending table
-          </a>
-        </div>
       </div>
-    </div>
+    </button>
   )
 }

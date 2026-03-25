@@ -279,6 +279,17 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const myTeam = useDashboardMyTeamSectionState(authUser?.id)
+  const goToPendingSessionsInMyTeam = useCallback(() => {
+    myTeam.setMyTeamExpanded(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById('dashboard-my-team-pending-sessions')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+    })
+  }, [myTeam.setMyTeamExpanded])
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -2633,6 +2644,7 @@ export default function Dashboard() {
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
           loadingSessions={myTeam.loadingSessions}
+          onGoToPendingSessions={goToPendingSessionsInMyTeam}
         />
       )}
       {role === 'assistant' && (
@@ -3069,6 +3081,7 @@ export default function Dashboard() {
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
           loadingSessions={myTeam.loadingSessions}
+          onGoToPendingSessions={goToPendingSessionsInMyTeam}
         />
       )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
