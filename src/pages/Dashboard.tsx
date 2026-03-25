@@ -356,6 +356,7 @@ export default function Dashboard() {
   const [superintendentJobs, setSuperintendentJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string; google_drive_link: string | null; job_plans_link: string | null; revenue: number | null; created_at: string | null; in_progress_stage_name?: string | null; project_id?: string | null; in_progress_step_id?: string | null }>>([])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
+  const [assignedJobsExpanded, setAssignedJobsExpanded] = useState(true)
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -3784,7 +3785,7 @@ export default function Dashboard() {
           ) : null}
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id) && !b.bid_date_sent)) && (
+      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
@@ -4914,7 +4915,15 @@ export default function Dashboard() {
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem', paddingTop: '0.25rem' }}>
                 <label
                   onClick={(e) => e.stopPropagation()}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#6b7280', fontWeight: 400 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.8125rem',
+                    color: '#9ca3af',
+                    fontWeight: 300,
+                  }}
                 >
                   <input
                     type="checkbox"
@@ -4937,7 +4946,7 @@ export default function Dashboard() {
                         }
                       }
                     }}
-                    style={{ margin: 0 }}
+                    style={{ margin: 0, accentColor: '#9ca3af' }}
                   />
                   <span>hide from dashboard reports I've opened, on refresh</span>
                 </label>
@@ -5028,8 +5037,18 @@ export default function Dashboard() {
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
         <div style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>Assigned Jobs</h2>
-          {assignedJobsLoading && assignedJobs.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setAssignedJobsExpanded((prev) => !prev)}
+            aria-expanded={assignedJobsExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: assignedJobsExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{assignedJobsExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
+              Assigned Jobs ({assignedJobs.length})
+            </h2>
+          </button>
+          {assignedJobsExpanded && (assignedJobsLoading && assignedJobs.length === 0 ? (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {[1, 2].map((i) => (
                 <li key={i} style={{ padding: '0.75rem 0', borderBottom: '1px solid #e5e7eb' }}>
@@ -5213,7 +5232,7 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          )}
+          ))}
         </div>
       )}
 
