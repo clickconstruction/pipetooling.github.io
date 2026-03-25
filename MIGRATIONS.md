@@ -190,6 +190,22 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: `CustomerNotesTable` and unified **All notes** on Bid Board can store/display/edit contact method; no new RLS (existing table policies cover the column)
 - **Category**: Bids / Customers
 
+#### March 26, 2026
+
+**`20260326120000_restrict_people_insert_dev_master_assistant.sql`**
+- **Purpose**: Enforce ACCESS_CONTROL — only dev, master_technician, and assistant can INSERT into `people` (not estimator, primary, etc.)
+- **Changes**: Replace `Users can insert own people` WITH CHECK: `master_user_id = auth.uid()` AND (`is_dev()` OR role in master_technician, assistant)
+- **Impact**: RLS blocks roster inserts for estimators; People page hides Add + client guard for same roles
+- **Category**: People / RLS / Access Control
+
+#### March 27, 2026
+
+**`20260327120000_dispatch_group_members_allow_estimator.sql`**
+- **Purpose**: Task Dispatch group membership may include estimators as well as assistants (inbox + push notifications)
+- **Changes**: `CREATE OR REPLACE` trigger function `dispatch_group_members_enforce_assistant` — allow `users.role` in `assistant`, `estimator`; update table/function comments
+- **Impact**: Settings → Task Dispatch group can add estimators; Dashboard dispatch inbox eligibility for estimators in group; header Task Dispatch / Task buttons for estimators are client-side (`Layout.tsx`)
+- **Category**: Task Dispatch / RLS / Access Control
+
 ### June 2026
 
 #### June 21, 2026

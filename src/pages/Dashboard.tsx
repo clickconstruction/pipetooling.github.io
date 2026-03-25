@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import NewReportModal from '../components/NewReportModal'
@@ -26,6 +27,7 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 
 function toDatetimeLocal(iso: string | null): string {
@@ -54,6 +56,29 @@ function formatTimeSince(iso: string | null): string {
   return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
 }
 
+/** Compact "time ago" for My Bids note summaries (e.g. 25m ago). */
+function formatRelativeCompactAgo(iso: string | null): string {
+  if (!iso) return '—'
+  const now = new Date()
+  const then = new Date(iso)
+  const diffMs = now.getTime() - then.getTime()
+  if (diffMs < 0) return 'just now'
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  const diffWeeks = Math.floor(diffMs / 604800000)
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays < 7) return `${diffDays}d ago`
+  if (diffWeeks < 5) return `${diffWeeks}w ago`
+  try {
+    return then.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })
+  } catch {
+    return '—'
+  }
+}
+
 function fromDatetimeLocal(value: string): string | null {
   const v = value.trim()
   if (!v) return null
@@ -61,6 +86,9 @@ function fromDatetimeLocal(value: string): string | null {
 }
 
 const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
+
+/** Dashboard My Bids: how many "from others" rows to add per "Show more" click. */
+const MY_BID_OTHERS_VISIBLE_STEP = 5
 
 type SubscribedStep = {
   step_id: string
@@ -174,7 +202,7 @@ const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
-const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
+const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/people', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 
@@ -355,6 +383,22 @@ export default function Dashboard() {
   const [closeNoteText, setCloseNoteText] = useState('')
   const [closeNoteError, setCloseNoteError] = useState<string | null>(null)
 
+  type MyBidOthersBidItem = {
+    id: string
+    text: string | null
+    createdAt: string
+    occurredAt?: string | null
+    contactMethod?: string | null
+    authorLabel?: string
+  }
+  type MyBidOthersCustomerItem = {
+    id: string
+    text: string | null
+    createdAt: string
+    contactDate?: string
+    contactMethod?: string | null
+    authorLabel?: string
+  }
   type MyBidRow = {
     id: string
     project_name: string | null
@@ -362,12 +406,29 @@ export default function Dashboard() {
     bid_date_sent: string | null
     outcome: string | null
     service_type_name: string
+    unreadBidNotes: boolean
+    unreadCustomerNotes: boolean
+    othersBidUpdates: MyBidOthersBidItem[]
+    othersCustomerUpdates: MyBidOthersCustomerItem[]
   }
   const [myBids, setMyBids] = useState<MyBidRow[]>([])
   const [myBidsLoading, setMyBidsLoading] = useState(false)
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
   const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
   const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
+  const [myBidOthersVisibleLimits, setMyBidOthersVisibleLimits] = useState<
+    Record<string, { bid: number; customer: number }>
+  >({})
+  const [myBidOthersNoteDetailsOpen, setMyBidOthersNoteDetailsOpen] = useState<Set<string>>(() => new Set())
+
+  const toggleMyBidOthersNoteDetails = useCallback((key: string, open: boolean) => {
+    setMyBidOthersNoteDetailsOpen((prev) => {
+      const next = new Set(prev)
+      if (open) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }, [])
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
@@ -651,41 +712,235 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
-    const hasBidsAccess = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary' || role === 'superintendent'
+    const hasBidsAccess =
+      role === 'dev' ||
+      role === 'master_technician' ||
+      role === 'assistant' ||
+      role === 'estimator' ||
+      role === 'primary' ||
+      role === 'superintendent'
     if (!authUser?.id || !hasBidsAccess) return
+    let cancelled = false
     setMyBidsLoading(true)
-    supabase
-      .from('bids')
-      .select('id, project_name, bid_due_date, bid_date_sent, outcome, service_type:service_types(name)')
-      .eq('estimator_id', authUser.id)
-      .or('outcome.is.null,outcome.neq.lost')
-      .order('bid_due_date', { ascending: true, nullsFirst: false })
-      .limit(15)
-      .then(({ data, error }) => {
-        if (error) {
-          setMyBids([])
-        } else {
-          const rows = (data ?? []) as Array<{
-            id: string
-            project_name: string | null
-            bid_due_date: string | null
-            bid_date_sent: string | null
-            outcome: string | null
-            service_type: { name: string } | null
-          }>
-          setMyBids(
-            rows.map((r) => ({
-              id: r.id,
-              project_name: r.project_name,
-              bid_due_date: r.bid_due_date,
-              bid_date_sent: r.bid_date_sent,
-              outcome: r.outcome,
-              service_type_name: r.service_type?.name ?? '',
-            }))
-          )
+    void (async () => {
+      try {
+        const rawRows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids')
+              .select('id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, service_type:service_types(name)')
+              .eq('estimator_id', authUser.id)
+              .or('outcome.is.null,outcome.neq.lost')
+              .order('bid_due_date', { ascending: true, nullsFirst: false })
+              .limit(15),
+          'load dashboard my bids'
+        )
+        if (cancelled) return
+        const baseRows = (rawRows ?? []) as Array<{
+          id: string
+          project_name: string | null
+          bid_due_date: string | null
+          bid_date_sent: string | null
+          outcome: string | null
+          customer_id: string | null
+          service_type: { name: string } | null
+        }>
+        const bidIds = baseRows.map((r) => r.id)
+        const uid = authUser.id
+        if (bidIds.length === 0) {
+          if (!cancelled) setMyBids([])
+          return
         }
-        setMyBidsLoading(false)
-      })
+
+        const [readStateRows, entryRows] = await Promise.all([
+          withSupabaseRetry(
+            async () =>
+              supabase.from('user_bid_notes_read_state').select('*').eq('user_id', uid).in('bid_id', bidIds),
+            'load bid notes read state'
+          ),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('bids_submission_entries')
+                .select('id, bid_id, created_at, created_by, notes, occurred_at, contact_method')
+                .in('bid_id', bidIds),
+            'load bid submission entries for unread'
+          ),
+        ])
+        const customerIds = [
+          ...new Set(
+            baseRows
+              .map((r) => r.customer_id)
+              .filter((cid): cid is string => cid != null && cid !== '')
+          ),
+        ]
+        type SubmissionEntryRow = {
+          id: string
+          bid_id: string
+          created_at: string | null
+          created_by: string | null
+          notes: string | null
+          occurred_at: string
+          contact_method: string | null
+        }
+        type CustomerContactRow = {
+          id: string
+          customer_id: string
+          created_at: string | null
+          created_by: string | null
+          details: string | null
+          contact_date: string
+          contact_method: string | null
+        }
+        let contactRows: CustomerContactRow[] = []
+        if (customerIds.length > 0) {
+          contactRows =
+            (await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('customer_contacts')
+                  .select('id, customer_id, created_at, created_by, details, contact_date, contact_method')
+                  .in('customer_id', customerIds),
+              'load customer contacts for unread'
+            )) ?? []
+        }
+        if (cancelled) return
+
+        const readMap = new Map<
+          string,
+          { last_seen_bid_submission_at: string | null; last_seen_customer_contact_at: string | null }
+        >()
+        for (const r of readStateRows ?? []) {
+          readMap.set(r.bid_id, {
+            last_seen_bid_submission_at: r.last_seen_bid_submission_at,
+            last_seen_customer_contact_at: r.last_seen_customer_contact_at,
+          })
+        }
+
+        function compareSubmissionDesc(a: SubmissionEntryRow, b: SubmissionEntryRow): number {
+          const ta = a.created_at ? Date.parse(a.created_at) : 0
+          const tb = b.created_at ? Date.parse(b.created_at) : 0
+          if (tb !== ta) return tb - ta
+          return b.id.localeCompare(a.id)
+        }
+
+        function compareContactDesc(a: CustomerContactRow, b: CustomerContactRow): number {
+          const ta = a.created_at ? Date.parse(a.created_at) : 0
+          const tb = b.created_at ? Date.parse(b.created_at) : 0
+          if (tb !== ta) return tb - ta
+          return b.id.localeCompare(a.id)
+        }
+
+        const bidListsFromOthers = new Map<string, SubmissionEntryRow[]>()
+        for (const row of (entryRows ?? []) as SubmissionEntryRow[]) {
+          if (!row.created_by || row.created_by === uid) continue
+          const ca = row.created_at
+          if (!ca) continue
+          const list = bidListsFromOthers.get(row.bid_id)
+          if (list) list.push(row)
+          else bidListsFromOthers.set(row.bid_id, [row])
+        }
+        for (const list of bidListsFromOthers.values()) {
+          list.sort(compareSubmissionDesc)
+        }
+
+        const customerListsFromOthers = new Map<string, CustomerContactRow[]>()
+        for (const row of contactRows) {
+          if (!row.created_by || row.created_by === uid) continue
+          const ca = row.created_at
+          if (!ca) continue
+          const cid = row.customer_id
+          const list = customerListsFromOthers.get(cid)
+          if (list) list.push(row)
+          else customerListsFromOthers.set(cid, [row])
+        }
+        for (const list of customerListsFromOthers.values()) {
+          list.sort(compareContactDesc)
+        }
+
+        const authorIds = new Set<string>()
+        for (const list of bidListsFromOthers.values()) {
+          for (const e of list) {
+            if (e.created_by) authorIds.add(e.created_by)
+          }
+        }
+        for (const list of customerListsFromOthers.values()) {
+          for (const c of list) {
+            if (c.created_by) authorIds.add(c.created_by)
+          }
+        }
+        const authorLabelById = new Map<string, string>()
+        if (authorIds.size > 0) {
+          const authors =
+            (await withSupabaseRetry(
+              async () =>
+                supabase.from('users').select('id, name, email').in('id', [...authorIds]),
+              'load users for my bids note authors'
+            )) ?? []
+          for (const u of authors as Array<{ id: string; name: string | null; email: string }>) {
+            authorLabelById.set(u.id, (u.name?.trim() || u.email || 'Someone').trim())
+          }
+        }
+
+        function isUnread(latest: string | undefined, wm: string | null | undefined): boolean {
+          if (!latest) return false
+          if (wm == null || wm === '') return true
+          return Date.parse(latest) > Date.parse(wm)
+        }
+
+        const myBidsBuilt: MyBidRow[] = baseRows.map((r) => {
+          const rs = readMap.get(r.id)
+          const bidList = bidListsFromOthers.get(r.id) ?? []
+          const latestBid = bidList[0]?.created_at ?? undefined
+          const unreadBid = isUnread(latestBid, rs?.last_seen_bid_submission_at)
+          let unreadCust = false
+          const custList = r.customer_id ? customerListsFromOthers.get(r.customer_id) ?? [] : []
+          const latestC = custList[0]?.created_at ?? undefined
+          if (r.customer_id) {
+            unreadCust = isUnread(latestC, rs?.last_seen_customer_contact_at)
+          }
+
+          const othersBidUpdates: MyBidOthersBidItem[] = bidList.map((e) => ({
+            id: e.id,
+            text: e.notes,
+            createdAt: e.created_at ?? '',
+            occurredAt: e.occurred_at,
+            contactMethod: e.contact_method ?? undefined,
+            authorLabel: e.created_by ? authorLabelById.get(e.created_by) : undefined,
+          }))
+
+          const othersCustomerUpdates: MyBidOthersCustomerItem[] = custList.map((c) => ({
+            id: c.id,
+            text: c.details,
+            createdAt: c.created_at ?? '',
+            contactDate: c.contact_date,
+            contactMethod: c.contact_method ?? undefined,
+            authorLabel: c.created_by ? authorLabelById.get(c.created_by) : undefined,
+          }))
+
+          return {
+            id: r.id,
+            project_name: r.project_name,
+            bid_due_date: r.bid_due_date,
+            bid_date_sent: r.bid_date_sent,
+            outcome: r.outcome,
+            service_type_name: r.service_type?.name ?? '',
+            unreadBidNotes: unreadBid,
+            unreadCustomerNotes: unreadCust,
+            othersBidUpdates,
+            othersCustomerUpdates,
+          }
+        })
+        if (!cancelled) setMyBids(myBidsBuilt)
+      } catch {
+        if (!cancelled) setMyBids([])
+      } finally {
+        if (!cancelled) setMyBidsLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
   }, [authUser?.id, role])
 
   useEffect(() => {
@@ -718,6 +973,67 @@ export default function Dashboard() {
       localStorage.setItem(`dashboard_my_bids_hidden_${authUser.id}`, JSON.stringify([...next]))
     }
   }
+
+  const markMyBidNotesReadAsViewed = useCallback(
+    async (bidId: string) => {
+      if (!authUser?.id) return
+      try {
+        await upsertBidNotesReadWatermark(authUser.id, bidId)
+        setMyBids((prev) =>
+          prev.map((b) =>
+            b.id === bidId
+              ? {
+                  ...b,
+                  unreadBidNotes: false,
+                  unreadCustomerNotes: false,
+                  othersBidUpdates: [],
+                  othersCustomerUpdates: [],
+                }
+              : b
+          )
+        )
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not mark notes as read'), 'error')
+      }
+    },
+    [authUser?.id, showToast]
+  )
+
+  const adjustMyBidOthersLimit = useCallback(
+    (bidId: string, stream: 'bid' | 'customer', op: 'more' | 'all' | 'less', total: number) => {
+      setMyBidOthersVisibleLimits((prev) => {
+        const cur = prev[bidId] ?? { bid: 1, customer: 1 }
+        const v = stream === 'bid' ? cur.bid : cur.customer
+        let nv = v
+        if (op === 'more') nv = Math.min(v + MY_BID_OTHERS_VISIBLE_STEP, total)
+        else if (op === 'all') nv = total
+        else nv = 1
+        return {
+          ...prev,
+          [bidId]: {
+            bid: stream === 'bid' ? nv : cur.bid,
+            customer: stream === 'customer' ? nv : cur.customer,
+          },
+        }
+      })
+    },
+    []
+  )
+
+  useEffect(() => {
+    const ids = new Set(myBids.map((x) => x.id))
+    setMyBidOthersVisibleLimits((prev) => {
+      let changed = false
+      const next: Record<string, { bid: number; customer: number }> = { ...prev }
+      for (const k of Object.keys(next)) {
+        if (!ids.has(k)) {
+          delete next[k]
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [myBids])
 
   useEffect(() => {
     const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
@@ -3367,7 +3683,25 @@ export default function Dashboard() {
                 const visibleBids = myBids.filter((b) => !hiddenBidIds.has(b.id))
                 const unsentBids = visibleBids.filter((b) => !b.bid_date_sent)
                 const sentBids = visibleBids.filter((b) => b.bid_date_sent != null)
-                const renderBidItem = (b: typeof myBids[0], cardStyle: React.CSSProperties) => {
+                function formatMyBidPreviewDate(iso: string): string {
+                  try {
+                    return new Date(iso).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: '2-digit',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })
+                  } catch {
+                    return iso
+                  }
+                }
+                function truncateMyBidNotePreview(text: string | null, max: number): string {
+                  if (!text?.trim()) return ''
+                  const t = text.trim()
+                  return t.length <= max ? t : `${t.slice(0, max)}…`
+                }
+                const renderBidItem = (b: typeof myBids[0], cardStyle: CSSProperties, mode: 'visible' | 'hidden' = 'visible') => {
                   const status =
                     !b.bid_date_sent
                       ? 'Unsent'
@@ -3379,9 +3713,11 @@ export default function Dashboard() {
                   const dueStr = b.bid_due_date
                     ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
                     : '—'
+                  const hasUnread = b.unreadBidNotes || b.unreadCustomerNotes
+                  const myBidMetaBold: CSSProperties = { fontWeight: 600 }
                   return (
                     <li key={b.id} style={{ marginBottom: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <Link
                           to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
                           style={{
@@ -3402,34 +3738,416 @@ export default function Dashboard() {
                             Due {dueStr} · {status}
                           </div>
                         </Link>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            hideBid(b.id)
-                          }}
-                          style={{
-                            flexShrink: 0,
-                            padding: '0.35rem',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: '#6b7280',
-                          }}
-                          title="Hide bid"
-                          aria-label="Hide bid"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
-                            <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
-                          </svg>
-                        </button>
+                        {mode === 'visible' ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              hideBid(b.id)
+                            }}
+                            style={{
+                              flexShrink: 0,
+                              padding: '0.35rem',
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                            }}
+                            title="Hide bid"
+                            aria-label="Hide bid"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 640 640" fill="currentColor" style={{ display: 'block' }}>
+                              <path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => unhideBid(b.id)}
+                            style={{
+                              flexShrink: 0,
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.8125rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 4,
+                              background: 'white',
+                              color: '#374151',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Add back
+                          </button>
+                        )}
                       </div>
+                      {hasUnread ? (
+                        <div
+                          role="region"
+                          aria-label={`Unread notes for ${b.project_name || 'bid'}`}
+                          style={{
+                            marginTop: '0.35rem',
+                            marginLeft: '0.5rem',
+                            padding: '0.6rem 0.75rem 0.6rem 1rem',
+                            background: '#fffbeb',
+                            border: '1px solid #fcd34d',
+                            borderLeft: '3px solid #f59e0b',
+                            borderRadius: 6,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              gap: '0.5rem',
+                              flexWrap: 'wrap',
+                              marginBottom:
+                                (b.unreadBidNotes && b.othersBidUpdates.length > 0) ||
+                                (b.unreadCustomerNotes && b.othersCustomerUpdates.length > 0)
+                                  ? '0.5rem'
+                                  : 0,
+                            }}
+                          >
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>Unread updates</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                void markMyBidNotesReadAsViewed(b.id)
+                              }}
+                              style={{
+                                flexShrink: 0,
+                                padding: '0.35rem 0.6rem',
+                                fontSize: '0.8125rem',
+                                border: '1px solid #d97706',
+                                borderRadius: 4,
+                                background: 'white',
+                                color: '#78350f',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                              }}
+                            >
+                              Mark read
+                            </button>
+                          </div>
+                          {b.unreadBidNotes && b.othersBidUpdates.length > 0 ? (
+                            <div style={{ marginTop: '0.35rem' }}>
+                              {(() => {
+                                const lim = myBidOthersVisibleLimits[b.id] ?? { bid: 1, customer: 1 }
+                                const bidTotal = b.othersBidUpdates.length
+                                const bidLimit = Math.min(Math.max(1, lim.bid), bidTotal)
+                                const bidSlice = b.othersBidUpdates.slice(0, bidLimit)
+                                const othersBtn: CSSProperties = {
+                                  padding: 0,
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8125rem',
+                                  color: '#92400e',
+                                  textDecoration: 'underline',
+                                  fontWeight: 500,
+                                }
+                                return (
+                                  <>
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'flex-start',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        flexWrap: 'wrap',
+                                        marginBottom: '0.35rem',
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                                        Recent Bid Notes
+                                      </span>
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          gap: '0.75rem',
+                                          flexWrap: 'wrap',
+                                          alignItems: 'center',
+                                        }}
+                                      >
+                                        {bidTotal > bidLimit ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'bid', 'more', bidTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show more
+                                          </button>
+                                        ) : null}
+                                        {bidTotal > bidLimit && bidLimit > 1 ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'bid', 'all', bidTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show all
+                                          </button>
+                                        ) : null}
+                                        {bidLimit > 1 ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'bid', 'less', bidTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show less
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    {bidSlice.map((item, idx) => {
+                                      const teaser =
+                                        truncateMyBidNotePreview(item.text, 90) || 'No note text'
+                                      const detailKey = `bid:${item.id}`
+                                      const isNoteOpen = myBidOthersNoteDetailsOpen.has(detailKey)
+                                      const fullBody = item.text?.trim() ? item.text : 'No note text.'
+                                      return (
+                                        <details
+                                          key={item.id}
+                                          open={isNoteOpen}
+                                          onToggle={(e) => {
+                                            toggleMyBidOthersNoteDetails(
+                                              detailKey,
+                                              (e.currentTarget as HTMLDetailsElement).open
+                                            )
+                                          }}
+                                          style={{ marginTop: idx > 0 ? '0.5rem' : 0 }}
+                                        >
+                                          <summary
+                                            style={{
+                                              cursor: 'pointer',
+                                              fontSize: '0.8125rem',
+                                              color: '#78350f',
+                                              listStyle: 'none',
+                                            }}
+                                          >
+                                            {isNoteOpen ? (
+                                              <span
+                                                style={{
+                                                  fontWeight: 400,
+                                                  whiteSpace: 'pre-wrap',
+                                                  display: 'block',
+                                                  maxHeight: 200,
+                                                  overflowY: 'auto',
+                                                  lineHeight: 1.45,
+                                                }}
+                                              >
+                                                <span style={myBidMetaBold}>
+                                                  ({formatRelativeCompactAgo(item.createdAt)})
+                                                </span>{' '}
+                                                {fullBody} -{' '}
+                                                <span style={myBidMetaBold}>{item.authorLabel ?? 'Someone'}</span>
+                                                {' '}·{' '}
+                                                {formatMyBidPreviewDate(item.createdAt)}
+                                              </span>
+                                            ) : (
+                                              <span style={{ fontWeight: 400 }}>
+                                                {teaser} -{' '}
+                                                <span style={myBidMetaBold}>
+                                                  {item.authorLabel ?? 'Someone'} (
+                                                  {formatRelativeCompactAgo(item.createdAt)})
+                                                </span>
+                                              </span>
+                                            )}
+                                          </summary>
+                                          {isNoteOpen && item.contactMethod ? (
+                                            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#a16207' }}>
+                                              <span>Method: {item.contactMethod}</span>
+                                            </div>
+                                          ) : null}
+                                        </details>
+                                      )
+                                    })}
+                                  </>
+                                )
+                              })()}
+                            </div>
+                          ) : null}
+                          {b.unreadCustomerNotes && b.othersCustomerUpdates.length > 0 ? (
+                            <div style={{ marginTop: '0.5rem' }}>
+                              {(() => {
+                                const lim = myBidOthersVisibleLimits[b.id] ?? { bid: 1, customer: 1 }
+                                const custTotal = b.othersCustomerUpdates.length
+                                const custLimit = Math.min(Math.max(1, lim.customer), custTotal)
+                                const custSlice = b.othersCustomerUpdates.slice(0, custLimit)
+                                const othersBtn: CSSProperties = {
+                                  padding: 0,
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8125rem',
+                                  color: '#92400e',
+                                  textDecoration: 'underline',
+                                  fontWeight: 500,
+                                }
+                                return (
+                                  <>
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'flex-start',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        flexWrap: 'wrap',
+                                        marginBottom: '0.35rem',
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                                        Recent Customer Notes
+                                      </span>
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          gap: '0.75rem',
+                                          flexWrap: 'wrap',
+                                          alignItems: 'center',
+                                        }}
+                                      >
+                                        {custTotal > custLimit ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'customer', 'more', custTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show more
+                                          </button>
+                                        ) : null}
+                                        {custTotal > custLimit && custLimit > 1 ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'customer', 'all', custTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show all
+                                          </button>
+                                        ) : null}
+                                        {custLimit > 1 ? (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.preventDefault()
+                                              e.stopPropagation()
+                                              adjustMyBidOthersLimit(b.id, 'customer', 'less', custTotal)
+                                            }}
+                                            style={othersBtn}
+                                          >
+                                            Show less
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    {custSlice.map((item, idx) => {
+                                      const teaser =
+                                        truncateMyBidNotePreview(item.text, 90) || 'No note text'
+                                      const detailKey = `cust:${item.id}`
+                                      const isNoteOpen = myBidOthersNoteDetailsOpen.has(detailKey)
+                                      const fullBody = item.text?.trim() ? item.text : 'No note text.'
+                                      return (
+                                        <details
+                                          key={item.id}
+                                          open={isNoteOpen}
+                                          onToggle={(e) => {
+                                            toggleMyBidOthersNoteDetails(
+                                              detailKey,
+                                              (e.currentTarget as HTMLDetailsElement).open
+                                            )
+                                          }}
+                                          style={{ marginTop: idx > 0 ? '0.5rem' : 0 }}
+                                        >
+                                          <summary
+                                            style={{
+                                              cursor: 'pointer',
+                                              fontSize: '0.8125rem',
+                                              color: '#78350f',
+                                              listStyle: 'none',
+                                            }}
+                                          >
+                                            {isNoteOpen ? (
+                                              <span
+                                                style={{
+                                                  fontWeight: 400,
+                                                  whiteSpace: 'pre-wrap',
+                                                  display: 'block',
+                                                  maxHeight: 200,
+                                                  overflowY: 'auto',
+                                                  lineHeight: 1.45,
+                                                }}
+                                              >
+                                                <span style={myBidMetaBold}>
+                                                  ({formatRelativeCompactAgo(item.createdAt)})
+                                                </span>{' '}
+                                                {fullBody} -{' '}
+                                                <span style={myBidMetaBold}>{item.authorLabel ?? 'Someone'}</span>
+                                                {' '}·{' '}
+                                                {formatMyBidPreviewDate(item.createdAt)}
+                                              </span>
+                                            ) : (
+                                              <span style={{ fontWeight: 400 }}>
+                                                {teaser} -{' '}
+                                                <span style={myBidMetaBold}>
+                                                  {item.authorLabel ?? 'Someone'} (
+                                                  {formatRelativeCompactAgo(item.createdAt)})
+                                                </span>
+                                              </span>
+                                            )}
+                                          </summary>
+                                          {isNoteOpen && (item.contactMethod || item.contactDate) ? (
+                                            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#a16207' }}>
+                                              {item.contactMethod ? <span>Method: {item.contactMethod}</span> : null}
+                                              {item.contactMethod && item.contactDate ? ' · ' : null}
+                                              {item.contactDate ? (
+                                                <span>Contact: {formatMyBidPreviewDate(item.contactDate)}</span>
+                                              ) : null}
+                                            </div>
+                                          ) : null}
+                                        </details>
+                                      )
+                                    })}
+                                  </>
+                                )
+                              })()}
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </li>
                   )
                 }
-                const unsentCardStyle = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
-                const sentCardStyle = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const unsentCardStyle: CSSProperties = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const sentCardStyle: CSSProperties = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const hiddenBidCardStyle: CSSProperties = {
+                  background: '#f9fafb',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 4,
+                  color: '#374151',
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                }
                 return (
                   <>
                     {unsentBids.length === 0 && sentBids.length > 0 ? (
@@ -3498,68 +4216,7 @@ export default function Dashboard() {
                 <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Hidden bids</div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {myBids
-                      .filter((b) => hiddenBidIds.has(b.id))
-                      .map((b) => {
-                        const status =
-                          !b.bid_date_sent
-                            ? 'Unsent'
-                            : b.outcome === 'won'
-                              ? 'Won'
-                              : b.outcome === 'started_or_complete'
-                                ? 'Started or Complete'
-                                : 'Pending'
-                        const dueStr = b.bid_due_date
-                          ? new Date(b.bid_due_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })
-                          : '—'
-                        return (
-                          <li key={b.id} style={{ marginBottom: '0.5rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Link
-                                to={`/bids?bidId=${encodeURIComponent(b.id)}&tab=submission-followup`}
-                                style={{
-                                  flex: 1,
-                                  minWidth: 0,
-                                  display: 'block',
-                                  padding: '0.5rem 0.75rem',
-                                  background: '#f9fafb',
-                                  border: '1px solid #e5e7eb',
-                                  borderRadius: 4,
-                                  color: '#374151',
-                                  textDecoration: 'none',
-                                  fontSize: '0.875rem',
-                                }}
-                              >
-                                <div>
-                                  <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
-                                  {b.service_type_name && (
-                                    <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
-                                  )}
-                                </div>
-                                <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
-                                  Due {dueStr} · {status}
-                                </div>
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={() => unhideBid(b.id)}
-                                style={{
-                                  flexShrink: 0,
-                                  padding: '0.2rem 0.5rem',
-                                  fontSize: '0.8125rem',
-                                  border: '1px solid #d1d5db',
-                                  borderRadius: 4,
-                                  background: 'white',
-                                  color: '#374151',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Add back
-                              </button>
-                            </div>
-                          </li>
-                        )
-                      })}
+                    {myBids.filter((b) => hiddenBidIds.has(b.id)).map((b) => renderBidItem(b, hiddenBidCardStyle, 'hidden'))}
                   </ul>
                 </div>
               )}

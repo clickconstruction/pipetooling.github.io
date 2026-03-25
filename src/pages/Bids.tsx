@@ -6,6 +6,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-
 import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
+import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
@@ -200,6 +201,7 @@ const tabStyle = (active: boolean) => ({
 
 const HIGHLIGHTED_TABS = ['counts', 'pricing', 'cover-letter'] as const
 const SAFETY_ORANGE = '#FF6600' // ANSI/OSHA safety orange
+const SAFETY_ORANGE_BORDER = '#CC5200'
 
 function bidsTabStyle(active: boolean, tabId: string) {
   const base = tabStyle(active)
@@ -1014,6 +1016,7 @@ export default function Bids() {
   // Submission & Followup tab
   const [submissionSearchQuery, setSubmissionSearchQuery] = useState('')
   const [selectedBidForSubmission, setSelectedBidForSubmission] = useState<BidWithBuilder | null>(null)
+  const [submissionFollowupNotesTab, setSubmissionFollowupNotesTab] = useState<'all' | 'bid' | 'customer'>('all')
 
   // RFI tab
   const [selectedBidForRfi, setSelectedBidForRfi] = useState<BidWithBuilder | null>(null)
@@ -1041,10 +1044,6 @@ export default function Bids() {
   const contactTableRef = useRef<HTMLDivElement | null>(null)
   const skipNextLoadCountRowsRef = useRef(false)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
-  const [submissionBidHasCostEstimate, setSubmissionBidHasCostEstimate] = useState<boolean | 'loading' | null>(null)
-  const [submissionReviewGroupCollapsed, setSubmissionReviewGroupCollapsed] = useState(true)
-  const [submissionBidCostEstimateAmount, setSubmissionBidCostEstimateAmount] = useState<number | null>(null)
-  const [submissionPricingByVersion, setSubmissionPricingByVersion] = useState<Array<{ versionId: string; versionName: string; revenue: number | null; margin: number | null; complete: boolean }>>([])
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidCostsSectionOpen, setBidCostsSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
@@ -1319,6 +1318,21 @@ export default function Bids() {
     const id = setInterval(() => setTick((t) => t + 1), 60_000)
     return () => clearInterval(id)
   }, [activeTab])
+
+  useEffect(() => {
+    setSubmissionFollowupNotesTab('all')
+  }, [selectedBidForSubmission?.id])
+
+  useEffect(() => {
+    if (activeTab !== 'submission-followup' || !selectedBidForSubmission?.id || !authUser?.id) return
+    void (async () => {
+      try {
+        await upsertBidNotesReadWatermark(authUser.id, selectedBidForSubmission.id)
+      } catch {
+        /* ignore if migration not applied or RLS */
+      }
+    })()
+  }, [activeTab, selectedBidForSubmission?.id, authUser?.id])
 
   useEffect(() => {
     if (coverLetterBidSubmissionQuickAddBidId != null && selectedBidForPricing?.id !== coverLetterBidSubmissionQuickAddBidId) {
@@ -5771,7 +5785,7 @@ export default function Bids() {
         })()
         setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
         setTimeout(() => {
-          document.getElementById(`submission-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }, 150)
       } else if (serviceTypes.length > 0) {
         // Bid not in current list - may be different service type; fetch and switch
@@ -5895,112 +5909,6 @@ export default function Bids() {
     if (selectedBidForCounts?.id) loadCountRows(selectedBidForCounts.id)
     else setCountRows([])
   }, [selectedBidForCounts?.id])
-
-  useEffect(() => {
-    const bidId = selectedBidForSubmission?.id
-    if (!bidId) {
-      setSubmissionBidHasCostEstimate(null)
-      setSubmissionBidCostEstimateAmount(null)
-      setSubmissionPricingByVersion([])
-      return
-    }
-    setSubmissionBidHasCostEstimate('loading')
-    setSubmissionBidCostEstimateAmount(null)
-    let cancelled = false
-    ;(async () => {
-      const { data: est, error: e } = await supabase
-        .from('cost_estimates')
-        .select('id, labor_rate, purchase_order_id_rough_in, purchase_order_id_top_out, purchase_order_id_trim_set, driving_cost_rate, hours_per_trip, estimator_cost_per_count, estimator_cost_flat_amount')
-        .eq('bid_id', bidId)
-        .maybeSingle()
-      if (e || cancelled) {
-        if (!cancelled) setSubmissionBidHasCostEstimate(null)
-        return
-      }
-      if (!est) {
-        setSubmissionBidHasCostEstimate(false)
-        return
-      }
-      const [laborRes, roughTotal, topTotal, trimTotal, bidRes, countRes] = await Promise.all([
-        supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id),
-        est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
-        est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
-        est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
-        supabase.from('bids').select('distance_from_office').eq('id', bidId).maybeSingle(),
-        supabase.from('bids_count_rows').select('id').eq('bid_id', bidId),
-      ])
-      if (cancelled) return
-      const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
-      const bidData = bidRes.data as { distance_from_office: string | null } | null
-      const countRowsData = (countRes.data as { id: string }[]) ?? []
-      const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
-      const totalHours = laborRows.reduce(
-        (s, r) => s + laborRowHours(r),
-        0
-      )
-      const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
-      const laborCost = totalHours * rate
-      const distance = parseFloat(bidData?.distance_from_office ?? '0') || 0
-      const ratePerMile = (est as any).driving_cost_rate != null ? Number((est as any).driving_cost_rate) : 0.70
-      const hrsPerTrip = (est as any).hours_per_trip != null ? Number((est as any).hours_per_trip) : 2.0
-      const drivingCost = totalHours > 0 ? (totalHours / hrsPerTrip) * ratePerMile * distance : 0
-      const estimatorCost = (est as any)?.estimator_cost_flat_amount != null
-        ? Number((est as any).estimator_cost_flat_amount)
-        : countRowsData.length * (Number((est as any)?.estimator_cost_per_count) || 10)
-      const grandTotal = totalMaterials + laborCost + drivingCost + estimatorCost
-      setSubmissionBidHasCostEstimate(true)
-      setSubmissionBidCostEstimateAmount(grandTotal)
-    })()
-    return () => { cancelled = true }
-  }, [selectedBidForSubmission?.id])
-
-  useEffect(() => {
-    const bidId = selectedBidForSubmission?.id
-    const cost = submissionBidCostEstimateAmount
-    const versions = priceBookVersions
-    if (!bidId || versions.length === 0) {
-      setSubmissionPricingByVersion([])
-      return
-    }
-    let cancelled = false
-    ;(async () => {
-      const { data: countData, error: countErr } = await supabase
-        .from('bids_count_rows')
-        .select('*')
-        .eq('bid_id', bidId)
-        .order('sequence_order', { ascending: true })
-      if (countErr || cancelled) {
-        if (!cancelled) setSubmissionPricingByVersion([])
-        return
-      }
-      const countRows = (countData as BidCountRow[]) ?? []
-      const results = await Promise.all(
-        versions.map(async (v) => {
-          const [entriesRes, assignRes] = await Promise.all([
-            supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', v.id),
-            supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', v.id),
-          ])
-          const entries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
-          entries.sort((a, b) => (a.fixture_types?.name ?? '').localeCompare(b.fixture_types?.name ?? '', undefined, { numeric: true }))
-          const assignments = (assignRes.data as BidPricingAssignment[]) ?? []
-          const entriesById = new Map(entries.map((e) => [e.id, e]))
-          let totalRevenue = 0
-          let complete = true
-          for (const row of countRows) {
-            const assignment = assignments.find((a) => a.count_row_id === row.id)
-            const entry = assignment ? entriesById.get(assignment.price_book_entry_id) : entries.find((e) => (e.fixture_types?.name ?? '').toLowerCase() === (row.fixture ?? '').toLowerCase())
-            if (!entry) complete = false
-            const unitPrice = entry ? Number(entry.total_price) : 0
-            totalRevenue += Number(row.count) * unitPrice
-          }
-          const margin = complete && totalRevenue > 0 && cost != null ? (totalRevenue - cost) / totalRevenue * 100 : null
-          return { versionId: v.id, versionName: v.name, revenue: totalRevenue, margin, complete }
-        })
-      )
-      if (!cancelled) setSubmissionPricingByVersion(results)
-    })()
-    return () => { cancelled = true }
-  }, [selectedBidForSubmission?.id, priceBookVersions, submissionBidCostEstimateAmount])
 
   useEffect(() => {
     if (selectedBidForTakeoff?.id) loadTakeoffCountRows(selectedBidForTakeoff.id)
@@ -7135,7 +7043,7 @@ export default function Bids() {
   const bidBoardTableHead = (
     <thead style={{ background: '#f9fafb' }}>
       <tr>
-        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '2rem' }} aria-label="Notes">Notes</th>
+        <th style={{ padding: '0.0625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', width: '2rem' }} title="Notes" aria-label="Notes" />
         <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Project<br />Folder</th>
         <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Job<br />Plans</th>
         <th style={{ padding: 0, textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count<br />Tool</th>
@@ -11930,13 +11838,6 @@ export default function Bids() {
             </button>
           </div>
 
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={submissionSearchQuery}
-            onChange={(e) => setSubmissionSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
           {selectedBidForSubmission && (
             <div ref={submissionSummaryCardRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -11972,19 +11873,19 @@ export default function Bids() {
                 <p style={{ margin: '0.25rem 0' }}><strong>Bid Size</strong> {formatCompactCurrency(selectedBidForSubmission.bid_value != null ? Number(selectedBidForSubmission.bid_value) : null)}</p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
-                  <strong>Builder Name</strong>{' '}
+                  <strong>Builder:</strong>{' '}
                   {(selectedBidForSubmission.customers || selectedBidForSubmission.bids_gc_builders) ? (
-                    <button 
-                      type="button" 
-                      onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)} 
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: '#3b82f6', 
-                        cursor: 'pointer', 
-                        textDecoration: 'underline', 
-                        padding: 0, 
-                        textAlign: 'left' 
+                    <button
+                      type="button"
+                      onClick={() => openGcBuilderOrCustomerModal(selectedBidForSubmission)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#3b82f6',
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        padding: 0,
+                        textAlign: 'left',
                       }}
                     >
                       {selectedBidForSubmission.customers?.name ?? selectedBidForSubmission.bids_gc_builders?.name}
@@ -11993,16 +11894,28 @@ export default function Bids() {
                     '—'
                   )}
                 </p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Builder Address</strong> {selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Builder Phone Number</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone || '—' : (selectedBidForSubmission.bids_gc_builders?.contact_number ?? '—')}</p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Builder Email</strong> {selectedBidForSubmission.customers ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email || '—' : (selectedBidForSubmission.bids_gc_builders?.email ?? '—')}</p>
+                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.customers?.address ?? selectedBidForSubmission.bids_gc_builders?.address ?? '—'}</p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  {selectedBidForSubmission.customers
+                    ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).phone || '—'
+                    : (selectedBidForSubmission.bids_gc_builders?.contact_number ?? '—')}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  {selectedBidForSubmission.customers
+                    ? extractContactInfo(selectedBidForSubmission.customers.contact_info ?? null).email || '—'
+                    : (selectedBidForSubmission.bids_gc_builders?.email ?? '—')}
+                </p>
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}><strong>Project Name</strong> {selectedBidForSubmission.project_name ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Project Address</strong> {selectedBidForSubmission.address ?? '—'}</p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Project:</strong> {selectedBidForSubmission.project_name ?? '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.address ?? '—'}</p>
                 <p style={{ margin: '1.5rem 0' }} />
-                <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Name</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Phone</strong> {selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
-                <p style={{ margin: '0.25rem 0' }}><strong>Project Contact Email</strong> {selectedBidForSubmission.gc_contact_email ?? '—'}</p>
+                <p style={{ margin: '0.25rem 0' }}>
+                  <strong>Project Contact:</strong> {selectedBidForSubmission.gc_contact_name ?? '—'}
+                </p>
+                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_phone ?? '—'}</p>
+                <p style={{ margin: '0.25rem 0' }}>{selectedBidForSubmission.gc_contact_email ?? '—'}</p>
                 <p style={{ margin: '1.5rem 0' }} />
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Project Folder</strong>{' '}
@@ -12029,105 +11942,162 @@ export default function Bids() {
                   ) : '—'}
                 </p>
               </div>
-              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
                 <button
                   type="button"
-                  onClick={() => setSubmissionReviewGroupCollapsed((c) => !c)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '1rem' }}
+                  onClick={handleScrollToSelectedBidRow}
+                  title="Go to bid in table"
+                  aria-label="Go to bid in table"
+                  style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  {submissionReviewGroupCollapsed ? '\u25B6' : '\u25BC'} Margins
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+                    <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
+                  </svg>
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={handleScrollToSelectedBidRow}
-                    title="Go to bid in table"
-                    aria-label="Go to bid in table"
-                    style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                      <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void downloadApprovalPdf()}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    Approval PDF
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => void downloadApprovalPdf()}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                >
+                  Approval PDF
+                </button>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                {!submissionReviewGroupCollapsed && (
-                  <>
-                    {submissionBidHasCostEstimate === 'loading' && (
-                      <p style={{ margin: '0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading cost estimate info…</p>
-                    )}
-                    {submissionBidHasCostEstimate !== 'loading' && submissionBidHasCostEstimate !== null && (
-                      <>
-                        <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          <span><strong>Cost estimate:</strong> {submissionBidHasCostEstimate ? (submissionBidCostEstimateAmount != null ? `$${formatCurrency(Number(submissionBidCostEstimateAmount))}` : '—') : 'Not yet created'}{' '}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSharedBid(selectedBidForSubmission)
-                              setActiveTab('cost-estimate')
-                            }}
-                            style={{ padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}
-                          >
-                            [cost estimate]
-                          </button>
-                          </span>
-                        </div>
-                        {submissionPricingByVersion.map((row) => (
-                          <div key={row.versionId} style={{ marginBottom: '0.5rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <span><strong>Price Book:</strong> {row.versionName}</span>
-                            <span><strong>Revenue:</strong> {row.complete ? `$${formatCurrency(row.revenue ?? 0)}` : 'Incomplete'}</span>
-                            <span><strong>Margin:</strong> {row.complete && row.margin != null ? `${row.margin.toFixed(1)}%` : 'Incomplete'}</span>
-                          </div>
-                        ))}
-                        <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSharedBid(selectedBidForSubmission)
-                              setActiveTab('pricing')
-                            }}
-                            style={{ padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}
-                          >
-                            [pricing]
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-              <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
                 <button
                   type="button"
                   onClick={() => setShowSentBidScript(true)}
-                  style={{ padding: '0.375rem 0.75rem', background: '#16a34a', color: 'white', border: '1px solid #15803d', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Sent Bid Script
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowBidQuestionScript(true)}
-                  style={{ padding: '0.375rem 0.75rem', background: '#16a34a', color: 'white', border: '1px solid #15803d', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ padding: '0.375rem 0.75rem', background: SAFETY_ORANGE, color: 'white', border: `1px solid ${SAFETY_ORANGE_BORDER}`, borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Bid Question Script
                 </button>
               </div>
-              <BidNotesTable
-                bidId={selectedBidForSubmission.id}
-                onMutated={() => { void loadBids() }}
-                onLoadError={(m) => setError(m)}
-                title=""
-              />
+              <div role="tablist" aria-label="Notes type" style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  role="tab"
+                  id="submission-followup-tab-all"
+                  aria-selected={submissionFollowupNotesTab === 'all'}
+                  aria-controls="submission-followup-notes-panel"
+                  onClick={() => setSubmissionFollowupNotesTab('all')}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    borderRight: '1px solid #d1d5db',
+                    background: submissionFollowupNotesTab === 'all' ? '#3b82f6' : '#ffffff',
+                    color: submissionFollowupNotesTab === 'all' ? '#ffffff' : '#374151',
+                    cursor: 'pointer',
+                    fontWeight: submissionFollowupNotesTab === 'all' ? 600 : 400,
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  All notes
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="submission-followup-tab-bid"
+                  aria-selected={submissionFollowupNotesTab === 'bid'}
+                  aria-controls="submission-followup-notes-panel"
+                  onClick={() => setSubmissionFollowupNotesTab('bid')}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    borderRight: '1px solid #d1d5db',
+                    background: submissionFollowupNotesTab === 'bid' ? '#3b82f6' : '#ffffff',
+                    color: submissionFollowupNotesTab === 'bid' ? '#ffffff' : '#374151',
+                    cursor: 'pointer',
+                    fontWeight: submissionFollowupNotesTab === 'bid' ? 600 : 400,
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  Bid notes
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="submission-followup-tab-customer"
+                  aria-selected={submissionFollowupNotesTab === 'customer'}
+                  aria-controls="submission-followup-notes-panel"
+                  disabled={!selectedBidForSubmission.customers?.id}
+                  aria-disabled={!selectedBidForSubmission.customers?.id}
+                  title={!selectedBidForSubmission.customers?.id ? 'No linked customer on this bid.' : undefined}
+                  onClick={() => {
+                    if (selectedBidForSubmission.customers?.id) setSubmissionFollowupNotesTab('customer')
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    background: submissionFollowupNotesTab === 'customer' ? '#3b82f6' : '#ffffff',
+                    color: submissionFollowupNotesTab === 'customer' ? '#ffffff' : '#374151',
+                    cursor: !selectedBidForSubmission.customers?.id ? 'not-allowed' : 'pointer',
+                    fontWeight: submissionFollowupNotesTab === 'customer' ? 600 : 400,
+                    fontSize: '0.875rem',
+                    opacity: !selectedBidForSubmission.customers?.id ? 0.5 : 1,
+                  }}
+                >
+                  Customer notes
+                </button>
+              </div>
+              <div
+                role="tabpanel"
+                id="submission-followup-notes-panel"
+                aria-labelledby={
+                  submissionFollowupNotesTab === 'bid'
+                    ? 'submission-followup-tab-bid'
+                    : submissionFollowupNotesTab === 'customer'
+                      ? 'submission-followup-tab-customer'
+                      : 'submission-followup-tab-all'
+                }
+              >
+                {submissionFollowupNotesTab === 'bid' ? (
+                  <BidNotesTable
+                    bidId={selectedBidForSubmission.id}
+                    title=""
+                    onLoadError={(m) => setError(m)}
+                    onMutated={() => { void loadBids() }}
+                  />
+                ) : submissionFollowupNotesTab === 'customer' ? (
+                  selectedBidForSubmission.customers?.id ? (
+                    <CustomerNotesTable
+                      customerId={selectedBidForSubmission.customers.id}
+                      customerName={selectedBidForSubmission.customers.name ?? 'Customer'}
+                      title=""
+                      hasBidsAbove={false}
+                      onLoadError={(m) => setError(m)}
+                      onMutated={() => { void loadCustomerContacts(); void loadBids() }}
+                    />
+                  ) : (
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                      No linked customer — customer notes are not available for this bid.
+                    </p>
+                  )
+                ) : (
+                  <UnifiedBidCustomerNotes
+                    bidId={selectedBidForSubmission.id}
+                    customerId={selectedBidForSubmission.customers?.id ?? null}
+                    customerName={selectedBidForSubmission.customers?.name ?? 'Customer'}
+                    title=""
+                    onLoadError={(m) => setError(m)}
+                    onMutated={() => { void loadCustomerContacts(); void loadBids() }}
+                  />
+                )}
+              </div>
             </div>
           )}
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={submissionSearchQuery}
+            onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginTop: 0, marginBottom: '1rem', boxSizing: 'border-box' }}
+          />
           <button
             type="button"
             onClick={() => toggleSubmissionSection('unsent')}

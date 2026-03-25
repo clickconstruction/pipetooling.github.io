@@ -21,6 +21,14 @@ function formatHours(seconds: number): string {
   return hrs % 1 === 0 ? `${hrs.toFixed(1)} hrs` : `${hrs.toFixed(2)} hrs`
 }
 
+/** Split `formatHours` output so the numeric part can be styled bold and ` hrs` stays normal weight. */
+function formatHoursBoldParts(seconds: number): { value: string; suffix: string } {
+  const s = formatHours(seconds)
+  const idx = s.indexOf(' hrs')
+  if (idx === -1) return { value: s, suffix: '' }
+  return { value: s.slice(0, idx), suffix: s.slice(idx) }
+}
+
 function renderBreakdownList(
   items: BreakdownItem[],
   expandedKeys: Set<string>,
@@ -55,14 +63,14 @@ function renderBreakdownList(
                     textAlign: 'left',
                   }}
                 >
+                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                    {formatHours(item.seconds)}
+                  </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0 }}>
                     <span aria-hidden style={{ flexShrink: 0 }}>{isExpanded ? '▼' : '▶'}</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
                       {item.label}
                     </span>
-                  </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280' }}>
-                    {formatHours(item.seconds)}
                   </span>
                 </button>
                 {hasSubRows && (
@@ -82,11 +90,11 @@ function renderBreakdownList(
                             borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
                           }}
                         >
+                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af', minWidth: '5rem' }}>
+                            {formatHours(sub.seconds)}
+                          </span>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6b7280' }} title={sub.notes}>
                             {truncated}
-                          </span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af' }}>
-                            {formatHours(sub.seconds)}
                           </span>
                         </li>
                       )
@@ -105,11 +113,11 @@ function renderBreakdownList(
                   fontSize: '0.875rem',
                 }}
               >
+                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                  {formatHours(item.seconds)}
+                </span>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
                   {item.label}
-                </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280' }}>
-                  {formatHours(item.seconds)}
                 </span>
               </div>
             )}
@@ -135,9 +143,20 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>) 
         const sec = secondsByDay.get(dateStr) ?? 0
         const d2 = new Date(dateStr + 'T00:00:00')
         const label = `${DAY_NAMES[i]} ${d2.getMonth() + 1}/${d2.getDate()}`
+        const parts = sec > 0 ? formatHoursBoldParts(sec) : null
         return (
-          <span key={dateStr} style={{ fontVariantNumeric: 'tabular-nums' }}>
-            {label}: {sec === 0 ? '—' : formatHours(sec)}
+          <span key={dateStr} className="hoursByDayCell">
+            <span className="hoursByDayDateLine">{label}:</span>
+            <span className="hoursByDayHoursLine">
+              {parts ? (
+                <>
+                  <strong style={{ fontWeight: 600 }}>{parts.value}</strong>
+                  {parts.suffix}
+                </>
+              ) : (
+                '—'
+              )}
+            </span>
           </span>
         )
       })}
@@ -547,10 +566,12 @@ export default function DashboardMyTimeSection({ userId }: Props) {
         </div>
         {showLastWeek && (
           <>
-            <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-              Last week: {formatElapsed(totalSecondsLastWeek)}
+            <div className="myTimeLastWeekSummary">
+              <div style={{ marginTop: '0.5rem', fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                Last week: {formatElapsed(totalSecondsLastWeek)}
+              </div>
+              {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek)}
             </div>
-            {renderHoursByDay(getLastWeekRange().start, secondsByDayLastWeek)}
             {breakdownLastWeek.length > 0 &&
               renderBreakdownList(breakdownLastWeek, expandedKeysLastWeek, (key) => {
                 setExpandedKeysLastWeek((prev) => {

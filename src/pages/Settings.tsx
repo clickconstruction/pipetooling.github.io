@@ -6039,12 +6039,12 @@ export default function Settings() {
             {taskDispatchSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Choose which <strong>assistants</strong> receive Task Dispatch notifications and see the Dispatch inbox on Dashboard.
-                  Only users with role Assistant can be added (enforced by the database).
+                  Choose which <strong>assistants</strong> and <strong>estimators</strong> receive Task Dispatch notifications and see the Dispatch inbox on Dashboard.
+                  Only users with role Assistant or Estimator can be added (enforced by the database).
                 </p>
                 {dispatchMemberIds.size === 0 && (
                   <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
-                    No dispatch members yet — nobody will receive push notifications until you select at least one assistant.
+                    No dispatch members yet — nobody will receive push notifications until you select at least one assistant or estimator.
                   </p>
                 )}
                 {dispatchGroupError && (
@@ -6052,7 +6052,7 @@ export default function Settings() {
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
                   {users
-                    .filter((u) => u.role === 'assistant')
+                    .filter((u) => u.role === 'assistant' || u.role === 'estimator')
                     .map((u) => {
                       const checked = dispatchMemberIds.has(u.id)
                       return (
@@ -6078,8 +6078,8 @@ export default function Settings() {
                         </label>
                       )
                     })}
-                  {users.filter((u) => u.role === 'assistant').length === 0 && (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant accounts in the system.</p>
+                  {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
                   )}
                 </div>
               </div>

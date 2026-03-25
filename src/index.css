@@ -953,8 +953,45 @@ button {
   color: #6b7280;
 }
 
+.hoursByDayCell {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 641px) {
+  .hoursByDayCell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: center;
+    text-align: center;
+  }
+}
+
 @media (max-width: 640px) {
   .hoursByDayGrid {
     grid-template-columns: 1fr;
+  }
+
+  .hoursByDayCell {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.25rem;
+  }
+
+  /* My Time: last week total + day rows align with right-aligned "Last week detail" toggle */
+  .myTimeLastWeekSummary {
+    text-align: right;
+  }
+
+  .myTimeLastWeekSummary .hoursByDayGrid {
+    justify-items: end;
+    text-align: right;
+  }
+
+  .myTimeLastWeekSummary .hoursByDayCell {
+    align-items: flex-end;
   }
 }

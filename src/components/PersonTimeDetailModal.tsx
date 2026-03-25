@@ -80,14 +80,14 @@ function renderBreakdownList(
                     textAlign: 'left',
                   }}
                 >
+                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                    {formatHours(item.seconds)}
+                  </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0 }}>
                     <span aria-hidden style={{ flexShrink: 0 }}>{isExpanded ? '▼' : '▶'}</span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
                       {item.label}
                     </span>
-                  </span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280' }}>
-                    {formatHours(item.seconds)}
                   </span>
                 </button>
                 {hasSubRows && (
@@ -107,11 +107,11 @@ function renderBreakdownList(
                             borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
                           }}
                         >
+                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af', minWidth: '5rem' }}>
+                            {formatHours(sub.seconds)}
+                          </span>
                           <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6b7280' }} title={sub.notes}>
                             {truncated}
-                          </span>
-                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af' }}>
-                            {formatHours(sub.seconds)}
                           </span>
                         </li>
                       )
@@ -130,11 +130,11 @@ function renderBreakdownList(
                   fontSize: '0.875rem',
                 }}
               >
+                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                  {formatHours(item.seconds)}
+                </span>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
                   {item.label}
-                </span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280' }}>
-                  {formatHours(item.seconds)}
                 </span>
               </div>
             )}

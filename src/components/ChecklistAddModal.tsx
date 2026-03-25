@@ -231,7 +231,12 @@ export default function ChecklistAddModal() {
 
   if (!modalContext?.isOpen) return null
 
-  const canManage = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  const canManage =
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'primary' ||
+    role === 'estimator'
   if (!canManage) return null
 
   return (

@@ -4,6 +4,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { approveClockSessions } from '../lib/approveClockSessions'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { loginAsUser } from '../lib/loginAsUser'
@@ -714,7 +715,13 @@ export default function People() {
       setSaving(false)
       return
     }
-    
+
+    if (!editing && !canCreatePeopleInRoster) {
+      setError('You do not have permission to add people to the roster.')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       kind,
       name: trimmedName,
@@ -3650,6 +3657,7 @@ export default function People() {
   }
 
   const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
+  const canCreatePeopleInRoster = canEditUserNotes
 
   if (loading) return <p>Loading...</p>
 
@@ -4144,9 +4152,11 @@ export default function People() {
         <section key={k} style={{ marginBottom: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{KIND_LABELS[k]}</h2>
-            <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
-              Add
-            </button>
+            {canCreatePeopleInRoster ? (
+              <button type="button" onClick={() => openAdd(k)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}>
+                Add
+              </button>
+            ) : null}
           </div>
           {byKind(k).length === 0 ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
@@ -6013,7 +6023,7 @@ export default function People() {
                         <button
                           type="button"
                           onClick={async () => {
-                            const { data, error } = await import('../lib/approveClockSessions').then((m) => m.approveClockSessions([s.id]))
+                            const { data, error } = await approveClockSessions([s.id])
                             if (error) { setError(error.message); return }
                             const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
                             const row = result[0]

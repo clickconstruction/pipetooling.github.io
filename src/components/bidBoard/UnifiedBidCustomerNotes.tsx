@@ -559,12 +559,17 @@ function UnifiedNewBidRow({
   isLastInList: boolean
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [contactMethod, setContactMethod] = useState('')
   const [notes, setNotes] = useState('')
   const [occurredAt, setOccurredAt] = useState(() => new Date().toISOString().slice(0, 16))
   const [saving, setSaving] = useState(false)
 
   async function submit() {
+    if (!authUser?.id) {
+      showToast('You must be signed in to add a note.', 'error')
+      return
+    }
     setSaving(true)
     try {
       const occurredAtIso = new Date(occurredAt).toISOString()
@@ -575,6 +580,7 @@ function UnifiedNewBidRow({
             contact_method: contactMethod.trim() || null,
             notes: notes.trim() || null,
             occurred_at: occurredAtIso,
+            created_by: authUser.id,
           }),
         'insert bid submission entry'
       )

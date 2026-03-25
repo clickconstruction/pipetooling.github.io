@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { HoursUnassignedModal } from '../HoursUnassignedModal'
@@ -506,7 +507,7 @@ export function HoursSection() {
                         <button
                           type="button"
                           onClick={async () => {
-                            const { data, error } = await import('../../lib/approveClockSessions').then((m) => m.approveClockSessions([s.id]))
+                            const { data, error } = await approveClockSessions([s.id])
                             if (error) { setError(error.message); return }
                             const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
                             const row = result[0]

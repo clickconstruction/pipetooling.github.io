@@ -452,6 +452,7 @@ export type Database = {
           bid_id: string
           contact_method: string | null
           created_at: string | null
+          created_by: string | null
           id: string
           notes: string | null
           occurred_at: string
@@ -460,6 +461,7 @@ export type Database = {
           bid_id: string
           contact_method?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
           notes?: string | null
           occurred_at?: string
@@ -468,6 +470,7 @@ export type Database = {
           bid_id?: string
           contact_method?: string | null
           created_at?: string | null
+          created_by?: string | null
           id?: string
           notes?: string | null
           occurred_at?: string
@@ -478,6 +481,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_submission_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4769,6 +4779,45 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_bid_notes_read_state: {
+        Row: {
+          bid_id: string
+          last_seen_bid_submission_at: string | null
+          last_seen_customer_contact_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bid_id: string
+          last_seen_bid_submission_at?: string | null
+          last_seen_customer_contact_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bid_id?: string
+          last_seen_bid_submission_at?: string | null
+          last_seen_customer_contact_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_bid_notes_read_state_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_bid_notes_read_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
