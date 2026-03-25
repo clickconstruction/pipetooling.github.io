@@ -1,6 +1,11 @@
 export { AssignSessionJobPopover } from './AssignSessionJobPopover'
 export { ClockSessionLocationCell } from './ClockSessionLocationCell'
-export { ClockSessionsTable } from './ClockSessionsTable'
+export {
+  ClockSessionsTable,
+  formatClockActivityWorkDayLabel,
+  renderDurationDurationFirst,
+  sessionDecimalHours,
+} from './ClockSessionsTable'
 export { ClockSessionsSection } from './ClockSessionsSection'
 export { RejectedClockSessionsSection } from './RejectedClockSessionsSection'
 export { formatClockSessionJobOrBidLabel } from '../../types/clockSessions'

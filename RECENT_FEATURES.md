@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-29
+last_updated: 2026-03-25
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,8 +15,17 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.149)"
-    line: ~395
+  - name: "Latest Version (v2.152)"
+    line: ~407
+    description: "My Team: People you lead Pending/Approved/Total hours table (clock_sessions, Start–End range)"
+  - name: "v2.151"
+    line: ~425
+    description: "My Team: clock notify prefs + ledger; team_leader_clock_notify_prefs; notify-team-lead-clock Edge Function"
+  - name: "v2.150"
+    line: ~420
+    description: "Dashboard My Team: People you lead roster (names from team_leader_assignments + users)"
+  - name: "v2.149"
+    line: ~435
     description: "Clock sessions table UX; pending action order; My Roles Goals gate; user_dashboard_goals + user_daily_goals_ack"
   - name: "v2.148"
     line: ~425
@@ -292,10 +301,13 @@ when_to_read:
 ---
 
 ## Table of Contents
-1. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
-2. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
-3. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
-4. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
+1. [Latest Updates (v2.152)](#latest-updates-v2152) - My Team: People you lead hours table (Pending/Approved/Total)
+2. [Latest Updates (v2.151)](#latest-updates-v2151) - My Team clock notify + ledger; Edge Function
+3. [Latest Updates (v2.150)](#latest-updates-v2150) - Dashboard My Team: People you lead roster
+4. [Latest Updates (v2.149)](#latest-updates-v2149) - Clock sessions UX; daily goals gate; goals tables
+5. [Latest Updates (v2.148)](#latest-updates-v2148) - Bid Board All notes; customer notes UX; contact_method
+6. [Latest Updates (v2.145)](#latest-updates-v2145) - Master tech mobile nav Quickfill and Review in hamburger
+7. [Latest Updates (v2.144)](#latest-updates-v2144) - Assistant billing sections at top of Dashboard
 3. [Latest Updates (v2.143)](#latest-updates-v2143) - Assistant Dashboard section reorder
 3. [Latest Updates (v2.142)](#latest-updates-v2142) - Dashboard Assigned Jobs and Superintendent Jobs UX
 2. [Latest Updates (v2.139)](#latest-updates-v2139) - Fix cost_estimates RLS for assistants
@@ -393,6 +405,45 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.152)
+
+**Date**: 2026-03-25
+
+### Dashboard — My Team: People you lead hours
+
+- **People you lead** shows a compact table: **Pending**, **Approved**, and **Total** hours per direct report for the selected **Start–End** range (same as pending sessions and clock activity). Totals come from **`clock_sessions`**; duration matches **My Time** (open sessions use elapsed time through now). Rejected and revoked sessions add **0** to all columns.
+
+**Files**: [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx)
+
+---
+
+## Latest Updates (v2.151)
+
+**Date**: 2026-03-24
+
+### Dashboard — My Team: clock notifications and activity ledger
+
+- **Notify on clock in/out** (per person you lead): stores opt-in in **`team_leader_clock_notify_prefs`** (FK to **`team_leader_assignments`**). Leaders toggle only their own rows; dev/master/assistant can manage via existing assignment powers.
+- **Web Push**: Edge Function **`notify-team-lead-clock`** sends pushes to opted-in leaders when a member **clocks in** (`clock_sessions` INSERT) or **clocks out** (`clocked_out_at` set on UPDATE). Configure a **Database Webhook** on `clock_sessions` (INSERT + UPDATE) in the Supabase project (see [EDGE_FUNCTIONS.md](EDGE_FUNCTIONS.md)). Optional env **`TEAM_LEAD_CLOCK_WEBHOOK_SECRET`** for webhook `Authorization` instead of the service role key.
+- **Clock activity**: Expandable ledger lists all **`clock_sessions`** for your team in the **same date range** as the pending week controls (`work_date` + `clocked_*_at` display matches existing clock tables).
+
+**Files**: [`supabase/migrations/20260330170000_team_leader_clock_notify_prefs.sql`](supabase/migrations/20260330170000_team_leader_clock_notify_prefs.sql), [`supabase/functions/notify-team-lead-clock/index.ts`](supabase/functions/notify-team-lead-clock/index.ts), [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx)
+
+---
+
+## Latest Updates (v2.150)
+
+**Date**: 2026-03-24
+
+### Dashboard — My Team: “People you lead” roster
+
+- Team leads see a **sorted list** of people assigned to them (**Team lead assignments**), with display names from **`users`** (name, then email, then a short id suffix if the row is not visible under RLS).
+- The list appears **above** the pending clock sessions description so it stays visible when there are **no** pending sessions in the selected date range.
+
+**Files**: [`src/components/DashboardMyTeamSection.tsx`](src/components/DashboardMyTeamSection.tsx)
 
 ---
 

@@ -251,21 +251,32 @@ export function pathToLabel(path: string): string {
 }
 
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
-const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/people', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 
-function getAllowedPathsForRole(role: string | null): Set<string> | null {
+function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
   if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
-  if (role === 'estimator') return ESTIMATOR_PATHS
+  if (role === 'estimator') {
+    return new Set([
+      '/dashboard',
+      '/materials',
+      '/bids',
+      ...(estimatorProspectsAccess ? ['/prospects'] : []),
+      '/calendar',
+      '/checklist',
+      '/people',
+      '/settings',
+      '/tally',
+    ])
+  }
   if (role === 'primary' || role === null) return PRIMARY_PATHS
   if (role === 'superintendent') return SUPERINTENDENT_PATHS
   return null
 }
 
 /** Filter pins by role (same logic as Dashboard). */
-export function filterPinnedByRole(pins: PinnedItem[], role: string | null): PinnedItem[] {
-  const allowed = getAllowedPathsForRole(role)
+export function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorProspectsAccess?: boolean): PinnedItem[] {
+  const allowed = getAllowedPathsForRole(role, estimatorProspectsAccess)
   if (!allowed) return pins
   return pins.filter((p) => allowed.has(p.path))
 }
@@ -273,7 +284,8 @@ export function filterPinnedByRole(pins: PinnedItem[], role: string | null): Pin
 /** Get merged (local + Supabase) and filtered pins for a user. Matches Dashboard pinsToShow logic. */
 export async function getMergedFilteredPins(
   userId: string | undefined,
-  role: string | null
+  role: string | null,
+  estimatorProspectsAccess?: boolean
 ): Promise<PinnedItem[]> {
   if (!userId) return []
   const local = getPinned(userId)
@@ -286,7 +298,7 @@ export async function getMergedFilteredPins(
     seen.add(key)
     merged.push(p)
   }
-  const filtered = filterPinnedByRole(merged, role)
+  const filtered = filterPinnedByRole(merged, role, estimatorProspectsAccess)
     .filter((p) => p.path !== '/dashboard' && p.path !== '/')
     .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
   return filtered

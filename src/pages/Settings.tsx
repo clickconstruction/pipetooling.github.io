@@ -36,6 +36,7 @@ type UserRow = {
   name: string
   role: UserRole
   last_sign_in_at: string | null
+  estimator_prospects_access?: boolean
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
   superintendent_service_type_ids?: string[] | null
@@ -188,6 +189,7 @@ export default function Settings() {
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
+  const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
   const [myPeople, setMyPeople] = useState<PersonRow[]>([])
@@ -310,6 +312,7 @@ export default function Settings() {
   const [editEmail, setEditEmail] = useState('')
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
+  const [editEstimatorProspectsAccess, setEditEstimatorProspectsAccess] = useState(false)
   const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
   const [editSuperintendentServiceTypeIds, setEditSuperintendentServiceTypeIds] = useState<string[]>([])
   const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
@@ -1292,7 +1295,7 @@ export default function Settings() {
     }
     const { data: me, error: eMe } = await supabase
       .from('users')
-      .select('role, estimator_service_type_ids, name, email, phone')
+      .select('role, estimator_service_type_ids, estimator_prospects_access, name, email, phone')
       .eq('id', authUser.id)
       .single()
     if (eMe) {
@@ -1300,7 +1303,14 @@ export default function Settings() {
       setLoading(false)
       return
     }
-    const meRow = me as { role: UserRole; estimator_service_type_ids?: string[] | null; name?: string; email?: string; phone?: string | null } | null
+    const meRow = me as {
+      role: UserRole
+      estimator_service_type_ids?: string[] | null
+      estimator_prospects_access?: boolean | null
+      name?: string
+      email?: string
+      phone?: string | null
+    } | null
     const role = meRow?.role ?? null
     const loadedName = meRow?.name ?? ''
     setMyProfileName(loadedName)
@@ -1309,6 +1319,7 @@ export default function Settings() {
     setMyProfilePhone(meRow?.phone ?? '')
     const estIds = meRow?.estimator_service_type_ids
     setMyRole(role)
+    setMyEstimatorProspectsAccess(role === 'estimator' && !!meRow?.estimator_prospects_access)
     if (role === 'estimator' && estIds && estIds.length > 0) {
       setEstimatorServiceTypeIds(estIds)
     } else {
@@ -1365,7 +1376,7 @@ export default function Settings() {
     if (role === 'dev') {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -3638,10 +3649,10 @@ export default function Settings() {
       return
     }
     setPinsLoading(true)
-    const pins = await getMergedFilteredPins(authUser.id, myRole)
+    const pins = await getMergedFilteredPins(authUser.id, myRole, myEstimatorProspectsAccess)
     setMyPins(pins)
     setPinsLoading(false)
-  }, [authUser?.id, myRole])
+  }, [authUser?.id, myRole, myEstimatorProspectsAccess])
 
   useEffect(() => {
     loadMyPins()
@@ -3779,6 +3790,7 @@ export default function Settings() {
     setEditingUserId(u.id)
     setEditEmail(u.email)
     setEditName(u.name)
+    setEditEstimatorProspectsAccess(u.role === 'estimator' && !!u.estimator_prospects_access)
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
     setEditSuperintendentServiceTypeIds(u.role === 'superintendent' ? (u.superintendent_service_type_ids ?? []) : [])
@@ -3790,6 +3802,7 @@ export default function Settings() {
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
+    setEditEstimatorProspectsAccess(false)
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
     setEditSuperintendentServiceTypeIds([])
@@ -3799,7 +3812,15 @@ export default function Settings() {
 
   async function updateUserProfile(
     id: string,
-    updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null },
+    updates: {
+      name: string
+      email: string
+      estimator_service_type_ids?: string[] | null
+      estimator_prospects_access?: boolean
+      primary_service_type_ids?: string[] | null
+      superintendent_service_type_ids?: string[] | null
+      subcontractor_service_type_ids?: string[] | null
+    },
     oldName?: string,
     userEmail?: string | null
   ) {
@@ -3810,6 +3831,9 @@ export default function Settings() {
     if (updates.estimator_service_type_ids !== undefined) {
       updatePayload.estimator_service_type_ids = updates.estimator_service_type_ids?.length ? updates.estimator_service_type_ids : null
     }
+    if (updates.estimator_prospects_access !== undefined) {
+      updatePayload.estimator_prospects_access = updates.estimator_prospects_access
+    }
     if (updates.primary_service_type_ids !== undefined) {
       updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
     }
@@ -3819,31 +3843,42 @@ export default function Settings() {
     if (updates.subcontractor_service_type_ids !== undefined) {
       updatePayload.subcontractor_service_type_ids = updates.subcontractor_service_type_ids?.length ? updates.subcontractor_service_type_ids : null
     }
-    const { error: e } = await supabase
-      .from('users')
-      .update(updatePayload)
-      .eq('id', id)
-    if (e) {
-      setEditError(e.message)
-    } else {
-      if (oldName != null && oldName.trim() !== updates.name.trim()) {
-        const fromDb = await getPersonNamesForUser(id, userEmail ?? null)
-        const namesToCascade = new Set([oldName.trim(), ...fromDb.map((n) => n.trim()).filter(Boolean)])
-        const trimmedNew = updates.name.trim()
-        for (const name of namesToCascade) {
-          if (name?.trim() && name.trim() !== trimmedNew) {
-            await cascadePersonNameInPayTables(name.trim(), trimmedNew)
-          }
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('users').update(updatePayload).eq('id', id).select('id').maybeSingle(),
+        'update user profile',
+      )
+    } catch (e) {
+      setEditError(formatErrorMessage(e))
+      setUpdatingId(null)
+      return
+    }
+    if (oldName != null && oldName.trim() !== updates.name.trim()) {
+      const fromDb = await getPersonNamesForUser(id, userEmail ?? null)
+      const namesToCascade = new Set([oldName.trim(), ...fromDb.map((n) => n.trim()).filter(Boolean)])
+      const trimmedNew = updates.name.trim()
+      for (const name of namesToCascade) {
+        if (name?.trim() && name.trim() !== trimmedNew) {
+          await cascadePersonNameInPayTables(name.trim(), trimmedNew)
         }
       }
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === id
-            ? { ...u, name: updates.name, email: updates.email, ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}), ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}), ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}), ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}) }
-            : u
-        ),
-      )
     }
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === id
+          ? {
+              ...u,
+              name: updates.name,
+              email: updates.email,
+              ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}),
+              ...(updates.estimator_prospects_access !== undefined ? { estimator_prospects_access: updates.estimator_prospects_access } : {}),
+              ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}),
+              ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}),
+              ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}),
+            }
+          : u
+      ),
+    )
     setUpdatingId(null)
   }
 
@@ -3868,12 +3903,21 @@ export default function Settings() {
       }
     }
 
-    const updates: { name: string; email: string; estimator_service_type_ids?: string[] | null; primary_service_type_ids?: string[] | null; superintendent_service_type_ids?: string[] | null; subcontractor_service_type_ids?: string[] | null } = {
+    const updates: {
+      name: string
+      email: string
+      estimator_service_type_ids?: string[] | null
+      estimator_prospects_access?: boolean
+      primary_service_type_ids?: string[] | null
+      superintendent_service_type_ids?: string[] | null
+      subcontractor_service_type_ids?: string[] | null
+    } = {
       name: trimmedName,
       email: trimmedEmail,
     }
     if (editingUser?.role === 'estimator') {
       updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
+      updates.estimator_prospects_access = editEstimatorProspectsAccess
     }
     if (editingUser?.role === 'primary') {
       updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
@@ -3888,6 +3932,7 @@ export default function Settings() {
     setEditingUserId(null)
     setEditEmail('')
     setEditName('')
+    setEditEstimatorProspectsAccess(false)
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
     setEditSubcontractorServiceTypeIds([])
@@ -5877,6 +5922,15 @@ export default function Settings() {
                               </label>
                             ))}
                           </div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={editEstimatorProspectsAccess}
+                              onChange={(e) => setEditEstimatorProspectsAccess(e.target.checked)}
+                              disabled={updatingId === u.id}
+                            />
+                            Can access Prospects
+                          </label>
                         </div>
                       </td>
                     </tr>

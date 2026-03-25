@@ -93,6 +93,7 @@ when_to_read:
    - [send-workflow-notification](#send-workflow-notification)
    - [send-checklist-notification](#send-checklist-notification)
    - [notify-dispatch-request](#notify-dispatch-request)
+   - [notify-team-lead-clock](#notify-team-lead-clock)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
@@ -758,6 +759,52 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
 2. Admin client loads all `dispatch_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `dispatch-<request_id>`, `url`: `/dashboard`).
 3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
+
+---
+
+### notify-team-lead-clock
+
+**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
+
+**Endpoint**: `POST /functions/v1/notify-team-lead-clock`
+
+**Required Role**: None (server-to-server). **Authorization** header must be `Bearer <SUPABASE_SERVICE_ROLE_KEY>` or `Bearer <TEAM_LEAD_CLOCK_WEBHOOK_SECRET>` when the optional secret is set (recommended for webhooks).
+
+**Required Secrets**:
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+- Optional: `TEAM_LEAD_CLOCK_WEBHOOK_SECRET` — if set, webhook can send this instead of the service role key.
+
+**Verify JWT**: `false` (uses shared secret / service role only)
+
+#### Request body (Supabase Database Webhook shape)
+
+```json
+{
+  "type": "INSERT",
+  "table": "clock_sessions",
+  "schema": "public",
+  "record": { "id": "…", "user_id": "…", "clocked_in_at": "…", "clocked_out_at": null, "work_date": "…" },
+  "old_record": null
+}
+```
+
+For **clock out**, `type` is `UPDATE`, `old_record.clocked_out_at` is null, and `record.clocked_out_at` is set.
+
+#### Success response
+
+```json
+{ "success": true, "push_sent": 2, "leaders": 1, "kind": "clock_in" }
+```
+
+Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transition).
+
+#### Deployment / wiring
+
+1. Deploy the function: `supabase functions deploy notify-team-lead-clock`
+2. In Supabase Dashboard → Database → Webhooks: add webhooks on `clock_sessions` for **Insert** and **Update**, HTTP POST to `https://<project-ref>.supabase.co/functions/v1/notify-team-lead-clock`, header `Authorization: Bearer <SERVICE_ROLE_KEY>` or the webhook secret.
+3. Leaders enable **Notify on clock in/out** per member on Dashboard → My Team.
 
 ---
 

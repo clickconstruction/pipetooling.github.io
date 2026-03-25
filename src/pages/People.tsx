@@ -158,6 +158,14 @@ export default function People() {
   type HoursRow = { person_name: string; work_date: string; hours: number }
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [pendingClockSessions, setPendingClockSessions] = useState<ClockSessionRow[]>([])
+  const activeClockSessions = useMemo(
+    () => pendingClockSessions.filter((s) => s.clocked_out_at == null),
+    [pendingClockSessions],
+  )
+  const pendingApprovalClockSessions = useMemo(
+    () => pendingClockSessions.filter((s) => s.clocked_out_at != null),
+    [pendingClockSessions],
+  )
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
   const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
@@ -6020,108 +6028,118 @@ export default function People() {
           </div>
           <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
-              Pending clock sessions ({pendingClockSessions.length})
+              Active clock sessions ({activeClockSessions.length})
             </div>
             <ClockSessionsTable
-              sessions={pendingClockSessions}
+              sessions={activeClockSessions}
               showActionsColumn
               locationVariant="full"
-              emptyMessage="No pending sessions"
+              emptyMessage="No active sessions"
               renderNotesSecondary={(s) => {
                 const label = formatClockSessionJobOrBidLabel(s)
                 return label ? <span title={label}>{label}</span> : null
               }}
-              renderJob={(s) => {
-                const isActive = s.clocked_out_at == null
-                return (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
-                    {!isActive && (
-                      <span style={{ flexShrink: 0 }}>
-                        <AssignSessionJobPopover
-                          session={s}
-                          onSaved={() => {
-                            showToast?.('Job assigned', 'success')
-                            loadAllClockSessionsRef.current?.()
-                          }}
-                          onError={(msg) => setError(msg)}
-                        />
-                      </span>
-                    )}
-                  </div>
-                )
-              }}
+              renderJob={() => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }} />
+              )}
               renderActions={(s) => {
                 const personName = s.users?.name?.trim() ?? 'Unknown'
-                const isActive = s.clocked_out_at == null
                 return (
                   <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                    {isActive && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm(`Force clock out ${personName}?`)) return
-                          const now = new Date().toISOString()
-                          const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
-                          if (error) setError(error.message)
-                          else {
-                            showToast?.('Session clocked out', 'success')
-                            loadAllClockSessionsRef.current?.()
-                          }
-                        }}
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                      >
-                        Force clock out
-                      </button>
-                    )}
-                    {!isActive && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const { data, error } = await approveClockSessions([s.id])
-                            if (error) { setError(error.message); return }
-                            const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
-                            const row = result[0]
-                            if (row?.error_message) { setError(row.error_message); return }
-                            showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
-                            loadAllClockSessionsRef.current?.()
-                            loadPeopleHoursRef.current?.()
-                          }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!confirm('Reject this clock session?')) return
-                            const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
-                            if (error) setError(error.message)
-                            else { showToast?.('Session rejected', 'success'); loadAllClockSessionsRef.current?.() }
-                          }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
-                        >
-                          Reject
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditClockSession(s)
-                            setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
-                            setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
-                            setEditClockSessionNotes(s.notes ?? '')
-                            setEditClockSessionSplitMode(false)
-                            setEditClockSessionSplitAt('')
-                          }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm(`Force clock out ${personName}?`)) return
+                        const now = new Date().toISOString()
+                        const { error } = await supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id)
+                        if (error) setError(error.message)
+                        else {
+                          showToast?.('Session clocked out', 'success')
+                          loadAllClockSessionsRef.current?.()
+                        }
+                      }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                    >
+                      Force clock out
+                    </button>
                   </div>
                 )
               }}
+            />
+          </div>
+          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+              Pending sessions ({pendingApprovalClockSessions.length})
+            </div>
+            <ClockSessionsTable
+              sessions={pendingApprovalClockSessions}
+              showActionsColumn
+              locationVariant="full"
+              emptyMessage="No sessions awaiting approval"
+              renderNotesSecondary={(s) => {
+                const label = formatClockSessionJobOrBidLabel(s)
+                return label ? <span title={label}>{label}</span> : null
+              }}
+              renderJob={(s) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap', minWidth: 0 }}>
+                  <span style={{ flexShrink: 0 }}>
+                    <AssignSessionJobPopover
+                      session={s}
+                      onSaved={() => {
+                        showToast?.('Job assigned', 'success')
+                        loadAllClockSessionsRef.current?.()
+                      }}
+                      onError={(msg) => setError(msg)}
+                    />
+                  </span>
+                </div>
+              )}
+              renderActions={(s) => (
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const { data, error } = await approveClockSessions([s.id])
+                      if (error) { setError(error.message); return }
+                      const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+                      const row = result[0]
+                      if (row?.error_message) { setError(row.error_message); return }
+                      showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
+                      loadAllClockSessionsRef.current?.()
+                      loadPeopleHoursRef.current?.()
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!confirm('Reject this clock session?')) return
+                      const { error } = await supabase.from('clock_sessions').update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null }).eq('id', s.id)
+                      if (error) setError(error.message)
+                      else { showToast?.('Session rejected', 'success'); loadAllClockSessionsRef.current?.() }
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditClockSession(s)
+                      setEditClockSessionIn(toDatetimeLocal(s.clocked_in_at))
+                      setEditClockSessionOut(s.clocked_out_at ? toDatetimeLocal(s.clocked_out_at) : '')
+                      setEditClockSessionNotes(s.notes ?? '')
+                      setEditClockSessionSplitMode(false)
+                      setEditClockSessionSplitAt('')
+                    }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
             />
           </div>
           <ClockSessionsSection

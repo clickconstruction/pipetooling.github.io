@@ -225,7 +225,7 @@ function substituteCopyPlaceholders(
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role: authRole, loading: authLoading } = useAuth()
+  const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
@@ -1567,12 +1567,25 @@ export default function Prospects() {
   }
 
   const canAccessFollowUp =
-    authUser && authRole && ['dev', 'master_technician', 'assistant'].includes(authRole)
+    authUser &&
+    authRole &&
+    (['dev', 'master_technician', 'assistant'].includes(authRole) ||
+      (authRole === 'estimator' && estimatorProspectsAccess))
 
   if (authLoading) {
     return (
       <div style={{ padding: '1rem 1.5rem' }}>
         <p style={{ color: '#6b7280' }}>Loading…</p>
+      </div>
+    )
+  }
+
+  if (authRole === 'estimator' && !estimatorProspectsAccess) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <p style={{ color: '#6b7280' }}>
+          You don’t have access to Prospects. A dev can enable &quot;Can access Prospects&quot; for your account in Settings → Active accounts.
+        </p>
       </div>
     )
   }

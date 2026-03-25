@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -37,14 +37,18 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/checklist', '/settings', '/tally']
-const ESTIMATOR_PATHS = ['/dashboard', '/materials', '/bids', '/prospects', '/calendar', '/checklist', '/people', '/settings', '/tally']
 const PRIMARY_PATHS = ['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
 const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally']
 
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role } = useAuth()
+  const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const estimatorAllowedPaths = useMemo(
+    () =>
+      ['/dashboard', '/materials', '/bids', ...(estimatorProspectsAccess ? ['/prospects'] : []), '/calendar', '/checklist', '/people', '/settings', '/tally'],
+    [estimatorProspectsAccess],
+  )
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -97,7 +101,7 @@ export default function Layout() {
     if (role === 'subcontractor' && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
       navigate('/dashboard', { replace: true })
     }
-    if (role === 'estimator' && (location.pathname === '/' || !ESTIMATOR_PATHS.includes(location.pathname))) {
+    if (role === 'estimator' && (location.pathname === '/' || !estimatorAllowedPaths.includes(location.pathname))) {
       navigate('/bids', { replace: true })
     }
     if (role === 'primary' && (location.pathname === '/' || (!PRIMARY_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
@@ -106,7 +110,7 @@ export default function Layout() {
     if (role === 'superintendent' && (location.pathname === '/' || (!SUPERINTENDENT_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
       navigate('/dashboard', { replace: true })
     }
-  }, [role, location.pathname, navigate])
+  }, [role, location.pathname, navigate, estimatorAllowedPaths])
 
   useEffect(() => {
     const handler = () => setPinsVersion((v) => v + 1)
@@ -215,7 +219,9 @@ export default function Layout() {
           )}
           <NavLink to="/materials" style={linkStyle} onClick={onNavClick}>Materials</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
-          <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
+          {estimatorProspectsAccess && (
+            <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
+          )}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
           {onNavClick ? <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink> : null}
         </>

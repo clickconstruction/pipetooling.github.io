@@ -4829,6 +4829,35 @@ export type Database = {
           },
         ]
       }
+      team_leader_clock_notify_prefs: {
+        Row: {
+          id: string
+          notify_enabled: boolean
+          team_leader_assignment_id: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          notify_enabled?: boolean
+          team_leader_assignment_id: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          notify_enabled?: boolean
+          team_leader_assignment_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_leader_clock_notify_prefs_team_leader_assignment_id_fkey"
+            columns: ["team_leader_assignment_id"]
+            isOneToOne: true
+            referencedRelation: "team_leader_assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
@@ -5135,6 +5164,7 @@ export type Database = {
           archived_at: string | null
           created_at: string | null
           email: string
+          estimator_prospects_access: boolean
           estimator_service_type_ids: string[] | null
           id: string
           last_sign_in_at: string | null
@@ -5151,6 +5181,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email: string
+          estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           id: string
           last_sign_in_at?: string | null
@@ -5167,6 +5198,7 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string
+          estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           id?: string
           last_sign_in_at?: string | null
@@ -6068,6 +6100,10 @@ export type Database = {
       }
       user_has_assigned_step_in_project: {
         Args: { project_id_param: string }
+        Returns: boolean
+      }
+      user_has_prospects_staff_access: {
+        Args: never
         Returns: boolean
       }
     }

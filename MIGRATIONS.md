@@ -226,6 +226,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: My Team approve/reject/revoke works for leaders who are not Pay Approved masters
 - **Category**: Hours / RPCs
 
+**`20260330170000_team_leader_clock_notify_prefs.sql`**
+- **Purpose**: Child table for leader-only opt-in to receive notifications when an assigned member clocks in or out
+- **Changes**: Create `team_leader_clock_notify_prefs` (`team_leader_assignment_id` UNIQUE FK → `team_leader_assignments`, `notify_enabled`, `updated_at`); RLS — SELECT/INSERT/UPDATE/DELETE when the user is the assignment’s leader or `can_manage_team_leader_assignments()`
+- **Impact**: Dashboard My Team → per-member notify toggle; Edge Function `notify-team-lead-clock` (Database Webhook on `clock_sessions`)
+- **Category**: Hours / Clock Sessions / RLS
+
 #### March 27, 2026
 
 **`20260327120000_dispatch_group_members_allow_estimator.sql`**

@@ -25,7 +25,9 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import ClockInOutButton from '../components/ClockInOutButton'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
+import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardMyTeamSection from '../components/DashboardMyTeamSection'
+import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
@@ -204,20 +206,31 @@ const skeletonStyle = { background: '#f3f4f6', borderRadius: 8 }
 
 // Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
 const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/checklist', '/settings', '/tally'])
-const ESTIMATOR_PATHS = new Set(['/dashboard', '/materials', '/bids', '/calendar', '/checklist', '/people', '/settings', '/tally'])
 const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
 const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
 
-function getAllowedPathsForRole(role: string | null): Set<string> | null {
+function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
   if (role === 'subcontractor') return SUBCONTRACTOR_PATHS
-  if (role === 'estimator') return ESTIMATOR_PATHS
+  if (role === 'estimator') {
+    return new Set([
+      '/dashboard',
+      '/materials',
+      '/bids',
+      ...(estimatorProspectsAccess ? ['/prospects'] : []),
+      '/calendar',
+      '/checklist',
+      '/people',
+      '/settings',
+      '/tally',
+    ])
+  }
   if (role === 'primary' || role === null) return PRIMARY_PATHS
   if (role === 'superintendent') return SUPERINTENDENT_PATHS
   return null // dev, master_technician, assistant: no filter (all paths allowed)
 }
 
-function filterPinnedByRole(pins: PinnedItem[], role: string | null): PinnedItem[] {
-  const allowed = getAllowedPathsForRole(role)
+function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorProspectsAccess?: boolean): PinnedItem[] {
+  const allowed = getAllowedPathsForRole(role, estimatorProspectsAccess)
   if (!allowed) return pins
   return pins.filter((p) => allowed.has(p.path))
 }
@@ -264,7 +277,8 @@ function SubscribedSkeleton() {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { user: authUser, role } = useAuth()
+  const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const myTeam = useDashboardMyTeamSectionState(authUser?.id)
   const isMobile = useIsMobile()
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
@@ -435,7 +449,7 @@ export default function Dashboard() {
 
   const isDev = role === 'dev'
   const { showToast } = useToastContext()
-  const visiblePins = filterPinnedByRole(pinnedRoutes, role)
+  const visiblePins = filterPinnedByRole(pinnedRoutes, role, estimatorProspectsAccess)
   const pinsToShow = visiblePins
     .filter((p) => p.path !== '/dashboard' && p.path !== '/')
     .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
@@ -2615,6 +2629,12 @@ export default function Dashboard() {
         </div>
       )}
       {role === 'assistant' && tallyAndPinnedBlock}
+      {role === 'assistant' && authUser?.id && (
+        <DashboardMyTeamPendingBanner
+          pendingApprovalCount={myTeam.pendingApprovalCount}
+          loadingSessions={myTeam.loadingSessions}
+        />
+      )}
       {role === 'assistant' && (
         <>
           <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
@@ -3045,6 +3065,12 @@ export default function Dashboard() {
         </div>
       )}
       {role !== 'assistant' && tallyAndPinnedBlock}
+      {role !== 'assistant' && authUser?.id && (
+        <DashboardMyTeamPendingBanner
+          pendingApprovalCount={myTeam.pendingApprovalCount}
+          loadingSessions={myTeam.loadingSessions}
+        />
+      )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
       {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
         <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
@@ -5456,7 +5482,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {authUser?.id && <DashboardMyTeamSection />}
+      {authUser?.id && <DashboardMyTeamSection myTeam={myTeam} />}
 
       {authUser?.id && (
         <DashboardMyTimeSection userId={authUser.id} />

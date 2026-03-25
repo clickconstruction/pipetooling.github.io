@@ -12,6 +12,8 @@ export type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontracto
 interface UseAuthReturn {
   user: User | null
   role: UserRole | null
+  /** True only when role is estimator and users.estimator_prospects_access is set. */
+  estimatorProspectsAccess: boolean
   loading: boolean
   checkSession: () => Promise<boolean>
   sessionExpiresAt: number | null
@@ -20,6 +22,7 @@ interface UseAuthReturn {
 export function useAuth(): UseAuthReturn {
   const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
+  const [estimatorProspectsAccess, setEstimatorProspectsAccess] = useState(false)
   const [loading, setLoading] = useState(true)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
   const warningShownRef = useRef(false)
@@ -36,6 +39,7 @@ export function useAuth(): UseAuthReturn {
       await supabase.auth.signOut()
       setUser(null)
       setRole(null)
+      setEstimatorProspectsAccess(false)
       setSessionExpiresAt(null)
       return false
     }
@@ -84,11 +88,20 @@ export function useAuth(): UseAuthReturn {
     setUser(session?.user ?? null)
     setSessionExpiresAt(session?.expires_at ? session.expires_at * 1000 : null)
     if (session?.user?.id) {
-      supabase.from('users').select('role').eq('id', session.user.id).single().then(({ data }) => {
-        setRole((data as { role: UserRole } | null)?.role ?? null)
-      })
+      supabase
+        .from('users')
+        .select('role, estimator_prospects_access')
+        .eq('id', session.user.id)
+        .single()
+        .then(({ data }) => {
+          const row = data as { role: UserRole; estimator_prospects_access?: boolean | null } | null
+          const r = row?.role ?? null
+          setRole(r)
+          setEstimatorProspectsAccess(r === 'estimator' && !!row?.estimator_prospects_access)
+        })
     } else {
       setRole(null)
+      setEstimatorProspectsAccess(false)
     }
   }
 
@@ -173,5 +186,5 @@ export function useAuth(): UseAuthReturn {
     }
   }, [checkSession])
 
-  return { user, role, loading, checkSession, sessionExpiresAt }
+  return { user, role, estimatorProspectsAccess, loading, checkSession, sessionExpiresAt }
 }

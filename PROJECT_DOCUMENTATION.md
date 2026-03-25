@@ -701,6 +701,12 @@ WHERE proname IN (
 - **RLS**: Leaders and members can read rows they appear on; dev, master_technician, and assistant can manage all rows (Settings UI). Helpers: `is_team_lead_for_member(leader, member)`, `can_manage_team_leader_assignments()`.
 - **Usage**: Settings → Team lead assignments; extends `clock_sessions` SELECT/UPDATE and `approve_clock_sessions` / `revoke_clock_sessions` for team-lead paths.
 
+#### `public.team_leader_clock_notify_prefs`
+- **Purpose**: Per **team leader assignment** (`team_leader_assignments.id`), whether that leader receives **Web Push** when the linked member clocks in or out (Edge Function `notify-team-lead-clock`, triggered by Database Webhook on `clock_sessions`).
+- **Key Fields**: `id` (uuid, PK); `team_leader_assignment_id` (uuid, UNIQUE, FK → `team_leader_assignments(id)` ON DELETE CASCADE); `notify_enabled` (boolean, default false); `updated_at` (timestamptz).
+- **RLS**: SELECT/INSERT/UPDATE/DELETE when the user is the assignment’s `leader_user_id` or `can_manage_team_leader_assignments()` (same pattern as assignment visibility).
+- **Usage**: Dashboard → My Team → “Notify on clock in/out” per person you lead.
+
 #### `public.people`
 - **Purpose**: Roster of people (may or may not have user accounts)
 - **Key Fields**:
