@@ -3383,6 +3383,7 @@ export type Database = {
         Row: {
           created_at: string | null
           date_of_expiry: string
+          expiry_dispatch_notified_at: string | null
           id: string
           license_type: string
           note: string | null
@@ -3391,6 +3392,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           date_of_expiry: string
+          expiry_dispatch_notified_at?: string | null
           id?: string
           license_type: string
           note?: string | null
@@ -3399,6 +3401,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           date_of_expiry?: string
+          expiry_dispatch_notified_at?: string | null
           id?: string
           license_type?: string
           note?: string | null
@@ -6007,6 +6010,10 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      notify_dispatch_license_expiry_if_needed: {
+        Args: { p_license_id: string; p_link: string }
+        Returns: string
+      }
       report_edit_window_days: { Args: never; Returns: number }
       report_sub_visibility_months: { Args: never; Returns: number }
       restore_rejected_clock_sessions: {
@@ -6102,10 +6109,7 @@ export type Database = {
         Args: { project_id_param: string }
         Returns: boolean
       }
-      user_has_prospects_staff_access: {
-        Args: never
-        Returns: boolean
-      }
+      user_has_prospects_staff_access: { Args: never; Returns: boolean }
     }
     Enums: {
       project_status: "active" | "completed" | "on_hold" | "awaiting_start"

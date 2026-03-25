@@ -15029,6 +15029,7 @@ function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef, trSty
 
 function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
   const { showToast } = useToastContext()
+  const countInputRef = useRef<HTMLInputElement>(null)
   const [fixture, setFixture] = useState('')
   const [count, setCount] = useState('')
   const [groupTag, setGroupTag] = useState('')
@@ -15083,20 +15084,30 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
     onSaved()
   }
 
-  async function submitAndAdd() {
+  async function submitAndAdd(): Promise<boolean> {
     const num = parseFloat(count)
-    if (isNaN(num) || !fixture.trim()) return
+    if (isNaN(num) || !fixture.trim()) return false
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
     const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
-    if (error) { setSaving(false); showToast(error.message, 'error'); return }
+    if (error) {
+      setSaving(false)
+      showToast(error.message, 'error')
+      return false
+    }
     setFixture('')
     setCount('')
     setGroupTag('')
     setPage('')
     setSaving(false)
     onSavedAndAddAnother?.()
+    return true
+  }
+
+  async function submitAndAddThenFocusCount() {
+    const ok = await submitAndAdd()
+    if (ok) requestAnimationFrame(() => countInputRef.current?.focus())
   }
 
   const calcWidth = 132
@@ -15112,14 +15123,14 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
         {showDragHandleColumn && <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: 32, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }} />}
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
-            <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <input ref={countInputRef} type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.25rem', width: calcWidth, marginTop: hasFixtureGroups ? '1.75rem' : undefined }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
-                <button key={d} type="button" onClick={() => setCount((c) => c + String(d))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{d}</button>
+                <button key={d} type="button" tabIndex={-1} onClick={() => setCount((c) => c + String(d))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{d}</button>
               ))}
-              <button type="button" onClick={() => setCount('')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} title="All clear">C</button>
-              <button type="button" onClick={() => setCount((c) => c + '0')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>0</button>
-              <button type="button" onClick={() => setCount((c) => c.slice(0, -1))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} title="Delete">⌫</button>
+              <button type="button" tabIndex={-1} onClick={() => setCount('')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} title="All clear">C</button>
+              <button type="button" tabIndex={-1} onClick={() => setCount((c) => c + '0')} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>0</button>
+              <button type="button" tabIndex={-1} onClick={() => setCount((c) => c.slice(0, -1))} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }} title="Delete">⌫</button>
             </div>
           </div>
         </td>
@@ -15130,7 +15141,18 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
           <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} placeholder="Group/Tag" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
         </td>
         <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" value={page} onChange={(e) => setPage(e.target.value)} placeholder="Plan Page" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+          <input
+            type="text"
+            value={page}
+            onChange={(e) => setPage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab' || e.shiftKey || !canSubmit || saving) return
+              e.preventDefault()
+              void submitAndAddThenFocusCount()
+            }}
+            placeholder="Plan Page"
+            style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+          />
         </td>
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -15139,7 +15161,7 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
               <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-              <button type="button" onClick={submitAndAdd} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save<br />& Add</button>
+              <button type="button" onClick={() => void submitAndAddThenFocusCount()} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save<br />& Add</button>
               {!canSubmit && !saving && missingFields.length > 0 && (
                 <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
@@ -15160,7 +15182,7 @@ function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAno
                 <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
                   {group.fixtures.map((name) => (
-                    <button key={name} type="button" onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
+                    <button key={name} type="button" tabIndex={-1} onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
                   ))}
                 </div>
               ))}

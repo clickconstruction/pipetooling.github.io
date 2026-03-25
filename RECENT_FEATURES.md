@@ -15,8 +15,11 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.153)"
-    line: ~417
+  - name: "Latest Version (v2.154)"
+    line: ~415
+    description: "People Licenses: Dispatch Inbox task when license first qualifies as expiring within 30 days"
+  - name: "v2.153"
+    line: ~430
     description: "Dashboard My Team: Clock activity order/label; pending banner full-bar jump to Pending sessions"
   - name: "v2.152"
     line: ~430
@@ -409,6 +412,19 @@ when_to_read:
 67. [Email Templates](#email-templates)
 68. [Financial Tracking](#financial-tracking)
 69. [Customer and Project Management](#customer-and-project-management)
+
+---
+
+## Latest Updates (v2.154)
+
+**Date**: 2026-03-26
+
+### People — Licenses: Dispatch when expiring within 30 days
+
+- When a license is **saved** (insert or update) and **date of expiry** falls between **today** and **today + 30 days** (same window as the Licenses “expiring soon” list), the app creates **at most one** **`dispatch_requests`** row for the Dispatch Inbox: title includes person, license type, and expiry date, with **`[1]`** linking to **People → Licenses** (`/people?tab=licenses`).
+- **`person_licenses.expiry_dispatch_notified_at`** records that a task was sent (dedupe). **`notify_dispatch_license_expiry_if_needed`** (SECURITY DEFINER RPC) inserts the row and sets the timestamp atomically; the client then invokes **`notify-dispatch-request`** for Web Push to Dispatch members (same flow as Task Dispatch).
+
+**Files**: [`supabase/migrations/20260325140000_person_license_expiry_dispatch_notification.sql`](supabase/migrations/20260325140000_person_license_expiry_dispatch_notification.sql), [`src/pages/People.tsx`](src/pages/People.tsx)
 
 ---
 

@@ -94,6 +94,9 @@ const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
 /** Dashboard My Bids: how many "from others" rows to add per "Show more" click. */
 const MY_BID_OTHERS_VISIBLE_STEP = 5
 
+/** Dashboard My Bids list: max rows (estimator match, non-lost), ordered by due date. */
+const MY_BIDS_DASHBOARD_ROW_LIMIT = 50
+
 type SubscribedStep = {
   step_id: string
   step_name: string
@@ -435,6 +438,8 @@ export default function Dashboard() {
     bid_date_sent: string | null
     outcome: string | null
     service_type_name: string
+    /** Current user's relationship to this bid on Dashboard My Bids. */
+    myBidRoles: 'estimator' | 'account_manager' | 'both'
     unreadBidNotes: boolean
     unreadCustomerNotes: boolean
     othersBidUpdates: MyBidOthersBidItem[]
@@ -445,6 +450,7 @@ export default function Dashboard() {
   const [hiddenBidIds, setHiddenBidIds] = useState<Set<string>>(new Set())
   const [hiddenBidsExpanded, setHiddenBidsExpanded] = useState(false)
   const [sentBidsExpanded, setSentBidsExpanded] = useState(false)
+  const [myBidsSectionExpanded, setMyBidsSectionExpanded] = useState(true)
   const [myBidOthersVisibleLimits, setMyBidOthersVisibleLimits] = useState<
     Record<string, { bid: number; customer: number }>
   >({})
@@ -809,15 +815,18 @@ export default function Dashboard() {
     setMyBidsLoading(true)
     void (async () => {
       try {
+        const uidForFilter = authUser.id
         const rawRows = await withSupabaseRetry(
           async () =>
             supabase
               .from('bids')
-              .select('id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, service_type:service_types(name)')
-              .eq('estimator_id', authUser.id)
+              .select(
+                'id, project_name, bid_due_date, bid_date_sent, outcome, customer_id, estimator_id, account_manager_id, service_type:service_types(name)'
+              )
+              .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
               .or('outcome.is.null,outcome.neq.lost')
               .order('bid_due_date', { ascending: true, nullsFirst: false })
-              .limit(15),
+              .limit(MY_BIDS_DASHBOARD_ROW_LIMIT),
           'load dashboard my bids'
         )
         if (cancelled) return
@@ -828,6 +837,8 @@ export default function Dashboard() {
           bid_date_sent: string | null
           outcome: string | null
           customer_id: string | null
+          estimator_id: string | null
+          account_manager_id: string | null
           service_type: { name: string } | null
         }>
         const bidIds = baseRows.map((r) => r.id)
@@ -973,6 +984,19 @@ export default function Dashboard() {
           return Date.parse(latest) > Date.parse(wm)
         }
 
+        function myBidRolesForUser(
+          userId: string,
+          estimatorId: string | null,
+          accountManagerId: string | null
+        ): 'estimator' | 'account_manager' | 'both' {
+          const isEstimator = estimatorId === userId
+          const isAccountManager = accountManagerId === userId
+          if (isEstimator && isAccountManager) return 'both'
+          if (isEstimator) return 'estimator'
+          if (isAccountManager) return 'account_manager'
+          return 'estimator'
+        }
+
         const myBidsBuilt: MyBidRow[] = baseRows.map((r) => {
           const rs = readMap.get(r.id)
           const bidList = bidListsFromOthers.get(r.id) ?? []
@@ -1010,6 +1034,7 @@ export default function Dashboard() {
             bid_date_sent: r.bid_date_sent,
             outcome: r.outcome,
             service_type_name: r.service_type?.name ?? '',
+            myBidRoles: myBidRolesForUser(uid, r.estimator_id, r.account_manager_id),
             unreadBidNotes: unreadBid,
             unreadCustomerNotes: unreadCust,
             othersBidUpdates,
@@ -3787,24 +3812,56 @@ export default function Dashboard() {
       )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
         <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
-          <Link
-            to="/bids?new=true"
+          <div
             style={{
-              padding: '0.35rem 0.75rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 6,
-              textDecoration: 'none',
-              fontSize: '0.875rem',
-              fontWeight: 500,
+              display: 'flex',
+              justifyContent: !isMobile && !myBidsSectionExpanded ? 'flex-start' : 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginBottom: !isMobile && !myBidsSectionExpanded ? 0 : '0.5rem',
             }}
           >
-            New Bid
-          </Link>
-        </div>
-          {myBidsLoading ? (
+            {isMobile ? (
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMyBidsSectionExpanded((prev) => !prev)}
+                aria-expanded={myBidsSectionExpanded}
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <span aria-hidden>{myBidsSectionExpanded ? '\u25BC' : '\u25B6'}</span>
+                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My Bids</h2>
+              </button>
+            )}
+            {(isMobile || myBidsSectionExpanded) && (
+              <Link
+                to="/bids?new=true"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                New Bid
+              </Link>
+            )}
+          </div>
+          {(isMobile || myBidsSectionExpanded) && (myBidsLoading ? (
             <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             <>
@@ -3829,6 +3886,28 @@ export default function Dashboard() {
                   if (!text?.trim()) return ''
                   const t = text.trim()
                   return t.length <= max ? t : `${t.slice(0, max)}…`
+                }
+                const myBidPillEstimator: CSSProperties = {
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: 4,
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  background: '#dbeafe',
+                  border: '1px solid #93c5fd',
+                  color: '#1e40af',
+                }
+                const myBidPillAccountManager: CSSProperties = {
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  padding: '0.15rem 0.45rem',
+                  borderRadius: 4,
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                  background: '#ede9fe',
+                  border: '1px solid #c4b5fd',
+                  color: '#5b21b6',
                 }
                 const renderBidItem = (b: typeof myBids[0], cardStyle: CSSProperties, mode: 'visible' | 'hidden' = 'visible') => {
                   const status =
@@ -3857,11 +3936,38 @@ export default function Dashboard() {
                             ...cardStyle,
                           }}
                         >
-                          <div>
-                            <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
-                            {b.service_type_name && (
-                              <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
-                            )}
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'row',
+                              alignItems: 'flex-start',
+                              justifyContent: 'space-between',
+                              gap: '0.5rem',
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
+                              {b.service_type_name && (
+                                <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                              )}
+                            </div>
+                            <div
+                              style={{
+                                flexShrink: 0,
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                justifyContent: 'flex-end',
+                                alignItems: 'flex-start',
+                                gap: '0.25rem',
+                              }}
+                            >
+                              {(b.myBidRoles === 'estimator' || b.myBidRoles === 'both') && (
+                                <span style={myBidPillEstimator}>Estimator</span>
+                              )}
+                              {(b.myBidRoles === 'account_manager' || b.myBidRoles === 'both') && (
+                                <span style={myBidPillAccountManager}>Account Manager</span>
+                              )}
+                            </div>
                           </div>
                           <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
                             Due {dueStr} · {status}
@@ -4353,7 +4459,7 @@ export default function Dashboard() {
           )
         })()}
       </>
-          )}
+          ))}
         </div>
       )}
       {isDev && (

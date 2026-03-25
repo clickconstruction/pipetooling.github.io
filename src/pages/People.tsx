@@ -81,7 +81,16 @@ type VehiclePossession = { id: string; vehicle_id: string; user_id: string; star
 type PersonOffset = { id: string; person_name: string; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
-type PersonLicense = { id: string; person_name: string; license_type: string; note: string | null; date_of_expiry: string; created_at: string | null; person_license_cost_lines?: PersonLicenseCostLine[] }
+type PersonLicense = {
+  id: string
+  person_name: string
+  license_type: string
+  note: string | null
+  date_of_expiry: string
+  created_at: string | null
+  expiry_dispatch_notified_at?: string | null
+  person_license_cost_lines?: PersonLicenseCostLine[]
+}
 
 function costLinesTotal(lines: PersonLicenseCostLine[] | undefined): number {
   return (lines ?? []).reduce((s, l) => s + l.amount, 0)
@@ -2519,6 +2528,29 @@ export default function People() {
     }
   }
 
+  async function maybeNotifyDispatchLicenseExpiry(licenseId: string) {
+    const pLink = `${window.location.origin}/people?tab=licenses`
+    try {
+      const dispatchId = await withSupabaseRetry(
+        async () =>
+          supabase.rpc('notify_dispatch_license_expiry_if_needed', {
+            p_license_id: licenseId,
+            p_link: pLink,
+          }),
+        'notify_dispatch_license_expiry_if_needed',
+      )
+      if (dispatchId == null || typeof dispatchId !== 'string') return
+      const { error: fnErr } = await supabase.functions.invoke('notify-dispatch-request', {
+        body: { dispatch_request_id: dispatchId },
+      })
+      if (fnErr) {
+        showToast(`License saved; Dispatch notification may have failed: ${fnErr.message}`, 'warning')
+      }
+    } catch (e) {
+      console.warn('maybeNotifyDispatchLicenseExpiry', e)
+    }
+  }
+
   async function upsertLicense() {
     if (!licensePersonName.trim()) {
       setLicensesError('Select a person')
@@ -2542,16 +2574,20 @@ export default function People() {
         setLicensesError(null)
         closeLicenseForm()
         loadLicenses()
+        void maybeNotifyDispatchLicenseExpiry(editingLicense.id)
       }
     } else {
-      const { error: err } = await supabase
+      const { data: inserted, error: err } = await supabase
         .from('person_licenses')
         .insert({ person_name: licensePersonName.trim(), license_type: licenseType.trim(), note: licenseNote.trim() || null, date_of_expiry: licenseDateOfExpiry })
+        .select('id')
+        .single()
       if (err) setLicensesError(err.message)
       else {
         setLicensesError(null)
         closeLicenseForm()
         loadLicenses()
+        if (inserted?.id) void maybeNotifyDispatchLicenseExpiry(inserted.id)
       }
     }
   }
