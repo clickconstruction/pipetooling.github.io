@@ -209,13 +209,16 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     }
   }, [authUserId, memberUserIds, dateStart, dateEnd])
 
-  const loadPending = useCallback(async () => {
+  const loadPending = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true
     if (!authUserId || memberUserIds.length === 0) {
       setPendingSessions([])
       setHoursSummaryByUserId({})
       return
     }
-    setLoadingSessions(true)
+    if (!silent) {
+      setLoadingSessions(true)
+    }
     setError(null)
     try {
       const data = await withSupabaseRetry(
@@ -236,11 +239,19 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       await loadTeamHoursSummary()
     } catch (e) {
       setError(formatErrorMessage(e))
-      setPendingSessions([])
+      if (!silent) {
+        setPendingSessions([])
+      }
     } finally {
-      setLoadingSessions(false)
+      if (!silent) {
+        setLoadingSessions(false)
+      }
     }
   }, [authUserId, memberUserIds, dateStart, dateEnd, loadTeamHoursSummary])
+
+  const removePendingSessionFromState = useCallback((sessionId: string) => {
+    setPendingSessions((prev) => prev.filter((s) => s.id !== sessionId))
+  }, [])
 
   useEffect(() => {
     void loadAssignments()
@@ -437,6 +448,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
     setDateRange,
     shiftWeek,
     loadPending,
+    removePendingSessionFromState,
     setNotifyPreference,
     orderedLedgerSessions,
     ledgerPeopleForFilter,

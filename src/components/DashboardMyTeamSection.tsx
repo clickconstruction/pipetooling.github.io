@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
@@ -90,6 +90,16 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
     ledgerPeopleForFilter,
     simpleLedgerGroups,
   } = myTeam
+
+  const refreshPendingAfterAction = useCallback(async () => {
+    const y = window.scrollY
+    await loadPending({ silent: true })
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y)
+      })
+    })
+  }, [loadPending])
 
   const activeClockSessions = useMemo(
     () => pendingSessions.filter((s) => s.clocked_out_at == null),
@@ -650,7 +660,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                                 async () => supabase.from('clock_sessions').update({ clocked_out_at: now }).eq('id', s.id),
                                 'force clock out',
                               )
-                              await loadPending()
+                              await refreshPendingAfterAction()
                             } catch (e) {
                               setError(formatErrorMessage(e))
                             }
@@ -698,7 +708,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                       <span style={{ flexShrink: 0 }}>
                         <AssignSessionJobPopover
                           session={s}
-                          onSaved={() => void loadPending()}
+                          onSaved={() => void refreshPendingAfterAction()}
                           onError={(msg) => setError(msg)}
                         />
                       </span>
@@ -720,7 +730,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                             setError(row.error_message)
                             return
                           }
-                          await loadPending()
+                          await refreshPendingAfterAction()
                         }}
                         style={{
                           padding: '0.2rem 0.5rem',
@@ -747,7 +757,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                                   .eq('id', s.id),
                               'reject clock session',
                             )
-                            await loadPending()
+                            await refreshPendingAfterAction()
                           } catch (e) {
                             setError(formatErrorMessage(e))
                           }
