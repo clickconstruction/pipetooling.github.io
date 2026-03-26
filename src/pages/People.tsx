@@ -22,6 +22,7 @@ import {
   formatClockSessionJobOrBidLabel,
   RejectedClockSessionsSection,
 } from '../components/clock-sessions'
+import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
@@ -71,7 +72,7 @@ const tabStyle = (active: boolean) => ({
   cursor: 'pointer' as const,
 })
 
-type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'offsets' | 'licenses' | 'contracts' | 'review'
+type PeopleTab = 'users' | 'pay_stubs' | 'pay' | 'hours' | 'vehicles' | 'offsets' | 'licenses' | 'contracts' | 'review' | 'activity'
 
 type Vehicle = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number; created_at: string | null; updated_at: string | null }
 type VehicleOdometerEntry = { id: string; vehicle_id: string; odometer_value: number; read_date: string; created_at: string | null }
@@ -134,6 +135,13 @@ export default function People() {
   const [canAccessContracts, setCanAccessContracts] = useState(false)
   const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
   const [isDev, setIsDev] = useState(false)
+  const [activityAccessResolved, setActivityAccessResolved] = useState(false)
+  const [isActivityViewer, setIsActivityViewer] = useState(false)
+  const [activityViewerGrantSet, setActivityViewerGrantSet] = useState<Set<string>>(() => new Set())
+  const [activityGrantListLoading, setActivityGrantListLoading] = useState(false)
+  const [activityGrantBusyId, setActivityGrantBusyId] = useState<string | null>(null)
+  const [activityGrantsSectionOpen, setActivityGrantsSectionOpen] = useState(true)
+  const canSeeActivityTab = isDev || isActivityViewer
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
@@ -575,7 +583,27 @@ export default function People() {
         return next
       }, { replace: true })
       setActiveTab('hours')
-    } else if (tab === 'users' || tab === 'pay_stubs' || tab === 'pay' || tab === 'hours' || tab === 'vehicles' || tab === 'offsets' || tab === 'licenses' || tab === 'contracts' || tab === 'review') {
+    } else if (
+      tab === 'users' ||
+      tab === 'pay_stubs' ||
+      tab === 'pay' ||
+      tab === 'hours' ||
+      tab === 'vehicles' ||
+      tab === 'offsets' ||
+      tab === 'licenses' ||
+      tab === 'contracts' ||
+      tab === 'review' ||
+      tab === 'activity'
+    ) {
+      if (tab === 'activity' && activityAccessResolved && !canSeeActivityTab) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
       setActiveTab(tab)
     } else if (!tab) {
       setSearchParams((p) => {
@@ -584,7 +612,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, setSearchParams])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -662,6 +690,67 @@ export default function People() {
     }
     loadPayAccess()
   }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) {
+      setActivityAccessResolved(false)
+      setIsActivityViewer(false)
+      return
+    }
+    let cancelled = false
+    setActivityAccessResolved(false)
+    void (async () => {
+      try {
+        const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
+        const role = (me as { role?: string } | null)?.role
+        if (role === 'dev') {
+          if (!cancelled) {
+            setIsActivityViewer(false)
+            setActivityAccessResolved(true)
+          }
+          return
+        }
+        const row = await withSupabaseRetry(
+          async () =>
+            await supabase.from('user_app_activity_viewers').select('viewer_user_id').eq('viewer_user_id', authUser.id).maybeSingle(),
+          'activity viewer check'
+        )
+        if (!cancelled) {
+          setIsActivityViewer(!!row)
+          setActivityAccessResolved(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setIsActivityViewer(false)
+          setActivityAccessResolved(true)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!isDev || activeTab !== 'activity') return
+    let cancelled = false
+    setActivityGrantListLoading(true)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.from('user_app_activity_viewers').select('viewer_user_id'),
+          'list activity viewers'
+        )
+        if (cancelled) return
+        setActivityViewerGrantSet(new Set((data ?? []).map((r: { viewer_user_id: string }) => r.viewer_user_id)))
+      } finally {
+        if (!cancelled) setActivityGrantListLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isDev, activeTab])
 
   const canEditCrewJobs = canAccessPay || (authUserRole === 'assistant' && canAccessHours)
 
@@ -3905,6 +3994,22 @@ export default function People() {
             style={tabStyle(activeTab === 'review')}
           >
             Review
+          </button>
+        )}
+        {canSeeActivityTab && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('activity')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'activity')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'activity')}
+          >
+            Activity
           </button>
         )}
           </div>
@@ -8031,6 +8136,176 @@ export default function People() {
               </section>
             </>
           )}
+        </div>
+      )}
+
+      {activeTab === 'activity' && (
+        <div>
+          {!activityAccessResolved ? (
+            <p style={{ color: '#6b7280' }}>Loading…</p>
+          ) : canSeeActivityTab ? (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>App activity</h2>
+                {isDev && (
+                  <button
+                    type="button"
+                    aria-expanded={activityGrantsSectionOpen}
+                    aria-controls="people-activity-grants-panel"
+                    onClick={() => setActivityGrantsSectionOpen((o) => !o)}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.875rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 6,
+                      background: '#fff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span aria-hidden>{activityGrantsSectionOpen ? '\u25BC' : '\u25B6'}</span>
+                    {activityGrantsSectionOpen ? 'Hide access' : 'Manage access'}
+                  </button>
+                )}
+              </div>
+              {isDev && activityGrantsSectionOpen && (
+                <div
+                  id="people-activity-grants-panel"
+                  style={{
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    background: '#f9fafb',
+                  }}
+                >
+                  <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Who can see this tab</h3>
+                  <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+                    Grant Assistants, Master Technicians, or Primaries org-wide activity (same table as below). Others keep only their own usage.
+                  </p>
+                  {activityGrantListLoading ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading grants…</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 720, fontSize: '0.875rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }} />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users
+                            .filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role))
+                            .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+                            .map((u) => {
+                              const granted = activityViewerGrantSet.has(u.id)
+                              const busy = activityGrantBusyId === u.id
+                              return (
+                                <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || '—'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.email || '—'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.role.replace(/_/g, ' ')}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    {granted ? (
+                                      <button
+                                        type="button"
+                                        disabled={busy || !authUser?.id}
+                                        onClick={async () => {
+                                          setActivityGrantBusyId(u.id)
+                                          try {
+                                            await withSupabaseRetry(
+                                              async () =>
+                                                await supabase.from('user_app_activity_viewers').delete().eq('viewer_user_id', u.id),
+                                              'revoke activity viewer'
+                                            )
+                                            setActivityViewerGrantSet((prev) => {
+                                              const next = new Set(prev)
+                                              next.delete(u.id)
+                                              return next
+                                            })
+                                          } catch (e) {
+                                            showToast(String(e instanceof Error ? e.message : e), 'error')
+                                          } finally {
+                                            setActivityGrantBusyId(null)
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          fontSize: '0.8125rem',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 6,
+                                          background: '#fff',
+                                          cursor: busy ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        {busy ? '…' : 'Revoke'}
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={busy || !authUser?.id}
+                                        onClick={async () => {
+                                          if (!authUser?.id) return
+                                          setActivityGrantBusyId(u.id)
+                                          try {
+                                            await withSupabaseRetry(
+                                              async () =>
+                                                await supabase.from('user_app_activity_viewers').insert({
+                                                  viewer_user_id: u.id,
+                                                  granted_by: authUser.id,
+                                                }),
+                                              'grant activity viewer'
+                                            )
+                                            setActivityViewerGrantSet((prev) => new Set(prev).add(u.id))
+                                          } catch (e) {
+                                            showToast(String(e instanceof Error ? e.message : e), 'error')
+                                          } finally {
+                                            setActivityGrantBusyId(null)
+                                          }
+                                        }}
+                                        style={{
+                                          padding: '0.25rem 0.5rem',
+                                          fontSize: '0.8125rem',
+                                          border: '1px solid #3b82f6',
+                                          borderRadius: 6,
+                                          background: '#3b82f6',
+                                          color: '#fff',
+                                          cursor: busy ? 'not-allowed' : 'pointer',
+                                        }}
+                                      >
+                                        {busy ? '…' : 'Grant'}
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                        </tbody>
+                      </table>
+                      {users.filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role)).length === 0 && (
+                        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No eligible users loaded.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              <PeopleAppActivityPanel enabled={activityAccessResolved && canSeeActivityTab} />
+            </>
+          ) : null}
         </div>
       )}
 

@@ -520,7 +520,6 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | Team lead assignments (leader → member links for My Team) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Activity (first-party app usage: UTC daily aggregates; dev-only Settings section; all users may call `bump_user_app_activity` for own row) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Customer Management
 
@@ -560,6 +559,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using seve
 | Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 
 ### Workflow Management
 

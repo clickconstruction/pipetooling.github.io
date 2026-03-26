@@ -1,9 +1,27 @@
 import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
 
 const thStyle = { padding: '0.35rem 0.5rem', textAlign: 'left' as const, borderBottom: '1px solid #e5e7eb' }
 const tdStyle = { padding: '0.35rem 0.5rem' }
+
+const NARROW_MQ = '(max-width: 640px)'
+
+function useNarrowViewport640(): boolean {
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(NARROW_MQ).matches
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia(NARROW_MQ)
+    const sync = () => setNarrow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  return narrow
+}
 
 type ClockSessionsTableProps = {
   sessions: ClockSessionRow[]
@@ -89,6 +107,196 @@ function formatAccountability(s: ClockSessionRow): string {
   return '—'
 }
 
+function hasAccountabilityStatus(s: ClockSessionRow): boolean {
+  return (
+    !!(s.approved_at && s.approved_by_user?.name) ||
+    !!(s.rejected_at && s.rejected_by_user?.name) ||
+    !!(s.revoked_at && s.revoked_by_user?.name)
+  )
+}
+
+/** Notes + optional inline job + secondary line (shared by table cell and mobile card). */
+function ClockSessionNotesJobContent({
+  s,
+  renderJob,
+  renderNotesSecondary,
+}: {
+  s: ClockSessionRow
+  renderJob?: (session: ClockSessionRow) => ReactNode
+  renderNotesSecondary?: (session: ClockSessionRow) => ReactNode
+}) {
+  const jobLabel = formatClockSessionJobOrBidLabel(s)
+  const jobTitle = jobLabel ?? undefined
+  const jobDisplay = jobLabel ?? '—'
+  const jobFromRender = renderJob?.(s)
+  const jobCellContent = renderJob ? jobFromRender : jobDisplay
+  const showInlineJobColumn = !renderJob || jobFromRender != null
+  const notesSecondary = renderNotesSecondary?.(s)
+  return (
+    <>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: '0.5rem',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }} title={s.notes || undefined}>
+          {s.notes || '—'}
+        </div>
+        {showInlineJobColumn ? (
+          <div
+            style={{
+              flexShrink: 0,
+              ...(renderJob
+                ? {}
+                : {
+                    maxWidth: 220,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap' as const,
+                  }),
+            }}
+            title={renderJob ? undefined : jobTitle}
+          >
+            {jobCellContent}
+          </div>
+        ) : null}
+      </div>
+      {notesSecondary ? (
+        <div
+          style={{
+            marginTop: '0.25rem',
+            width: '100%',
+            fontSize: '0.8125rem',
+            color: '#6b7280',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-word',
+          }}
+        >
+          {notesSecondary}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function SessionTimeLocationBlock({
+  s,
+  renderDuration,
+  locationVariant,
+  timeWhiteSpace,
+}: {
+  s: ClockSessionRow
+  renderDuration: (session: ClockSessionRow) => ReactNode
+  locationVariant: 'compact' | 'full'
+  timeWhiteSpace: 'nowrap' | 'normal'
+}) {
+  return (
+    <>
+      <div style={{ whiteSpace: timeWhiteSpace }}>{renderDuration(s)}</div>
+      <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', whiteSpace: timeWhiteSpace === 'nowrap' ? 'nowrap' : 'normal' }}>
+        <ClockSessionLocationCell
+          clockInLat={s.clock_in_lat}
+          clockInLng={s.clock_in_lng}
+          clockOutLat={s.clock_out_lat}
+          clockOutLng={s.clock_out_lng}
+          variant={locationVariant}
+        />
+      </div>
+    </>
+  )
+}
+
+function ClockSessionCard({
+  s,
+  renderDuration,
+  locationVariant,
+  renderJob,
+  renderNotesSecondary,
+  showActionsColumn,
+  renderActions,
+}: {
+  s: ClockSessionRow
+  renderDuration: (session: ClockSessionRow) => ReactNode
+  locationVariant: 'compact' | 'full'
+  renderJob?: (session: ClockSessionRow) => ReactNode
+  renderNotesSecondary?: (session: ClockSessionRow) => ReactNode
+  showActionsColumn: boolean
+  renderActions?: (session: ClockSessionRow) => ReactNode
+}) {
+  const personName = s.users?.name?.trim() ?? 'Unknown'
+  const showStatusBlock = hasAccountabilityStatus(s)
+  return (
+    <div
+      style={{
+        marginBottom: '0.75rem',
+        border: '1px solid #e5e7eb',
+        borderRadius: 8,
+        overflow: 'hidden',
+        background: '#fff',
+      }}
+    >
+      <div style={{ padding: '0.5rem 0.75rem' }}>
+        <div style={{ fontWeight: 600 }}>{personName}</div>
+        <div style={{ fontSize: '0.8125rem', color: '#374151', marginTop: '0.25rem' }}>
+          {formatClockActivityWorkDayLabel(s.work_date)}
+        </div>
+        <div style={{ marginTop: '0.5rem' }}>
+          <SessionTimeLocationBlock
+            s={s}
+            renderDuration={renderDuration}
+            locationVariant={locationVariant}
+            timeWhiteSpace="normal"
+          />
+        </div>
+      </div>
+      <div
+        style={{
+          padding: '0.75rem',
+          borderTop: '1px solid #e5e7eb',
+          background: '#f9fafb',
+          maxWidth: '100%',
+          overflowWrap: 'break-word',
+          wordBreak: 'break-word',
+        }}
+      >
+        <ClockSessionNotesJobContent s={s} renderJob={renderJob} renderNotesSecondary={renderNotesSecondary} />
+        {showStatusBlock ? (
+          <div
+            style={{
+              marginTop: '0.75rem',
+              paddingTop: '0.75rem',
+              borderTop: '1px solid #e5e7eb',
+              fontSize: '0.8125rem',
+              whiteSpace: 'pre-line',
+              color: '#6b7280',
+            }}
+          >
+            {formatAccountability(s)}
+          </div>
+        ) : null}
+        {showActionsColumn ? (
+          <div
+            style={{
+              marginTop: '0.75rem',
+              ...(showStatusBlock
+                ? {}
+                : {
+                    paddingTop: '0.75rem',
+                    borderTop: '1px solid #e5e7eb',
+                  }),
+            }}
+          >
+            {renderActions?.(s)}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 export function ClockSessionsTable({
   sessions,
   showActionsColumn = false,
@@ -99,6 +307,41 @@ export function ClockSessionsTable({
   locationVariant = 'compact',
   emptyMessage = 'No sessions',
 }: ClockSessionsTableProps) {
+  const isNarrow = useNarrowViewport640()
+
+  if (isNarrow) {
+    return (
+      <div style={{ fontSize: '0.875rem' }}>
+        {sessions.length === 0 ? (
+          <div
+            style={{
+              padding: '0.75rem',
+              color: '#6b7280',
+              textAlign: 'center',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+            }}
+          >
+            {emptyMessage}
+          </div>
+        ) : (
+          sessions.map((s) => (
+            <ClockSessionCard
+              key={s.id}
+              s={s}
+              renderDuration={renderDuration}
+              locationVariant={locationVariant}
+              renderJob={renderJob}
+              renderNotesSecondary={renderNotesSecondary}
+              showActionsColumn={showActionsColumn}
+              renderActions={renderActions}
+            />
+          ))
+        )}
+      </div>
+    )
+  }
+
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: 'max-content', maxWidth: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -124,29 +367,17 @@ export function ClockSessionsTable({
           ) : (
             sessions.map((s) => {
               const personName = s.users?.name?.trim() ?? 'Unknown'
-              const jobLabel = formatClockSessionJobOrBidLabel(s)
-              const jobTitle = jobLabel ?? undefined
-              const jobDisplay = jobLabel ?? '—'
-              const jobFromRender = renderJob?.(s)
-              const jobCellContent = renderJob ? jobFromRender : jobDisplay
-              /** When renderJob returns null, omit the inline job column (e.g. job shown only in notesSecondary). */
-              const showInlineJobColumn = !renderJob || jobFromRender != null
-              const notesSecondary = renderNotesSecondary?.(s)
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
                   <td style={tdStyle}>{personName}</td>
                   <td style={tdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                   <td style={tdStyle}>
-                    <div style={{ whiteSpace: 'nowrap' }}>{renderDuration(s)}</div>
-                    <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
-                      <ClockSessionLocationCell
-                        clockInLat={s.clock_in_lat}
-                        clockInLng={s.clock_in_lng}
-                        clockOutLat={s.clock_out_lat}
-                        clockOutLng={s.clock_out_lng}
-                        variant={locationVariant}
-                      />
-                    </div>
+                    <SessionTimeLocationBlock
+                      s={s}
+                      renderDuration={renderDuration}
+                      locationVariant={locationVariant}
+                      timeWhiteSpace="nowrap"
+                    />
                   </td>
                   <td
                     colSpan={2}
@@ -157,50 +388,7 @@ export function ClockSessionsTable({
                       wordBreak: 'break-word',
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }} title={s.notes || undefined}>
-                        {s.notes || '—'}
-                      </div>
-                      {showInlineJobColumn ? (
-                        <div
-                          style={{
-                            flexShrink: 0,
-                            ...(renderJob
-                              ? {}
-                              : {
-                                  maxWidth: 220,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap' as const,
-                                }),
-                          }}
-                          title={renderJob ? undefined : jobTitle}
-                        >
-                          {jobCellContent}
-                        </div>
-                      ) : null}
-                    </div>
-                    {notesSecondary ? (
-                      <div
-                        style={{
-                          marginTop: '0.25rem',
-                          width: '100%',
-                          fontSize: '0.8125rem',
-                          color: '#6b7280',
-                          overflowWrap: 'break-word',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {notesSecondary}
-                      </div>
-                    ) : null}
+                    <ClockSessionNotesJobContent s={s} renderJob={renderJob} renderNotesSecondary={renderNotesSecondary} />
                   </td>
                   <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'pre-line', color: '#6b7280' }}>
                     {formatAccountability(s)}

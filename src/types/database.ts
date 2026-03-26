@@ -4893,6 +4893,39 @@ export type Database = {
           },
         ]
       }
+      user_app_activity_viewers: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          viewer_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          viewer_user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          viewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_app_activity_viewers_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_app_activity_viewers_viewer_user_id_fkey"
+            columns: ["viewer_user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_bid_notes_read_state: {
         Row: {
           bid_id: string
@@ -6320,4 +6353,3 @@ export const Constants = {
     },
   },
 } as const
-

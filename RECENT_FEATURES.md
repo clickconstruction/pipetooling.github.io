@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-03-26
+last_updated: 2026-03-25
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
@@ -15,9 +15,9 @@ format: "Reverse chronological (newest first)"
 version_range: "v2.80 → v2.4"
 
 key_sections:
-  - name: "Latest Version (v2.155)"
+  - name: "Latest Version (v2.156)"
     line: ~418
-    description: "First-party app Activity: UTC daily heartbeats, bump_user_app_activity RPC, dev Settings Activity table"
+    description: "People Activity tab, user_app_activity_viewers allowlist, RLS for granted assistant/master/primary"
   - name: "v2.154"
     line: ~430
     description: "People Licenses: Dispatch Inbox task when license first qualifies as expiring within 30 days"
@@ -418,6 +418,21 @@ when_to_read:
 
 ---
 
+## Latest Updates (v2.156)
+
+**Date**: 2026-03-25
+
+### People — Activity tab and selective org-wide access
+
+- **`user_app_activity_viewers`**: `viewer_user_id` (assistant, master_technician, or primary only), optional `granted_by`, `created_at`. **RLS**: dev **INSERT**/**DELETE**/**SELECT** all; others **SELECT** own row only. **Trigger** rejects non-eligible roles.
+- **`user_app_activity_daily`**: **SELECT** extended so users in the allowlist see **all** rows (same as dev), in addition to own rows and dev.
+- **People**: New **Activity** tab (`?tab=activity`) for **dev** always (includes grant/revoke UI for eligible users) and for **granted** assistant / master / primary. **Deep link** `?tab=activity` redirects to **Users** if not allowed.
+- **Settings**: Dev-only collapsible Activity section **removed**; use **People → Activity**.
+
+**Files**: [`supabase/migrations/20270327120000_user_app_activity_viewers.sql`](supabase/migrations/20270327120000_user_app_activity_viewers.sql), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/components/people/PeopleAppActivityPanel.tsx`](src/components/people/PeopleAppActivityPanel.tsx), [`src/utils/formatActiveSeconds.ts`](src/utils/formatActiveSeconds.ts), [`src/utils/formatNotificationDatetime.ts`](src/utils/formatNotificationDatetime.ts), [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
+
+---
+
 ## Latest Updates (v2.155)
 
 **Date**: 2026-03-26
@@ -426,7 +441,7 @@ when_to_read:
 
 - **`user_app_activity_daily`**: UTC calendar-day aggregates (`active_seconds`, `first_seen_at`, `last_seen_at`). **RLS**: users **SELECT** own rows or **dev** sees all; writes only via **`bump_user_app_activity`** (SECURITY DEFINER).
 - **Layout**: **`useAppActivityHeartbeat`** calls the RPC every **60s** while the tab is **visible** (first bump after the first interval).
-- **Settings**: Dev-only collapsible **Activity** lists **Name**, **Email**, **Last seen**, **Active (7d)** / **(30d)** (h:mm).
+- **Settings**: Dev-only collapsible **Activity** lists **Name**, **Email**, **Last seen**, **Active (7d)** / **(30d)** (h:mm). **Superseded by v2.156** (People → Activity).
 
 **Files**: [`supabase/migrations/20270326120000_user_app_activity_daily.sql`](supabase/migrations/20270326120000_user_app_activity_daily.sql), [`src/hooks/useAppActivityHeartbeat.ts`](src/hooks/useAppActivityHeartbeat.ts), [`src/components/Layout.tsx`](src/components/Layout.tsx), [`src/pages/Settings.tsx`](src/pages/Settings.tsx)
 

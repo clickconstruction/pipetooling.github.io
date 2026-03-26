@@ -18,23 +18,10 @@ import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import PasswordInput from '../components/PasswordInput'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
-
-function formatNotificationDatetime(iso: string | null): string {
-  if (!iso) return 'unknown'
-  const date = new Date(iso)
-  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
-  const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
-  return `${weekday}, ${dateTime}`
-}
-
-function formatActiveSeconds(sec: number): string {
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  return `${h}:${m.toString().padStart(2, '0')}`
-}
 
 type UserRow = {
   id: string
@@ -534,12 +521,6 @@ export default function Settings() {
   const [reassignTargetUserId, setReassignTargetUserId] = useState<string | null>(null)
   const [reassignSubmitting, setReassignSubmitting] = useState(false)
   const [activeAccountsSectionOpen, setActiveAccountsSectionOpen] = useState(false)
-  const [activitySectionOpen, setActivitySectionOpen] = useState(false)
-  const [activityRows, setActivityRows] = useState<
-    Array<{ userId: string; name: string; email: string; lastSeen: string | null; active7: number; active30: number }>
-  >([])
-  const [activityLoading, setActivityLoading] = useState(false)
-  const [activityError, setActivityError] = useState<string | null>(null)
   const [roleSharingSectionOpen, setRoleSharingSectionOpen] = useState(false)
   const [managePartsSectionOpen, setManagePartsSectionOpen] = useState(false)
   const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
@@ -3557,79 +3538,6 @@ export default function Settings() {
       })
   }, [notificationHistoryOpen, authUser?.id])
 
-  useEffect(() => {
-    if (!activitySectionOpen || myRole !== 'dev') return
-    let cancelled = false
-    setActivityLoading(true)
-    setActivityError(null)
-    void (async () => {
-      try {
-        const n = new Date()
-        const start30 = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() - 29)).toISOString().slice(0, 10)
-        const start7 = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate() - 6)).toISOString().slice(0, 10)
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('user_app_activity_daily')
-              .select('user_id, activity_date, last_seen_at, active_seconds, users(name, email)')
-              .gte('activity_date', start30)
-              .order('activity_date', { ascending: false }),
-          'settings app activity'
-        )
-        if (cancelled) return
-        const agg = new Map<
-          string,
-          { name: string; email: string; lastSeen: string | null; sec7: number; sec30: number }
-        >()
-        for (const r of data ?? []) {
-          const row = r as {
-            user_id: string
-            activity_date: string
-            last_seen_at: string | null
-            active_seconds: number
-            users: { name: string | null; email: string | null } | null
-          }
-          const uid = row.user_id
-          let e = agg.get(uid)
-          if (!e) {
-            e = {
-              name: row.users?.name ?? '',
-              email: row.users?.email ?? '',
-              lastSeen: null,
-              sec7: 0,
-              sec30: 0,
-            }
-            agg.set(uid, e)
-          }
-          if (row.last_seen_at && (!e.lastSeen || row.last_seen_at > e.lastSeen)) {
-            e.lastSeen = row.last_seen_at
-          }
-          e.sec30 += row.active_seconds
-          if (row.activity_date >= start7) e.sec7 += row.active_seconds
-        }
-        setActivityRows(
-          [...agg.entries()]
-            .map(([userId, v]) => ({
-              userId,
-              name: v.name,
-              email: v.email,
-              lastSeen: v.lastSeen,
-              active7: v.sec7,
-              active30: v.sec30,
-            }))
-            .sort((a, b) => (a.email || '').localeCompare(b.email || ''))
-        )
-      } catch (err) {
-        if (!cancelled) setActivityError(formatErrorMessage(err))
-      } finally {
-        if (!cancelled) setActivityLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [activitySectionOpen, myRole])
-
   async function loadMutedTasks() {
     if (!authUser?.id) return
     const { data: prefs, error } = await supabase
@@ -6331,73 +6239,6 @@ export default function Settings() {
               </button>
             </div>
             </div>
-            )}
-          </div>
-
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setActivitySectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{activitySectionOpen ? '▼' : '▶'}</span>
-              Activity
-            </button>
-            {activitySectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Approximate active time while the app tab is visible (UTC calendar days). One heartbeat per minute per user.
-                </p>
-                {activityError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{activityError}</p>}
-                {activityLoading ? (
-                  <p style={{ color: '#6b7280' }}>Loading…</p>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 960 }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Last seen</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Active (7d)</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Active (30d)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activityRows.map((r) => (
-                          <tr key={r.userId} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{r.name || '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{r.email || '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {r.lastSeen ? formatNotificationDatetime(r.lastSeen) : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{formatActiveSeconds(r.active7)}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{formatActiveSeconds(r.active30)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {activityRows.length === 0 && (
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.75rem' }}>
-                        No activity data in the last 30 days.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
             )}
           </div>
 

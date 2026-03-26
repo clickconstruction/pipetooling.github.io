@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
+import { getPersonNamesForUser } from '../lib/cascadePersonName'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -29,8 +30,8 @@ function displayNameForTeamMember(
 
 export type TeamMemberRosterRow = { assignmentId: string; userId: string; displayName: string }
 
-/** Pending = clocked out, awaiting approval; active = still clocked in (unapproved). */
-export type TeamHoursSummary = { active: number; pending: number; approved: number; total: number }
+/** Pending = clocked out, awaiting approval; active = still clocked in (unapproved). manual = People Hours grid sum minus approved clock hours for the week (avoids double-count when approval merges into `people_hours`). total = active + pending + approved + manual. */
+export type TeamHoursSummary = { active: number; pending: number; approved: number; manual: number; total: number }
 
 function sessionDurationSeconds(
   clockedIn: string,
@@ -183,7 +184,7 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
       }
       const byUser: Record<string, TeamHoursSummary> = {}
       for (const uid of memberUserIds) {
-        byUser[uid] = { active: 0, pending: 0, approved: 0, total: 0 }
+        byUser[uid] = { active: 0, pending: 0, approved: 0, manual: 0, total: 0 }
       }
       for (const row of (data ?? []) as SlimRow[]) {
         if (row.rejected_at || row.revoked_at) continue
@@ -198,7 +199,58 @@ export function useDashboardMyTeamSectionState(authUserId: string | undefined) {
         } else {
           u.pending += hrs
         }
-        u.total = u.active + u.pending + u.approved
+      }
+
+      const memberEmails = await withSupabaseRetry(
+        async () =>
+          supabase.from('users').select('id, email').in('id', memberUserIds),
+        'load team member emails for manual hours',
+      )
+      const emailByUserId = new Map<string, string | null>(
+        ((memberEmails ?? []) as Array<{ id: string; email: string | null }>).map((r) => [r.id, r.email]),
+      )
+      const namesByUserId = new Map<string, Set<string>>()
+      const allNames: string[] = []
+      for (const uid of memberUserIds) {
+        const names = await getPersonNamesForUser(uid, emailByUserId.get(uid) ?? null)
+        const set = new Set(names.map((n) => n.trim()).filter(Boolean))
+        namesByUserId.set(uid, set)
+        for (const n of set) allNames.push(n)
+      }
+      const uniqueNames = [...new Set(allNames)]
+      if (uniqueNames.length > 0) {
+        const phRows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('people_hours')
+              .select('person_name, hours')
+              .gte('work_date', dateStart)
+              .lte('work_date', dateEnd)
+              .in('person_name', uniqueNames),
+          'load team manual people_hours',
+        )
+        for (const raw of (phRows ?? []) as Array<{ person_name: string; hours: number | string }>) {
+          const pn = raw.person_name?.trim()
+          if (!pn) continue
+          const hrs = typeof raw.hours === 'number' ? raw.hours : Number(raw.hours)
+          if (!Number.isFinite(hrs)) continue
+          for (const uid of memberUserIds) {
+            const set = namesByUserId.get(uid)
+            if (set?.has(pn)) {
+              const u = byUser[uid]
+              if (u) u.manual += hrs
+              break
+            }
+          }
+        }
+      }
+
+      for (const uid of memberUserIds) {
+        const u = byUser[uid]
+        if (!u) continue
+        const gridSum = u.manual
+        u.manual = Math.max(0, gridSum - u.approved)
+        u.total = u.active + u.pending + u.approved + u.manual
       }
       setHoursSummaryByUserId(byUser)
     } catch (e) {

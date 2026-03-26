@@ -238,13 +238,20 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                       >
                         Approved
                       </th>
+                      <th
+                        scope="col"
+                        title="People Hours grid for the week, minus hours already counted in Approved (approved clocks are merged into the grid)"
+                        style={{ ...peopleYouLeadThStyle, textAlign: 'right', ...peopleYouLeadThMutedLabel }}
+                      >
+                        Manual
+                      </th>
                       <th scope="col" style={{ ...peopleYouLeadThStyle, ...peopleYouLeadThMutedLabel }}>Notify in/out</th>
                     </tr>
                   </thead>
                   <tbody>
                     {loadingHours ? (
                       <tr>
-                        <td colSpan={6} style={{ ...peopleYouLeadTdStyle, ...peopleYouLeadMutedColor }}>
+                        <td colSpan={7} style={{ ...peopleYouLeadTdStyle, ...peopleYouLeadMutedColor }}>
                           Loading…
                         </td>
                       </tr>
@@ -254,6 +261,7 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                           active: 0,
                           pending: 0,
                           approved: 0,
+                          manual: 0,
                           total: 0,
                         }
                         return (
@@ -268,6 +276,9 @@ export default function DashboardMyTeamSection({ myTeam }: Props) {
                             </td>
                             <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
                               {formatDecimalHours(h.approved)}
+                            </td>
+                            <td style={{ ...peopleYouLeadTdNum, ...peopleYouLeadTdMutedText }}>
+                              {formatDecimalHours(h.manual)}
                             </td>
                             <td style={{ ...peopleYouLeadTdStyle, ...peopleYouLeadTdMutedText }}>
                               <label

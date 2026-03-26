@@ -20,6 +20,29 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
 ]
 
+/** localStorage value: JSON array of sectionId strings that are hidden; missing/empty = all sections visible */
+const QUICKFILL_HIDDEN_SECTIONS_KEY = 'pipetooling_quickfill_hidden_sections'
+
+const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
+
+function loadHiddenSectionIdsFromStorage(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = window.localStorage.getItem(QUICKFILL_HIDDEN_SECTIONS_KEY)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed.filter((id): id is string => typeof id === 'string' && VALID_SECTION_IDS.has(id)))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveHiddenSectionIdsToStorage(hidden: Set<string>): void {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(QUICKFILL_HIDDEN_SECTIONS_KEY, JSON.stringify([...hidden]))
+}
+
 type ButtonColor = 'red' | 'yellow' | 'green'
 
 function getButtonColor(markedAt: string | null): ButtonColor {
@@ -68,6 +91,34 @@ export default function Quickfill() {
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
+  const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => loadHiddenSectionIdsFromStorage())
+  const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
+
+  useEffect(() => {
+    saveHiddenSectionIdsToStorage(hiddenSectionIds)
+  }, [hiddenSectionIds])
+
+  function isSectionVisible(sectionId: string): boolean {
+    return !hiddenSectionIds.has(sectionId)
+  }
+
+  function setSectionVisible(sectionId: string, visible: boolean): void {
+    setHiddenSectionIds((prev) => {
+      const next = new Set(prev)
+      if (visible) next.delete(sectionId)
+      else next.add(sectionId)
+      return next
+    })
+  }
+
+  /** True if this section would render a Quickfill block (visibility + unpriced count rule). */
+  function sectionWouldRenderOnPage(sectionId: string): boolean {
+    if (!isSectionVisible(sectionId)) return false
+    if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
+    return true
+  }
+
+  const hasAnyVisibleSection = SECTIONS.some(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
 
   async function loadSectionMarks() {
     const { data } = await supabase
@@ -115,7 +166,9 @@ export default function Quickfill() {
     <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
-        {SECTIONS.filter(({ sectionId }) => sectionId !== 'unpriced-fixtures' || unpricedFixturesCount > 0).map(({ id, sectionId, label }) => {
+        {SECTIONS.filter(({ sectionId }) => sectionId !== 'unpriced-fixtures' || unpricedFixturesCount > 0)
+          .filter(({ sectionId }) => isSectionVisible(sectionId))
+          .map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
           const color = getButtonColor(mark?.marked_at ?? null)
           return (
@@ -149,6 +202,23 @@ export default function Quickfill() {
           )
         })}
       </div>
+      {!hasAnyVisibleSection && (
+        <p
+          style={{
+            textAlign: 'center',
+            color: '#6b7280',
+            fontSize: '0.9375rem',
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            background: '#f9fafb',
+          }}
+        >
+          All Quickfill sections are hidden. Use <strong>Active sections</strong> below to show one or more sections again.
+        </p>
+      )}
+      {isSectionVisible('hours') && (
       <QuickfillSectionWrapper
         id="quickfill-hours"
         label="Hours"
@@ -160,6 +230,8 @@ export default function Quickfill() {
       >
         <HoursSection />
       </QuickfillSectionWrapper>
+      )}
+      {isSectionVisible('crew-jobs') && (
       <QuickfillSectionWrapper
         id="quickfill-crew-jobs"
         label="Crew Jobs / Bids"
@@ -171,6 +243,8 @@ export default function Quickfill() {
       >
         <CrewJobsSection />
       </QuickfillSectionWrapper>
+      )}
+      {isSectionVisible('billed-awaiting') && (
       <QuickfillSectionWrapper
         id="quickfill-billed-awaiting"
         label="Billing Awaiting Payments"
@@ -182,7 +256,8 @@ export default function Quickfill() {
       >
         <BilledAwaitingPaymentSection />
       </QuickfillSectionWrapper>
-      {unpricedFixturesCount > 0 && (
+      )}
+      {unpricedFixturesCount > 0 && isSectionVisible('unpriced-fixtures') && (
         <QuickfillSectionWrapper
           id="quickfill-unpriced-fixtures"
           label="Unpriced Fixtures"
@@ -195,6 +270,7 @@ export default function Quickfill() {
           <UnpricedFixturesSection />
         </QuickfillSectionWrapper>
       )}
+      {isSectionVisible('cant-reach') && (
       <QuickfillSectionWrapper
         id="quickfill-cant-reach"
         label="Unreachable Prospects"
@@ -206,6 +282,8 @@ export default function Quickfill() {
       >
         <CantReachSection />
       </QuickfillSectionWrapper>
+      )}
+      {isSectionVisible('supply-houses') && (
       <QuickfillSectionWrapper
         id="quickfill-supply-houses"
         label="Supply Houses and Subs"
@@ -217,6 +295,8 @@ export default function Quickfill() {
       >
         <SupplyHousesSection />
       </QuickfillSectionWrapper>
+      )}
+      {isSectionVisible('jobs-billing') && (
       <QuickfillSectionWrapper
         id="quickfill-jobs-billing"
         label="Jobs Billing"
@@ -228,6 +308,59 @@ export default function Quickfill() {
       >
         <JobsBillingReminderSection />
       </QuickfillSectionWrapper>
+      )}
+      <div
+        style={{
+          marginTop: '2rem',
+          border: '1px solid #e5e7eb',
+          borderRadius: 8,
+          background: '#fafafa',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setActiveSectionsPanelOpen((prev) => !prev)}
+          aria-expanded={activeSectionsPanelOpen}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            margin: 0,
+            padding: '1rem',
+            width: '100%',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 600,
+            textAlign: 'left',
+          }}
+        >
+          <span style={{ fontSize: '0.75rem' }}>{activeSectionsPanelOpen ? '▼' : '▶'}</span>
+          Active sections
+        </button>
+        {activeSectionsPanelOpen && (
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              Uncheck a section to hide it from this page and from the jump buttons above. Preferences are saved in this browser.
+            </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {SECTIONS.map(({ sectionId, label }) => (
+                <li key={sectionId}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={isSectionVisible(sectionId)}
+                      onChange={(e) => setSectionVisible(sectionId, e.target.checked)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

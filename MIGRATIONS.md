@@ -110,6 +110,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Subcontractor Dashboard Assigned Jobs cards show "Open X" (time since last report) for "time since last report" display
 - **Category**: Dashboard / Reports
 
+#### March 27, 2027
+
+**`20270327120000_user_app_activity_viewers.sql`**
+- **Purpose**: Allow dev to grant assistant / master_technician / primary org-wide read on `user_app_activity_daily`
+- **Changes**: Create `user_app_activity_viewers` with RLS; trigger restricts `viewer_user_id` to eligible roles; replace `user_app_activity_daily` SELECT policy to include allowlist
+- **Impact**: People → Activity tab; dev grant/revoke UI
+- **Category**: People / RLS
+
 ### March 2026
 
 #### March 20, 2026
