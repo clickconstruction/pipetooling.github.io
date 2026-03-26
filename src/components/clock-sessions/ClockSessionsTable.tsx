@@ -1,27 +1,10 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../types/clockSessions'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
 
 const thStyle = { padding: '0.35rem 0.5rem', textAlign: 'left' as const, borderBottom: '1px solid #e5e7eb' }
 const tdStyle = { padding: '0.35rem 0.5rem' }
-
-const NARROW_MQ = '(max-width: 640px)'
-
-function useNarrowViewport640(): boolean {
-  const [narrow, setNarrow] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(NARROW_MQ).matches
-  )
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const mq = window.matchMedia(NARROW_MQ)
-    const sync = () => setNarrow(mq.matches)
-    sync()
-    mq.addEventListener('change', sync)
-    return () => mq.removeEventListener('change', sync)
-  }, [])
-  return narrow
-}
 
 type ClockSessionsTableProps = {
   sessions: ClockSessionRow[]
@@ -187,16 +170,31 @@ function SessionTimeLocationBlock({
   renderDuration,
   locationVariant,
   timeWhiteSpace,
+  tightGap,
+  alignEnd,
 }: {
   s: ClockSessionRow
   renderDuration: (session: ClockSessionRow) => ReactNode
   locationVariant: 'compact' | 'full'
   timeWhiteSpace: 'nowrap' | 'normal'
+  /** Narrow mobile card only — tighter gap between duration and location lines. */
+  tightGap?: boolean
+  /** Mobile card header right column — full width + right-align wrapped lines. */
+  alignEnd?: boolean
 }) {
+  const locationGap = tightGap ? '0.15rem' : '0.25rem'
+  const endAlign = alignEnd ? { width: '100%', textAlign: 'right' as const } : {}
   return (
     <>
-      <div style={{ whiteSpace: timeWhiteSpace }}>{renderDuration(s)}</div>
-      <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', whiteSpace: timeWhiteSpace === 'nowrap' ? 'nowrap' : 'normal' }}>
+      <div style={{ whiteSpace: timeWhiteSpace, ...endAlign }}>{renderDuration(s)}</div>
+      <div
+        style={{
+          marginTop: locationGap,
+          fontSize: '0.8125rem',
+          whiteSpace: timeWhiteSpace === 'nowrap' ? 'nowrap' : 'normal',
+          ...endAlign,
+        }}
+      >
         <ClockSessionLocationCell
           clockInLat={s.clock_in_lat}
           clockInLng={s.clock_in_lng}
@@ -231,30 +229,53 @@ function ClockSessionCard({
   return (
     <div
       style={{
-        marginBottom: '0.75rem',
+        marginBottom: '0.5rem',
         border: '1px solid #e5e7eb',
-        borderRadius: 8,
+        borderRadius: 6,
         overflow: 'hidden',
         background: '#fff',
       }}
     >
-      <div style={{ padding: '0.5rem 0.75rem' }}>
-        <div style={{ fontWeight: 600 }}>{personName}</div>
-        <div style={{ fontSize: '0.8125rem', color: '#374151', marginTop: '0.25rem' }}>
-          {formatClockActivityWorkDayLabel(s.work_date)}
-        </div>
-        <div style={{ marginTop: '0.5rem' }}>
-          <SessionTimeLocationBlock
-            s={s}
-            renderDuration={renderDuration}
-            locationVariant={locationVariant}
-            timeWhiteSpace="normal"
-          />
+      <div style={{ padding: '0.4rem 0.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: '0.5rem',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{personName}</div>
+            <div style={{ fontSize: '0.8125rem', color: '#374151', marginTop: '0.25rem' }}>
+              {formatClockActivityWorkDayLabel(s.work_date)}
+            </div>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              flex: '0 1 58%',
+              maxWidth: '58%',
+              minWidth: 0,
+              textAlign: 'right',
+            }}
+          >
+            <SessionTimeLocationBlock
+              s={s}
+              renderDuration={renderDuration}
+              locationVariant={locationVariant}
+              timeWhiteSpace="normal"
+              tightGap
+              alignEnd
+            />
+          </div>
         </div>
       </div>
       <div
         style={{
-          padding: '0.75rem',
+          padding: '0.5rem',
           borderTop: '1px solid #e5e7eb',
           background: '#f9fafb',
           maxWidth: '100%',
@@ -266,8 +287,8 @@ function ClockSessionCard({
         {showStatusBlock ? (
           <div
             style={{
-              marginTop: '0.75rem',
-              paddingTop: '0.75rem',
+              marginTop: '0.5rem',
+              paddingTop: '0.5rem',
               borderTop: '1px solid #e5e7eb',
               fontSize: '0.8125rem',
               whiteSpace: 'pre-line',
@@ -280,11 +301,16 @@ function ClockSessionCard({
         {showActionsColumn ? (
           <div
             style={{
-              marginTop: '0.75rem',
+              marginTop: '0.5rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'flex-end',
+              gap: '0.35rem',
+              width: '100%',
               ...(showStatusBlock
                 ? {}
                 : {
-                    paddingTop: '0.75rem',
+                    paddingTop: '0.5rem',
                     borderTop: '1px solid #e5e7eb',
                   }),
             }}
@@ -303,10 +329,16 @@ export function ClockSessionsTable({
   renderActions,
   renderJob,
   renderNotesSecondary,
-  renderDuration = defaultRenderDuration,
+  renderDuration: renderDurationProp,
   locationVariant = 'compact',
   emptyMessage = 'No sessions',
 }: ClockSessionsTableProps) {
+  const renderDurationForTable = renderDurationProp ?? defaultRenderDuration
+  const renderDurationForNarrow =
+    renderDurationProp === undefined || renderDurationProp === defaultRenderDuration
+      ? renderDurationDurationFirst
+      : renderDurationProp
+
   const isNarrow = useNarrowViewport640()
 
   if (isNarrow) {
@@ -315,7 +347,7 @@ export function ClockSessionsTable({
         {sessions.length === 0 ? (
           <div
             style={{
-              padding: '0.75rem',
+              padding: '0.5rem',
               color: '#6b7280',
               textAlign: 'center',
               border: '1px solid #e5e7eb',
@@ -329,7 +361,7 @@ export function ClockSessionsTable({
             <ClockSessionCard
               key={s.id}
               s={s}
-              renderDuration={renderDuration}
+              renderDuration={renderDurationForNarrow}
               locationVariant={locationVariant}
               renderJob={renderJob}
               renderNotesSecondary={renderNotesSecondary}
@@ -374,7 +406,7 @@ export function ClockSessionsTable({
                   <td style={tdStyle}>
                     <SessionTimeLocationBlock
                       s={s}
-                      renderDuration={renderDuration}
+                      renderDuration={renderDurationForTable}
                       locationVariant={locationVariant}
                       timeWhiteSpace="nowrap"
                     />

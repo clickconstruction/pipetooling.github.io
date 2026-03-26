@@ -22,6 +22,8 @@ type Props = {
   onToggle?: () => void
   /** Open the same edit modal as Pending sessions (People Hours). */
   onEdit?: (session: ClockSessionRow) => void
+  /** Dev and pay-approved masters only; matches RLS on clock_sessions DELETE. */
+  canDeleteRejectedSessions?: boolean
 }
 
 export function RejectedClockSessionsSection({
@@ -32,6 +34,7 @@ export function RejectedClockSessionsSection({
   open,
   onToggle,
   onEdit,
+  canDeleteRejectedSessions = false,
 }: Props) {
   const { showToast } = useToastContext()
 
@@ -86,31 +89,33 @@ export function RejectedClockSessionsSection({
               Edit
             </button>
           )}
-          <button
-            type="button"
-            onClick={async () => {
-              if (!confirm('Delete this clock session permanently?')) return
-              try {
-                await withSupabaseRetry(
-                  async () => supabase.from('clock_sessions').delete().eq('id', s.id),
-                  'delete rejected clock session',
-                )
-                showToast?.('Session deleted', 'success')
-                onDeleted()
-              } catch (e) {
-                const msg = e instanceof Error ? e.message : 'Failed to delete session'
-                onError?.(msg)
-              }
-            }}
-            style={{
-              ...btnSm,
-              border: '1px solid #dc2626',
-              background: '#fef2f2',
-              color: '#dc2626',
-            }}
-          >
-            Delete
-          </button>
+          {canDeleteRejectedSessions ? (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm('Delete this clock session permanently?')) return
+                try {
+                  await withSupabaseRetry(
+                    async () => supabase.from('clock_sessions').delete().eq('id', s.id),
+                    'delete rejected clock session',
+                  )
+                  showToast?.('Session deleted', 'success')
+                  onDeleted()
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : 'Failed to delete session'
+                  onError?.(msg)
+                }
+              }}
+              style={{
+                ...btnSm,
+                border: '1px solid #dc2626',
+                background: '#fef2f2',
+                color: '#dc2626',
+              }}
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
       )}
     />

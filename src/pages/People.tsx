@@ -4,12 +4,14 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
@@ -26,7 +28,7 @@ import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null }
+type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
 type PersonKind = 'assistant' | 'master_technician' | 'sub' | 'estimator'
 
 const KINDS: PersonKind[] = ['assistant', 'master_technician', 'sub', 'estimator']
@@ -101,6 +103,7 @@ export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const narrowViewport = useNarrowViewport640()
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
@@ -462,7 +465,7 @@ export default function People() {
     setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']),
+      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'estimator', 'primary', 'superintendent']),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     if (peopleRes.error) setError(peopleRes.error.message)
@@ -471,7 +474,7 @@ export default function People() {
     const myRole = (meRes.data as { role?: string } | null)?.role ?? null
     setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes').is('archived_at', null).eq('role', 'dev')
+      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).eq('role', 'dev')
       if (devUsers && devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
@@ -1038,9 +1041,11 @@ export default function People() {
     }
   }
 
-  function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null; notes: string | null } | ({ source: 'people' } & Person))[] {
+  function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null; phone: string | null; notes: string | null } | ({ source: 'people' } & Person))[] {
     const userRole = KIND_TO_USER_ROLE[k]
-    const fromUsers = users.filter((u) => u.role === userRole).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, notes: u.notes }))
+    const fromUsers = users
+      .filter((u) => u.role === userRole)
+      .map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes }))
     const fromPeople = people
       .filter((p) => p.kind === k && !isAlreadyUser(p.email))
       .map((p) => ({ source: 'people' as const, ...p }))
@@ -1372,7 +1377,7 @@ export default function People() {
     const p = people.find((x) => x.name?.trim() === n)
     if (p) return { email: p.email ?? null, phone: p.phone ?? null }
     const u = users.find((x) => x.name?.trim() === n)
-    if (u) return { email: u.email ?? null, phone: null }
+    if (u) return { email: u.email ?? null, phone: u.phone ?? null }
     return { email: null, phone: null }
   }
 
@@ -4093,11 +4098,19 @@ export default function People() {
                             )}
                             <span style={{ fontWeight: 500 }}>{u.name}</span>
                             <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                            {u.email && (
+                            {(u.email || u.phone) && (
                               <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                                <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                  {u.email}
-                                </a>
+                                {u.email && (
+                                  <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                    {u.email}
+                                  </a>
+                                )}
+                                {u.email && u.phone && ' \u00B7 '}
+                                {u.phone && (
+                                  <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                    {u.phone}
+                                  </a>
+                                )}
                               </span>
                             )}
                             {u.notes && (
@@ -4219,11 +4232,19 @@ export default function People() {
                           )}
                         <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                        {u.email && (
+                        {(u.email || u.phone) && (
                           <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                            <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                              {u.email}
-                            </a>
+                            {u.email && (
+                              <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                {u.email}
+                              </a>
+                            )}
+                            {u.email && u.phone && ' \u00B7 '}
+                            {u.phone && (
+                              <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                {u.phone}
+                              </a>
+                            )}
                           </span>
                         )}
                         {u.notes && (
@@ -4345,11 +4366,19 @@ export default function People() {
                           )}
                           <span style={{ fontWeight: 500 }}>{u.name || u.email || 'Unknown'}</span>
                           <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
-                          {u.email && (
+                          {(u.email || u.phone) && (
                             <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                              <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                {u.email}
-                              </a>
+                              {u.email && (
+                                <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                  {u.email}
+                                </a>
+                              )}
+                              {u.email && u.phone && ' \u00B7 '}
+                              {u.phone && (
+                                <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                  {u.phone}
+                                </a>
+                              )}
                             </span>
                           )}
                           {u.notes && (
@@ -4511,30 +4540,18 @@ export default function People() {
                                       {item.source === 'user' && (
                                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
                                       )}
-                                      {(item.source === 'user' ? item.email : (item.email || item.phone)) && (
+                                      {(item.email || item.phone) && (
                                         <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                                          {item.source === 'user' ? (
-                                            item.email ? (
-                                              <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                                {item.email}
-                                              </a>
-                                            ) : null
-                                          ) : (
-                                            <>
-                                              {item.email && (
-                                                <>
-                                                  <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                                    {item.email}
-                                                  </a>
-                                                  {item.phone && ' \u00B7 '}
-                                                </>
-                                              )}
-                                              {item.phone && (
-                                                <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                                  {item.phone}
-                                                </a>
-                                              )}
-                                            </>
+                                          {item.email && (
+                                            <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                              {item.email}
+                                            </a>
+                                          )}
+                                          {item.email && item.phone && ' \u00B7 '}
+                                          {item.phone && (
+                                            <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                              {item.phone}
+                                            </a>
                                           )}
                                         </span>
                                       )}
@@ -5447,30 +5464,69 @@ export default function People() {
                 </>
               )}
             </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <label>
-                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-              </label>
-              <button
-                type="button"
-                onClick={() => shiftMatrixWeek(-1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                ← last week
-              </button>
-              <button
-                type="button"
-                onClick={() => shiftMatrixWeek(1)}
-                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                next week →
-              </button>
-            </div>
+            {narrowViewport ? (
+              <div style={{ marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+                  <button
+                    type="button"
+                    aria-label="Previous week"
+                    onClick={() => shiftMatrixWeek(-1)}
+                    style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                  >
+                    ‹
+                  </button>
+                  <span style={{ fontSize: '0.875rem', textAlign: 'center', flex: 1, minWidth: 0 }}>
+                    {formatDateRangeLabel(matrixStartDate, matrixEndDate)}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Next week"
+                    onClick={() => shiftMatrixWeek(1)}
+                    style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                  >
+                    ›
+                  </button>
+                </div>
+                <details style={{ marginTop: '0.35rem' }}>
+                  <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151' }}>Custom dates</summary>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'center' }}>
+                    <label>
+                      <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                      <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </label>
+                    <label>
+                      <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                      <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    </label>
+                  </div>
+                </details>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                <label>
+                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                  <input type="date" value={matrixStartDate} onChange={(e) => setMatrixStartDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </label>
+                <label>
+                  <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                  <input type="date" value={matrixEndDate} onChange={(e) => setMatrixEndDate(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => shiftMatrixWeek(-1)}
+                  style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  ← last week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => shiftMatrixWeek(1)}
+                  style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  next week →
+                </button>
+              </div>
+            )}
             <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead style={{ background: '#f9fafb' }}>
@@ -6143,31 +6199,70 @@ export default function People() {
           ) : (
           <>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-            <label>
-              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-              <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-            </label>
-            <label>
-              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-              <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-            </label>
-            <button
-              type="button"
-              onClick={() => shiftHoursWeek(-1)}
-              style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              ← last week
-            </button>
-            <button
-              type="button"
-              onClick={() => shiftHoursWeek(1)}
-              style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              next week →
-            </button>
-          </div>
-          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          {narrowViewport ? (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'space-between' }}>
+                <button
+                  type="button"
+                  aria-label="Previous week"
+                  onClick={() => shiftHoursWeek(-1)}
+                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                >
+                  ‹
+                </button>
+                <span style={{ fontSize: '0.875rem', textAlign: 'center', flex: 1, minWidth: 0 }}>
+                  {formatDateRangeLabel(hoursDateStart, hoursDateEnd)}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Next week"
+                  onClick={() => shiftHoursWeek(1)}
+                  style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+                >
+                  ›
+                </button>
+              </div>
+              <details style={{ marginTop: '0.35rem' }}>
+                <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151' }}>Custom dates</summary>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', alignItems: 'center' }}>
+                  <label>
+                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                    <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </label>
+                  <label>
+                    <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                    <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  </label>
+                </div>
+              </details>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
+                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <label>
+                <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
+                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              </label>
+              <button
+                type="button"
+                onClick={() => shiftHoursWeek(-1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ← last week
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftHoursWeek(1)}
+                style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                next week →
+              </button>
+            </div>
+          )}
+          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
               Active clock sessions ({activeClockSessions.length})
             </div>
@@ -6208,7 +6303,7 @@ export default function People() {
               }}
             />
           </div>
-          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
               Pending sessions ({pendingApprovalClockSessions.length})
             </div>
@@ -6313,6 +6408,7 @@ export default function People() {
               sessions={rejectedClockSessions}
               onDeleted={() => loadAllClockSessionsRef.current?.()}
               onError={(message) => setError(message)}
+              canDeleteRejectedSessions={canAccessPay}
               open={rejectedSectionOpen}
               onToggle={() => setRejectedSectionOpen((o) => !o)}
               onEdit={(s) => {
@@ -8203,6 +8299,7 @@ export default function People() {
                           <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
                             <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                             <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
                             <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
                             <th style={{ padding: '0.5rem 0.75rem' }} />
                           </tr>
@@ -8218,6 +8315,15 @@ export default function People() {
                                 <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{u.email || '—'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                                    {u.phone ? (
+                                      <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                        {u.phone}
+                                      </a>
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{u.role.replace(/_/g, ' ')}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     {granted ? (
