@@ -24,7 +24,8 @@ export default defineConfig({
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectManifest: {
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024, // 3 MB (bundle exceeds 2 MB default)
+        // Workbox default is 2 MiB; main chunk can exceed 3 MiB as the app grows.
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
       manifest: {
         name: 'PipeTooling',
